@@ -25,8 +25,7 @@
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities')}" id="menuentities">
           <a href="#/Entities" class="nav-link"
             ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"><span
-              translate
-              lib="web">entities</span></a>
+              translate lib="web">entities</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workflows')}" id="menuworkflows">
           <a href="#/Workflows" class="nav-link"><span translate lib="web">workflows</span></a>
@@ -34,13 +33,12 @@
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/RPAWorkflows')}" id="menurpaworkflows">
           <a href="#/RPAWorkflows" class="nav-link"
             ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
-              translate
-              lib="web">rpaworkflows</span></a>
+              translate lib="web">rpaworkflows</span></a>
         </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Clients')}" id="menuclients">
-          <a href="#/Clients" class="nav-link" ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
-              translate
-              lib="web">clients</span></a>
+        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workitems')}" id="menuworkitems">
+          <a href="#/Workitems" class="nav-link"
+            ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('workitem queue users'))"><span translate
+              lib="web">workitems</span></a>
         </li>
         <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Nodered')}" id="menunodered">
           <a href="#/Nodered" class="nav-link"
@@ -61,6 +59,10 @@
             <a class="dropdown-item" href="#/Roles" id="menuadminroles"
               ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
                 translate lib="web">roles</span></a>
+<a class="dropdown-item" href="#/Clients" id="menuclients"
+  ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
+    translate lib="web">clients</span></a>
+
             <a class="dropdown-item" href="#/Credentials" id="menuadmincredentials"><span translate
                 lib="web">credentials</span></a>
             <a class="dropdown-item" href="#/Auditlogs" id="menuadminauditlogs"><span translate

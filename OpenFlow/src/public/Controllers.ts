@@ -5,6 +5,7 @@ import { WebSocketClientService } from "./WebSocketClientService";
 
 import * as jsondiffpatch from "jsondiffpatch";
 import * as ofurl from "./formsio_of_provider";
+import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 
 
 declare let $: any;
@@ -1224,9 +1225,10 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("RPAWorkflowCtrl");
         this.collection = "openrpa";
         this.messages = "";
@@ -2128,9 +2130,10 @@ export class ProviderCtrl extends entityCtrl<Provider> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("ProviderCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -2413,9 +2416,10 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("UserCtrl");
         this.collection = "users";
         this.postloadData = this.processdata;
@@ -2583,9 +2587,10 @@ export class RoleCtrl extends entityCtrl<Role> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("RoleCtrl");
         this.collection = "users";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -2772,6 +2777,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         this.autorefresh = true;
         this.basequery = {};
         this.searchfields = ["metadata.name"];
+        this.orderby = { "metadata._created": -1 }
         this.collection = "files";
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
         const elem = document.getElementById("myBar");
@@ -3010,9 +3016,10 @@ export class EditFormCtrl extends entityCtrl<Form> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("EditFormCtrl");
         this.collection = "forms";
         this.basequery = {};
@@ -3185,9 +3192,10 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.myid = new Date().toISOString();
         console.debug("FormCtrl");
         this.collection = "workflow";
@@ -3783,9 +3791,10 @@ export class EntityCtrl extends entityCtrl<Base> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("EntityCtrl");
         this.collection = $routeParams.collection;
         this.postloadData = this.processdata;
@@ -4333,7 +4342,7 @@ export class NoderedCtrl {
             if ((this.user.nodered as any).monaco == null) (this.user.nodered as any).monaco = false;
             if ((this.user.nodered as any).tours == null) (this.user.nodered as any).tours = WebSocketClientService.enable_web_tours;
             if (this.user.nodered.function_external_modules == null) this.user.nodered.function_external_modules = true;
-            
+
             this.user.nodered.nodered_image_name = this.user.nodered.nodered_image_name || WebSocketClientService.nodered_images[0].name;
             if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
                 this.limitsmemory = this.user.nodered.resources.limits.memory;
@@ -4638,7 +4647,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
                 if (this.show == "webapp") this.basequery = { "_webheartbeat": { "$exists": true } };
                 if (this.show == "all") this.basequery = { _heartbeat: { "$exists": true } };
             } else {
-                dt.setMinutes(dt.getMinutes() - 1);
+                dt.setMilliseconds(dt.getMilliseconds() - (WebSocketClientService.ping_clients_interval + 20000));
                 this.basequery = { "$or": [] };
                 if (this.show == "openrpa") this.basequery = { "_rpaheartbeat": { "$gte": dt } };
                 if (this.show == "nodered") this.basequery = { "_noderedheartbeat": { "$gte": dt } };
@@ -4804,9 +4813,10 @@ export class SignupCtrl extends entityCtrl<Base> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("SignupCtrl");
         this.collection = $routeParams.collection;
         this.postloadData = this.processdata;
@@ -4869,9 +4879,10 @@ export class QueueCtrl extends entityCtrl<Base> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("QueueCtrl");
         this.collection = "configclients";
         this.postloadData = this.processdata;
@@ -5074,9 +5085,10 @@ export class CredentialCtrl extends entityCtrl<Base> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("CredentialCtrl");
         this.collection = "openrpa";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -5380,9 +5392,10 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("OAuthClientCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -5514,15 +5527,15 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             }
         }
         if (this.orderby)
-        if (NoderedUtil.IsNullEmpty(this.collection)) {
-            this.$location.path("/Duplicates/entities");
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            return;
-        } else if (this.$location.path() != "/Duplicates/" + this.collection) {
-            this.$location.path("/Duplicates/" + this.collection);
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            return;
-        }
+            if (NoderedUtil.IsNullEmpty(this.collection)) {
+                this.$location.path("/Duplicates/entities");
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            } else if (this.$location.path() != "/Duplicates/" + this.collection) {
+                this.$location.path("/Duplicates/" + this.collection);
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             this.loadData();
@@ -5818,9 +5831,10 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("CustomerCtrl");
         this.collection = "users";
         this.postloadData = this.processdata;
@@ -6226,6 +6240,10 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
     async EnsureCommon() {
         try {
             await this.newRestriction("Add any", "entities", ["$."], false);
+
+            await this.newRestriction("Create workitemqueue in mq", "mq", ["$.[?(@ && @._type == 'workitemqueue')]"], false);
+            await this.newRestriction("Create workitem in workitems", "workitems", ["$.[?(@ && @._type == 'workitem')]"], false);
+
             await this.newRestriction("Create queues", "mq", ["$.[?(@ && @._type == 'queue')]"], false);
             await this.newRestriction("Create exchanges", "mq", ["$.[?(@ && @._type == 'exchange')]"], false);
             await this.newRestriction("Create form", "forms", ["$.[?(@ && @._type == 'form')]"], false);
@@ -6285,9 +6303,10 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("EntityRestrictionCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -6760,9 +6779,10 @@ export class ResourceCtrl extends entityCtrl<Resource> {
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
-        public api: api
+        public api: api,
+        public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api);
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("ResourceCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -6793,3 +6813,418 @@ export class ResourceCtrl extends entityCtrl<Resource> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
+
+export class WorkitemsCtrl extends entitiesCtrl<Base> {
+    public queue: string = "";
+    public workitemqueues: Base[];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("WorkitemsCtrl");
+        this.basequery = { _type: "workitem" };
+        this.collection = "workitems";
+        this.searchfields = ["name", "state", "wiq"];
+        this.baseprojection = { name: 1, state: 1, wiq: 1, retries: 1, lastrun: 1, nextrun: 1 };
+        this.postloadData = this.processData;
+        if (this.userdata.data.WorkitemsCtrl) {
+            this.basequery = this.userdata.data.WorkitemsCtrl.basequery;
+            this.queue = this.userdata.data.WorkitemsCtrl.queue;
+            this.collection = this.userdata.data.WorkitemsCtrl.collection;
+            this.baseprojection = this.userdata.data.WorkitemsCtrl.baseprojection;
+            this.orderby = this.userdata.data.WorkitemsCtrl.orderby;
+            this.searchstring = this.userdata.data.WorkitemsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.WorkitemsCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.WorkitemsCtrl.skipcustomerfilter;
+        }
+        if (!NoderedUtil.IsNullEmpty($routeParams.queue)) this.queue = $routeParams.queue;
+        if (!NoderedUtil.IsNullEmpty(this.queue)) {
+            this.basequery["wiq"] = this.queue;
+        }
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.workitemqueues = await NoderedUtil.Query("mq", { "_type": "workitemqueue" }, { "name": 1 }, null, 100, 0, null, null, null, 1);
+            this.workitemqueues.unshift({ "name": "" } as any)
+            this.loadData();
+        });
+    }
+    SelectWorkitemqueues() {
+        this.basequery = { _type: "workitem" };
+        if (!NoderedUtil.IsNullEmpty(this.queue)) {
+            this.basequery = { _type: "workitem", "wiq": this.queue };
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        console.log(this.workitemqueues);
+        console.log(this.queue);
+        this.loadData();
+    }
+    SetState(state) {
+        if (state == "" || state == null) {
+            delete this.basequery["state"];
+        } else {
+            if (this.basequery["state"] == state.toLowerCase()) {
+                delete this.basequery["state"];
+            } else {
+                this.basequery["state"] = state.toLowerCase();
+            }
+
+        }
+        this.loadData();
+    }
+    async DeleteWorkitem(model) {
+        this.loading = true;
+        try {
+            const q: DeleteWorkitemMessage = new DeleteWorkitemMessage();
+            const _msg: Message = new Message();
+            q._id = model._id;
+            _msg.command = 'deleteworkitem';
+            _msg.data = JSON.stringify(q);
+            const result: DeleteWorkitemMessage = await WebSocketClient.instance.Send<DeleteWorkitemMessage>(_msg, 1);
+            this.loading = false;
+            this.loadData();
+        } catch (error) {
+            this.loading = false;
+            this.errormessage = error.message ? error.message : error;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    async UpdateWorkitem(model, newstate) {
+        this.loading = true;
+        try {
+            const q: UpdateWorkitemMessage = new UpdateWorkitemMessage();
+            const _msg: Message = new Message();
+            q._id = model._id;
+            q.state = newstate;
+            q.ignoremaxretries = true;
+            _msg.command = 'updateworkitem';
+            _msg.data = JSON.stringify(q);
+            const result: UpdateWorkitemMessage = await WebSocketClient.instance.Send<UpdateWorkitemMessage>(_msg, 1);
+            this.loading = false;
+            this.loadData();
+        } catch (error) {
+            this.loading = false;
+            this.errormessage = error.message ? error.message : error;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.WorkitemsCtrl) this.userdata.data.WorkitemsCtrl = {};
+        this.userdata.data.WorkitemsCtrl.basequery = this.basequery;
+        this.userdata.data.WorkitemsCtrl.queue = this.queue;
+        this.userdata.data.WorkitemsCtrl.collection = this.collection;
+        this.userdata.data.WorkitemsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.WorkitemsCtrl.orderby = this.orderby;
+        this.userdata.data.WorkitemsCtrl.searchstring = this.searchstring;
+        this.userdata.data.WorkitemsCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.WorkitemsCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+}
+export class WorkitemCtrl extends entityCtrl<Workitem> {
+    public queue: string = "";
+    public workitemqueues: Base[];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("WorkitemCtrl");
+        this.collection = "workitems";
+        this.postloadData = this.processdata;
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.workitemqueues = await NoderedUtil.Query("mq", { "_type": "workitemqueue" }, { "name": 1 }, null, 100, 0, null, null, null, 1);
+                this.workitemqueues.unshift({ "name": "" } as any)
+                this.model = new Workitem();
+                this.model.retries = 0;
+                this.model.payload = {};
+                if (this.userdata.data && this.userdata.data.WorkitemsCtrl) this.model.wiq = this.userdata.data.WorkitemsCtrl.queue;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        });
+    }
+    processdata() {
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        this.fixtextarea();
+    }
+
+    fixtextarea() {
+        setTimeout(() => {
+            const tx = document.getElementsByTagName('textarea');
+            for (let i = 0; i < tx.length; i++) {
+                tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
+            }
+        }, 500);
+    }
+
+    async submit(): Promise<void> {
+        try {
+            var model: any = this.model;
+            // await NoderedUtil.UpdateOne(this.collection, null, this.model, 1, false, null, 2);
+            this.loading = true;
+            try {
+                if (NoderedUtil.IsNullEmpty(this.model._id)) {
+                    const q: AddWorkitemMessage = new AddWorkitemMessage();
+                    const _msg: Message = new Message();
+                    q.name = model.name;
+                    q.wiq = model.wiq;
+                    q.payload = model.payload;
+                    _msg.command = 'addworkitem';
+                    _msg.data = JSON.stringify(q);
+                    const result: AddWorkitemMessage = await WebSocketClient.instance.Send<AddWorkitemMessage>(_msg, 1);
+                } else {
+                    const q: UpdateWorkitemMessage = new UpdateWorkitemMessage();
+                    const _msg: Message = new Message();
+                    q._id = model._id;
+                    q.name = model.name;
+                    q.state = model.state;
+                    q.payload = model.payload;
+                    _msg.command = 'updateworkitem';
+                    _msg.data = JSON.stringify(q);
+                    const result: UpdateWorkitemMessage = await WebSocketClient.instance.Send<UpdateWorkitemMessage>(_msg, 1);
+                }
+                this.$location.path("/Workitems");
+            } catch (error) {
+                this.loading = false;
+                this.errormessage = error.message ? error.message : error;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+
+
+
+export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
+    public queue: string = "";
+    public workitemqueues: Base[];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("WorkitemQueuesCtrl");
+        this.basequery = { _type: "workitemqueue" };
+        this.collection = "mq";
+        this.searchfields = ["name"];
+        this.baseprojection = { name: 1, maxretries: 1, projectid: 1, workflowid: 1, robotqueue: 1, amqpqueue: 1 };
+
+        this.postloadData = this.processData;
+        if (this.userdata.data.WorkitemQueuesCtrl) {
+            this.basequery = this.userdata.data.WorkitemQueuesCtrl.basequery;
+            this.queue = this.userdata.data.WorkitemQueuesCtrl.queue;
+            this.collection = this.userdata.data.WorkitemQueuesCtrl.collection;
+            this.baseprojection = this.userdata.data.WorkitemQueuesCtrl.baseprojection;
+            this.orderby = this.userdata.data.WorkitemQueuesCtrl.orderby;
+            this.searchstring = this.userdata.data.WorkitemQueuesCtrl.searchstring;
+            this.basequeryas = this.userdata.data.WorkitemQueuesCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.WorkitemQueuesCtrl.skipcustomerfilter;
+        }
+        if (!NoderedUtil.IsNullEmpty($routeParams.queue)) this.queue = $routeParams.queue;
+        if (!NoderedUtil.IsNullEmpty(this.queue)) {
+            this.basequery["wiq"] = this.queue;
+        }
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.workitemqueues = await NoderedUtil.Query("mq", { "_type": "workitemqueue" }, { "name": 1 }, null, 100, 0, null, null, null, 1);
+            this.workitemqueues.unshift({ "name": "" } as any)
+            this.loadData();
+        });
+    }
+    async DeleteWorkitemQueue(model) {
+        this.loading = true;
+        try {
+            const q: DeleteWorkitemQueueMessage = new DeleteWorkitemQueueMessage();
+            const _msg: Message = new Message();
+            q._id = model._id;
+            _msg.command = 'deleteworkitemqueue';
+            _msg.data = JSON.stringify(q);
+            const result: DeleteWorkitemQueueMessage = await WebSocketClient.instance.Send<DeleteWorkitemQueueMessage>(_msg, 1);
+            this.loading = false;
+            this.loadData();
+        } catch (error) {
+            this.loading = false;
+            this.errormessage = error.message ? error.message : error;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    async PurgeWorkitemQueue(model) {
+        this.loading = true;
+        this.errormessage = "";
+        try {
+            let isExecuted = confirm("Are you sure you want to purge (delete) all workitems from " + model.name + "?\nThis action cannot be undone!");
+            if (!isExecuted) return;
+            const q: UpdateWorkitemQueueMessage = new UpdateWorkitemQueueMessage();
+            const _msg: Message = new Message();
+            q._id = model._id;
+            q.purge = true;
+            q.name = model.name;
+            q.workflowid = model.workflowid;
+            q.robotqueue = model.robotqueue;
+            q.projectid = model.projectid;
+            q.amqpqueue = model.amqpqueue;
+            // q.maxretries = 5;
+            // q.retrydelay = 0;
+            // q.initialdelay = 0;
+
+            _msg.command = 'updateworkitemqueue';
+            _msg.data = JSON.stringify(q);
+            const result: UpdateWorkitemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkitemQueueMessage>(_msg, 1);
+            this.loading = false;
+            this.loadData();
+        } catch (error) {
+            this.loading = false;
+            this.errormessage = error.message ? error.message : error;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.WorkitemQueuesCtrl) this.userdata.data.WorkitemQueuesCtrl = {};
+        this.userdata.data.WorkitemQueuesCtrl.basequery = this.basequery;
+        this.userdata.data.WorkitemQueuesCtrl.queue = this.queue;
+        this.userdata.data.WorkitemQueuesCtrl.collection = this.collection;
+        this.userdata.data.WorkitemQueuesCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.WorkitemQueuesCtrl.orderby = this.orderby;
+        this.userdata.data.WorkitemQueuesCtrl.searchstring = this.searchstring;
+        this.userdata.data.WorkitemQueuesCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.WorkitemQueuesCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+}
+export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
+    public projects: Base[] = [];
+    public workflows: Base[] = [];
+    public users: Base[] = [];
+    public amqpqueues: Base[] = [];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("WorkitemQueueCtrl");
+        this.collection = "mq";
+        this.postloadData = this.processdata;
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            try {
+                this.projects = await NoderedUtil.Query("openrpa", { "_type": "project" }, { "name": 1 }, null, 100, 0, null, null, null, 2);
+                this.projects.forEach((e: any) => { e.display = e.name });
+                this.projects.unshift({ "_id": "", "name": "", "display": "(no project)" } as any);
+                this.workflows = await NoderedUtil.Query("openrpa", { "_type": "workflow" }, { "name": 1, "projectandname": 1 }, null, 500, 0, null, null, null, 2);
+                this.workflows.forEach((e: any) => { e.display = e.projectandname });
+                this.workflows.unshift({ "_id": "", "name": "", "display": "(no workflow)" } as any);
+                this.users = await NoderedUtil.Query("users", { "$or": [{ "_type": "user" }, { "_type": "role" }] }, { "name": 1 }, null, 500, 0, null, null, null, 2);
+                this.users.forEach((e: any) => { e.display = e.name });
+                this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
+                this.amqpqueues = await NoderedUtil.Query("mq", { "_type": "queue" }, { "name": 1 }, null, 500, 0, null, null, null, 2);
+                this.amqpqueues.forEach((e: any) => { e.display = e.name });
+                this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
+                if (this.id !== null && this.id !== undefined) {
+                    await this.loadData();
+                } else {
+                    this.model = new WorkitemQueue();
+                    this.model.maxretries = 3;
+                    this.model.retrydelay = 0;
+                    this.model.initialdelay = 0;
+                }
+            } catch (error) {
+                console.error(error);
+                this.errormessage = error.message ? error.message : error;
+            }
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        });
+    }
+    processdata() {
+        this.loading = false;
+        if (NoderedUtil.IsNullEmpty(this.model.projectid)) this.model.projectid = "";
+        if (NoderedUtil.IsNullEmpty(this.model.workflowid)) this.model.workflowid = "";
+        if (NoderedUtil.IsNullEmpty(this.model.robotqueue)) this.model.robotqueue = "";
+        if (NoderedUtil.IsNullEmpty(this.model.amqpqueue)) this.model.amqpqueue = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+    async submit(): Promise<void> {
+        try {
+            var model: any = this.model;
+            this.loading = true;
+            try {
+                if (NoderedUtil.IsNullEmpty(this.model._id)) {
+                    const q: AddWorkitemQueueMessage = new AddWorkitemQueueMessage();
+                    const _msg: Message = new Message();
+                    q.name = model.name;
+                    q.workflowid = model.workflowid;
+                    q.robotqueue = model.robotqueue;
+                    q.projectid = model.projectid;
+                    q.amqpqueue = model.amqpqueue;
+                    q.maxretries = model.maxretries;
+                    q.retrydelay = model.retrydelay;
+                    q.initialdelay = model.initialdelay;
+                    _msg.command = 'addworkitemqueue';
+                    _msg.data = JSON.stringify(q);
+                    const result: AddWorkitemQueueMessage = await WebSocketClient.instance.Send<AddWorkitemQueueMessage>(_msg, 1);
+                } else {
+                    const q: UpdateWorkitemQueueMessage = new UpdateWorkitemQueueMessage();
+                    const _msg: Message = new Message();
+                    q._id = model._id;
+                    q.name = model.name;
+                    q.workflowid = model.workflowid;
+                    q.robotqueue = model.robotqueue;
+                    q.projectid = model.projectid;
+                    q.amqpqueue = model.amqpqueue;
+                    q.maxretries = model.maxretries;
+                    q.retrydelay = model.retrydelay;
+                    q.initialdelay = model.initialdelay;
+                    _msg.command = 'updateworkitemqueue';
+                    _msg.data = JSON.stringify(q);
+                    const result: UpdateWorkitemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkitemQueueMessage>(_msg, 1);
+
+                }
+                this.$location.path("/WorkitemQueues");
+            } catch (error) {
+                this.loading = false;
+                this.errormessage = error.message ? error.message : error;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+
+

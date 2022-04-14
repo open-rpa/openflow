@@ -31,7 +31,7 @@ export class nodered_settings {
     public debugMaxLength: number = 1000;
     public functionGlobalContext: any = { process: process };
     public functionExternalModules: boolean = true;
-    public paletteCategories: string[] = ["workflow", "rpa", "subflows", "input", "output", "function", "api",
+    public paletteCategories: string[] = ["rpa", "workitem", "subflows", "input", "output", "function", "api",
         "social", "mobile", "storage", "analysis", "advanced"];
     public debugUseColors: boolean = true;
     public flowFilePretty: boolean = true;

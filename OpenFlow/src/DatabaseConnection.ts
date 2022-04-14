@@ -1,7 +1,7 @@
 import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOptions, CollectionInsertOneOptions, GridFSBucket, ChangeStream, CollectionAggregationOptions, MongoClientOptions, ReplaceOneOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder } from "@opentelemetry/api-metrics"
@@ -80,15 +80,23 @@ export class DatabaseConnection extends events.EventEmitter {
     public static mongodb_query: ValueRecorder;
     public static mongodb_aggregate: ValueRecorder;
     public static mongodb_insert: ValueRecorder;
+    public static mongodb_insertmany: ValueRecorder;
     public static mongodb_update: ValueRecorder;
+    public static mongodb_updatemany: ValueRecorder;
     public static mongodb_replace: ValueRecorder;
     public static mongodb_delete: ValueRecorder;
     public static mongodb_deletemany: ValueRecorder;
     public static semaphore = Auth.Semaphore(1);
-    constructor(mongodburl: string, dbname: string) {
+
+    public registerGlobalWatches: boolean = true;
+    public queuemonitoringhandle: NodeJS.Timeout = null;
+    public queuemonitoringpaused: boolean = false;
+    public queuemonitoringlastrun: Date = new Date();
+    constructor(mongodburl: string, dbname: string, registerGlobalWatches: boolean) {
         super();
         this._dbname = dbname;
         this.mongodburl = mongodburl;
+        if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createValueRecorder('openflow_mongodb_query_seconds', {
@@ -103,8 +111,16 @@ export class DatabaseConnection extends events.EventEmitter {
                 description: 'Duration for mongodb inserts',
                 boundaries: Logger.otel.default_boundaries
             });
+            DatabaseConnection.mongodb_insertmany = Logger.otel.meter.createValueRecorder('openflow_mongodb_insertmany_seconds', {
+                description: 'Duration for mongodb insert many',
+                boundaries: Logger.otel.default_boundaries
+            });
             DatabaseConnection.mongodb_update = Logger.otel.meter.createValueRecorder('openflow_mongodb_update_seconds', {
                 description: 'Duration for mongodb updates',
+                boundaries: Logger.otel.default_boundaries
+            });
+            DatabaseConnection.mongodb_updatemany = Logger.otel.meter.createValueRecorder('openflow_mongodb_updatemany_seconds', {
+                description: 'Duration for mongodb update many',
                 boundaries: Logger.otel.default_boundaries
             });
             DatabaseConnection.mongodb_replace = Logger.otel.meter.createValueRecorder('openflow_mongodb_replace_seconds', {
@@ -206,11 +222,71 @@ export class DatabaseConnection extends events.EventEmitter {
                 this.registerGlobalWatch(collections[c].name, span);
             }
         }
+        if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
+            this.queuemonitoringpaused = false;
+            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        }
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
     }
+    async queuemonitoring() {
+        try {
+            if (!this.isConnected == true) return;
+            if (this.queuemonitoringpaused) return;
+            const jwt = Crypt.rootToken();
+            var pipeline: any[] = [];
+            pipeline.push({ "$match": { state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } } });
+            pipeline.push({ "$group": { _id: "$wiq", "count": { "$sum": 1 } } });
+            pipeline.push({
+                "$graphLookup":
+                {
+                    from: 'mq',
+                    startWith: '$_id',
+                    connectFromField: '_id',
+                    connectToField: 'name',
+                    as: 'queue',
+                    maxDepth: 1,
+                    restrictSearchWithMatch: {
+                        "$or": [
+                            { robotqueue: { "$exists": true, $ne: null } },
+                            { amqpqueue: { "$exists": true, $ne: null } }
+                        ]
+                    }
+                }
+            });
+            pipeline.push({ "$match": { "queue": { $size: 1 } } });
+
+            var results: any[] = await this.aggregate(pipeline, "workitems", jwt, null, null);
+            this.queuemonitoringlastrun = new Date();
+            if (results.length > 0) Logger.instanse.verbose("[workitems] found " + results.length + " queues with pending workitems");
+            for (var i = 0; i < results.length; i++) {
+                if (results[i].count > 0 && results[i].queue.length > 0) {
+                    const wiq: WorkitemQueue = results[i].queue[0];
+                    const payload = {
+                        command: "invoke",
+                        workflowid: wiq.workflowid,
+                        data: { payload: {} }
+                    }
+                    if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
+                        Logger.instanse.verbose("[workitems] Send invoke message to robot queue " + wiq.workflowid);
+                        await amqpwrapper.Instance().send(null, wiq.robotqueue, payload, 5000, null, null, 2);
+                    }
+                    if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
+                        Logger.instanse.verbose("[workitems] Send invoke message to amqp queue " + wiq.amqpqueue);
+                        await amqpwrapper.Instance().send(null, wiq.amqpqueue, payload, 5000, null, null, 2);
+                    }
+                }
+            }
+        } catch (error) {
+            Logger.instanse.error(error);
+        }
+        finally {
+            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        }
+    }
     registerGlobalWatch(collectionname: string, parent: Span) {
+        if (!this.registerGlobalWatches) return;
         const span: Span = Logger.otel.startSubSpan("registerGlobalWatch", parent);
         try {
             span?.setAttribute("collectionname", collectionname);
@@ -237,9 +313,41 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (next.updateDescription.updatedFields.hasOwnProperty("_webheartbeat")) return;
                         if (next.updateDescription.updatedFields.hasOwnProperty("_noderedheartbeat")) return;
                         if (next.updateDescription.updatedFields.hasOwnProperty("_powershellheartbeat")) return;
-                        // console.log(next.updateDescription.updatedFields);
                     }
                     var item = next.fullDocument;
+                    var _type = "";
+                    if (!NoderedUtil.IsNullUndefinded(item)) {
+                        _type = item._type;
+
+                        if (collectionname == "mq") {
+                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                        }
+                        if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
+                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                        }
+                        if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
+                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                        }
+                        if (collectionname == "config" && _type == "provider") {
+                            await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
+                        }
+                    }
+                    let doContinue: boolean = false;
+                    if (WebSocketServer._clients)
+                        for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                            let client = WebSocketServer._clients[i];
+                            if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+                            let ids = Object.keys(client.watches);
+                            for (let y = 0; y < ids.length; y++) {
+                                var stream = client.watches[ids[y]];
+                                if (stream.collectionname != collectionname) continue;
+                                doContinue = true;
+                                break;
+                            }
+                            if (doContinue == true) break;
+                        }
+                    if (!doContinue) return;
+
                     if (NoderedUtil.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
                     if (NoderedUtil.IsNullEmpty(item)) {
                         Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname);
@@ -247,7 +355,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else {
                         if (Config.log_watches) Logger.instanse.verbose("[" + collectionname + "][" + next.operationType + "] " + _id + " " + item.name);
                     }
-                    var _type = item._type;
                     try {
                         for (var i = 0; i < WebSocketServer._clients.length; i++) {
                             var client = WebSocketServer._clients[i];
@@ -260,10 +367,12 @@ export class DatabaseConnection extends events.EventEmitter {
                                         for (var y = 0; y < ids.length; y++) {
                                             let notify: boolean = false;
                                             var stream = client.watches[ids[y]];
-                                            if (stream.collectionname != collectionname) continue;
-                                            if (NoderedUtil.IsNullUndefinded(stream.aggregates)) { notify = true; continue; }
-                                            if (stream.aggregates.length == 0) { notify = true; continue; }
-                                            if (typeof stream.aggregates[0] === 'object') {
+                                            if (stream.collectionname != collectionname) {
+                                            } else if (NoderedUtil.IsNullUndefinded(stream.aggregates)) {
+                                                notify = true;
+                                            } else if (stream.aggregates.length == 0) {
+                                                notify = true;
+                                            } else if (typeof stream.aggregates[0] === 'object') {
                                                 // This is fucking ugly, but need something to be backward compatible with older version of OpenRPA and Nodered Nodes
                                                 var match = stream.aggregates[0]["$match"];
                                                 if (NoderedUtil.IsNullUndefinded(match)) { continue; }
@@ -281,15 +390,32 @@ export class DatabaseConnection extends events.EventEmitter {
                                                 });
                                                 if (ismatch) notify = true;
                                             } else {
-                                                for (var p = 0; p < stream.aggregates.length; p++) {
-                                                    var path = stream.aggregates[p];
-                                                    if (!NoderedUtil.IsNullEmpty(path)) {
+                                                if (Array.isArray(stream.aggregates)) {
+                                                    for (let p = 0; p < stream.aggregates.length; p++) {
+                                                        let path = stream.aggregates[p];
+                                                        if (!NoderedUtil.IsNullEmpty(path)) {
+                                                            try {
+                                                                const result = JSONPath({ path, json: { a: item } });
+                                                                if (result && result.length > 0) notify = true;
+                                                            } catch (error) {
+                                                                console.log(error);
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    if (!NoderedUtil.IsNullEmpty(stream.aggregates)) {
                                                         try {
+                                                            let path = stream.aggregates;
                                                             const result = JSONPath({ path, json: { a: item } });
                                                             if (result && result.length > 0) notify = true;
                                                         } catch (error) {
+                                                            console.log(error);
                                                         }
                                                     }
+                                                }
+                                                // Watch all
+                                                if (stream.aggregates.length == 0) {
+                                                    notify = true;
                                                 }
                                             }
                                             if (notify) {
@@ -320,18 +446,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     } catch (error) {
                         Logger.instanse.error(error);
-                    }
-                    if (collectionname == "mq") {
-                        Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                        Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
-                        Auth.clearCache("watch detectec change in " + collectionname + " collection for a " + _type + " " + item.name);
-                    }
-                    if (collectionname == "config" && _type == "provider") {
-                        await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
                     }
                 } catch (error) {
                     Logger.instanse.error(error);
@@ -1441,7 +1555,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const mongodbspan_inner: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
                     tempresult = tempresult.concat(bulkInsert.execute())
                     Logger.otel.endSpan(mongodbspan_inner);
-                    Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insert, { collection: collectionname });
+                    Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
                     bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp()
                 }
             }
@@ -1449,7 +1563,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
             tempresult = tempresult.concat(bulkInsert.execute())
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
+            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
 
             for (let y = 0; y < items.length; y++) {
                 let item = items[y];
@@ -1552,7 +1666,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: TokenUser = Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
-                throw new Error("Access denied, no authorization to UpdateOne");
+                throw new Error("Access denied, no authorization to UpdateOne with current ACL");
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
@@ -2355,19 +2469,22 @@ export class DatabaseConnection extends events.EventEmitter {
             if (DatabaseConnection.usemetadata(collectionname)) {
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                const arr = await this.db.collection(collectionname).find(_query).toArray();
+                const cursor = await this.db.collection(collectionname).find(_query)
+
+                let deletecounter = 0;
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-                Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting " + arr.length + " files in database");
-                for (let i = 0; i < arr.length; i++) {
+                Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting multiple files in database");
+                for await (const c of cursor) {
+                    deletecounter++;
                     const ot_end = Logger.otel.startTimer();
                     const _mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deletefile", span);
-                    await this._DeleteFile(arr[i]._id);
+                    await this._DeleteFile(c._id);
                     Logger.otel.endSpan(_mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
                 }
-                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + arr.length + " items in database");
-                return arr.length;
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] deleted " + deletecounter + " files in database");
+                return deletecounter;
             } else {
                 // const ot_end = Logger.otel.startTimer();
                 // const res: DeleteWriteOpResultObject = await this.db.collection(collectionname).deleteMany(_query);
@@ -2379,13 +2496,20 @@ export class DatabaseConnection extends events.EventEmitter {
                 const date = new Date()
                 date.setMonth(date.getMonth() - 1)
 
+                var addToHist = false;
+                if (skip_array.indexOf(collectionname) == -1) {
+                    if (!collectionname.endsWith("_hist")) addToHist = true;
+                }
+
+
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] quering items to delete from " + collectionname);
                 const qot_end = Logger.otel.startTimer();
                 const qmongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
-                const docs = await this.db.collection(collectionname).find(_query).toArray();
+                const cursor = await this.db.collection(collectionname).find(_query);
                 Logger.otel.endSpan(qmongodbspan);
                 Logger.otel.endTimer(qot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-                for (let i = 0; i < docs.length; i++) {
-                    const doc = docs[i];
+                for await (const c of cursor) {
+                    const doc = c;
                     const fullhist = {
                         _acl: doc._acl,
                         _type: doc._type,
@@ -2404,16 +2528,15 @@ export class DatabaseConnection extends events.EventEmitter {
                         _version: doc._version,
                         reason: doc.reason
                     }
-                    if (skip_array.indexOf(collectionname) == -1) {
-                        if (!collectionname.endsWith("_hist")) bulkInsert.insert(fullhist);
-                    }
-                    // bulkRemove.find({ _id: doc._id }).removeOne();
+                    if (addToHist) bulkInsert.insert(fullhist);
                     bulkRemove.find({ _id: doc._id }).deleteOne();
                     counter++
                     if (counter % x === 0) {
                         const ot_end = Logger.otel.startTimer();
-                        bulkInsert.execute()
-                        bulkRemove.execute()
+                        if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Inserting " + bulkInsert.length + " items into " + collectionname + "_hist");
+                        if (bulkInsert.length > 0) bulkInsert.execute()
+                        if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + bulkRemove.length + " items from " + collectionname);
+                        if (bulkRemove.length > 0) bulkRemove.execute()
                         bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp()
                         bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
@@ -2421,7 +2544,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Inserting " + bulkInsert.length + " items into " + collectionname + "_hist");
                 if (bulkInsert.length > 0) bulkInsert.execute()
+                if (Config.log_deletes) Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + bulkRemove.length + " items from " + collectionname);
                 if (bulkRemove.length > 0) bulkRemove.execute()
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });

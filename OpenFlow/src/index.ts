@@ -15,7 +15,7 @@ import { Message } from "./Messages/Message";
 import { Auth } from "./Auth";
 
 Logger.configure(false, false);
-Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);
 
 
 let amqp: amqpwrapper = null;
@@ -38,7 +38,7 @@ async function ValidateValidateUserForm(parent: Span) {
     try {
         var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
         if (forms.length == 0) {
-            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
         }
     } catch (error) {
@@ -221,6 +221,29 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
         }
         await DBHelper.Save(filestore_users, jwt, span);
+
+
+
+        const workitem_queue_admins: Role = await DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", span);
+        workitem_queue_admins.AddMember(admins);
+        Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+        Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
+        await DBHelper.Save(workitem_queue_admins, jwt, span);
+
+        const workitem_queue_users: Role = await DBHelper.EnsureRole(jwt, "workitem queue users", "62544134231309e2cd2052ce", span);
+        Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
+        Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
+        await DBHelper.Save(workitem_queue_users, jwt, span);
+
+
+        if (Config.multi_tenant) {
+            const global_customer_admins: Role = await DBHelper.EnsureRole(jwt, "global customer admins", "62545f1f1ddfe5ab4cc946d5", span);
+            global_customer_admins.AddMember(admins);
+            Base.addRight(global_customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.removeRight(global_customer_admins, WellknownIds.admins, [Rights.delete]);
+            await DBHelper.Save(global_customer_admins, jwt, span);
+
+        }
 
         await Config.db.ensureindexes(span);
 

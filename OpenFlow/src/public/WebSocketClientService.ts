@@ -40,8 +40,11 @@ export class WebSocketClientService {
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
 
-                this.collections_with_text_index = data.collections_with_text_index;
-                this.timeseries_collections = data.timeseries_collections;
+                if (data.collections_with_text_index) this.collections_with_text_index = data.collections_with_text_index;
+                if (data.timeseries_collections) this.timeseries_collections = data.timeseries_collections;
+
+                this.ping_clients_interval = data.ping_clients_interval;
+
 
 
                 if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) {
@@ -182,6 +185,7 @@ export class WebSocketClientService {
     public enable_web_tours: boolean;
     public collections_with_text_index: string[] = [];
     public timeseries_collections: string[] = [];
+    public ping_clients_interval: number = 10000;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();

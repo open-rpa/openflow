@@ -1,11 +1,11 @@
 import { WebSocketClientService } from "./WebSocketClientService";
 import angular = require("angular");
-import { timesince, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled, ngtype } from "./CommonControllers";
+import { timesince, timetoo, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled, ngtype } from "./CommonControllers";
 import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
     WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl,
     hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
-    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl
+    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl
 } from "./Controllers";
 
 require('angular-route');
@@ -34,6 +34,7 @@ module openflow {
         .controller("MenuCtrl", MenuCtrl)
         .controller("Providers", ProvidersCtrl)
         .directive("timesince", timesince.factory())
+        .directive("timetoo", timetoo.factory())
         .directive("translate", translate.factory())
         .directive("textarea", textarea.factory())
         .directive("fileread", fileread.factory())
@@ -136,6 +137,15 @@ module openflow {
                 .when('/Resources', { templateUrl: 'Resources.html', controller: ResourcesCtrl, controllerAs: 'ctrl' })
                 .when('/Resource', { templateUrl: 'Resource.html', controller: ResourceCtrl, controllerAs: 'ctrl' })
                 .when('/Resource/:id', { templateUrl: 'Resource.html', controller: ResourceCtrl, controllerAs: 'ctrl' })
+
+                .when('/Workitems', { templateUrl: 'Workitems.html', controller: WorkitemsCtrl, controllerAs: 'ctrl' })
+                .when('/Workitems/:queue', { templateUrl: 'Workitems.html', controller: WorkitemsCtrl, controllerAs: 'ctrl' })
+                .when('/Workitem/:id', { templateUrl: 'Workitem.html', controller: WorkitemCtrl, controllerAs: 'ctrl' })
+                .when('/Workitem', { templateUrl: 'Workitem.html', controller: WorkitemCtrl, controllerAs: 'ctrl' })
+
+                .when('/WorkitemQueues', { templateUrl: 'WorkitemQueues.html', controller: WorkitemQueuesCtrl, controllerAs: 'ctrl' })
+                .when('/WorkitemQueue', { templateUrl: 'WorkitemQueue.html', controller: WorkitemQueueCtrl, controllerAs: 'ctrl' })
+                .when('/WorkitemQueue/:id', { templateUrl: 'WorkitemQueue.html', controller: WorkitemQueueCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

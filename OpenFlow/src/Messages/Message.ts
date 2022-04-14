@@ -1,6 +1,7 @@
 import * as os from "os";
 const Docker = require("dockerode");
-import { lookup } from "mimetype";
+// import { lookup } from "mimetype";
+var mimetype = require('mimetype');
 import { SocketMessage } from "../SocketMessage";
 import { Auth } from "../Auth";
 import { Crypt } from "../Crypt";
@@ -25,7 +26,8 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import Dockerode = require("dockerode");
 import { QueueClient } from "../QueueClient";
-import { use } from "passport";
+import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
+const pako = require('pako');
 const got = require("got");
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 const BaseRateLimiter = new RateLimiterMemory({
@@ -144,6 +146,12 @@ export class Message {
                 case "housekeeping":
                     await this.Housekeeping(false, false, false, span);
                     break;
+                case "updateworkitemqueue":
+                    await this.UpdateWorkitemQueue(span);
+                    break;
+                case "deleteworkitemqueue":
+                    await this.DeleteWorkitemQueue(span);
+                    break;
                 default:
                     span?.recordException("Unknown command " + this.command);
                     this.UnknownCommand();
@@ -199,8 +207,6 @@ export class Message {
         }
         if (NoderedUtil.IsNullEmpty(this.jwt)) this.jwt = cli.jwt;
         if (NoderedUtil.IsNullEmpty(this.jwt)) {
-            console.warn("no jwt");
-
             this.Reply("error");
             this.data = "{\"message\": \"Not signed in, and missing jwt\"}";
             cli.Send(this);
@@ -278,7 +284,10 @@ export class Message {
             span?.setAttribute("id", this.id);
             switch (command) {
                 case "listcollections":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -287,7 +296,10 @@ export class Message {
                     }
                     break;
                 case "dropcollection":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -296,7 +308,10 @@ export class Message {
                     }
                     break;
                 case "query":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -305,7 +320,10 @@ export class Message {
                     }
                     break;
                 case "getdocumentversion":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -314,7 +332,10 @@ export class Message {
                     }
                     break;
                 case "aggregate":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -323,15 +344,24 @@ export class Message {
                     }
                     break;
                 case "watch":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.Watch(cli);
                     break;
                 case "unwatch":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.UnWatch(cli);
                     break;
                 case "insertone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -340,7 +370,10 @@ export class Message {
                     }
                     break;
                 case "insertmany":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -349,7 +382,10 @@ export class Message {
                     }
                     break;
                 case "updateone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -358,7 +394,10 @@ export class Message {
                     }
                     break;
                 case "updatemany":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -367,7 +406,10 @@ export class Message {
                     }
                     break;
                 case "insertorupdateone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -376,7 +418,10 @@ export class Message {
                     }
                     break;
                 case "deleteone":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -385,7 +430,10 @@ export class Message {
                     }
                     break;
                 case "deletemany":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -400,7 +448,10 @@ export class Message {
                     await this.RegisterUser(cli, span);
                     break;
                 case "mapreduce":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.MapReduce(cli);
                     break;
                 case "refreshtoken":
@@ -409,23 +460,38 @@ export class Message {
                     // this.Ping(cli);
                     break;
                 case "registerqueue":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.RegisterQueue(cli, span);
                     break;
                 case "registerexchange":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.RegisterExchange(cli, span);
                     break;
                 case "queuemessage":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.QueueMessage(cli, span);
                     break;
                 case "closequeue":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.CloseQueue(cli, span);
                     break;
                 case "ensurenoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -435,7 +501,10 @@ export class Message {
                     await this.ReloadUserToken(cli, span);
                     break;
                 case "deletenoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -444,7 +513,10 @@ export class Message {
                     }
                     break;
                 case "restartnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -453,11 +525,17 @@ export class Message {
                     }
                     break;
                 case "getkubenodelabels":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetKubeNodeLabels(cli);
                     break;
                 case "getnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -466,19 +544,31 @@ export class Message {
                     }
                     break;
                 case "getnoderedinstancelog":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetNoderedInstanceLog(cli, span);
                     break;
                 case "startnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StartNoderedInstance(cli, span);
                     break;
                 case "stopnoderedinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StopNoderedInstance(cli, span);
                     break;
                 case "deletenoderedpod":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
@@ -487,35 +577,59 @@ export class Message {
                     }
                     break;
                 case "savefile":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.SaveFile(cli);
                     break;
                 case "getfile":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetFile(cli, span);
                     break;
                 case "updatefile":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.UpdateFile(cli);
                     break;
                 case "createworkflowinstance":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.CreateWorkflowInstance(cli, span);
                     break;
                 case "stripeaddplan":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StripeAddPlan(cli, span);
                     break;
                 case "getnextinvoice":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.GetNextInvoice(cli, span);
                     break;
                 case "stripecancelplan":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     await this.StripeCancelPlan(cli, span);
                     break;
                 case "ensurestripecustomer":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     this.Reply();
                     this.Send(cli);
                     break;
@@ -537,20 +651,98 @@ export class Message {
                     await this.EnsureCustomer(cli, span);
                     break;
                 case "selectcustomer":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     var user = await this.SelectCustomer(span);
                     if (user != null) cli.user.selectedcustomerid = user.selectedcustomerid;
                     this.ReloadUserToken(cli, span);
                     cli.Send(this);
                     break;
                 case "housekeeping":
-                    if (!this.EnsureJWT(cli)) break;
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.DeleteNoderedPod(span);
                         cli.Send(this);
                     }
+                    break;
+                case "addworkitemqueue":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.AddWorkitemQueue(cli, span);
+                    cli.Send(this);
+                    break;
+                case "updateworkitemqueue":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.UpdateWorkitemQueue(span);
+                        cli.Send(this);
+                    }
+                    break;
+                case "deleteworkitemqueue":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.DeleteWorkitemQueue(span);
+                        cli.Send(this);
+                    }
+                    break;
+                case "addworkitem":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.AddWorkitem(span);
+                    cli.Send(this);
+                    break;
+                case "addworkitems":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.AddWorkitems(span);
+                    cli.Send(this);
+                    break;
+                case "popworkitem":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.PopWorkitem(span);
+                    cli.Send(this);
+                    break;
+                case "updateworkitem":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.UpdateWorkitem(span);
+                    cli.Send(this);
+                    break;
+                case "deleteworkitem":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.DeleteWorkitem(span);
+                    cli.Send(this);
                     break;
                 default:
                     if (command != "error") {
@@ -1362,6 +1554,13 @@ export class Message {
         try {
             msg = DeleteOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (msg.collectionname == "mq") {
+                var doc = await Config.db.getbyid(msg._id, "mq", msg.jwt, false, span);
+                if (doc._type == "workitemqueue") {
+                    throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
+                }
+
+            }
             await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1828,13 +2027,13 @@ export class Message {
                 docker.modem.followProgress(stream, onFinished, onProgress);
 
                 function onFinished(err2, output) {
-                    console.log(output);
+                    console.debug(output);
                     if (err2) return reject(err2);
 
                     return resolve();
                 }
                 function onProgress(event) {
-                    console.log(event);
+                    console.debug(event);
                 }
             });
         })
@@ -1942,9 +2141,14 @@ export class Message {
                 const tuser: TokenUser = TokenUser.From(nodereduser);
                 const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
+                var saml_federation_metadata = Config.saml_federation_metadata;
+                if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
+                    saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
+                }
+
                 await DBHelper.EnsureNoderedRoles(tuser, this.jwt, true, span);
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
-                let _samlparsed = url.parse(Config.saml_federation_metadata);
+                let _samlparsed = url.parse(saml_federation_metadata);
                 if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
                     saml_baseurl = "http://" + hostname
                     if (_samlparsed.port && _samlparsed.port != "80" && _samlparsed.port != "3000") {
@@ -1957,11 +2161,15 @@ export class Message {
                     }
                 }
                 saml_baseurl += "/";
+                // https://demo.openiap.io/issue
                 // "saml_baseurl=" + saml_baseurl,
+                var nodered_saml_entrypoint = saml_federation_metadata.split("/FederationMetadata/2007-06/FederationMetadata.xml").join("");
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_saml_entrypoint)) nodered_saml_entrypoint = Config.nodered_saml_entrypoint
+                // "saml_entrypoint=" + Config.baseurl() + 'issue',
                 const Env = [
-                    "saml_federation_metadata=" + Config.saml_federation_metadata,
+                    "saml_federation_metadata=" + saml_federation_metadata,
                     "saml_issuer=" + Config.saml_issuer,
-                    "saml_entrypoint=" + Config.baseurl() + 'issue',
+                    "saml_entrypoint=" + nodered_saml_entrypoint,
                     "nodered_id=" + name,
                     "nodered_sa=" + nodereduser.username,
                     "jwt=" + nodered_jwt,
@@ -1980,6 +2188,7 @@ export class Message {
                     "NODE_ENV=" + Config.NODE_ENV,
                     "HTTP_PROXY=" + Config.HTTP_PROXY,
                     "HTTPS_PROXY=" + Config.HTTPS_PROXY,
+                    "NO_PROXY=" + Config.NO_PROXY,
                     "prometheus_expose_metric=" + "false",
                     "enable_analytics=" + Config.enable_analytics.toString(),
                     "tours=" + Config.enable_web_tours.toString(),
@@ -2178,41 +2387,37 @@ export class Message {
                 var port = 3000;
                 let saml_baseurl = Config.protocol + "://" + hostname + "/";
 
-                let _samlparsed = url.parse(Config.saml_federation_metadata);
-                if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                var saml_federation_metadata = Config.saml_federation_metadata;
+                if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
+                    saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
+                }
+
+                let _api_ws_parsed = url.parse(api_ws_url);
+                //if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {
+                if (_api_ws_parsed.protocol == "http" || _api_ws_parsed.protocol == "ws") {
                     saml_baseurl = "http://" + hostname
-                    if (_samlparsed.port && _samlparsed.port != "80") {
-                        saml_baseurl += ":" + _samlparsed.port;
+                    if (_api_ws_parsed.port && _api_ws_parsed.port != "80" && _api_ws_parsed.port != "3000") {
+                        saml_baseurl += ":" + _api_ws_parsed.port;
                     }
                 } else {
                     saml_baseurl = "https://" + hostname
-                    if (_samlparsed.port && _samlparsed.port != "443") {
-                        saml_baseurl += ":" + _samlparsed.port;
+                    if (_api_ws_parsed.port && _api_ws_parsed.port != "443" && _api_ws_parsed.port != "3000") {
+                        saml_baseurl += ":" + _api_ws_parsed.port;
                     }
                 }
                 saml_baseurl += "/";
-
-                // _url = "ws://" + url.parse(baseurl).host;
-
-                // const api_ws_url = Config.api_ws_url;
-                // const api_ws_url = Config.baseurl();
-                // const api_ws_url = "ws://api/";
-                // const api_ws_url = "https://demo.openiap.io/"
-                // const api_ws_url = "https://demo.openiap.io/"
 
                 if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.memory)) delete resources.limits.memory;
                 if (!NoderedUtil.IsNullUndefinded(resources.limits) && NoderedUtil.IsNullEmpty(resources.limits.cpu)) delete resources.limits.cpu;
                 if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
                 if (!NoderedUtil.IsNullUndefinded(resources.requests) && NoderedUtil.IsNullEmpty(resources.requests.memory)) delete resources.requests.memory;
 
-                var saml_federation_metadata = Config.saml_federation_metadata;
+
                 if (api_ws_url == "wss://pc.openiap.io/") {
                     api_ws_url = "wss://demo.openiap.io/"
                 }
-                if (saml_federation_metadata == "https://pc.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml") {
-                    saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
-                }
-
+                var nodered_saml_entrypoint = saml_federation_metadata.split("/FederationMetadata/2007-06/FederationMetadata.xml").join("");
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_saml_entrypoint)) nodered_saml_entrypoint = Config.nodered_saml_entrypoint
 
                 const _deployment = {
                     metadata: { name: name, namespace: namespace, labels: { billed: hasbilling.toString(), userid: _id, app: name } },
@@ -2233,6 +2438,7 @@ export class Message {
                                             { name: "saml_federation_metadata", value: saml_federation_metadata },
                                             { name: "saml_issuer", value: Config.saml_issuer },
                                             { name: "saml_baseurl", value: saml_baseurl },
+                                            { name: "saml_entrypoint", value: nodered_saml_entrypoint },
                                             { name: "nodered_id", value: name },
                                             { name: "nodered_sa", value: nodereduser.username },
                                             { name: "jwt", value: nodered_jwt },
@@ -2251,6 +2457,7 @@ export class Message {
                                             { name: "NODE_ENV", value: Config.NODE_ENV },
                                             { name: "HTTP_PROXY", value: Config.HTTP_PROXY },
                                             { name: "HTTPS_PROXY", value: Config.HTTPS_PROXY },
+                                            { name: "NO_PROXY", value: Config.NO_PROXY },
                                             { name: "prometheus_expose_metric", value: "false" },
                                             { name: "enable_analytics", value: Config.enable_analytics.toString() },
                                             { name: "tours", value: Config.enable_web_tours.toString() },
@@ -2991,7 +3198,6 @@ export class Message {
                 // msg.result = await this.streamToString(s);
                 msg.result = s.toString();
                 if (msg.result == null) msg.result = "";
-                console.log(msg.result);
             }
         } catch (error) {
             span?.recordException(error);
@@ -3123,13 +3329,14 @@ export class Message {
             }
         });
     }
-    private async SaveFile(cli: WebSocketServerClient): Promise<void> {
+
+    public async SaveFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: SaveFileMessage
         try {
             msg = SaveFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && cli) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
             if (process.platform === "win32") {
@@ -3140,7 +3347,7 @@ export class Message {
             }
 
             if (NoderedUtil.IsNullEmpty(msg.mimeType)) {
-                msg.mimeType = lookup(msg.filename);
+                msg.mimeType = mimetype.lookup(msg.filename);
             }
 
             if (msg.metadata === null || msg.metadata === undefined) { msg.metadata = new Base(); }
@@ -3149,11 +3356,33 @@ export class Message {
             (msg.metadata as any).path = path.dirname(msg.filename);
             if ((msg.metadata as any).path == ".") (msg.metadata as any).path = "";
 
-            const buf = Buffer.from(msg.file, 'base64');
             const readable = new Readable();
-            readable._read = () => { }; // _read is required but you can noop it
-            readable.push(buf);
-            readable.push(null);
+            if (msg.file && (!(msg as any).compressed)) {
+                // console.debug("base64 data length: " + this.formatBytes(this.data.length));
+
+                const buf: Buffer = Buffer.from(msg.file, 'base64');
+                readable._read = () => { }; // _read is required but you can noop it
+                readable.push(buf);
+                readable.push(null);
+            } else {
+                try {
+                    let result: Buffer;
+                    try {
+                        var data = Buffer.from(msg.file, 'base64')
+                        result = pako.inflate(data);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    // console.debug("zlib data length: " + this.formatBytes(this.data.length));
+                    readable._read = () => { }; // _read is required but you can noop it
+                    readable.push(result);
+                    readable.push(null);
+                } catch (error) {
+                    console.error(error);
+                    throw error;
+                }
+            }
+
             msg.file = null;
             if (msg.metadata == null) { msg.metadata = new Base(); }
             msg.metadata = Base.assign(msg.metadata);
@@ -3203,9 +3432,9 @@ export class Message {
             this.data = "";
             await handleError(cli, error);
         }
-        this.Send(cli);
+        if (cli) this.Send(cli);
     }
-    private async _GetFile(id: string): Promise<string> {
+    private async _GetFile(id: string, compressed: boolean): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
             try {
                 const bucket = new GridFSBucket(Config.db.db);
@@ -3218,9 +3447,18 @@ export class Message {
                     reject(error);
                 });
                 downloadStream.on('end', () => {
-                    const buffer = Buffer.concat(bufs);
-                    const result = buffer.toString('base64');
-                    resolve(result);
+                    try {
+                        const buffer = Buffer.concat(bufs);
+                        let result: string = "";
+                        if (compressed) {
+                            result = Buffer.from(pako.deflate(buffer)).toString('base64');
+                        } else {
+                            result = buffer.toString('base64');
+                        }
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    }
                 });
             } catch (err) {
                 reject(err);
@@ -3232,7 +3470,7 @@ export class Message {
         this.Reply();
         let msg: GetFileMessage
         try {
-            msg = SaveFileMessage.assign(this.data);
+            msg = GetFileMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
@@ -3250,7 +3488,7 @@ export class Message {
             } else {
                 throw new Error("id or filename is mandatory");
             }
-            msg.file = await this._GetFile(msg.id);
+            msg.file = await this._GetFile(msg.id, msg.compress);
         } catch (error) {
             span?.recordException(error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3452,7 +3690,7 @@ export class Message {
             }
             const tuser = Crypt.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                throw new Error("Access denied, adding plan (admins)");
+                throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
 
 
@@ -3578,7 +3816,7 @@ export class Message {
 
             const user = Crypt.verityToken(cli.jwt);
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
-                throw new Error("Access denied, getting invoice (admins)");
+                throw new Error("Access denied, getting invoice (not in '" + customer.name + " admins')");
             }
 
             let subscription: stripe_subscription;
@@ -3787,7 +4025,7 @@ export class Message {
 
             const tuser = Crypt.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                throw new Error("Access denied, adding plan (admins)");
+                throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
 
             if (NoderedUtil.IsNullEmpty(customer.vattype)) customer.vattype = "";
@@ -4170,7 +4408,7 @@ export class Message {
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
                     if (customer == null) throw new Error("Access denied, or customer not found");
                     if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                        throw new Error("Access denied, adding plan (admins)");
+                        throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
                     }
                 }
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
@@ -4368,11 +4606,15 @@ export class Message {
                 await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
 
+            const global_customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "global customer admins", "62545f1f1ddfe5ab4cc946d5", span);
+
             const customeradmins: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
             customeradmins.name = msg.customer.name + " admins";
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
             customeradmins.AddMember(user);
+            customeradmins.AddMember(global_customer_admins);
             if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
                 const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
                 if (usercustomer != null) {
@@ -4453,6 +4695,7 @@ export class Message {
         })
     }
     public async ReloadUserToken(cli: WebSocketServerClient, parent: Span) {
+        if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
         Auth.RemoveUser(cli.user._id, "passport");
@@ -5092,6 +5335,760 @@ export class Message {
         return user;
     }
 
+
+    async AddWorkitem(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: AddWorkitemMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            const user: TokenUser = Crypt.verityToken(jwt);
+
+            msg = AddWorkitemMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+
+            var wiq: WorkitemQueue = null;
+            if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
+
+
+            var wi: Workitem = new Workitem(); wi._type = "workitem";
+            wi._id = new ObjectID().toHexString();
+            wi._acl = wiq._acl;
+            wi.wiq = wiq.name;
+            wi.wiqid = wiq._id;
+            wi.name = msg.name ? msg.name : "New work item";
+            wi.payload = msg.payload ? msg.payload : {};
+            if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+            wi.priority = msg.priority;
+            wi.nextrun = msg.nextrun;
+            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+
+            wi.state = "new"
+            wi.retries = 0;
+            wi.files = [];
+            wi.lastrun = null;
+            if (!wi.nextrun) {
+                wi.nextrun = new Date(new Date().toISOString());
+                wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
+            }
+
+
+            if (msg.files) {
+                for (var i = 0; i < msg.files.length; i++) {
+                    var file = msg.files[i];
+                    try {
+                        if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                        const readable = new Readable();
+                        readable._read = () => { }; // _read is required but you can noop it
+                        if (file.file && (!file.compressed)) {
+                            // console.debug("base64 data length: " + this.formatBytes(file.file.length));
+
+                            const buf: Buffer = Buffer.from(file.file, 'base64');
+                            readable.push(buf);
+                            readable.push(null);
+                        } else {
+                            try {
+                                // const zlib = require('zlib');
+                                let result: Buffer;
+                                try {
+                                    var data = Buffer.from(file.file, 'base64')
+                                    result = pako.inflate(data);
+                                } catch (error) {
+                                    console.error(error);
+                                }
+                                // console.debug("zlib data length: " + this.formatBytes(file.file.length));
+                                readable.push(result);
+                                readable.push(null);
+                            } catch (error) {
+                                console.error(error);
+                                throw error;
+                            }
+                        }
+                        const mimeType = mimetype.lookup(file.filename);
+                        const metadata = new Base();
+                        metadata._createdby = user.name;
+                        metadata._createdbyid = user._id;
+                        metadata._created = new Date(new Date().toISOString());
+                        metadata._modifiedby = user.name;
+                        metadata._modifiedbyid = user._id;
+                        metadata._modified = metadata._created;
+                        (metadata as any).wi = wi._id;
+                        (metadata as any).wiq = wiq.name;
+                        (metadata as any).wiqid = wiq._id;
+
+                        metadata._acl = wiq._acl;
+                        metadata.name = path.basename(file.filename);
+                        (metadata as any).filename = file.filename;
+                        (metadata as any).path = path.dirname(file.filename);
+                        if ((metadata as any).path == ".") (metadata as any).path = "";
+
+
+                        const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
+                        wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
+
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
+            }
+            delete msg.files;
+
+            wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+            msg.result = wi;
+            const end: number = new Date().getTime();
+            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+            const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+            if (seconds > 5 && nextrun_seconds >= 0) {
+                Config.db.queuemonitoringlastrun = new Date();
+                Config.db.queuemonitoring()
+            }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+    async AddWorkitems(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: AddWorkitemsMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            const user: TokenUser = Crypt.verityToken(jwt);
+            let isRelevant: boolean = false;
+
+            let end: number = new Date().getTime();
+
+            msg = AddWorkitemsMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+
+            var wiq: WorkitemQueue = null;
+            if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
+
+            // isRelevant = (msg.items.length > 0);
+            for (let i = 0; i < msg.items.length; i++) {
+                let item = msg.items[i];
+                let wi: Workitem = new Workitem(); wi._type = "workitem";
+                wi._id = new ObjectID().toHexString();
+                wi._acl = wiq._acl;
+                wi.wiq = wiq.name;
+                wi.wiqid = wiq._id;
+                wi.name = item.name ? item.name : "New work item";
+                wi.payload = item.payload ? item.payload : {};
+                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+                wi.priority = item.priority;
+                wi.nextrun = item.nextrun;
+                wi.state = "new"
+                wi.retries = 0;
+                wi.files = [];
+                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+                wi.lastrun = null;
+                if (!wi.nextrun) {
+                    wi.nextrun = new Date(new Date().toISOString());
+                    wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
+                } else {
+                    wi.nextrun = new Date(wi.nextrun);
+                }
+
+                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+                if (nextrun_seconds >= 0) isRelevant = true;
+
+
+                if (item.files) {
+                    for (let i = 0; i < item.files.length; i++) {
+                        let file = item.files[i];
+                        try {
+                            if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                            const readable = new Readable();
+                            readable._read = () => { }; // _read is required but you can noop it
+                            if (file.file && (!file.compressed)) {
+                                // console.debug("base64 data length: " + this.formatBytes(file.file.length));
+
+                                const buf: Buffer = Buffer.from(file.file, 'base64');
+                                readable.push(buf);
+                                readable.push(null);
+                            } else {
+                                try {
+                                    // const zlib = require('zlib');
+                                    let result: Buffer;
+                                    try {
+                                        var data = Buffer.from(file.file, 'base64')
+                                        result = pako.inflate(data);
+                                    } catch (error) {
+                                        console.error(error);
+                                    }
+                                    // console.debug("zlib data length: " + this.formatBytes(file.file.length));
+                                    readable.push(result);
+                                    readable.push(null);
+                                } catch (error) {
+                                    console.error(error);
+                                    throw error;
+                                }
+                            }
+                            const mimeType = mimetype.lookup(file.filename);
+                            const metadata = new Base();
+                            metadata._createdby = user.name;
+                            metadata._createdbyid = user._id;
+                            metadata._created = new Date(new Date().toISOString());
+                            metadata._modifiedby = user.name;
+                            metadata._modifiedbyid = user._id;
+                            metadata._modified = metadata._created;
+                            (metadata as any).wi = wi._id;
+                            (metadata as any).wiq = wiq.name;
+                            (metadata as any).wiqid = wiq._id;
+
+                            metadata._acl = wiq._acl;
+                            metadata.name = path.basename(file.filename);
+                            (metadata as any).filename = file.filename;
+                            (metadata as any).path = path.dirname(file.filename);
+                            if ((metadata as any).path == ".") (metadata as any).path = "";
+
+
+                            const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
+                            wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
+
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                }
+                delete item.files;
+                wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+            }
+
+            delete msg.items;
+            msg.items = [];
+
+
+            end = new Date().getTime();
+            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+            if (seconds > 5 && isRelevant) {
+                Config.db.queuemonitoringlastrun = new Date();
+                Config.db.queuemonitoring()
+            }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+
+
+
+
+
+    async UpdateWorkitem(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: UpdateWorkitemMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            const user: TokenUser = Crypt.verityToken(jwt);
+
+            let retry: boolean = false;
+
+            msg = UpdateWorkitemMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
+
+            var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
+            if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
+            var wi: Workitem = wis[0];
+
+            var wiq: WorkitemQueue = null;
+            if (!NoderedUtil.IsNullEmpty(wi.wiqid)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wi.wiqid }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null && !NoderedUtil.IsNullEmpty(wi.wiq)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: wi.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null) throw new Error("Work item queue not found " + wi.wiq + " (" + wi.wiqid + ") not found.");
+
+
+
+            wi._acl = wiq._acl;
+            wi.wiq = wiq.name;
+            wi.wiqid = wiq._id;
+            if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
+            if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
+            if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+            if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) wi.errormessage = msg.errormessage;
+            if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
+            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+
+            if (!NoderedUtil.IsNullEmpty(msg.state)) {
+                msg.state = msg.state.toLowerCase();
+                // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
+                //     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, abandoned, processing or retry");
+                // }
+                if (msg.state == "new" && wi.state == "new") {
+                } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
+                    throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
+                }
+                if (msg.state == "retry") {
+                    if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
+                    if (wi.retries < wiq.maxretries || msg.ignoremaxretries) {
+                        wi.retries += 1;
+                        retry = true;
+                        wi.state = "new";
+                        wi.userid = null;
+                        wi.username = null;
+                        wi.nextrun = new Date(new Date().toISOString());
+                        wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
+                    } else {
+                        wi.state = "failed";
+                    }
+                } else {
+                    wi.state = msg.state
+                }
+            }
+            if (msg.files) {
+                for (var i = 0; i < msg.files.length; i++) {
+                    var file = msg.files[i];
+                    if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                    var exists = wi.files.filter(x => x.name == file.filename);
+                    if (exists.length > 0) {
+                        try {
+                            await Config.db.DeleteOne(exists[0]._id, "fs.files", jwt, parent);
+                        } catch (error) {
+                            console.error("UpdateWorkItem.delete file id " + error.message);
+                        }
+                        wi.files = wi.files.filter(x => x.name != file.filename);
+                    }
+                    try {
+                        const readable = new Readable();
+                        readable._read = () => { }; // _read is required but you can noop it
+                        if (file.file && (!file.compressed)) {
+                            // console.debug("base64 data length: " + this.formatBytes(file.file.length));
+                            const buf: Buffer = Buffer.from(file.file, 'base64');
+                            readable.push(buf);
+                            readable.push(null);
+                        } else {
+                            try {
+                                let result: Buffer;
+                                try {
+                                    var data = Buffer.from(file.file, 'base64')
+                                    result = pako.inflate(data);
+                                } catch (error) {
+                                    console.error(error);
+                                }
+                                // console.debug("zlib data length: " + this.formatBytes(file.file.length));
+                                readable.push(result);
+                                readable.push(null);
+                            } catch (error) {
+                                console.error(error);
+                                throw error;
+                            }
+                        }
+                        const mimeType = mimetype.lookup(file.filename);
+                        const metadata = new Base();
+                        metadata._createdby = user.name;
+                        metadata._createdbyid = user._id;
+                        metadata._created = new Date(new Date().toISOString());
+                        metadata._modifiedby = user.name;
+                        metadata._modifiedbyid = user._id;
+                        metadata._modified = metadata._created;
+                        (metadata as any).wi = wi._id;
+                        (metadata as any).wiq = wiq.name;
+                        (metadata as any).wiqid = wiq._id;
+
+                        metadata._acl = wiq._acl;
+                        metadata.name = path.basename(file.filename);
+                        (metadata as any).filename = file.filename;
+                        (metadata as any).path = path.dirname(file.filename);
+                        if ((metadata as any).path == ".") (metadata as any).path = "";
+
+                        const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
+                        wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
+
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
+            }
+            delete msg.files;
+
+            if (wi.state != "new") {
+                delete wi.nextrun;
+            }
+
+            if (retry) {
+                const end: number = new Date().getTime();
+                const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+                if (seconds > 5 && nextrun_seconds >= 0) {
+                    Config.db.queuemonitoringlastrun = new Date();
+                    Config.db.queuemonitoring()
+                }
+            }
+
+            wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
+            msg.result = wi;
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+
+
+
+
+    async PopWorkitem(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: PopWorkitemMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            const user: TokenUser = Crypt.verityToken(jwt);
+
+            msg = PopWorkitemMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+
+            var wiq: Base = null;
+            if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+                var queues = await Config.db.query({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+                var queues = await Config.db.query({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
+
+            // query: { wiqid: wiq._id, "_type": "workitem", state: { "$in": ["new", "pending"] } },
+            var workitems = await Config.db.query<Workitem>({
+                query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
+                orderby: { "priority": 1 },
+                collectionname: "workitems", jwt
+            }, parent);
+
+            if (workitems.length > 0) {
+                var wi = workitems[0];
+                if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
+                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+                wi.state = "processing";
+                wi.userid = user._id;
+                wi.username = user.name;
+                wi.lastrun = new Date(new Date().toISOString());
+                wi.nextrun = null;
+                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+                wi = await Config.db._UpdateOne<Workitem>(null, wi, "workitems", 1, true, jwt, parent);
+                msg.result = wi;
+            }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+
+    async DeleteWorkitem(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: DeleteWorkitemMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            const user: TokenUser = Crypt.verityToken(jwt);
+
+            msg = DeleteWorkitemMessage.assign(this.data);
+
+            if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
+
+            var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
+            if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
+            var wi: Workitem = wis[0];
+
+            if (!DatabaseConnection.hasAuthorization(user, wi, Rights.delete)) {
+                throw new Error("Unknown work item or access denied");
+            }
+
+            var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt }, parent);
+            for (var i = 0; i < files.length; i++) {
+                await Config.db.DeleteOne(files[i]._id, "fs.files", jwt, parent);
+            }
+            var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt }, parent);
+            for (var i = 0; i < files.length; i++) {
+                await Config.db.DeleteOne(files[i]._id, "fs.files", jwt, parent);
+            }
+
+            await Config.db.DeleteOne(wi._id, "workitems", jwt, parent);
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+
+    async AddWorkitemQueue(cli: WebSocketServerClient, parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: AddWorkitemQueueMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            msg = AddWorkitemQueueMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
+
+            var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt: rootjwt }, parent);
+            if (queues.length > 0) {
+                throw new Error("Work item queue with name " + msg.name + " already exists");
+            }
+            user = User.assign(Crypt.verityToken(this.jwt));
+
+            var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
+            const workitem_queue_admins: Role = await DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
+            if (!msg.skiprole) {
+                const wiqusers: Role = await DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
+                Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
+                Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
+                // Base.removeRight(wiqusers, user._id, [Rights.delete]);
+                wiqusers.AddMember(user as any);
+                wiqusers.AddMember(workitem_queue_admins);
+                await DBHelper.Save(wiqusers, rootjwt, parent);
+                Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+                wiq.usersrole = wiqusers._id;
+            } else {
+                Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
+            }
+
+            if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+            wiq.name = msg.name;
+            wiq.workflowid = msg.workflowid;
+            wiq.robotqueue = msg.robotqueue;
+            wiq.projectid = msg.projectid;
+            wiq.amqpqueue = msg.amqpqueue;
+            wiq.maxretries = msg.maxretries;
+            wiq.retrydelay = msg.retrydelay;
+            wiq.initialdelay = msg.initialdelay;
+
+            msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
+
+            if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+    async GetWorkitemQueue(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: GetWorkitemQueueMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            msg = GetWorkitemQueueMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+
+            var wiq: WorkitemQueue = null;
+            if (!NoderedUtil.IsNullEmpty(msg._id)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            } else {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length > 0) wiq = queues[0];
+            }
+            msg.result = wiq;
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+
+    async UpdateWorkitemQueue(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: UpdateWorkitemQueueMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            msg = UpdateWorkitemQueueMessage.assign(this.data);
+
+            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+
+            var wiq = new WorkitemQueue();
+            if (!NoderedUtil.IsNullEmpty(msg._id)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
+                wiq = queues[0];
+            } else {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
+                wiq = queues[0];
+            }
+            user = User.assign(Crypt.verityToken(this.jwt));
+
+            if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+            wiq.name = msg.name;
+            wiq.workflowid = msg.workflowid;
+            wiq.robotqueue = msg.robotqueue;
+            wiq.projectid = msg.projectid;
+            wiq.amqpqueue = msg.amqpqueue;
+            if (!NoderedUtil.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
+            if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
+            if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
+
+            if (msg._acl) wiq._acl = msg._acl;
+
+            msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
+
+            if (msg.purge) {
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
+                    throw new Error("Failed purging workitemqueue " + wiq.name);
+                }
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+            }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+    async DeleteWorkitemQueue(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: DeleteWorkitemQueueMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            msg = DeleteWorkitemQueueMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+
+            var wiq = new WorkitemQueue();
+            if (!NoderedUtil.IsNullEmpty(msg._id)) {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
+                wiq = queues[0];
+            } else {
+                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+                if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
+                wiq = queues[0];
+            }
+            user = User.assign(Crypt.verityToken(this.jwt));
+
+            if (msg.purge) {
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
+                    throw new Error("Failed purging workitemqueue " + wiq.name);
+                }
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+            } else {
+                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
+                    throw new Error("Work item queue " + wiq.name + " is not empty, enable purge to delete");
+                }
+            }
+
+            await Config.db.DeleteOne(wiq._id, "mq", jwt, parent);
+            if (wiq.usersrole) {
+                await Config.db.DeleteOne(wiq.usersrole, "users", jwt, parent);
+            }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
 }
 
 export class JSONfn {

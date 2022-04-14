@@ -4,13 +4,13 @@
         "experimentalDecorators": true,
         "skipLibCheck": true,
         "module": "commonjs",
-        "target": "es2017",
+        "target": "es2018",
         "outDir": "../dist",
         "rootDir": "src",
         "sourceMap": true,
         "declaration": true,
         "lib": [
-            "es2017",
+            "es2018",
             "dom"
         ]
     }

@@ -312,17 +312,17 @@ export class WebSocketServerClient {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
                 AssertExchangeOptions.exclusive = exclusive;
                 exchangequeue = await amqpwrapper.Instance().AddExchangeConsumer(user, exchange, algorithm, routingkey, AssertExchangeOptions, this.jwt, addqueue, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                    ack();
                     const _data = msg;
                     try {
                         const result = await this.Queue(msg, exchange, options);
-                        ack();
                         done(result);
                     } catch (error) {
-                        setTimeout(() => {
-                            ack(false);
-                            done(_data);
-                            console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
-                        }, Config.amqp_requeue_time);
+                        // setTimeout(() => {
+                        //     ack(false);
+                        //     done(_data);
+                        //     console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                        // }, Config.amqp_requeue_time);
                     }
                 }, span);
                 if (exchangequeue) {
@@ -384,19 +384,26 @@ export class WebSocketServerClient {
                     }
                 }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(this.user, qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                    const _data = msg;
+                    ack();
+                    // const _data = msg;
+                    var _data = msg;
                     try {
                         Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
-                        const result = await this.Queue(msg, qname, options);
-                        ack();
-                        done(result);
+                        _data = await this.Queue(msg, qname, options);;
+                        // const result = await this.Queue(msg, qname, options);
+                        // done(result);
                         Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
-                        setTimeout(() => {
-                            ack(false);
+                        // setTimeout(() => {
+                        //     ack(false);
+                        //     done(_data);
+                        //     Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                        // }, Config.amqp_requeue_time);
+                    } finally {
+                        try {
                             done(_data);
-                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
-                        }, Config.amqp_requeue_time);
+                        } catch (error) {
+                        }
                     }
                 }, span);
                 if (queue) {

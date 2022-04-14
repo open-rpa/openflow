@@ -206,6 +206,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel = await this.conn.createConfirmChannel();
             this.channel.prefetch(Config.amqp_prefetch);
             this.replyqueue = await this.AddQueueConsumer(Crypt.rootUser(), "", null, null, (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                ack();
                 try {
                     if (this.replyqueue) {
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count)) WebSocketServer.websocket_queue_message_count.
@@ -218,7 +219,6 @@ export class amqpwrapper extends events.EventEmitter {
                 } catch (error) {
                     console.error(error);
                 }
-                ack();
                 done();
             }, undefined);
             // We don't want to recreate this
@@ -484,6 +484,7 @@ export class amqpwrapper extends events.EventEmitter {
     async Adddlx(parent: Span) {
         if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
         await this.AddExchangeConsumer(Crypt.rootUser(), Config.amqp_dlx, "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+            ack();
             if (typeof msg === "string" || msg instanceof String) {
                 try {
                     msg = JSON.parse((msg as any));
@@ -509,7 +510,6 @@ export class amqpwrapper extends events.EventEmitter {
                 console.error("Failed sending deadletter message to " + options.replyTo);
                 console.error(error);
             }
-            ack();
             done();
         }, parent);
     }
@@ -524,6 +524,7 @@ export class amqpwrapper extends events.EventEmitter {
     async AddOFExchange(parent: Span) {
         if (!Config.enable_openflow_amqp) return;
         await this.AddExchangeConsumer(Crypt.rootUser(), "openflow", "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+            ack();
             if (typeof msg === "string" || msg instanceof String) {
                 try {
                     msg = JSON.parse((msg as any));
@@ -566,7 +567,6 @@ export class amqpwrapper extends events.EventEmitter {
             } else {
                 if (Config.log_amqp) Logger.instanse.verbose("[OF] Received string message: " + JSON.stringify(msg));
             }
-            ack();
             done();
         }, parent);
     }

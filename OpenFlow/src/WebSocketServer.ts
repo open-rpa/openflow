@@ -79,7 +79,7 @@ export class WebSocketServer {
                 }) // "agent", "clientid"
             }
             // setInterval(this.pingClients, 10000);
-            setTimeout(this.pingClients.bind(this), 10000);
+            setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
         } catch (error) {
             span?.recordException(error);
             Logger.instanse.error(error);
@@ -89,6 +89,7 @@ export class WebSocketServer {
         }
 
     }
+    private static lastUserUpdate = Date.now();
     private static async pingClients(): Promise<void> {
         const span: Span = (Config.otel_trace_pingclients ? Logger.otel.startSpan("WebSocketServer.pingClients") : null);
         try {
@@ -183,10 +184,12 @@ export class WebSocketServer {
                     console.error(error);
                 }
             }
+
             if (bulkUpdates.length > 0) {
+                this.lastUserUpdate = Date.now();
                 let ot_end: any = Logger.otel.startTimer();
                 var bulkresult = await Config.db.db.collection("users").bulkWrite(bulkUpdates);
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_updatemany, { collection: "users" });
             }
 
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
@@ -201,7 +204,7 @@ export class WebSocketServer {
             Logger.instanse.error(error);
         } finally {
             Logger.otel.endSpan(span);
-            setTimeout(this.pingClients.bind(this), 10000);
+            setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
         }
     }
 }
