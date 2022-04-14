@@ -1,5 +1,5 @@
 import { Crypt } from "./Crypt";
-import { NoderedUtil, User } from "@openiap/openflow-api";
+import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -71,7 +71,7 @@ export class Auth {
         if (type == "password") cache_seconds = Config.cleanacl_credential_cache_seconds;
         if (seconds < cache_seconds) {
             Logger.instanse.silly("Return user " + res.user.username + " from cache");
-            return res.user;
+            return res.user as User;
         }
         this.RemoveUser(key, type);
         return null;
@@ -129,7 +129,7 @@ export class Auth {
         }
         Auth.semaphore.up();
     }
-    public static async AddUser(user: User, key: string, type: string): Promise<void> {
+    public static async AddUser(user: User | TokenUser, key: string, type: string): Promise<void> {
         Auth.ensureotel();
         await Auth.semaphore.down();
         if (NoderedUtil.IsNullUndefinded(this.authorizationCache[key + type])) {
@@ -161,7 +161,7 @@ export class Auth {
 export class CachedUser {
     public firstsignin: Date;
     constructor(
-        public user: User,
+        public user: User | TokenUser,
         public _id: string,
         public type: string
     ) {
