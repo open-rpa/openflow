@@ -38,7 +38,7 @@ async function ValidateValidateUserForm(parent: Span) {
     try {
         var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
         if (forms.length == 0) {
-            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
         }
     } catch (error) {
