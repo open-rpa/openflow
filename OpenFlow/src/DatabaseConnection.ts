@@ -368,7 +368,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                             let notify: boolean = false;
                                             var stream = client.watches[ids[y]];
                                             if (stream.collectionname != collectionname) {
-
                                             } else if (NoderedUtil.IsNullUndefinded(stream.aggregates)) {
                                                 notify = true;
                                             } else if (stream.aggregates.length == 0) {
@@ -391,10 +390,22 @@ export class DatabaseConnection extends events.EventEmitter {
                                                 });
                                                 if (ismatch) notify = true;
                                             } else {
-                                                for (var p = 0; p < stream.aggregates.length; p++) {
-                                                    var path = stream.aggregates[p];
-                                                    if (!NoderedUtil.IsNullEmpty(path)) {
+                                                if (Array.isArray(stream.aggregates)) {
+                                                    for (let p = 0; p < stream.aggregates.length; p++) {
+                                                        let path = stream.aggregates[p];
+                                                        if (!NoderedUtil.IsNullEmpty(path)) {
+                                                            try {
+                                                                const result = JSONPath({ path, json: { a: item } });
+                                                                if (result && result.length > 0) notify = true;
+                                                            } catch (error) {
+                                                                console.log(error);
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    if (!NoderedUtil.IsNullEmpty(stream.aggregates)) {
                                                         try {
+                                                            let path = stream.aggregates;
                                                             const result = JSONPath({ path, json: { a: item } });
                                                             if (result && result.length > 0) notify = true;
                                                         } catch (error) {
