@@ -485,7 +485,7 @@ export class LoginProvider {
                     Logger.otel.endSpan(span);
                     return;
                 }
-                Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+                Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
                 Config.validate_user_form = "";
                 res.end(JSON.stringify({}));
                 res.end();
