@@ -24,7 +24,7 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td>{{model.name}}</td>
+      <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/Resource/{{model._id}}">{{model.name}}</a></td>
       <td>{{model.products.length}}</td>
       <td>
         {{ctrl.AssignCount(model)}}

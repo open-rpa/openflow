@@ -2,7 +2,10 @@
     "sitename": "OpenFlow",
     "workflow": "Arbejdsgang",
     "workflows": "Arbejdsgange",
-    "rpaworkflows": "RPA Arbejdsgange",
+    "menuworkflows": "Arbejdsgange",
+    "rpaworkflows": "Robot Arbejdsgange",
+    "workitems": "Arbejdsopgaver",
+    "workitemqueues": "Opgaver Køer",
     "home": "Hjem",
     "entities": "Objekter",
     "deleted entities": "Slettede objekter",
@@ -119,5 +122,10 @@
     "enable multi tenancy": "Aktiver multitenant",
     "showproperties": "Vis egenskaber",
     "add key": "Tilføj nøgle",
-    "json": "Json"
+    "json": "Json",
+    "retries": "Forsøg",
+    "queue": "Kø",
+    "lastrun": "Sidste kørt",
+    "nextrun": "Næste Kørsel",
+    "autocreate": "Auto operet"
 }

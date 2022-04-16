@@ -17,7 +17,7 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td><a ng-href="#/Queue/{{model._id}}">{{model.name}}</a></td>
+      <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/Queue/{{model._id}}">{{model.name}}</a></td>
       <td><span translate lib="web">{{model.type || model._type}}</span></td>
       <td>{{model.consumers}}</td>
       <td>{{model.queuename}}</td>

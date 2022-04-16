@@ -8,9 +8,6 @@
         <select id="menucollections" ng-model="ctrl.queue"
           ng-options="item.name as item.name for item in ctrl.workitemqueues" ng-change="ctrl.SelectWorkitemqueues()">
         </select>
-        <a class="btn" ng-href="#/WorkitemQueues" title="Manage Workitem Queues">
-          Manage
-        </a>
       </div>
 
     </div>
@@ -50,22 +47,24 @@
   </div>
 </div>
 
-<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<div style="border-collapse: collapse; table-layout: fixed;" ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
-      <th ng-click="ctrl.ToggleOrder('state')"><b translate lib="web">state</b></th>
-      <th ng-click="ctrl.ToggleOrder('retries')"><b translate lib="web">retries</b></th>
-      <th ng-click="ctrl.ToggleOrder('wiq')" ng-show="ctrl.queue == ''"><b translate lib="web">queue</b></th>
-      <th ng-click="ctrl.ToggleOrder('lastrun')"><b translate lib="web">lastrun</b></th>
-      <th ng-click="ctrl.ToggleOrder('nextrun')"><b translate lib="web">nextrun</b></th>
-      <th class="text-right"></th>
+      <th class="w-100" ng-click="ctrl.ToggleOrder('state')"><b translate lib="web">state</b></th>
+      <th class="w-100" ng-click="ctrl.ToggleOrder('retries')"><b translate lib="web">retries</b></th>
+      <th class="w-100" ng-click="ctrl.ToggleOrder('wiq')" ng-show="ctrl.queue == ''"><b translate lib="web">queue</b></th>
+      <th class="w-100" ng-click="ctrl.ToggleOrder('lastrun')"><b translate lib="web">lastrun</b></th>
+      <th class="w-100" ng-click="ctrl.ToggleOrder('nextrun')"><b translate lib="web">nextrun</b></th>
+      <th class="w-200" class="text-right"></th>
     </tr>
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td class="text-truncate"><a ng-href="#/Workitem/{{model._id}}">{{model.name}}</a></td>
+      <td class="text-truncate">
+        <a style="color: inherit; text-decoration: inherit;" ng-href="#/Workitem/{{model._id}}">
+        {{model.name}}</a></td>
       <td class="text-truncate">{{model.state}}</td>
       <td class="text-truncate">{{model.retries}}</td>
       <td class="text-truncate" ng-show="ctrl.queue == ''">

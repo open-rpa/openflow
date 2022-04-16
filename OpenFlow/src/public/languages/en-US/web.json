@@ -2,7 +2,10 @@
     "sitename": "OpenFlow",
     "workflow": "Workflow",
     "workflows": "Workflows",
-    "rpaworkflows": "RPA Workflows",
+    "menuworkflows": "Form Workflows",
+    "rpaworkflows": "Robot Workflows",
+    "workitems": "Work Items",
+    "workitemqueues": "Work Item Queues",
     "home": "Home",
     "entities": "Entities",
     "deleted entities": "Deleted entities",
@@ -119,5 +122,10 @@
     "enable multi tenancy": "Enable multi tenancy",
     "showproperties": "Show properties",
     "add key": "Add key",
-    "json": "JSON"
+    "json": "JSON",
+    "retries": "Retries",
+    "queue": "Queue",
+    "lastrun": "Last run",
+    "nextrun": "Next run",
+    "autocreate": "Auto Create"
 }

@@ -38,30 +38,31 @@
 
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 
-<table id=" table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()" style="width: 100%;">
+<table style="border-collapse: collapse; table-layout: fixed;" id=" table1" class="table table-striped table-hover table-sm" when-scrolled="ctrl.more()" style="width: 100%;">
   <caption></caption>
   <thead class="thead-dark">
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><b translate lib="web">name</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('_type')"><b translate lib="web">type</b></th>
+      <th class="w-100" scope="col" ng-click="ctrl.ToggleOrder('_type')"><b translate lib="web">type</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
+      <th class="w-100" scope="col" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
+      <th class="w-100" scope="col" ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
       <th class="w-200"></th>
     </tr>
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td class="text-truncate">{{model.name}}</td>
+      <td class="text-truncate"><a style="color: inherit; text-decoration: inherit;" 
+        ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}">{{model.name}}</a></td>
       <td><span translate lib="web">{{model.type || model._type}}</span></td>
       <td class="text-truncate">{{model._createdby}}</td>
-      <td>
+      <td class="text-truncate">
         <timesince ng-model="model._created" />
       </td>
-      <td>
+      <td class="text-truncate">
         <timesince ng-model="model._modified" />
       </td>
-      <td>
+      <td >
         <a ng-href="#/History/{{ctrl.collection}}/{{model._id}}" class="btn" ng-show="ctrl.loading == false"
           title="Show version hisotry for this item"><em
             class="fas fa-notes-medical"></em></a>

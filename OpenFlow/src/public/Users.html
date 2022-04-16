@@ -30,7 +30,7 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td class="text-truncate">{{model.name}}</td>
+      <td class="text-truncate"><a style="color: inherit; text-decoration: inherit;" ng-href="#/User/{{model._id}}">{{model.name}}</a></td>
       <td class="text-truncate">{{model.username}}</td>
       <td>
         <timesince ng-model="model._created" />
