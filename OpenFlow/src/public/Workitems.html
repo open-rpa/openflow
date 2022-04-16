@@ -17,7 +17,8 @@
   </div>
 
   <div class="col-md-8 text-right">
-
+    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
     <a class="btn" href ng-click="ctrl.loadData()" title="Reload current data">
       Reload
     </a>
@@ -46,8 +47,6 @@
     </a>
     <a ng-href="#/Workitem" class="btn btn-info"
       title="Add new Workitem to selected queue"><em class="fas fa-plus"></em></a>
-    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
-    <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em>
   </div>
 </div>
 

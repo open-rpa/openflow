@@ -181,7 +181,23 @@ export class MenuCtrl {
     PathIs(path: string) {
         if (path == null && path == undefined) return false;
         if (this.path == null && this.path == undefined) return false;
-        return this.path.toLowerCase().startsWith(path.toLowerCase());
+        if (Array.isArray(path)) {
+            for (var i = 0; i < path.length; i++) {
+                if (path[i].endsWith("/") && this.path.toLowerCase().startsWith(path[i].toLowerCase()))
+                    return true;
+                else if (this.path.toLowerCase() == path[i].toLowerCase()) {
+                    return true;
+                }
+            }
+            return false;
+        } else {
+            if (path.endsWith("/") && this.path.toLowerCase().startsWith(path.toLowerCase()))
+                return true;
+            else if (this.path.toLowerCase() == path.toLowerCase()) {
+                return true;
+            }
+            return false;
+        }
     }
     toggleDarkMode() {
         this.halfmoon.toggleDarkMode();

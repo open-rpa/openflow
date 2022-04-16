@@ -5,7 +5,8 @@
   <div class="col-md-6">
   </div>
   <div class=" col-md-6 text-right">
-    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
+    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
     <input type="checkbox" ng-model="ctrl.showinactive" ng-change="ctrl.loadData()"> <span translate lib="web"
       ng-click="ctrl.showinactive = !ctrl.showinactive; ctrl.loadData()">showinactive</span>
     <input type="radio" name="show" value="openrpa" ng-model="ctrl.show" ng-change="ctrl.loadData()"> <span translate

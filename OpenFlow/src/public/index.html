@@ -14,6 +14,7 @@
 <body ng-controller="MenuCtrl as menuctrl" class="with-custom-webkit-scrollbars with-custom-css-scrollbars "
   data-dm-shortcut-enabled="true" data-set-preferred-mode-onload="true">
   <div class="page-wrapper with-navbar halfmoon-overrides">
+    
     <div class="sticky-alerts"></div>
 
     <nav class="navbar navbar-expand-md fixed-top" ng-show="menuctrl.signedin">
@@ -105,8 +106,8 @@
         </div>
 
         <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
-          ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch" ng-show="!menuctrl.PathIs('/Nodered') && !menuctrl.PathIs('/Payment') && !menuctrl.PathIs('/Customer')
-          && !menuctrl.PathIs('/Entity/') && !menuctrl.PathIs('/User/') && !menuctrl.PathIs('/Role/')">
+          ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch" ng-show="
+          !menuctrl.PathIs(['/Nodered', '/Payment', '/Customer', '/Customer/', '/Entity/', '/User/', '/User', '/Role/', '/Role'])">
         <button class=" btn btn-action mr-5" type="button" ng-click="menuctrl.toggleDarkMode()"
           aria-label="Toggle dark mode" id="menudarkmode">
           <i class="fa fa-moon" aria-hidden="true"></i>

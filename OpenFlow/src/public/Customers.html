@@ -2,8 +2,9 @@
   <h1 translate lib="web">customers</h1>
 </div>
 <div class="col-sm-12 text-right">
-  <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
-  <a href="#/Customer" class="btn btn-info" translate lib="web"
+  <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+  <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
+<a href="#/Customer" class="btn btn-info" translate lib="web"
     ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">addcustomer</a>
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>

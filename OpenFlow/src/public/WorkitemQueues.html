@@ -6,11 +6,11 @@
   </div>
 
   <div class="col-md-6 text-right">
-    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
-    <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em>
     <a ng-href="#/WorkitemQueue" class="btn btn-info" ng-show="ctrl.loading == false" title="Add new Workitem queue"><em
         class="fas fa-plus"></em></a>
     <em class="fas fa-plus btn disabled" ng-show="ctrl.loading == true"></em>
+    <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
   </div>
 </div>
 
