@@ -15,11 +15,11 @@
   </div>
   <div class=" col-md-6 text-right" id="entitiestools">
     <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
-    <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em>
-    <div ng-show="ctrl.collection == 'openrpa_instances'">
+    <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
+    <span ng-show="ctrl.collection == 'openrpa_instances'">
       <input type="checkbox" id="checkbox-1" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
       <label for="checkbox-1"><span translate lib="web">running</span></label>
-    </div>
+    </span>
 
     <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"
       title="Show deleted items, if history is not disabled for this collection"><em
