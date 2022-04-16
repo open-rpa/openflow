@@ -68,7 +68,9 @@
       <td class="text-truncate">{{model.state}}</td>
       <td class="text-truncate">{{model.retries}}</td>
       <td class="text-truncate" ng-show="ctrl.queue == ''">
-        {{model.wiq}}
+        <a style="color: inherit; text-decoration: inherit;" ng-href="#/Workitems/{{model.wiq}}">
+          {{model.wiq}}
+        </a>
         <!-- <a class="btn" ng-href="#/Workitems/{{model.wiq}}"></a> -->
       </td>
       <td>
