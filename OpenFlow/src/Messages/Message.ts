@@ -4742,11 +4742,25 @@ export class Message {
                 const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
                 // TODO: we should get instances and compare, running ensure for each user will not scale well
                 for (let i = 0; i < users.length; i++) {
-                    var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
-                    ensuremsg._id = users[i]._id;
-                    var msg: Message = new Message(); msg.jwt = jwt;
-                    msg.data = JSON.stringify(ensuremsg);
-                    await msg.EnsureNoderedInstance(span);
+                    let user = users[i];
+                    var doensure = false;
+                    if (Config.multi_tenant) {
+                        if (!NoderedUtil.IsNullEmpty(user.customerid)) {
+                            var customers: Customer[] = await Config.db.db.collection("users").find({ "_type": "customer", "_id": user.customerid }).toArray();
+                            if (customers.length > 0 && !NoderedUtil.IsNullEmpty(customers[0].subscriptionid)) {
+                                doensure = true;
+                            }
+                        }
+                    } else {
+                        doensure = true;
+                    }
+                    if (doensure) {
+                        var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
+                        ensuremsg._id = user._id;
+                        var msg: Message = new Message(); msg.jwt = jwt;
+                        msg.data = JSON.stringify(ensuremsg);
+                        await msg.EnsureNoderedInstance(span);
+                    }
                 }
 
 
