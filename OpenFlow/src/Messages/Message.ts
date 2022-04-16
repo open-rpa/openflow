@@ -14,7 +14,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, CreateWorkflowInstanceMessage, RegisterUserMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, GetKubeNodeLabels, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { V1ResourceRequirements, V1Deployment } from "@kubernetes/client-node";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
@@ -444,9 +444,6 @@ export class Message {
                 case "signin":
                     await this.Signin(cli, span);
                     break;
-                case "registeruser":
-                    await this.RegisterUser(cli, span);
-                    break;
                 case "mapreduce":
                     if (!this.EnsureJWT(cli)) {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
@@ -598,11 +595,8 @@ export class Message {
                     await this.UpdateFile(cli);
                     break;
                 case "createworkflowinstance":
-                    if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.CreateWorkflowInstance(cli, span);
+                    if (!this.EnsureJWT(cli)) break;
+                    // await this.CreateWorkflowInstance(cli, span);
                     break;
                 case "stripeaddplan":
                     if (!this.EnsureJWT(cli)) {
@@ -668,7 +662,10 @@ export class Message {
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
-                        await this.DeleteNoderedPod(span);
+                        // await this.Housekeeping(false, false, false, span);
+                        Message.lastHouseKeeping = null;
+                        var msg = JSON.parse(this.data);
+                        await this.Housekeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
                         cli.Send(this);
                     }
                     break;
@@ -1386,12 +1383,13 @@ export class Message {
             msg = WatchMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            msg.id = null;
             if (Config.supports_watch) {
                 msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
             } else {
                 msg.error = "Watch is not supported by this openflow";
             }
-            msg.result = null;
+            msg.result = msg.id;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1555,13 +1553,13 @@ export class Message {
             msg = DeleteOneMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (msg.collectionname == "mq") {
-                var doc = await Config.db.getbyid(msg._id, "mq", msg.jwt, false, span);
+                var doc = await Config.db.getbyid(msg.id, "mq", msg.jwt, false, span);
                 if (doc._type == "workitemqueue") {
                     throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
                 }
 
             }
-            await Config.db.DeleteOne(msg._id, msg.collectionname, msg.jwt, span);
+            await Config.db.DeleteOne(msg.id, msg.collectionname, msg.jwt, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1930,42 +1928,6 @@ export class Message {
             hrend = process.hrtime(hrstart)
         } catch (error) {
             span?.recordException(error);
-        }
-        Logger.otel.endSpan(span);
-        this.Send(cli);
-    }
-    private async RegisterUser(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.RegisterUser", parent);
-        let msg: RegisterUserMessage;
-        let user: User;
-        try {
-            if (!Config.auto_create_users) {
-                throw new Error("User registration not enabled for this openflow")
-            }
-            msg = RegisterUserMessage.assign(this.data);
-            if (msg.name == null || msg.name == undefined || msg.name == "") { throw new Error("Name cannot be null"); }
-            if (msg.username == null || msg.username == undefined || msg.username == "") { throw new Error("Username cannot be null"); }
-            if (msg.password == null || msg.password == undefined || msg.password == "") { throw new Error("Password cannot be null"); }
-            user = await DBHelper.FindByUsername(msg.username, null, span);
-            if (user !== null && user !== undefined) { throw new Error("Illegal username"); }
-            user = await DBHelper.EnsureUser(Crypt.rootToken(), msg.name, msg.username, null, msg.password, span);
-            msg.user = TokenUser.From(user);
-
-            const jwt: string = Crypt.createToken(msg.user, Config.shorttoken_expires_in);
-            await DBHelper.EnsureNoderedRoles(user, jwt, false, span);
-        } catch (error) {
-            span?.recordException(error);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error);
-        }
-        try {
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            span?.recordException(error);
-            this.data = "";
-            await handleError(cli, error);
         }
         Logger.otel.endSpan(span);
         this.Send(cli);
@@ -2773,7 +2735,7 @@ export class Message {
             Logger.instanse.debug("[" + user.username + "] dockerDeleteNoderedPod");
             msg = DeleteNoderedPodMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
-            if (NoderedUtil.IsNullEmpty(msg.name)) msg.name = name;
+            if (NoderedUtil.IsNullEmpty(msg.instancename)) msg.instancename = name;
 
             span?.addEvent("init Docker()");
             const docker: Dockerode = new Docker();
@@ -2781,7 +2743,7 @@ export class Message {
             var list = await docker.listContainers({ all: 1 });
             for (let i = 0; i < list.length; i++) {
                 const item = list[i];
-                if (item.Names[0] == "/" + msg.name) {
+                if (item.Names[0] == "/" + msg.instancename) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
                     if (item.State == "running") await container.stop();
@@ -2819,7 +2781,7 @@ export class Message {
             if (list.body.items.length > 0) {
                 for (let i = 0; i < list.body.items.length; i++) {
                     const item = list.body.items[i];
-                    if (item.metadata.name == msg.name) {
+                    if (item.metadata.name == msg.instancename) {
                         try {
                             image = item.spec.containers[0].image;
                         } catch (error) {
@@ -2833,16 +2795,16 @@ export class Message {
                         }
                         try {
                             await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                            Audit.NoderedAction(TokenUser.From(user), true, name, "deletepod", image, msg.name, span);
+                            Audit.NoderedAction(TokenUser.From(user), true, name, "deletepod", image, msg.instancename, span);
                         } catch (error) {
-                            Audit.NoderedAction(TokenUser.From(user), false, name, "deletepod", image, msg.name, span);
+                            Audit.NoderedAction(TokenUser.From(user), false, name, "deletepod", image, msg.instancename, span);
                             throw error;
                         }
                     }
                 }
             } else {
                 Logger.instanse.warn("[" + user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
-                Audit.NoderedAction(TokenUser.From(user), false, null, "deletepod", image, msg.name, span);
+                Audit.NoderedAction(TokenUser.From(user), false, null, "deletepod", image, msg.instancename, span);
             }
         } catch (error) {
             span?.recordException(error);
@@ -2955,10 +2917,10 @@ export class Message {
     }
     private async GetKubeNodeLabels(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
-        let msg: GetKubeNodeLabels;
+        let msg: GetKubeNodeLabelsMessage;
         try {
             Logger.instanse.debug("[" + cli.user.username + "] GetKubeNodeLabels");
-            msg = GetKubeNodeLabels.assign(this.data);
+            msg = GetKubeNodeLabelsMessage.assign(this.data);
             if (Config.nodered_allow_nodeselector) {
                 const list = await KubeUtil.instance().CoreV1Api.listNode();
                 const result: any = {};
@@ -3042,7 +3004,6 @@ export class Message {
                 }
             }
             msg.results = result;
-            if (result.length > 0) msg.result = result[0];
         } catch (error) {
             span?.recordException(error);
             this.data = "";
@@ -3069,7 +3030,6 @@ export class Message {
             const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             const namespace = Config.namespace;
             const list = await KubeUtil.instance().CoreV1Api.listNamespacedPod(namespace);
-            msg.result = null;
             msg.results = [];
             const rootjwt = Crypt.rootToken();
             if (list.body.items.length > 0) {
@@ -3115,7 +3075,6 @@ export class Message {
                     } else if (item.metadata.labels.app === name) {
                         found = item;
                         if (item.status.phase != "Failed") {
-                            msg.result = item;
                         }
                         var metrics: any = null;
                         try {
@@ -3126,7 +3085,6 @@ export class Message {
                         msg.results.push(item);
                     }
                 }
-                if (msg.result == null) msg.result = found;
             } else {
                 Logger.instanse.warn("[" + _tuser.username + "] GetNoderedInstance: found NO Namespaced Pods ???");
             }
@@ -3575,7 +3533,6 @@ export class Message {
         }
         this.Send(cli);
     }
-
     async CreateWorkflowInstance(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.CreateWorkflowInstance", parent);
@@ -3607,8 +3564,6 @@ export class Message {
             const res = await Config.db.query({ query: { "_id": msg.targetid }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
             if (res.length != 1) throw new Error("Unknown target id " + msg.targetid);
             workflow = res[0];
-            msg.state = "new";
-            msg.form = "unknown";
             (msg as any).workflow = msg.workflowid;
 
             if (NoderedUtil.IsNullEmpty(msg.correlationId)) {
@@ -4738,7 +4693,9 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             if (!skipNodered) {
+                Logger.instanse.debug("[housekeeping] Get running Nodered Instances");
                 await this.GetNoderedInstance(span);
+                Logger.instanse.debug("[housekeeping] Get users with autocreate");
                 const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
                 // TODO: we should get instances and compare, running ensure for each user will not scale well
                 for (let i = 0; i < users.length; i++) {
@@ -4755,6 +4712,7 @@ export class Message {
                         doensure = true;
                     }
                     if (doensure) {
+                        Logger.instanse.debug("[housekeeping] EnsureNoderedInstance not " + user.name);
                         var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
                         ensuremsg._id = user._id;
                         var msg: Message = new Message(); msg.jwt = jwt;
@@ -4762,8 +4720,7 @@ export class Message {
                         await msg.EnsureNoderedInstance(span);
                     }
                 }
-
-
+                Logger.instanse.debug("[housekeeping] Done processing autocreate");
             }
         } catch (error) {
         }

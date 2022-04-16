@@ -173,9 +173,11 @@ export class googleauth_credentials {
 }
 export async function get_rpa_workflows(req, res) {
     try {
-        const q: any = { _type: "workflow" };
-        const result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 1000, 0, null, req.query.queue, null, 1)
+        const query: any = { _type: "workflow" };
+        const result: any[] = await NoderedUtil.Query({
+            collectionname: 'openrpa', query,
+            projection: { name: 1, projectandname: 1 }, orderby: { projectid: -1, name: -1 }, top: 1000, queryas: req.query.queue
+        })
         res.json(result);
     } catch (error) {
         res.status(500).json(error);

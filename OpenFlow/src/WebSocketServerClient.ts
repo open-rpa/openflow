@@ -586,7 +586,7 @@ export class WebSocketServerClient {
     }
     async Delete(collection: string, id: any): Promise<void> {
         const q: DeleteOneMessage = new DeleteOneMessage();
-        q.collectionname = collection; q._id = id;
+        q.collectionname = collection; q.id = id;
         const msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
         await this.Send<DeleteOneMessage>(msg);
     }

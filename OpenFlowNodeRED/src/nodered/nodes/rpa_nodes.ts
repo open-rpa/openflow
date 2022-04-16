@@ -47,8 +47,10 @@ export class rpa_detector_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             Logger.instanse.info("track::rpa detector node in::connect");
 
-            const result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector", _id: this.config.queue },
-                null, null, 1, 0, null, null, null, 1);
+            const result: any[] = await NoderedUtil.Query({
+                collectionname: 'openrpa', query: { _type: "detector", _id: this.config.queue },
+                top: 1
+            });
 
             if (result.length == 0) {
                 this.node.status({ fill: "red", shape: "dot", text: "Failed locating detector" });
@@ -57,22 +59,26 @@ export class rpa_detector_node {
             this.detector = result[0];
 
             if (this.detector.detectortype == "exchange") {
-                var exch = await NoderedUtil.RegisterExchange(WebSocketClient.instance, this.config.queue, "fanout", "", (msg: QueueMessage, ack: any) => {
+                var exch = await NoderedUtil.RegisterExchange({
+                    exchangename: this.config.queue, algorithm: "fanout", callback: (msg: QueueMessage, ack: any) => {
                     this.OnMessage(msg, ack);
-                }, (msg) => {
+                    }, closedcallback: (msg) => {
                     this.localqueue = "";
                     if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                     setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                    }
                 });
                 this.localqueue = exch.queuename;
                 this.node.status({ fill: "green", shape: "dot", text: "Connected as exchange" });
             } else {
-                this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, this.config.queue, (msg: QueueMessage, ack: any) => {
+                this.localqueue = await NoderedUtil.RegisterQueue({
+                    queuename: this.config.queue, callback: (msg: QueueMessage, ack: any) => {
                     this.OnMessage(msg, ack);
-                }, (msg) => {
+                    }, closedcallback: (msg) => {
                     this.localqueue = "";
                     if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                     setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                    }
                 });
                 this.node.status({ fill: "green", shape: "dot", text: "Connected as queue" });
             }
@@ -115,7 +121,7 @@ export class rpa_detector_node {
     }
     async onclose(removed: boolean, done: any) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+            NoderedUtil.CloseQueue({ queuename: this.localqueue });
             this.localqueue = "";
         }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
@@ -174,12 +180,14 @@ export class rpa_workflow_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             // this.localqueue = this.uid;
-            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue({
+                callback: (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
-            }, (msg) => {
+                }, closedcallback: (msg) => {
                 this.localqueue = "";
                 if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                 setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
@@ -316,7 +324,7 @@ export class rpa_workflow_node {
                 data: { payload: msg.payload }
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, false, priority);
+            await NoderedUtil.Queue({ queuename: queue, replyto: this.localqueue, data: rpacommand, correlationId, expiration, priority, striptoken: false });
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
@@ -330,7 +338,7 @@ export class rpa_workflow_node {
     }
     async onclose(removed: boolean, done: any) {
         // if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.uid) {
-        await NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+        await NoderedUtil.CloseQueue({ queuename: this.localqueue });
         this.localqueue = "";
         // }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
@@ -385,12 +393,14 @@ export class rpa_killworkflows_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            this.localqueue = await NoderedUtil.RegisterQueue(WebSocketClient.instance, "", (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue({
+                callback: (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
-            }, (msg) => {
+                }, closedcallback: (msg) => {
                 this.localqueue = "";
                 if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                 setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
             });
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
 
@@ -509,7 +519,7 @@ export class rpa_killworkflows_node {
                 data: {}
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.QueueMessage(WebSocketClient.instance, "", "", queue, this.localqueue, rpacommand, correlationId, expiration, true, priority);
+            await NoderedUtil.Queue({ queuename: queue, replyto: this.localqueue, data: rpacommand, correlationId, expiration, priority, striptoken: true });
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             try {
@@ -523,7 +533,7 @@ export class rpa_killworkflows_node {
     async onclose(removed: boolean, done: any) {
         // if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.uid) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue(WebSocketClient.instance, this.localqueue);
+            NoderedUtil.CloseQueue({ queuename: this.localqueue });
             this.localqueue = "";
         }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
@@ -535,8 +545,10 @@ export class rpa_killworkflows_node {
 
 export async function get_rpa_detectors(req, res) {
     try {
-        const result: any[] = await NoderedUtil.Query('openrpa', { _type: "detector" },
-            { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1)
+        const result: any[] = await NoderedUtil.Query({
+            collectionname: 'openrpa', query: { _type: "detector" },
+            projection: { name: 1 }, orderby: { name: -1 }, top: 1000
+        })
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -544,8 +556,10 @@ export async function get_rpa_detectors(req, res) {
 }
 export async function get_rpa_robots_roles(req, res) {
     try {
-        const result: any[] = await NoderedUtil.Query('users', { $or: [{ _type: "user", _rpaheartbeat: { "$exists": true } }, { _type: "role", rparole: true }] },
-            { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1)
+        const result: any[] = await NoderedUtil.Query({
+            collectionname: 'users', query: { $or: [{ _type: "user", _rpaheartbeat: { "$exists": true } }, { _type: "role", rparole: true }] },
+            projection: { name: 1 }, orderby: { name: -1 }, top: 1000
+        })
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -553,8 +567,10 @@ export async function get_rpa_robots_roles(req, res) {
 }
 export async function get_rpa_robots(req, res) {
     try {
-        const result: any[] = await NoderedUtil.Query('users', { _type: "user", _rpaheartbeat: { "$exists": true } },
-            { name: 1 }, { name: -1 }, 1000, 0, null, null, null, 1)
+        const result: any[] = await NoderedUtil.Query({
+            collectionname: 'users', query: { _type: "user", _rpaheartbeat: { "$exists": true } },
+            projection: { name: 1 }, orderby: { name: -1 }, top: 1000
+        })
         res.json(result);
     } catch (error) {
         res.status(500).json(error);
@@ -562,16 +578,18 @@ export async function get_rpa_robots(req, res) {
 }
 export async function get_rpa_workflows(req, res) {
     try {
-        const q: any = { _type: "workflow" };
+        const query: any = { _type: "workflow" };
         if (!NoderedUtil.IsNullEmpty(req.query.name)) {
             // q["name"] = new RegExp(["^", req.query.name, "$"].join(""), "i")
-            q["$or"] = [
+            query["$or"] = [
                 { "projectandname": new RegExp([req.query.name].join(""), "i") },
                 { "_id": req.query.name }
             ]
         }
-        const result: any[] = await NoderedUtil.Query('openrpa', q,
-            { name: 1, projectandname: 1 }, { projectid: -1, name: -1 }, 20, 0, null, req.query.queue, null, 1)
+        const result: any[] = await NoderedUtil.Query({
+            collectionname: 'openrpa', query,
+            projection: { name: 1, projectandname: 1 }, orderby: { projectid: -1, name: -1 }, top: 20, queryas: req.query.queue
+        })
         res.json(result);
     } catch (error) {
         res.status(500).json(error);

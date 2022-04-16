@@ -265,7 +265,7 @@ export class popworkitem {
                     for (let i = 0; i < result.files.length; i++) {
                         var file = result.files[i];
                         if (!NoderedUtil.IsNullEmpty(file._id)) {
-                            var down = await NoderedUtil.GetFile(null, file._id, null, 1, true);
+                            var down = await NoderedUtil.GetFile({ id: file._id, compress: true });
                             // (file as any).file = Buffer.from(down.file, 'base64');
                             var data = Buffer.from(down.file, 'base64');
                             (file as any).file = Buffer.from(pako.inflate(data));

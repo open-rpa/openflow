@@ -698,13 +698,13 @@ export class entitiesCtrl<T> {
             }
             if (this.page == 0) {
 
-                this.models = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, 0, null, basequeryas, null, 2);
+                this.models = await NoderedUtil.Query({ collectionname: this.collection, query, projection: this.baseprojection, orderby, top: this.pagesize, queryas: basequeryas });
             } else {
-                var temp = await NoderedUtil.Query(this.collection, query, this.baseprojection, orderby, this.pagesize, this.pagesize * this.page, null, basequeryas, null, 2);
+                var temp = await NoderedUtil.Query({ collectionname: this.collection, query, projection: this.baseprojection, orderby, top: this.pagesize, skip: this.pagesize * this.page, queryas: basequeryas });
                 this.models = this.models.concat(temp);
             }
             if (exactquery != null && this.page == 0 && this.collection != "audit") {
-                var temp = await NoderedUtil.Query(this.collection, exactquery, this.baseprojection, orderby, 1, 0, null, basequeryas, null, 2);
+                var temp = await NoderedUtil.Query({ collectionname: this.collection, query: exactquery, projection: this.baseprojection, orderby, top: 1, queryas: basequeryas });
                 if (temp.length > 0) {
                     this.models = this.models.filter(x => (x as any)._id != temp[0]._id);
                     this.models = temp.concat(this.models);
@@ -762,7 +762,7 @@ export class entitiesCtrl<T> {
         this.loading = true;
         this.errormessage = "";
         try {
-            await NoderedUtil.DeleteOne(this.collection, model._id, null, 2);
+            await NoderedUtil.DeleteOne({ collectionname: this.collection, id: model._id });
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
@@ -838,7 +838,7 @@ export class entityCtrl<T> {
                 this.preloadData();
             }
 
-            const result = await NoderedUtil.Query(this.collection, this.basequery, this.baseprojection, null, 1, 0, null, null, null, 2);
+            const result = await NoderedUtil.Query({ collectionname: this.collection, query: this.basequery, projection: this.baseprojection, top: 1 });
             if (result.length > 0) {
                 if (this.model == null) {
                     this.model = result[0];

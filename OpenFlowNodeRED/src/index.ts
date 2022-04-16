@@ -172,7 +172,7 @@ let server: http.Server = null;
                 } else {
                     throw new Error("missing encryption_key and jwt, signin not possible!");
                 }
-                const result = await NoderedUtil.SigninWithToken(jwt, null, null);
+                const result = await NoderedUtil.SigninWithToken({ jwt });
                 Logger.instanse.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
@@ -193,7 +193,7 @@ let server: http.Server = null;
                 }
                 if (server == null) {
 
-                    const user = await NoderedUtil.Query("users", { _id: result.user._id }, { "nodered": 1 }, null, 1, 0, result.jwt, null, null, 1);
+                    const user = await NoderedUtil.Query({ collectionname: "users", query: { _id: result.user._id }, projection: { "nodered": 1 }, top: 1, jwt: result.jwt });
                     if (user.length > 0) {
                         const nodered = user[0].nodered;
                         if (!NoderedUtil.IsNullUndefinded(nodered)) {
