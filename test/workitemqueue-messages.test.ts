@@ -15,12 +15,13 @@ import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage } from "@openiap/openflow-api";
 
-@suite class OpenFlowConfigTests {
+@suite class workitemqueue_messages_test {
     private rootToken: string;
     private testUser: User;
     private userToken: string;
     @timeout(10000)
     async before() {
+        Config.disablelogging();
         Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
@@ -104,8 +105,8 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         assert.ok(!NoderedUtil.IsNullUndefinded(q.result), "no result");
         return q.result;
     }
-    @timeout(50000) // @test 
-    async 'Create update and delete test work item queue'() {
+    @timeout(5000) // @test 
+    @test async 'Create update and delete test work item queue'() {
         var exists = await this.GetItem("test queue")
         if (exists) {
             await this["delete test work item queue"](null);
@@ -146,16 +147,6 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
 
 
         await this["Delete work item"](wi);
-    }
-    @timeout(50000) // @test 
-    @test async 'Workwith work item devtest'() {
-        var wiq = await this.GetItem("devtest")
-        if (!wiq) {
-            wiq = await this["Create work item queue"]('devtest')
-        }
-        var wi: any = { "_id": "62488f88bf045a7e58228f2f", files: [] }
-        wi = await this["Create work item"](wiq);
-        wi = await this["Update work item"](wi);
     }
     @timeout(50000) // @test 
     async 'Delete work item'(wi) {

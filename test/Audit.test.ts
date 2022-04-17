@@ -1,3 +1,4 @@
+// var wtf = require('wtfnode');
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
@@ -10,13 +11,15 @@ import { TokenUser, User } from '@openiap/openflow-api';
 import { Audit } from '../OpenFlow/src/Audit';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
+import { Auth } from '../OpenFlow/src/Auth';
 
-@suite class OpenFlowConfigTests {
+@suite class audit_test {
     private rootToken: string;
     private testUser: User;
     async before() {
+        Config.disablelogging();
         Logger.configure(true, false);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
@@ -24,6 +27,9 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
     async after() {
         await Config.db.shutdown();
         Logger.otel.shutdown();
+        Auth.shutdown();
+        Config.log_amqp = true;
+        // wtf.dump()
     }
     @test async 'reload'() {
         const tuser: TokenUser = TokenUser.From(this.testUser);

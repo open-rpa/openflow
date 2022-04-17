@@ -198,7 +198,7 @@ export class updateworkitem {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
             const workitem = await Util.EvaluateNodeProperty<Workitem>(this, msg, "workitem");
             const files = await Util.EvaluateNodeProperty<MessageWorkitemFile[]>(this, msg, "files");
-            const state = await Util.EvaluateNodeProperty<string>(this, msg, "state");
+            const state: any = await Util.EvaluateNodeProperty<string>(this, msg, "state");
             const errormessage = await Util.EvaluateNodeProperty<string>(this, msg, "errormessage");
             const ignoremaxretries = await Util.EvaluateNodeProperty<boolean>(this, msg, "ignoremaxretries");
             var errorsource: string = "";

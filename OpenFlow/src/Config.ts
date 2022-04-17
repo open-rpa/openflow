@@ -15,6 +15,23 @@ export class Config {
         Config.version = (fs.existsSync(versionfile) ? fs.readFileSync(versionfile, "utf8") : "0.0.1");
         return Config.version;
     }
+    public static disablelogging(): void {
+        Config.log_cache = false;
+        Config.log_error_stack = false;
+        Config.log_errors = false;
+        Config.log_queries = false;
+        Config.log_aggregates = false;
+        Config.log_inserts = false;
+        Config.log_updates = false;
+        Config.log_deletes = false;
+        Config.log_otel_times = false;
+        Config.log_openflow_amqp = false;
+        Config.log_amqp = false;
+        Config.log_index_mngt = false;
+        Config.log_watches = false;
+        Config.log_watches_notify = false;
+        Config.log_missing_jwt = false;
+    }
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);

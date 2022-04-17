@@ -10,11 +10,12 @@ import { User } from '@openiap/openflow-api';
 import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
-@suite class OpenFlowConfigTests {
+@suite class crypt_test {
     private testUser: User;
     async before() {
+        Config.disablelogging();
         Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.testUser = await DBHelper.FindByUsername("testuser", Crypt.rootToken(), null)
     }

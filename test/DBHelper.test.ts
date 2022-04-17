@@ -11,13 +11,14 @@ import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 
-@suite class OpenFlowConfigTests {
+@suite class dbhelper_test {
     private rootToken: string;
     private testUser: User;
     private userToken: string;
     async before() {
+        Config.disablelogging();
         Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)

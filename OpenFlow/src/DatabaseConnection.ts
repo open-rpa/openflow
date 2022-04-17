@@ -138,8 +138,12 @@ export class DatabaseConnection extends events.EventEmitter {
     public isConnected: boolean = false;
     async shutdown() {
         try {
+            if (!NoderedUtil.IsNullUndefinded(this.queuemonitoringhandle)) {
+                clearTimeout(this.queuemonitoringhandle);
+            }
             if (this.cli) {
-                await this.cli.close();
+                this.cli.removeAllListeners();
+                await this.cli.close(true);
             }
         } catch (error) {
             Logger.instanse.error(error);
@@ -197,15 +201,17 @@ export class DatabaseConnection extends events.EventEmitter {
         } catch (error) {
             console.error(error);
         }
-        Logger.instanse.info("supports_watch: " + Config.supports_watch);
+        if (Config.log_watches) Logger.instanse.info("supports_watch: " + Config.supports_watch);
         if (Config.supports_watch) {
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
-            for (var c = 0; c < collections.length; c++) {
-                if (collections[c].type != "collection") continue;
-                if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
-                this.registerGlobalWatch(collections[c].name, span);
+            if (this.registerGlobalWatches) {
+                for (var c = 0; c < collections.length; c++) {
+                    if (collections[c].type != "collection") continue;
+                    if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
+                    this.registerGlobalWatch(collections[c].name, span);
+                }
             }
         }
         if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {

@@ -8,17 +8,20 @@ import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { NoderedUtil } from '@openiap/openflow-api';
 import { license_data } from '../OpenFlow/src/otelspec';
+import { Auth } from '../OpenFlow/src/Auth';
 
-@suite class OpenFlowLoggerTests {
+@suite class logger_test {
     async before() {
+        Config.disablelogging();
         Logger.configure(true, false);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
     }
     async after() {
         await Config.db.shutdown();
         Logger.otel.shutdown();
         Logger.License.shutdown();
+        Auth.shutdown();
     }
     @test async 'test info'() {
         assert.ok(!NoderedUtil.IsNullUndefinded(Logger.myFormat), "Logger missing winston error formatter");

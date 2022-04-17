@@ -80,7 +80,7 @@ export class amqpwrapper extends events.EventEmitter {
     private channel: amqplib.ConfirmChannel;
     private connectionstring: string;
     public AssertExchangeOptions: any = { durable: false, confirm: true };
-    public AssertQueueOptions: amqplib.any = { durable: true };
+    public AssertQueueOptions: amqplib.Options.AssertQueue = { durable: true };
     private activecalls: IHashTable<Deferred<string>> = {};
     private queues: amqpqueue[] = [];
     private exchanges: amqpexchange[] = [];

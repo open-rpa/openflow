@@ -677,6 +677,15 @@ export class Message {
                     await this.AddWorkitemQueue(cli, span);
                     cli.Send(this);
                     break;
+                case "getworkitemqueue":
+                    if (!this.EnsureJWT(cli)) {
+                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    await this.GetWorkitemQueue(span);
+                    cli.Send(this);
+                    break;
+
                 case "updateworkitemqueue":
                     if (!this.EnsureJWT(cli)) {
                         if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
@@ -1310,7 +1319,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 msg.error = "Access denied, not signed in";
             } else {
-                msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg._id, version: msg.version, jwt: msg.jwt }, span);
+                msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg.id, version: msg.version, jwt: msg.jwt }, span);
             }
         } catch (error) {
             await handleError(null, error);
@@ -1749,16 +1758,16 @@ export class Message {
                         tuser.username = msg.username;
                     }
                 }
-                cli.clientagent = msg.clientagent as any;
-                cli.clientversion = msg.clientversion;
+                if (cli) cli.clientagent = msg.clientagent as any;
+                if (cli) cli.clientversion = msg.clientversion;
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
-                    Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                    Logger.instanse.error(tuser.username + " failed logging in using " + type);
+                    Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    if (Config.log_errors) Logger.instanse.error(tuser.username + " failed logging in using " + type);
                 } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
-                    Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                    Logger.instanse.error("Disabled user " + tuser.username + " failed logging in using " + type);
+                    Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    if (Config.log_errors) Logger.instanse.error("Disabled user " + tuser.username + " failed logging in using " + type);
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
                         user = await DBHelper.FindById(impostor, Crypt.rootToken(), span);
@@ -1773,8 +1782,8 @@ export class Message {
                         msg.impersonate = undefined;
                         impostor = undefined;
                     }
-                    Logger.instanse.info(tuser.username + " successfully signed in");
-                    Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                    if (Config.log_errors) Logger.instanse.info(tuser.username + " successfully signed in");
+                    Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     const userid: string = user._id;
                     if (msg.longtoken) {
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -1803,8 +1812,8 @@ export class Message {
                             if (impostors.length == 1) {
                                 imp = TokenUser.From(impostors[0]);
                             }
-                            Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
-                            Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
+                            if (Config.log_errors) Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
+                            Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
                         user.selectedcustomerid = null;
@@ -1826,8 +1835,8 @@ export class Message {
                                 imp = TokenUser.From(impostors[0]);
                             }
 
-                            Audit.ImpersonateFailed(imp, tuser, cli.clientagent, cli.clientversion, span);
-                            Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
+                            Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
+                            if (Config.log_errors) Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                         }
                         tuser.impostor = tuserimpostor._id;
@@ -1841,8 +1850,8 @@ export class Message {
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
-                        Logger.instanse.info(tuser.username + " successfully impersonated");
-                        Audit.ImpersonateSuccess(tuser, tuserimpostor, cli.clientagent, cli.clientversion, span);
+                        if (Config.log_errors) Logger.instanse.info(tuser.username + " successfully impersonated");
+                        Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
                         UpdateDoc.$set["firebasetoken"] = msg.firebasetoken;
@@ -1861,38 +1870,40 @@ export class Message {
                         user.device = msg.device;
                     }
                     if (msg.validate_only !== true) {
-                        Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
-                        Logger.instanse.info(tuser.username + " signed in using " + type + " " + cli.id + "/" + cli.clientagent);
-                        cli.jwt = msg.jwt;
-                        cli.user = user;
-                        if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+                        if (Config.log_errors) Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
+                        if (Config.log_errors) Logger.instanse.info(tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
+                        if (cli) cli.jwt = msg.jwt;
+                        if (cli) cli.user = user;
+                        if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                     } else {
-                        Logger.instanse.debug(tuser.username + " was validated in using " + type);
+                        if (Config.log_errors) Logger.instanse.debug(tuser.username + " was validated in using " + type);
                     }
                     if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                         user.lastseen = new Date(new Date().toISOString());
                         UpdateDoc.$set["lastseen"] = user.lastseen;
                     }
                     msg.supports_watch = Config.supports_watch;
-                    user._lastclientagent = cli.clientagent;
-                    UpdateDoc.$set["clientagent"] = cli.clientagent;
-                    user._lastclientversion = cli.clientversion;
-                    UpdateDoc.$set["clientversion"] = cli.clientversion;
-                    if (cli.clientagent == "openrpa") {
-                        user._lastopenrpaclientversion = cli.clientversion;
-                        UpdateDoc.$set["_lastopenrpaclientversion"] = cli.clientversion;
-                    }
-                    if (cli.clientagent == "webapp") {
-                        user._lastopenrpaclientversion = cli.clientversion;
-                        UpdateDoc.$set["_lastwebappclientversion"] = cli.clientversion;
-                    }
-                    if (cli.clientagent == "nodered") {
-                        user._lastnoderedclientversion = cli.clientversion;
-                        UpdateDoc.$set["_lastnoderedclientversion"] = cli.clientversion;
-                    }
-                    if (cli.clientagent == "powershell") {
-                        user._lastpowershellclientversion = cli.clientversion;
-                        UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
+                    user._lastclientagent = cli?.clientagent;
+                    if (cli) {
+                        UpdateDoc.$set["clientagent"] = cli.clientagent;
+                        user._lastclientversion = cli.clientversion;
+                        UpdateDoc.$set["clientversion"] = cli.clientversion;
+                        if (cli.clientagent == "openrpa") {
+                            user._lastopenrpaclientversion = cli.clientversion;
+                            UpdateDoc.$set["_lastopenrpaclientversion"] = cli.clientversion;
+                        }
+                        if (cli.clientagent == "webapp") {
+                            user._lastopenrpaclientversion = cli.clientversion;
+                            UpdateDoc.$set["_lastwebappclientversion"] = cli.clientversion;
+                        }
+                        if (cli.clientagent == "nodered") {
+                            user._lastnoderedclientversion = cli.clientversion;
+                            UpdateDoc.$set["_lastnoderedclientversion"] = cli.clientversion;
+                        }
+                        if (cli.clientagent == "powershell") {
+                            user._lastpowershellclientversion = cli.clientversion;
+                            UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
+                        }
                     }
                     // await DBHelper.Save(user, Crypt.rootToken());
                     await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
@@ -1904,9 +1915,9 @@ export class Message {
             }
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
                 if (!(msg.user.validated == true) && Config.validate_user_form != "") {
-                    if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
-                        Audit.LoginFailed(msg.user.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                        Logger.instanse.error(msg.user.username + " not validated");
+                    if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
+                        Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                        if (Config.log_errors) Logger.instanse.error(msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
@@ -1930,7 +1941,7 @@ export class Message {
             span?.recordException(error);
         }
         Logger.otel.endSpan(span);
-        this.Send(cli);
+        if (cli) this.Send(cli);
     }
     private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string, parent: Span): Promise<string> {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceName", parent);
@@ -5619,12 +5630,16 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
             if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
             if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-            if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) wi.errormessage = msg.errormessage;
+            if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) {
+                wi.errormessage = msg.errormessage;
+                if (!NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = msg.errortype;
+                if (NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = "application";
+            }
             if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
             if (!NoderedUtil.IsNullEmpty(msg.state)) {
-                msg.state = msg.state.toLowerCase();
+                msg.state = msg.state.toLowerCase() as any;
                 // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
                 //     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, abandoned, processing or retry");
                 // }

@@ -7,15 +7,18 @@ import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { KubeUtil } from '../OpenFlow/src/KubeUtil';
+import { Auth } from '../OpenFlow/src/Auth';
 
-@suite class OpenFlowKubeUtilTests {
+@suite class kubeutil_test {
     async before() {
+        Config.disablelogging();
         Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
     }
     async after() {
         await Config.db.shutdown();
+        Auth.shutdown();
     }
     @test async 'GetStatefulSet'() {
         var sfs = await KubeUtil.instance().GetStatefulSet(Config.namespace, "findme");
