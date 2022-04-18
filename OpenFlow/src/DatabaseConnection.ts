@@ -1031,6 +1031,9 @@ export class DatabaseConnection extends events.EventEmitter {
         } else {
             aggregates = [{ $match: base }, aggregates];
         }
+        if (json.toLowerCase().indexOf("$limit") == -1) {
+            aggregates.push({ "$limit": 100 });
+        }
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;
         try {
@@ -2466,7 +2469,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let deletecounter = 0;
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
-                Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting multiple files in database");
+                if (Config.log_deletes) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Deleting multiple files in database");
                 for await (const c of cursor) {
                     deletecounter++;
                     const ot_end = Logger.otel.startTimer();
