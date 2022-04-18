@@ -126,3 +126,4 @@ import { Auth } from '../OpenFlow/src/Auth';
     }
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/amqp.test.ts'
+// cls | ts-mocha --paths -p test/tsconfig.json .\test\amqp.test.ts
