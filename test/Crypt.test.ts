@@ -36,13 +36,13 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         result = await Crypt.compare("not-my-randompassword", hash, null);
         assert.ok(!result, "compare did not fail with wrong password");
 
-        assert.rejects(async () => { await Crypt.SetPassword(null, "randompassword", null); });
-        assert.rejects(async () => { await Crypt.SetPassword(this.testUser, null, null); });
-        assert.rejects(async () => { await Crypt.SetPassword(null, null, null); });
-        assert.rejects(async () => { await Crypt.ValidatePassword(null, "randompassword", null); });
-        assert.rejects(async () => { await Crypt.ValidatePassword(this.testUser, null, null); });
-        assert.rejects(async () => { await Crypt.ValidatePassword(null, null, null); });
-        assert.rejects(async () => { await Crypt.compare(null, null, null); });
+        await assert.rejects(Crypt.SetPassword(null, "randompassword", null));
+        await assert.rejects(Crypt.SetPassword(this.testUser, null, null));
+        await assert.rejects(Crypt.SetPassword(null, null, null));
+        await assert.rejects(Crypt.ValidatePassword(null, "randompassword", null));
+        await assert.rejects(Crypt.ValidatePassword(this.testUser, null, null));
+        await assert.rejects(Crypt.ValidatePassword(null, null, null));
+        await assert.rejects(Crypt.compare(null, null, null));
 
     }
     @test async 'encrypt'() {

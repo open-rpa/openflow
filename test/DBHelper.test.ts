@@ -34,7 +34,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.notStrictEqual(user, null, "Failed locating test user as root")
         user = await DBHelper.FindByUsername("testuser", this.userToken, null);
         assert.notStrictEqual(user, null, "Failed locating test user as self")
-        assert.rejects(async () => { await DBHelper.FindByUsername(null, this.rootToken, null); });
+        await assert.rejects(DBHelper.FindByUsername(null, this.rootToken, null));
     }
     @test async 'FindById'() {
         var user = await DBHelper.FindById(this.testUser._id, this.rootToken, null);
@@ -43,7 +43,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.notStrictEqual(user, null, "Failed locating test user as self")
         user = await DBHelper.FindById("nonexisting", this.userToken, null);
         assert.strictEqual(user, null, "returned something with illegal id")
-        assert.rejects(async () => { await DBHelper.FindById(null, this.rootToken, null); });
+        await assert.rejects(DBHelper.FindById(null, this.rootToken, null));
     }
     @test async 'FindByUsernameOrId'() {
         var user = await DBHelper.FindByUsernameOrId(this.testUser.username, null, null);
@@ -54,14 +54,14 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.strictEqual(user, null, "returned something with illegal username")
         user = await DBHelper.FindByUsernameOrId(null, "does not exist", null);
         assert.strictEqual(user, null, "returned something with illegal id")
-        assert.rejects(async () => { await DBHelper.FindByUsernameOrId(null, null, null); });
+        await assert.rejects(DBHelper.FindByUsernameOrId(null, null, null));
     }
     @test async 'FindByUsernameOrFederationid'() {
         var user = await DBHelper.FindByUsernameOrFederationid(this.testUser.username, null);
         assert.notStrictEqual(user, null, "Failed locating user by username")
         user = await DBHelper.FindByUsernameOrFederationid("test@federation.id", null);
         assert.notStrictEqual(user, null, "Failed locating user by federation id")
-        assert.rejects(async () => { await DBHelper.FindByUsernameOrFederationid(null, null); });
+        await assert.rejects(DBHelper.FindByUsernameOrFederationid(null, null));
     }
     @test async 'DecorateWithRoles'() {
         var tuser = TokenUser.From(this.testUser);
@@ -72,7 +72,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         tuser.roles = [];
         tuser = await DBHelper.DecorateWithRoles(tuser, null);
         assert.notStrictEqual(tuser.roles.length, 0, "No roles added to user")
-        assert.rejects(async () => { await DBHelper.DecorateWithRoles(null, null); });
+        await assert.rejects(DBHelper.DecorateWithRoles(null, null));
     }
     @test async 'FindRoleByName'() {
         var role = await DBHelper.FindRoleByName(this.testUser.username, null);
@@ -89,7 +89,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.notStrictEqual(role, null, "Failed locating role users")
         role = await DBHelper.FindRoleByNameOrId(null, WellknownIds.users, null);
         assert.notStrictEqual(role, null, "Failed locating role users")
-        assert.rejects(async () => { await DBHelper.FindRoleByNameOrId(null, null, null); });
+        await assert.rejects(DBHelper.FindRoleByNameOrId(null, null, null));
     }
     @timeout(5000)
     @test async 'EnsureUser'() {
@@ -107,13 +107,13 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.ok(result, "Failed validating with the correct password");
         await Config.db.DeleteOne(dummyuser._id, "users", this.rootToken, null);
 
-        assert.rejects(async () => { await DBHelper.EnsureUser(this.rootToken, null, null, null, null, null); });
+        await assert.rejects(DBHelper.EnsureUser(this.rootToken, null, null, null, null, null));
     }
     @test async 'EnsureRole'() {
         var name = "dummytestrole" + NoderedUtil.GetUniqueIdentifier();
         var dummyrole = await DBHelper.EnsureRole(this.rootToken, name, null, null);
         await Config.db.DeleteOne(dummyrole._id, "users", this.rootToken, null);
-        assert.rejects(async () => { await DBHelper.EnsureRole(null, null, null, null); });
+        await assert.rejects(DBHelper.EnsureRole(null, null, null, null));
     }
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/DBHelper.test.ts'

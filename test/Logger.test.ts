@@ -66,6 +66,7 @@ import { Auth } from '../OpenFlow/src/Auth';
             template,
             data: data
         });
+        var lic = Logger.License;
         Config.license_key = Buffer.from(licenseFileContent).toString('base64');
         Logger.License.validate();
         assert.strictEqual(Logger.License.validlicense, true);
@@ -73,7 +74,7 @@ import { Auth } from '../OpenFlow/src/Auth';
         assert.strictEqual(Logger.License.data.domain, "localhost.openiap.io");
 
         Config.domain = "notlocalhost.openiap.io";
-        assert.rejects(async () => { Logger.License.validate(); });
+        assert.throws(lic.validate.bind(lic), Error);
         assert.strictEqual(Logger.License.validlicense, false);
         assert.strictEqual(Logger.License.data.domain, "localhost.openiap.io");
         let ofid2 = Logger.License.ofid(true);

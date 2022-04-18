@@ -41,7 +41,7 @@ import { Auth } from '../OpenFlow/src/Auth';
     }
     // @test async 'connecterror'() {
     //     // var amqp = new amqpwrapper('bogus://url');
-    //     // assert.rejects(async () => { await amqp.connect(null); });
+    //     // await assert.rejects( await amqp.connect(null));
     // }
     @timeout(5000)
     @test async 'queuetest'() {
@@ -122,8 +122,7 @@ import { Auth } from '../OpenFlow/src/Auth';
         var reply = await this.amqp.sendWithReply(exchangename, "", "hi mom, i miss you", 300, null, null);
         assert.strictEqual(reply, "hi");
         await this.amqp.RemoveQueueConsumer(this.testUser, q.queue, null);
-        assert.rejects(async () => { await this.amqp.RemoveQueueConsumer(this.testUser, null, null); });
+        await assert.rejects(this.amqp.RemoveQueueConsumer(this.testUser, null, null));
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/amqp.test.ts'
 // cls | ts-mocha --paths -p test/tsconfig.json .\test\amqp.test.ts
