@@ -46,7 +46,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) throw new Error("_id cannot be null");
+            if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("user" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + _id);
@@ -65,7 +65,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) throw new Error("_id cannot be null");
+            if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("queue" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + _id);
@@ -84,7 +84,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(name)) throw new Error("name cannot be null");
+            if (NoderedUtil.IsNullEmpty(name)) return null;
             let item = await this.memoryCache.wrap("queue" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + name);
@@ -103,7 +103,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) throw new Error("_id cannot be null");
+            if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("exchange" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + _id);
@@ -122,7 +122,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(name)) throw new Error("_id cannot be null");
+            if (NoderedUtil.IsNullEmpty(name)) return null;
             let item = await this.memoryCache.wrap("exchange" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + name);
@@ -141,7 +141,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) throw new Error("_id cannot be null");
+            if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("role" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add role to cache : " + _id);
@@ -160,7 +160,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(username)) throw new Error("Username is mandatory")
+            if (NoderedUtil.IsNullEmpty(username)) return null;
             let item = await this.memoryCache.wrap("username" + username, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + username);
@@ -197,7 +197,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
-            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("User is mandatory");
+            if (NoderedUtil.IsNullUndefinded(user)) return null;
             let cached_roles = await this.memoryCache.wrap("allroles", () => {
                 if (Config.log_cache) Logger.instanse.debug("Add all roles");
                 return Config.db.query<Role>({ query: { _type: "role" }, projection: { "name": 1, "members": 1 }, top: Config.expected_max_roles, collectionname: "users", jwt: Crypt.rootToken() }, span);
@@ -262,15 +262,6 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    // public static async FindRoleByNameOrId(name: string, id: string, parent: Span): Promise<Role> {
-    //     var _id = id;
-    //     if (NoderedUtil.IsNullEmpty(_id)) _id = null; // undefined is bad here
-    //     if (NoderedUtil.IsNullEmpty(name) && NoderedUtil.IsNullEmpty(_id)) throw new Error("Either username or id is mandatory");
-    //     const jwt = Crypt.rootToken();
-    //     const items: Role[] = await Config.db.query<Role>({ query: { $or: [{ name }, { _id }], "_type": "role" }, top: 5, collectionname: "users", jwt }, parent);
-    //     if (items === null || items === undefined || items.length === 0) { return null; }
-    //     return Role.assign(items[0]);
-    // }
     public static async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
         await Config.db._UpdateOne(null, item, "users", 2, false, jwt, parent);
     }
