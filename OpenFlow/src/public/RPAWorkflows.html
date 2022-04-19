@@ -22,7 +22,7 @@
     </thead>
     <tbody>
       <tr ng-repeat="model in ctrl.models">
-        <td>{{model.projectandname}}</td>
+        <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/RPAWorkflow/{{model._id}}">{{model.projectandname}}</a></td>
         <td>{{model._createdby}}</td>
         <td>
           <timesince ng-model="model._modified" />

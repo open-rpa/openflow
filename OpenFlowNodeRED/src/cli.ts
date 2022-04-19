@@ -79,7 +79,7 @@ function getToken(): Promise<string> {
                 const username: string = readlineSync.question('username? ');
                 const password: string = readlineSync.question('password? ', { hideEchoBack: true });
 
-                const result = await NoderedUtil.SigninWithUsername(username, password, null, true);
+                const result = await NoderedUtil.SigninWithUsername({ username, password, longtoken: true });
                 logger.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;

@@ -15,6 +15,23 @@ export class Config {
         Config.version = (fs.existsSync(versionfile) ? fs.readFileSync(versionfile, "utf8") : "0.0.1");
         return Config.version;
     }
+    public static disablelogging(): void {
+        Config.log_cache = false;
+        Config.log_error_stack = false;
+        Config.log_errors = false;
+        Config.log_queries = false;
+        Config.log_aggregates = false;
+        Config.log_inserts = false;
+        Config.log_updates = false;
+        Config.log_deletes = false;
+        Config.log_otel_times = false;
+        Config.log_openflow_amqp = false;
+        Config.log_amqp = false;
+        Config.log_index_mngt = false;
+        Config.log_watches = false;
+        Config.log_watches_notify = false;
+        Config.log_missing_jwt = false;
+    }
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
@@ -77,6 +94,13 @@ export class Config {
         Config.tls_key = Config.getEnv("tls_key", "");
         Config.tls_ca = Config.getEnv("tls_ca", "");
         Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
+
+        Config.cache_store_type = Config.getEnv("cache_store_type", "memory");
+        Config.cache_store_max = parseInt(Config.getEnv("cache_store_max", "1000"));
+        Config.cache_store_ttl_seconds = parseInt(Config.getEnv("cache_store_ttl_seconds", "3600"));
+        Config.cache_store_redis_host = Config.getEnv("cache_store_redis_host", "");
+        Config.cache_store_redis_port = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
+        Config.cache_store_redis_password = Config.getEnv("cache_store_redis_password", "");
 
         Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "900"));
         Config.dashboard_credential_cache_seconds = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "900"));
@@ -257,6 +281,13 @@ export class Config {
     public static tls_ca: string = Config.getEnv("tls_ca", "");
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
+    public static cache_store_type: string = Config.getEnv("cache_store_type", "memory");
+    public static cache_store_max: number = parseInt(Config.getEnv("cache_store_max", "1000"));
+    public static cache_store_ttl_seconds: number = parseInt(Config.getEnv("cache_store_ttl_seconds", "3600"));
+    public static cache_store_redis_host: string = Config.getEnv("cache_store_redis_host", "");
+    public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
+    public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
+
     public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "900"));
     public static dashboard_credential_cache_seconds: number = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "900"));
     public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "900"));
@@ -285,7 +316,7 @@ export class Config {
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
 
-    public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "4000"));
+    public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "20000"));
     public static decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
     public static roles_cached_in_seconds: number = parseInt(Config.getEnv("roles_cached_in_seconds", "300"));
     public static max_recursive_group_depth: number = parseInt(Config.getEnv("max_recursive_group_depth", "2"));

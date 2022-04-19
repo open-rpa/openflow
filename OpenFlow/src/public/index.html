@@ -13,7 +13,108 @@
 
 <body ng-controller="MenuCtrl as menuctrl" class="with-custom-webkit-scrollbars with-custom-css-scrollbars "
   data-dm-shortcut-enabled="true" data-set-preferred-mode-onload="true">
-  <div class="page-wrapper with-navbar halfmoon-overrides">
+  <div class="page-wrapper with-navbar with-sidebar halfmoon-overrides">
+    <div class="sidebar" ng-show="menuctrl.signedin">
+      <div class="sidebar-menu">
+        <div class="sidebar-content">
+          <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
+            ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch">
+        </div>
+        <!-- ng-show="
+          !menuctrl.PathIs(['/Nodered', '/Payment', '/Customer', '/Customer/', '/Entity/', '/User/', '/User', '/Role/', '/Role'])" -->
+      </div>
+      <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
+        ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
+        <span translate lib="web">nodered</span></a>
+
+      <a href="#/Workitems" class="sidebar-link" id="menuworkitems"
+        ng-class="{active: menuctrl.PathIs(['/Workitems', '/Workitem', '/Workitem/'])}"
+        ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('workitem queue users'))"><span translate
+          lib="web">workitems</span></a>
+
+      <a href="#/Workflows" class="sidebar-link" id="menuworkflows"
+        ng-class="{active: menuctrl.PathIs(['/Workflows', '/Form/'])}"><span translate
+          lib="web">menuworkflows</span></a>
+
+      <a href="#/RPAWorkflows" class="sidebar-link" id="menurpaworkflows"
+        ng-class="{active: menuctrl.PathIs(['/RPAWorkflows', '/RPAWorkflow/'])}"
+        ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
+          translate lib="web">rpaworkflows</span></a>
+
+      <div ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide admins')) || menuctrl.hasrole('admins')">
+        <h5 class="sidebar-title">User management</h5>
+        <div class="sidebar-divider"></div>
+        <a class="sidebar-link" 
+        ng-class="{active: menuctrl.PathIs(['/User/{{menuctrl.user._id}}'])}"
+        ng-href="#/User/{{menuctrl.user._id}}"> {{menuctrl.user.name || menuctrl.user.username
+          }} </a>
+
+        <a class="sidebar-link" href="#/Users" id="menuadminusers"
+          ng-class="{active: menuctrl.PathIs(['/Users', '/User','/User/'])}"
+          ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
+            translate lib="web">users</span></a>
+        <a class="sidebar-link" href="#/Roles" id="menuadminroles"
+          ng-class="{active: menuctrl.PathIs(['/Roles', '/Role','/Role/'])}"
+          ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
+            translate lib="web">roles</span></a>
+        <a class="sidebar-link" href="#/Auditlogs" id="menuadminauditlogs"
+          ng-class="{active: menuctrl.PathIs('/Auditlogs')}"><span translate lib="web">auditlogs</span></a>
+
+      </div>
+      <h5 class="sidebar-title">Misc management</h5>
+      <div class="sidebar-divider"></div>
+
+      <a href="#/WorkitemQueues" class="sidebar-link" id="menuworkitems"
+      ng-class="{active: menuctrl.PathIs(['/WorkitemQueues', '/WorkitemQueue/', '/WorkitemQueue'])}"
+      ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('workitem queue users'))"><span translate
+        lib="web">workitemqueues</span></a>
+
+
+      <a href="#/Entities" class="sidebar-link" id="menuentities"
+        ng-class="{active: menuctrl.PathIs(['/Entities/', '/Entity/'])}"
+        ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"><span
+          translate lib="web">entities</span></a>
+
+      <a class="sidebar-link" href="#/Clients" id="menuclients"
+        ng-class="{active: menuctrl.PathIs(['/Clients', '/Nodered/'])}"
+        ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
+          translate lib="web">clients</span></a>
+
+      <a class="sidebar-link" href="#/Credentials" id="menuadmincredentials"
+        ng-class="{active: menuctrl.PathIs(['/Credentials', '/Credential', '/Credential/'])}"><span translate
+          lib="web">credentials</span></a>
+      <a class="sidebar-link" href="#/EntityRestrictions"
+        ng-class="{active: menuctrl.PathIs(['/EntityRestrictions', '/EntityRestriction', '/EntityRestriction/'])}"
+        ng-show="menuctrl.WebSocketClientService.enable_entity_restriction && menuctrl.hasrole('admins')"><span
+          translate lib="web">entityrestrictions</span></a>
+      <a class="sidebar-link" href="#/Forms" id="menuadminforms"
+        ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
+          lib="web">forms</span></a>
+      <a class="sidebar-link" href="#/Providers" 
+      ng-class="{active: menuctrl.PathIs(['/Providers', '/Provider', '/Provider/'])}"
+      ng-show="menuctrl.hasrole('admins')"><span translate
+          lib="web">providers</span></a>
+      <a class="sidebar-link" href="#/OAuthClients" 
+      ng-class="{active: menuctrl.PathIs(['/OAuthClients', '/OAuthClient', '/OAuthClient/'])}"
+      ng-show="menuctrl.hasrole('admins')"><span translate
+          lib="web">oauthclients</span></a>
+      <a class="sidebar-link" id="menuadminfiles" ng-class="{active: menuctrl.PathIs(['/Files'])}" href="#/Files"><span
+          translate lib="web">files</span></a>
+      <a class="sidebar-link" ng-class="{active: menuctrl.PathIs(['/hdrobots'])}" href="#/hdrobots"><span translate
+          lib="web">hdrobots</span></a>
+
+
+      <a class="sidebar-link" href="#/Customers"
+        ng-class="{active: menuctrl.PathIs(['/Customers', '/Customer', '/Customer/'])}"
+        ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('resellers')">
+        <span translate lib="web">customers</span></a>
+      <a class="sidebar-link" href="#/Resources"
+        ng-class="{active: menuctrl.PathIs(['/Resources', '/Resource', '/Resource/'])}"
+        ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('admins')">
+        <span translate lib="web">Resources</span></a>
+
+
+    </div>
     <div class="sticky-alerts"></div>
 
     <nav class="navbar navbar-expand-md fixed-top" ng-show="menuctrl.signedin">
@@ -22,74 +123,6 @@
       </a>
       <span class="navbar-text text-monospace">v{{menuctrl.WebSocketClientService.version}}</span>
       <ul class="navbar-nav d-none d-md-flex">
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Entities')}" id="menuentities">
-          <a href="#/Entities" class="nav-link"
-            ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"><span
-              translate lib="web">entities</span></a>
-        </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workflows')}" id="menuworkflows">
-          <a href="#/Workflows" class="nav-link"><span translate lib="web">workflows</span></a>
-        </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/RPAWorkflows')}" id="menurpaworkflows">
-          <a href="#/RPAWorkflows" class="nav-link"
-            ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
-              translate lib="web">rpaworkflows</span></a>
-        </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Workitems')}" id="menuworkitems">
-          <a href="#/Workitems" class="nav-link"
-            ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('workitem queue users'))"><span translate
-              lib="web">workitems</span></a>
-        </li>
-        <li class="nav-item" ng-class="{active: menuctrl.PathIs('/Nodered')}" id="menunodered">
-          <a href="#/Nodered" class="nav-link"
-            ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
-            <span translate lib="web">nodered</span></a>
-        </li>
-        <div class="dropdown with-arrow" id="menuadminmenu"
-          ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide admins')) || menuctrl.hasrole('admins')">
-          <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
-            <span translate lib="web">admin</span>
-            <i class="fa fa-angle-down" aria-hidden="true"></i>
-          </button>
-          <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1"
-            id="navbar-dropdown-toggle-btn-1">
-            <a class="dropdown-item" href="#/Users" id="menuadminusers"
-              ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
-                translate lib="web">users</span></a>
-            <a class="dropdown-item" href="#/Roles" id="menuadminroles"
-              ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
-                translate lib="web">roles</span></a>
-<a class="dropdown-item" href="#/Clients" id="menuclients"
-  ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
-    translate lib="web">clients</span></a>
-
-            <a class="dropdown-item" href="#/Credentials" id="menuadmincredentials"><span translate
-                lib="web">credentials</span></a>
-            <a class="dropdown-item" href="#/Auditlogs" id="menuadminauditlogs"><span translate
-                lib="web">auditlogs</span></a>
-            <a class="dropdown-item" href="#/EntityRestrictions"
-              ng-show="menuctrl.WebSocketClientService.enable_entity_restriction && menuctrl.hasrole('admins')"><span
-                translate lib="web">entityrestrictions</span></a>
-            <a class="dropdown-item" href="#/Forms" id="menuadminforms"><span translate lib="web">forms</span></a>
-            <a class="dropdown-item" href="#/Providers" ng-show="menuctrl.hasrole('admins')"><span translate
-                lib="web">providers</span></a>
-            <a class="dropdown-item" href="#/OAuthClients" ng-show="menuctrl.hasrole('admins')"><span translate
-                lib="web">oauthclients</span></a>
-            <a class="dropdown-item" href="#/Files" id="menuadminfiles"><span translate lib="web">files</span></a>
-            <a class="dropdown-item" href="#/hdrobots"><span translate lib="web">hdrobots</span></a>
-            <div class="dropdown-divider"></div>
-            <div class="dropdown-content">
-              <a class="dropdown-item" ng-href="#/User/{{menuctrl.user._id}}"> {{menuctrl.user.name ||
-                menuctrl.user.username }} </a>
-            </div>
-            <a class="dropdown-item" href="#/Customers"
-              ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('resellers')">
-              <span translate lib="web">customers</span></a>
-            <a class="dropdown-item" href="#/Resources"
-              ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('admins')">
-              <span translate lib="web">Resources</span></a>
-          </div>
-        </div>
       </ul>
       <form class="form-inline d-none d-md-flex ml-auto">
         <div id="menumultitenant" ng-class="{active: menuctrl.PathIs('/Customer')}"
@@ -104,9 +137,6 @@
             {{menuctrl.customer.name}}</a>
         </div>
 
-        <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
-          ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch" ng-show="!menuctrl.PathIs('/Nodered') && !menuctrl.PathIs('/Payment') && !menuctrl.PathIs('/Customer')
-          && !menuctrl.PathIs('/Entity/') && !menuctrl.PathIs('/User/') && !menuctrl.PathIs('/Role/')">
         <button class=" btn btn-action mr-5" type="button" ng-click="menuctrl.toggleDarkMode()"
           aria-label="Toggle dark mode" id="menudarkmode">
           <i class="fa fa-moon" aria-hidden="true"></i>
@@ -161,7 +191,7 @@
 
             <a href="#/Entities" class="dropdown-item" ng-show="menuctrl.hasrole('users')"><span translate
                 lib="web">entities</span></a>
-            <a href="#/Workflows" class="dropdown-item"><span translate lib="web">workflows</span></a>
+            <a href="#/Workflows" class="dropdown-item"><span translate lib="web">menuworkflows</span></a>
             <a href="#/RPAWorkflows" class="dropdown-item" ng-show="menuctrl.hasrole('users')"><span translate
                 lib="web">rpaworkflows</span></a>
             <a href="#/Clients" class="dropdown-item" ng-show="menuctrl.hasrole('users')"><span translate

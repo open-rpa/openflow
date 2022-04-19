@@ -1,24 +1,29 @@
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
-import { suite, test } from '@testdeck/mocha';
+import { suite, test, timeout } from '@testdeck/mocha';
 import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { NoderedUtil } from '@openiap/openflow-api';
 import { license_data } from '../OpenFlow/src/otelspec';
+import { Auth } from '../OpenFlow/src/Auth';
 
-@suite class OpenFlowLoggerTests {
+@suite class logger_test {
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
+        Config.disablelogging();
         Logger.configure(true, false);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Logger.License.shutdown();
+        Auth.shutdown();
     }
     @test async 'test info'() {
         assert.ok(!NoderedUtil.IsNullUndefinded(Logger.myFormat), "Logger missing winston error formatter");
@@ -63,6 +68,7 @@ import { license_data } from '../OpenFlow/src/otelspec';
             template,
             data: data
         });
+        var lic = Logger.License;
         Config.license_key = Buffer.from(licenseFileContent).toString('base64');
         Logger.License.validate();
         assert.strictEqual(Logger.License.validlicense, true);
@@ -70,7 +76,7 @@ import { license_data } from '../OpenFlow/src/otelspec';
         assert.strictEqual(Logger.License.data.domain, "localhost.openiap.io");
 
         Config.domain = "notlocalhost.openiap.io";
-        assert.rejects(async () => { Logger.License.validate(); });
+        assert.throws(lic.validate.bind(lic), Error);
         assert.strictEqual(Logger.License.validlicense, false);
         assert.strictEqual(Logger.License.data.domain, "localhost.openiap.io");
         let ofid2 = Logger.License.ofid(true);

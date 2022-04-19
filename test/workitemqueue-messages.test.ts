@@ -1,3 +1,4 @@
+// var wtf = require('wtfnode');
 const path = require("path");
 const fs = require('fs');
 const pako = require('pako');
@@ -15,12 +16,14 @@ import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage } from "@openiap/openflow-api";
 
-@suite class OpenFlowConfigTests {
+@suite class workitemqueue_messages_test {
     private rootToken: string;
     private testUser: User;
     private userToken: string;
     @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
+        Config.disablelogging();
         Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
@@ -31,9 +34,12 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     }
     @timeout(10000)
     async after() {
+        Config.workitem_queue_monitoring_enabled = false;
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
+        Logger.License.shutdown();
         Auth.shutdown();
+        // wtf.dump();
     }
     async GetItem(name) {
         var q: any = new GetWorkitemQueueMessage();
@@ -57,7 +63,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
 
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     }
-    @timeout(50000) // @test
+    @timeout(5000)
     async 'Save File Base64'() {
         var filepath = "./config/invoice2.pdf";
         var filepath = "./config/invoice.zip";
@@ -80,7 +86,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         assert.ok(!NoderedUtil.IsNullUndefinded(q.result), "no result");
         return q.result;
     }
-    @timeout(50000) // @test
+    @timeout(5000)
     async 'Save File zlib'() {
         var filepath = "./config/invoice2.pdf";
         var filepath = "./config/invoice.zip";
@@ -104,7 +110,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         assert.ok(!NoderedUtil.IsNullUndefinded(q.result), "no result");
         return q.result;
     }
-    @timeout(50000) // @test 
+    @timeout(5000)
     async 'Create update and delete test work item queue'() {
         var exists = await this.GetItem("test queue")
         if (exists) {
@@ -117,8 +123,9 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
 
         await this["delete test work item queue"](null);
     }
-    @timeout(50000) // @test 
+    @timeout(15000)
     @test async 'Workwith work item'() {
+        await this['Create update and delete test work item queue']();
         var wiq = await this.GetItem("test queue")
         if (!wiq) {
             wiq = await this["Create work item queue"]('test queue')
@@ -147,17 +154,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
 
         await this["Delete work item"](wi);
     }
-    @timeout(50000) // @test 
-    @test async 'Workwith work item devtest'() {
-        var wiq = await this.GetItem("devtest")
-        if (!wiq) {
-            wiq = await this["Create work item queue"]('devtest')
-        }
-        var wi: any = { "_id": "62488f88bf045a7e58228f2f", files: [] }
-        wi = await this["Create work item"](wiq);
-        wi = await this["Update work item"](wi);
-    }
-    @timeout(50000) // @test 
+    @timeout(5000)
     async 'Delete work item'(wi) {
         var q: any = new DeleteWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
@@ -170,7 +167,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
     }
-    @timeout(50000) // @test 
+    @timeout(5000)
     async 'Update work item'(wi) {
         var q: any = new UpdateWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
@@ -195,7 +192,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         assert.ok(!NoderedUtil.IsNullUndefinded(q.result), "no result");
         return q.result;
     }
-    @timeout(50000) // @test 
+    @timeout(5000)
     async 'Create work item'(wiq) {
         var q: any = new AddWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
@@ -263,7 +260,8 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     async 'delete test work item queue'(name) {
         var q: any = new DeleteWorkitemQueueMessage();
         var msg = new Message(); msg.jwt = this.userToken;
-        q.name = name ? name : "test queue"
+        q.name = name ? name : "test queue";
+        q.purge = true;
         msg.data = JSON.stringify(q);
         Config.log_errors = false;
         await msg.DeleteWorkitemQueue(null);

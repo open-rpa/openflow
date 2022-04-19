@@ -1,7 +1,7 @@
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
-import { suite, test } from '@testdeck/mocha';
+import { suite, test, timeout } from '@testdeck/mocha';
 import { Message } from "../OpenFlow/src/Messages/Message";
 import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
@@ -12,13 +12,16 @@ import { Logger } from '../OpenFlow/src/Logger';
 import { Auth } from '../OpenFlow/src/Auth';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 
-@suite class OpenFlowMessageTests {
+@suite class message_test {
     private rootToken: string;
     private testUser: User;
     private userToken: string;
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
+        Config.disablelogging();
         Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
@@ -26,7 +29,8 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
+        Logger.License.shutdown();
         Auth.shutdown();
     }
     @test async 'Unselect customer as root'() {

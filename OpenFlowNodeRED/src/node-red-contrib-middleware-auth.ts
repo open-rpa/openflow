@@ -45,8 +45,8 @@ export class noderedcontribmiddlewareauth {
             (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
             const token = authorization.split(" ")[1];
             try {
-                let result = await NoderedUtil.SigninWithToken(token, null, null, false, true);
-                if (result == null || result.user == null) result = await NoderedUtil.SigninWithToken(null, token, null, false, true);
+                let result = await NoderedUtil.SigninWithToken({ jwt: token, validate_only: true });
+                if (result == null || result.user == null) result = await NoderedUtil.SigninWithToken({ rawAssertion: token, validate_only: true });
                 if (result.user != null) {
                     const user: TokenUser = TokenUser.assign(result.user);
                     const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins || x.name == Config.noderedapiusers);
@@ -76,7 +76,7 @@ export class noderedcontribmiddlewareauth {
         const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
         if (login && password) {
             try {
-                const result = await NoderedUtil.SigninWithUsername(login, password, null, false, true);
+                const result = await NoderedUtil.SigninWithUsername({ username: login, password, validate_only: true });
                 if (result.user != null) {
                     const user: TokenUser = TokenUser.assign(result.user);
                     const allowed = user.roles.filter(x => x.name == "nodered api users" || x.name == Config.noderedadmins || x.name == Config.noderedapiusers);

@@ -87,11 +87,11 @@ export class WebSocketClientService {
                 return;
             }
             try {
-                const result = await NoderedUtil.SigninWithToken(data.jwt, data.rawAssertion, null);
+                const result = await NoderedUtil.SigninWithToken({ jwt: data.jwt, rawAssertion: data.rawAssertion });
 
                 this.customer = null;
                 if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
-                    const customers = await NoderedUtil.Query("users", { _type: "customer", "$or": [{ "_id": WebSocketClient.instance.user.selectedcustomerid }, { "_id": WebSocketClient.instance.user.customerid }] }, null, null, 100, 0, null, null, null, 2);
+                    const customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", "$or": [{ "_id": WebSocketClient.instance.user.selectedcustomerid }, { "_id": WebSocketClient.instance.user.customerid }] } });
                     if (customers.length > 0 && (WebSocketClient.instance.user.selectedcustomerid != null)) {
                         if (WebSocketClient.instance.user.selectedcustomerid != null) {
                             for (let cust of customers)
@@ -126,7 +126,7 @@ export class WebSocketClientService {
     }
     async impersonate(userid: string) {
         try {
-            const result = await NoderedUtil.SigninWithToken(WebSocketClient.instance.jwt, null, userid);
+            const result = await NoderedUtil.SigninWithToken({ jwt: WebSocketClient.instance.jwt, impersonate: userid });
             this.$rootScope.$broadcast("signin", result.user);
         } catch (error) {
             console.error(error);

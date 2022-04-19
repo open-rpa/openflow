@@ -4,18 +4,9 @@
         {
             "type": "node",
             "request": "attach",
-            "name": "Attach to localhost (OpenFlow 5858)",
+            "name": "Attach to localhost",
             "address": "localhost",
             "port": 5858,
-            "localRoot": "${workspaceFolder}/dist",
-            "remoteRoot": "/data"
-        },
-        {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to localhost (OpenFlow 5860)",
-            "address": "localhost",
-            "port": 5860,
             "localRoot": "${workspaceFolder}/dist",
             "remoteRoot": "/data"
         },

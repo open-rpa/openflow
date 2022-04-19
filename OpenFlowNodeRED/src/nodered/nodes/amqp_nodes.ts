@@ -132,11 +132,13 @@ export class amqp_consumer_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             Logger.instanse.info("track::amqp consumer node in::connect");
 
-            this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.config.queue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue({
+                websocket: this.websocket(), queuename: this.config.queue, callback: (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
-            }, (msg) => {
+                }, closedcallback: (msg) => {
                 if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                 setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
             });
             Logger.instanse.info("registed amqp consumer as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
@@ -165,7 +167,7 @@ export class amqp_consumer_node {
     }
     async onclose(removed: boolean, done: any) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-            NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
+            NoderedUtil.CloseQueue({ websocket: this.websocket(), queuename: this.localqueue });
             this.localqueue = "";
         }
         this.websocket().events.removeListener("onsignedin", this._onsignedin);
@@ -235,12 +237,14 @@ export class amqp_publisher_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             Logger.instanse.info("track::amqp publiser node::connect");
             this.localqueue = this.config.localqueue;
-            this.localqueue = await NoderedUtil.RegisterQueue(this.websocket(), this.localqueue, (msg: QueueMessage, ack: any) => {
+            this.localqueue = await NoderedUtil.RegisterQueue({
+                websocket: this.websocket(), queuename: this.localqueue, callback: (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
-            }, (msg) => {
+                }, closedcallback: (msg) => {
                 this.localqueue = "";
                 if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                 setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
             });
             if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
                 Logger.instanse.info("registed amqp published return queue as " + this.localqueue);
@@ -287,8 +291,8 @@ export class amqp_publisher_node {
             if (NoderedUtil.IsNullEmpty(this.localqueue)) {
                 throw new Error("Queue not registered yet");
             }
-            const queue = await Util.EvaluateNodeProperty<string>(this, msg, "queue");
-            const exchange = await Util.EvaluateNodeProperty<string>(this, msg, "exchange");
+            const queuename = await Util.EvaluateNodeProperty<string>(this, msg, "queue");
+            const exchangename = await Util.EvaluateNodeProperty<string>(this, msg, "exchange");
             const routingkey = await Util.EvaluateNodeProperty<string>(this, msg, "routingkey");
 
             let striptoken = this.config.striptoken;
@@ -304,7 +308,7 @@ export class amqp_publisher_node {
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
-                await NoderedUtil.QueueMessage(this.websocket(), exchange, routingkey, queue, this.localqueue, data, null, expiration, striptoken, priority);
+                await NoderedUtil.Queue({ websocket: this.websocket(), exchangename, routingkey, queuename, replyto: this.localqueue, data, expiration, striptoken, priority });
                 amqp_publisher_node.payloads[msg._msgid] = msg;
             } catch (error) {
                 data.error = error;
@@ -317,7 +321,7 @@ export class amqp_publisher_node {
     }
     async onclose(removed: boolean, done: any) {
         // if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-        NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
+        NoderedUtil.CloseQueue({ websocket: this.websocket(), queuename: this.localqueue });
         this.localqueue = "";
         // }
         this.websocket().events.removeListener("onsignedin", this._onsignedin);
@@ -419,14 +423,15 @@ export class amqp_exchange_node {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             Logger.instanse.info("track::amqp exchange node in::connect");
-
-            const result = await NoderedUtil.RegisterExchange(this.websocket(), this.config.exchange, this.config.algorithm,
-                this.config.routingkey, (msg: QueueMessage, ack: any) => {
+            const result = await NoderedUtil.RegisterExchange({
+                websocket: this.websocket(), exchangename: this.config.exchange, algorithm: this.config.algorithm,
+                routingkey: this.config.routingkey, callback: (msg: QueueMessage, ack: any) => {
                     this.OnMessage(msg, ack);
-                }, (msg) => {
+                }, closedcallback: (msg) => {
                     if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
                     setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
-                });
+                }
+            });
             this.localqueue = result.queuename;
             Logger.instanse.info("registed amqp exchange as " + result.exchangename);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + result.exchangename });
@@ -455,7 +460,7 @@ export class amqp_exchange_node {
     }
     async onclose(removed: boolean, done: any) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) { // && removed
-            NoderedUtil.CloseQueue(this.websocket(), this.localqueue);
+            NoderedUtil.CloseQueue({ websocket: this.websocket(), queuename: this.localqueue });
             this.localqueue = "";
         }
         this.websocket().events.removeListener("onsignedin", this._onsignedin);

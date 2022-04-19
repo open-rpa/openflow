@@ -346,7 +346,7 @@ function handle(signal, value) {
         Config.db.shutdown();
         Logger.otel.shutdown();
         Logger.License.shutdown()
-        Auth.shutdown();
+        // Auth.shutdown();
         if (housekeeping != null) {
             try {
                 clearInterval(housekeeping);

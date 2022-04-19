@@ -1,22 +1,27 @@
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
-import { suite, test } from '@testdeck/mocha';
+import { suite, test, timeout } from '@testdeck/mocha';
+import { Message } from "../OpenFlow/src/Messages/Message";
 import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { Auth } from '../OpenFlow/src/Auth';
+import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
 
-@suite class OpenFlowConfigTests {
+@suite class auth_test {
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
+        Config.disablelogging();
         Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Auth.shutdown();
     }
     @test async 'ValidateByPassword'() {
@@ -60,6 +65,17 @@ import { Auth } from '../OpenFlow/src/Auth';
         Config.dashboard_credential_cache_seconds = 0;
         Config.cleanacl_credential_cache_seconds = 0;
         Auth.cleanCache();
+    }
+    @test async 'test full login'() {
+        var q: any = new SigninMessage();
+        var msg = new Message();
+        msg.command = "signin";
+        q.username = "testuser"; q.password = "testuser";
+        msg.data = JSON.stringify(q);
+        await msg.Signin(null, null);
+        q = JSON.parse(msg.data);
+        assert.strictEqual(NoderedUtil.IsNullEmpty(q.user), false, "Sigin returned no data")
+        assert.strictEqual(q.user.username, "testuser", "Sigin did not return testuser user object")
 
     }
     @test async 'semaphore'() {

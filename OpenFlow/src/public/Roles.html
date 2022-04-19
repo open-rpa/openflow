@@ -20,7 +20,7 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td>{{model.name}}</td>
+      <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/Role/{{model._id}}">{{model.name}}</a></td>
       <td>
         <timesince ng-model="model._created" />
       </td>

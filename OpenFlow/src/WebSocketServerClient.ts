@@ -586,47 +586,12 @@ export class WebSocketServerClient {
     }
     async Delete(collection: string, id: any): Promise<void> {
         const q: DeleteOneMessage = new DeleteOneMessage();
-        q.collectionname = collection; q._id = id;
+        q.collectionname = collection; q.id = id;
         const msg: Message = new Message(); msg.command = "deleteone"; msg.data = JSON.stringify(q);
         await this.Send<DeleteOneMessage>(msg);
     }
-    // streams: clsstream[] = [];
-    // public streamcount(): number {
-    //     if (this.streams == null) return 0;
-    //     return this.streams.length;
-    // }
-    // async CloseStreams(): Promise<void> {
-    //     if (this.streams != null && this.streams.length > 0) {
-    //         for (let i = this.streams.length - 1; i >= 0; i--) {
-    //             try {
-    //                 if (this.streams[i] != null && this.streams[i].stream != null && !this.streams[i].stream.isClosed()) {
-    //                     await this.streams[i].stream.close();
-    //                 }
-    //                 this.streams.splice(i, 1);
-    //             } catch (error) {
-    //                 Logger.instanse.error("WebSocketclient::CloseStreams " + error + " " + this.id + "/" + this.clientagent);
-    //             }
-    //         }
-    //     }
-    // }
-    // async CloseStream(id: string): Promise<void> {
-    //     if (this.streams != null && this.streams.length > 0) {
-    //         for (let i = this.streams.length - 1; i >= 0; i--) {
-    //             try {
-    //                 if (this.streams[i] != null && this.streams[i].id == id) {
-    //                     if (!this.streams[i].stream.isClosed()) await this.streams[i].stream.close();
-    //                     this.streams.splice(i, 1);
-    //                 }
-    //             } catch (error) {
-    //                 Logger.instanse.error("WebSocketclient::CloseStream " + error + " " + this.id + "/" + this.clientagent);
-    //             }
-    //         }
-    //     }
-    //     WebSocketServer.update_mongodb_watch_count(this);
-    // }
     async UnWatch(id: string, jwt: string): Promise<void> {
         if (this.watches[id]) {
-            // this.CloseStream(this.watches[id].streamid);
             delete this.watches[id];
         }
     }
@@ -636,41 +601,13 @@ export class WebSocketServerClient {
         stream.id = NoderedUtil.GetUniqueIdentifier();
         stream.collectionname = collectionname;
         stream.aggregates = aggregates;
-        // stream.stream = await Config.db.watch(aggregates, collectionname, jwt);
-        // this.streams.push(stream);
         if (id == null) id = NoderedUtil.GetUniqueIdentifier();
 
-        // const options = { fullDocument: "updateLookup" };
-        // const me = this;
-        // try {
-        //     (stream.stream as any).on("error", err => {
-        //         console.error(err);
-        //     });
-        //     (stream.stream as any).on("change", next => {
-        //         try {
-        //             // Logger.instanse.info("Watch: " + JSON.stringify(next.documentKey));
-        //             // const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
-        //             // const q = new WatchEventMessage();
-        //             // q.id = id;
-        //             // q.result = next;
-        //             // if (q.result && q.result.fullDocument) {
-        //             //     q.result.fullDocument = Config.db.decryptentity(q.result.fullDocument);
-        //             // }
-        //             // msg.data = JSON.stringify(q);
-        //             // me._socketObject.send(msg.tojson());
-        //         } catch (error) {
-        //             Logger.instanse.error("WebSocketclient::Watch::changeListener " + error + " " + this.id + "/" + this.clientagent);
-        //         }
-        //     }, options);
             WebSocketServer.update_mongodb_watch_count(this);
             this.watches[id] = {
                 aggregates, collectionname //, streamid: stream.id
             } as ClientWatch;
-            return id;
-        // } catch (error) {
-        //     Logger.instanse.error("WebSocketclient::Watch " + error + " " + this.id + "/" + this.clientagent);
-        //     throw error;
-        // }
+        return id;
     }
 }
 export class ClientWatch {

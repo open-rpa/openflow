@@ -714,7 +714,7 @@ const semaphore = Semaphore(1);
 
 export class Account {
     constructor(public accountId: string, public user: TokenUser) {
-        Auth.AddUser(user, accountId, "oidc")
+        DBHelper.DeleteKey("user" + accountId);
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
         // var roles = [];
@@ -739,11 +739,12 @@ export class Account {
         return this.user;
     }
     static async findAccount(ctx: KoaContextWithOIDC, id): Promise<any> {
-        let acc = Auth.getUser(id, "oidc");
-        if (!acc) {
-            const user = await DBHelper.FindById(id, undefined, undefined);
-            await Auth.AddUser(user, id, "oidc")
-        }
+        let acc = await DBHelper.FindById(id, undefined, undefined);
+        // let acc = Auth.getUser(id, "oidc");
+        // if (!acc) {
+        //     const user = await DBHelper.FindById(id, undefined, undefined);
+        //     await Auth.AddUser(user, id, "oidc")
+        // }
         return new Account(id, TokenUser.From(acc));
     }
     static AddAccount(tuser: TokenUser, client: any) {
@@ -754,7 +755,7 @@ export class Account {
                 if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
             }
             (tuser as any).role = role;
-            Auth.AddUser(tuser, tuser._id, "oidc")
+            DBHelper.DeleteKey("user" + tuser._id);
             return new Account(tuser._id, TokenUser.From(tuser));
             // let acc = Auth.getUser(tuser._id, "oidc");
             // if (!acc) {

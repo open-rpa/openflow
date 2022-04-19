@@ -11,13 +11,16 @@ import { Auth } from '../OpenFlow/src/Auth';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 import { Crypt } from '../OpenFlow/src/Crypt';
 
-@suite class OpenFlowDatabaseConnectionTests {
+@suite class databaseConnection_test {
     private rootToken: string;
     private testUser: User;
     private userToken: string;
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
+        Config.disablelogging();
         Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
@@ -25,11 +28,11 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Auth.shutdown();
     }
     @test async 'dbconstructor'() {
-        var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
+        var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await db.connect(null);
         db.shutdown();
     }
@@ -66,38 +69,38 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         await Config.db.DropCollection(colname, this.rootToken, null);
     }
     @test async 'query'() {
-        var items = await Config.db.query<Base>({}, null, 5, 0, null, "users", this.rootToken, "", null, null);
+        var items = await Config.db.query<Base>({ collectionname: "users", query: {}, top: 5, jwt: this.rootToken }, null);
         assert.notDeepStrictEqual(items, null);
         assert.strictEqual(items.length, 5);
-        items = await Config.db.query<Base>({ "_type": "role" }, null, 5, 0, null, "users", this.rootToken, "", null, null);
+        items = await Config.db.query<Base>({ collectionname: "users", query: { "_type": "role" }, top: 5, jwt: this.rootToken }, null);
         for (var item of items) {
             assert.strictEqual(item._type, "role");
         }
         var ids = items.map(x => x._id);
-        items = await Config.db.query<Base>({ "_type": "role" }, null, 5, 5, null, "users", this.rootToken, "", null, null);
+        items = await Config.db.query<Base>({ collectionname: "users", query: { "_type": "role" }, top: 5, skip: 5, jwt: this.rootToken }, null);
         assert.strictEqual(items.length, 5);
         for (var item of items) {
             assert.strictEqual(ids.indexOf(item._id), -1, "Got id that should have been skipped!");
         }
-        items = await Config.db.query<Base>({ "_type": "role" }, { "_id": 1, "name": 1 }, 5, 5, null, "users", this.rootToken, "", null, null);
+        items = await Config.db.query<Base>({ collectionname: "users", query: { "_type": "role" }, projection: { "_id": 1, "name": 1 }, top: 5, skip: 5, jwt: this.rootToken }, null);
         for (var item of items) {
             assert.strictEqual(item._acl, undefined, "Projection failed for _acl");
             assert.strictEqual(item._type, undefined, "Projection failed for _type");
         }
 
-        items = await Config.db.query<Base>({ "_id": WellknownIds.admins }, null, 5, 0, null, "users", this.rootToken, "", null, null);
+        items = await Config.db.query<Base>({ collectionname: "users", query: { "_id": WellknownIds.admins }, top: 5, jwt: this.rootToken }, null);
         assert.strictEqual(items.length, 1, "Root cannot see admins role!");
 
-        items = await Config.db.query<Base>({ "_id": WellknownIds.admins }, null, 5, 0, null, "users", this.rootToken, this.testUser._id, null, null);
+        items = await Config.db.query<Base>({ collectionname: "users", query: { "_id": WellknownIds.admins }, top: 5, jwt: this.rootToken, queryas: this.testUser._id }, null);
         assert.strictEqual(items.length, 0, "demouser should not be able to see admins role!");
 
-        items = await Config.db.query<Base>({ "_id": WellknownIds.admins }, null, 5, 0, null, "users", this.userToken, "", null, null);
+        items = await Config.db.query<Base>({ collectionname: "users", query: { "_id": WellknownIds.admins }, top: 5, jwt: this.userToken }, null);
         assert.strictEqual(items.length, 0, "demouser should not be able to see admins role!");
 
-        items = await Config.db.query<Base>({ "_id": WellknownIds.admins }, null, 5, 0, null, "users", this.userToken, WellknownIds.root, null, null);
+        items = await Config.db.query<Base>({ collectionname: "users", query: { "_id": WellknownIds.admins }, top: 5, jwt: this.userToken, queryas: WellknownIds.root }, null);
         assert.strictEqual(items.length, 0, "demouser should not be able to see admins role!");
 
-        items = await Config.db.query<Base>({}, null, 5, 0, null, "files", this.rootToken, "", null, null);
+        items = await Config.db.query<Base>({ collectionname: "files", query: {}, top: 5, jwt: this.rootToken }, null);
         assert.strictEqual(items.length, 5, "Root did not find any files");
     }
     @timeout(5000)
@@ -118,24 +121,24 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         item = await Config.db._UpdateOne(null, item, "entities", 1, true, this.userToken, null);
         assert.strictEqual(item.name, "item version 2");
         assert.strictEqual(item._version, 2);
-        var testitem = await Config.db.GetDocumentVersion("entities", item._id, 1, this.userToken, null);
+        let testitem = await Config.db.GetDocumentVersion({ collectionname: "entities", id: item._id, version: 1, jwt: this.userToken }, null);
         assert.strictEqual(testitem.name, "item version 1");
         assert.strictEqual(testitem._version, 1);
-        testitem = await Config.db.GetDocumentVersion("entities", item._id, 0, this.userToken, null);
+        testitem = await Config.db.GetDocumentVersion({ collectionname: "entities", id: item._id, version: 0, jwt: this.userToken }, null);
         assert.strictEqual(testitem.name, "item version 0");
         assert.strictEqual(testitem._version, 0);
-        testitem = await Config.db.GetDocumentVersion("entities", item._id, 2, this.userToken, null);
+        testitem = await Config.db.GetDocumentVersion({ collectionname: "entities", id: item._id, version: 2, jwt: this.userToken }, null);
         assert.strictEqual(testitem.name, "item version 2");
         assert.strictEqual(testitem._version, 2);
     }
     @test async 'getbyid'() {
-        var user = await Config.db.getbyid(this.testUser._id, "users", this.userToken, null);
+        var user = await Config.db.getbyid(this.testUser._id, "users", this.userToken, true, null);
         assert.notDeepStrictEqual(user, null);
         assert.strictEqual(user._id, this.testUser._id);
-        user = await Config.db.getbyid(WellknownIds.root, "users", this.rootToken, null);
+        user = await Config.db.getbyid(WellknownIds.root, "users", this.rootToken, true, null);
         assert.notDeepStrictEqual(user, null);
         assert.strictEqual(user._id, WellknownIds.root);
-        user = await Config.db.getbyid(WellknownIds.root, "users", this.userToken, null);
+        user = await Config.db.getbyid(WellknownIds.root, "users", this.userToken, true, null);
         assert.strictEqual(user, null);
     }
     @test async 'aggregate'() {
@@ -163,11 +166,11 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.ok(!NoderedUtil.IsNullEmpty(userssize[0]._id));
         assert.ok((userssize[0] as any).size > 0);
     }
-    @timeout(15000)
+    @timeout(5000)
     @test async 'Many'() {
         await Config.db.DeleteMany({}, null, "entities", this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        var items = await Config.db.query({}, null, 100, 0, null, "entities", this.userToken, null, null, null);
+        var items = await Config.db.query({ query: {}, collectionname: "entities", top: 100, jwt: this.userToken }, null);
         assert.notDeepStrictEqual(items, null);
         assert.strictEqual(items.length, 0);
         items = [];
@@ -183,7 +186,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         await Config.db.DeleteMany({}, null, "entities", this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        var items = await Config.db.query({}, null, 100, 0, null, "entities", this.userToken, null, null, null);
+        var items = await Config.db.query({ query: {}, collectionname: "entities", top: 100, jwt: this.userToken }, null);
         assert.notDeepStrictEqual(items, null);
         assert.strictEqual(items.length, 0);
     }
@@ -198,7 +201,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         let updateDoc = { "$set": { "name": "test item updated" } };
         await Config.db._UpdateOne({ "_id": item._id }, updateDoc as any, "entities", 1, true, this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        item = await Config.db.getbyid(item._id, "entities", this.userToken, null);
+        item = await Config.db.getbyid(item._id, "entities", this.userToken, true, null);
 
         assert.notDeepStrictEqual(item, null);
         assert.strictEqual(item.name, "test item updated");
@@ -206,7 +209,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.strictEqual(item._version, 1);
         await Config.db.DeleteOne(item._id, "entities", this.userToken, null);
     }
-    @timeout(60000)
+    @timeout(5000)
     @test async 'indextest'() {
         Config.log_index_mngt = false;
         await Config.db.ensureindexes(null)
