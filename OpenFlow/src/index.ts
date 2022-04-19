@@ -228,19 +228,24 @@ async function initDatabase(parent: Span): Promise<boolean> {
         workitem_queue_admins.AddMember(admins);
         Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
+        if (Config.multi_tenant) {
+            Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.full_control]);
+        }
         await DBHelper.Save(workitem_queue_admins, jwt, span);
 
         const workitem_queue_users: Role = await DBHelper.EnsureRole(jwt, "workitem queue users", "62544134231309e2cd2052ce", span);
         Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
+        if (Config.multi_tenant) {
+            Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.full_control]);
+        }
         await DBHelper.Save(workitem_queue_users, jwt, span);
 
 
         if (Config.multi_tenant) {
             const global_customer_admins: Role = await DBHelper.EnsureRole(jwt, "global customer admins", "62545f1f1ddfe5ab4cc946d5", span);
             global_customer_admins.AddMember(admins);
-            Base.addRight(global_customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-            Base.removeRight(global_customer_admins, WellknownIds.admins, [Rights.delete]);
+            Base.removeRight(global_customer_admins, WellknownIds.admins, [Rights.full_control]);
             await DBHelper.Save(global_customer_admins, jwt, span);
 
         }
