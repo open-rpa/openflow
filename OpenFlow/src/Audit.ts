@@ -7,7 +7,7 @@ export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "w
 export type loginProvider = "saml" | "google" | "local" | "websocket";
 export type clientType = "browser" | "openrpa" | "nodered" | "webapp" | "openflow" | "powershell" | "mobileapp" | "samlverify" | "googleverify" | "aiotmobileapp" | "aiotwebapp";
 export class Audit {
-    public static LoginSuccess(user: TokenUser, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span) {
+    public static async LoginSuccess(user: TokenUser, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const log: Singin = new Singin();
         Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
         log.remoteip = remoteip;
@@ -19,10 +19,9 @@ export class Audit {
         log.username = user.username;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
-            .catch((error) => console.error("failed InsertOne in LoginSuccess: " + error));
+        await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent);
     }
-    public static ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span) {
+    public static async ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const log: Singin = new Singin();
         Base.addRight(log, user._id, user.name, [Rights.read]);
         Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -36,10 +35,9 @@ export class Audit {
         log.impostorusername = impostor.username;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
-            .catch((error) => console.error("failed InsertOne in ImpersonateSuccess: " + error));
+        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent);
     }
-    public static ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span) {
+    public static async ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const log: Singin = new Singin();
         Base.addRight(log, user._id, user.name, [Rights.read]);
         Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -52,10 +50,9 @@ export class Audit {
         log.impostorname = impostor.name;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
-            .catch((error) => console.error("failed InsertOne in ImpersonateFailed: " + error));
+        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent);
     }
-    public static LoginFailed(username: string, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span) {
+    public static async LoginFailed(username: string, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const log: Singin = new Singin();
         log.remoteip = remoteip;
         log.success = false;
@@ -64,10 +61,9 @@ export class Audit {
         log.username = username;
         log.clientagent = clientagent;
         log.clientversion = clientversion;
-        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
-            .catch((error) => console.error("failed InsertOne in LoginFailed: " + error));
+        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent);
     }
-    public static NoderedAction(user: TokenUser, success: boolean, name: string, type: string, image: string, instancename: string, parent: Span) {
+    public static async NoderedAction(user: TokenUser, success: boolean, name: string, type: string, image: string, instancename: string, parent: Span): Promise<void> {
         const log: Nodered = new Nodered();
         Base.addRight(log, user._id, user.name, [Rights.read]);
         log.success = success;
@@ -85,8 +81,7 @@ export class Audit {
 
         }
         if (!NoderedUtil.IsNullEmpty(instancename)) log.name = instancename;
-        Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent)
-            .catch((error) => console.error("failed InsertOne in LoginFailed: " + error));
+        await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), parent);
     }
 }
 export class Singin extends Base {

@@ -1,7 +1,7 @@
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
-import { suite, test } from '@testdeck/mocha';
+import { suite, test, timeout } from '@testdeck/mocha';
 import { Message } from "../OpenFlow/src/Messages/Message";
 import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
@@ -11,7 +11,9 @@ import { Auth } from '../OpenFlow/src/Auth';
 import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
 
 @suite class auth_test {
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
@@ -19,7 +21,7 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Auth.shutdown();
     }
     @test async 'ValidateByPassword'() {

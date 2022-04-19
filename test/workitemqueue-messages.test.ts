@@ -34,8 +34,9 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     }
     @timeout(10000)
     async after() {
+        Config.workitem_queue_monitoring_enabled = false;
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Logger.License.shutdown();
         Auth.shutdown();
         // wtf.dump();

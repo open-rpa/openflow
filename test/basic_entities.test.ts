@@ -10,8 +10,9 @@ import { Logger } from '../OpenFlow/src/Logger';
 
 @suite class basic_entities {
     private socket: WebSocketClient = null;
-    @timeout(500000)
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, false);
         if (!this.socket) this.socket = new WebSocketClient(null, "wss://pc.openiap.io", true);

@@ -1,7 +1,7 @@
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
-import { suite, test } from '@testdeck/mocha';
+import { suite, test, timeout } from '@testdeck/mocha';
 import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
@@ -12,7 +12,9 @@ import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 @suite class crypt_test {
     private testUser: User;
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
@@ -21,9 +23,10 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Auth.shutdown();
     }
+    @timeout(10000)
     @test async 'ValidatePassword'() {
         await Crypt.SetPassword(this.testUser, "randompassword", null);
         var result = await Crypt.ValidatePassword(this.testUser, "randompassword", null);

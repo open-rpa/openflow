@@ -2,7 +2,7 @@
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
-import { suite, test } from '@testdeck/mocha';
+import { suite, test, timeout } from '@testdeck/mocha';
 import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
@@ -16,7 +16,9 @@ import { Auth } from '../OpenFlow/src/Auth';
 @suite class audit_test {
     private rootToken: string;
     private testUser: User;
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, false);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
@@ -26,20 +28,19 @@ import { Auth } from '../OpenFlow/src/Auth';
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Auth.shutdown();
-        Config.log_amqp = true;
         // wtf.dump()
     }
     @test async 'reload'() {
         const tuser: TokenUser = TokenUser.From(this.testUser);
         const troot: TokenUser = TokenUser.From(Crypt.rootUser());
-        Audit.LoginSuccess(tuser, "local", "local", "127.0.0.1", "openflow", Config.version, null);
-        Audit.LoginFailed("testuser", "local", "local", "127.0.0.1", "openflow", Config.version, null);
-        Audit.ImpersonateSuccess(tuser, troot, "openflow", Config.version, null);
-        Audit.ImpersonateFailed(tuser, troot, "openflow", Config.version, null);
-        Audit.NoderedAction(tuser, true, "testuser", "createdeployment", "openiap/nodered", "testuser", null);
-        Audit.NoderedAction(tuser, true, "testuser", "deletedeployment", "openiap/nodered:latest", "testuser", null);
+        await Audit.LoginSuccess(tuser, "local", "local", "127.0.0.1", "openflow", Config.version, null);
+        await Audit.LoginFailed("testuser", "local", "local", "127.0.0.1", "openflow", Config.version, null);
+        await Audit.ImpersonateSuccess(tuser, troot, "openflow", Config.version, null);
+        await Audit.ImpersonateFailed(tuser, troot, "openflow", Config.version, null);
+        await Audit.NoderedAction(tuser, true, "testuser", "createdeployment", "openiap/nodered", "testuser", null);
+        await Audit.NoderedAction(tuser, true, "testuser", "deletedeployment", "openiap/nodered:latest", "testuser", null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
     }
 

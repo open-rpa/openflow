@@ -15,7 +15,9 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     private rootToken: string;
     private testUser: User;
     private userToken: string;
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
@@ -26,7 +28,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     }
     async after() {
         await Config.db.shutdown();
-        Logger.otel.shutdown();
+        await Logger.otel.shutdown();
         Auth.shutdown();
     }
     @test async 'dbconstructor'() {

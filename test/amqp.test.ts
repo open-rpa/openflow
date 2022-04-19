@@ -18,8 +18,9 @@ import { Auth } from '../OpenFlow/src/Auth';
     private rootToken: string;
     private testUser: User;
     private amqp: amqpwrapper;
-    @timeout(50000)
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, false);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
@@ -35,9 +36,8 @@ import { Auth } from '../OpenFlow/src/Auth';
     async after() {
         this.amqp.shutdown();
         await Config.db.shutdown();
-        Logger.otel.shutdown();
-        Auth.shutdown();
-        Config.log_amqp = true;
+        await Logger.otel.shutdown();
+        // Auth.shutdown();
     }
     // @test async 'connecterror'() {
     //     // var amqp = new amqpwrapper('bogus://url');

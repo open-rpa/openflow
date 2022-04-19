@@ -10,8 +10,9 @@ import { Logger } from '../OpenFlow/src/Logger';
 
 @suite class workitemqueue {
     private socket: WebSocketClient = null;
-    @timeout(5000)
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, false);
         if (!this.socket) this.socket = new WebSocketClient(null, "wss://pc.openiap.io", true);
@@ -44,13 +45,13 @@ import { Logger } from '../OpenFlow/src/Logger';
         assert.notStrictEqual(item, null, "Failed adding test work item");
         assert.notStrictEqual(item, undefined, "Failed adding test work item");
         assert.strictEqual(item.name, "Test Work Item", "Failed matching name on new work item");
-        assert.strictEqual(item.state, "new");
+        assert.strictEqual(item.state, "new", "New Workitem is not in status new");
 
         item = await NoderedUtil.PopWorkitem({ wiq: q.name });
         assert.notStrictEqual(item, null, "Failed getting test work item");
         assert.notStrictEqual(item, undefined, "Failed getting test work item");
         assert.strictEqual(item.name, "Test Work Item", "Failed matching name on work item");
-        assert.strictEqual(item.state, "processing");
+        assert.strictEqual(item.state, "processing", "Updated Workitem is not in state processing");
 
         item = await NoderedUtil.UpdateWorkitem({ _id: item._id });
 
@@ -58,7 +59,7 @@ import { Logger } from '../OpenFlow/src/Logger';
         assert.strictEqual(testitem, undefined, "Failed queue test, can still pop items while processing the added item!");
 
         item = await NoderedUtil.UpdateWorkitem({ _id: item._id, state: "retry" });
-        assert.strictEqual(item.state, "new");
+        assert.strictEqual(item.state, "new", "Workitem sent for retry is not in status new");
 
         item = await NoderedUtil.PopWorkitem({ wiq: q.name });
         assert.strictEqual(item.state, "processing");

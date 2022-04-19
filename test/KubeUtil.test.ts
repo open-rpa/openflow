@@ -10,7 +10,9 @@ import { KubeUtil } from '../OpenFlow/src/KubeUtil';
 import { Auth } from '../OpenFlow/src/Auth';
 
 @suite class kubeutil_test {
+    @timeout(10000)
     async before() {
+        Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
@@ -18,6 +20,7 @@ import { Auth } from '../OpenFlow/src/Auth';
     }
     async after() {
         await Config.db.shutdown();
+        await Logger.otel.shutdown();
         Auth.shutdown();
     }
     @test async 'GetStatefulSet'() {
