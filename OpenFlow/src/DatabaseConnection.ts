@@ -312,10 +312,27 @@ export class DatabaseConnection extends events.EventEmitter {
                         _type = item._type;
 
                         if (collectionname == "mq") {
-                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            await DBHelper.memoryCache.del("mq" + item._id);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            await DBHelper.memoryCache.del("users" + item._id);
+                            if (_type == "role") {
+                                var role: Role = item as Role;
+                                await DBHelper.memoryCache.del("rolename_" + item.name);
+                                // this.WellknownIdsArray.indexOf(item._id) == -1
+                                if (!NoderedUtil.IsNullUndefinded(role.members) && role.members.length > 0 && item._id != WellknownIds.users) {
+                                    for (let i = 0; i < role.members.length; i++) {
+                                        let member = role.members[i];
+                                        await DBHelper.memoryCache.del("users" + member._id);
+                                        await DBHelper.memoryCache.del("username_" + member.name);
+                                        await DBHelper.memoryCache.del("rolename_" + member.name);
+                                    }
+                                }
+                            } else {
+                                await DBHelper.memoryCache.del("username_" + item.name);
+                            }
                         }
                         if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
                             DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);

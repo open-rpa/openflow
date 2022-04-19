@@ -7,7 +7,8 @@ import { Auth } from "./Auth";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { BaseObserver } from "@opentelemetry/api-metrics"
 import { LoginProvider } from "./LoginProvider";
-var cacheManager = require('cache-manager');
+import * as cacheManager from "cache-manager";
+// var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 
 export class DBHelper {
@@ -85,7 +86,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("user" + _id, () => {
+            let item = await this.memoryCache.wrap("users" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "users", jwt, true, span);;
@@ -130,7 +131,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("queue" + _id, () => {
+            let item = await this.memoryCache.wrap("mq" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
@@ -149,7 +150,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(name)) return null;
-            let item = await this.memoryCache.wrap("queue" + name, () => {
+            let item = await this.memoryCache.wrap("mq" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + name);
                 return Config.db.getbyname<User>(name, "mq", jwt, true, span);
@@ -168,7 +169,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("exchange" + _id, () => {
+            let item = await this.memoryCache.wrap("mq" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
@@ -187,7 +188,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(name)) return null;
-            let item = await this.memoryCache.wrap("exchange" + name, () => {
+            let item = await this.memoryCache.wrap("mq" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + name);
                 return Config.db.getbyname<User>(name, "mq", jwt, true, span);
@@ -206,7 +207,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("role" + _id, () => {
+            let item = await this.memoryCache.wrap("users" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add role to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "users", jwt, true, span);
@@ -225,7 +226,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
             if (NoderedUtil.IsNullEmpty(username)) return null;
-            let item = await this.memoryCache.wrap("username" + username, () => {
+            let item = await this.memoryCache.wrap("username_" + username, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + username);
                 return Config.db.getbyusername<User>(username, jwt, true, span);
@@ -264,7 +265,7 @@ export class DBHelper {
             if (NoderedUtil.IsNullUndefinded(user)) return null;
             if (!Config.decorate_roles_fetching_all_roles) {
                 if (!user.roles) user.roles = [];
-                const results = await this.memoryCache.wrap("userroles" + user._id, () => {
+                const results = await this.memoryCache.wrap("userroles_" + user._id, () => {
                     if (Config.log_cache) Logger.instanse.debug("Add userroles to cache : " + user.name);
                     const pipe: any = [{ "$match": { "_id": user._id } },
                     {
@@ -391,7 +392,7 @@ export class DBHelper {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
-            let item = await this.memoryCache.wrap("rolename" + name, async () => {
+            let item = await this.memoryCache.wrap("rolename_" + name, async () => {
                 const items: Role[] = await Config.db.query<Role>({ query: { name: name, "_type": "role" }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, parent);
                 if (items === null || items === undefined || items.length === 0) { return null; }
                 if (Config.log_cache) Logger.instanse.debug("Add role to cache : " + name);
