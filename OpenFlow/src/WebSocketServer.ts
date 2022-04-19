@@ -51,7 +51,7 @@ export class WebSocketServer {
             this._socketserver.on("error", (error: Error): void => {
                 Logger.instanse.error(error);
             });
-            if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
+            if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
                     description: 'Total number of online websocket clients'
                 }) // "agent", "version"

@@ -49,7 +49,7 @@ export class DBHelper {
     }
     public static item_cache: BaseObserver = null;
     public static ensureotel() {
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && NoderedUtil.IsNullUndefinded(DBHelper.item_cache)) {
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter) && NoderedUtil.IsNullUndefinded(DBHelper.item_cache)) {
             DBHelper.item_cache = Logger.otel.meter.createValueObserver("openflow_item_cache_count", {
                 description: 'Total number of cached items'
             }, async (res) => {

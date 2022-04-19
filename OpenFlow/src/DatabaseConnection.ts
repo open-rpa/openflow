@@ -84,7 +84,7 @@ export class DatabaseConnection extends events.EventEmitter {
         this.mongodburl = mongodburl;
         if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createValueRecorder('openflow_mongodb_query_seconds', {
                 description: 'Duration for mongodb queries',
                 boundaries: Logger.otel.default_boundaries
