@@ -1417,8 +1417,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     // TODO: Check user has permission to this customer
                     const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
-                    custusers.AddMember(item);
-                    await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                    if (!NoderedUtil.IsNullUndefinded(custusers)) {
+                        custusers.AddMember(item);
+                        await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                    } else {
+                        Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Failed finding customer users " + customer.users + " role while updating item " + item._id);
+                    }
                 }
             }
             if (collectionname === "users" && item._type === "role") {
@@ -1781,9 +1785,13 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
                         const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, true, span);
-                        Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
-                        if (q.item._id == customer.admins || q.item._id == customer.users) {
-                            Base.removeRight(q.item, custadmins._id, [Rights.delete]);
+                        if (!NoderedUtil.IsNullEmpty(custadmins)) {
+                            Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
+                            if (q.item._id == customer.admins || q.item._id == customer.users) {
+                                Base.removeRight(q.item, custadmins._id, [Rights.delete]);
+                            }
+                        } else {
+                            Logger.instanse.warn("[" + user.username + "][" + q.collectionname + "] Failed locating customer admins role " + customer.admins + " while updating " + q.item._id + " in database");
                         }
                         (q.item as any).company = customer.name;
                         q.item = this.ensureResource(q.item, q.collectionname);
