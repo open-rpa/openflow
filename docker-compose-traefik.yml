@@ -37,6 +37,20 @@ services:
     image: "rabbitmq:3-management"
     container_name: "rabbitmq"
     restart: always
+  # rediscommander:
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.rediscommander.rule=Host(`redis.localhost.openiap.io`)"
+  #     - "traefik.http.routers.rediscommander.entrypoints=web"
+  #     - "traefik.http.services.rediscommander.loadbalancer.server.port=8081"
+  #   image: rediscommander/redis-commander:latest
+  #   restart: always
+  #   depends_on:
+  #     - redis
+  #   environment:
+  #   - REDIS_HOST=redis
+  #   - REDIS_PORT=6379
+  #   - REDIS_PASSWORD=pass!word2
   # redis:
   #   image: redis
   #   command: >
