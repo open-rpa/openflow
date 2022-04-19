@@ -84,7 +84,7 @@ export class DatabaseConnection extends events.EventEmitter {
         this.mongodburl = mongodburl;
         if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createValueRecorder('openflow_mongodb_query_seconds', {
                 description: 'Duration for mongodb queries',
                 boundaries: Logger.otel.default_boundaries
@@ -312,10 +312,27 @@ export class DatabaseConnection extends events.EventEmitter {
                         _type = item._type;
 
                         if (collectionname == "mq") {
-                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            await DBHelper.memoryCache.del("mq" + item._id);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            await DBHelper.memoryCache.del("users" + item._id);
+                            if (_type == "role") {
+                                var role: Role = item as Role;
+                                await DBHelper.memoryCache.del("rolename_" + item.name);
+                                // this.WellknownIdsArray.indexOf(item._id) == -1
+                                if (!NoderedUtil.IsNullUndefinded(role.members) && role.members.length > 0 && item._id != WellknownIds.users) {
+                                    for (let i = 0; i < role.members.length; i++) {
+                                        let member = role.members[i];
+                                        await DBHelper.memoryCache.del("users" + member._id);
+                                        await DBHelper.memoryCache.del("username_" + member.name);
+                                        await DBHelper.memoryCache.del("rolename_" + member.name);
+                                    }
+                                }
+                            } else {
+                                await DBHelper.memoryCache.del("username_" + item.name);
+                            }
                         }
                         if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
                             DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
@@ -1417,8 +1434,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     // TODO: Check user has permission to this customer
                     const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
-                    custusers.AddMember(item);
-                    await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                    if (!NoderedUtil.IsNullUndefinded(custusers)) {
+                        custusers.AddMember(item);
+                        await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                    } else {
+                        Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Failed finding customer users " + customer.users + " role while updating item " + item._id);
+                    }
                 }
             }
             if (collectionname === "users" && item._type === "role") {
@@ -1781,9 +1802,13 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
                         const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, true, span);
-                        Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
-                        if (q.item._id == customer.admins || q.item._id == customer.users) {
-                            Base.removeRight(q.item, custadmins._id, [Rights.delete]);
+                        if (!NoderedUtil.IsNullEmpty(custadmins)) {
+                            Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
+                            if (q.item._id == customer.admins || q.item._id == customer.users) {
+                                Base.removeRight(q.item, custadmins._id, [Rights.delete]);
+                            }
+                        } else {
+                            Logger.instanse.warn("[" + user.username + "][" + q.collectionname + "] Failed locating customer admins role " + customer.admins + " while updating " + q.item._id + " in database");
                         }
                         (q.item as any).company = customer.name;
                         q.item = this.ensureResource(q.item, q.collectionname);

@@ -7127,7 +7127,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                 this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, top: 500 });
                 this.workflows.forEach((e: any) => { e.display = e.projectandname });
                 this.workflows.unshift({ "_id": "", "name": "", "display": "(no workflow)" } as any);
-                this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role" }] }, projection: { "name": 1 }, top: 500 });
+                this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, projection: { "name": 1 }, top: 500 });
                 this.users.forEach((e: any) => { e.display = e.name });
                 this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
                 this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, projection: { "name": 1 }, top: 500 });

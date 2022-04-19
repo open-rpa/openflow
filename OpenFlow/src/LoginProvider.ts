@@ -214,69 +214,31 @@ export class LoginProvider {
                     }
                 }
                 const authorization: string = req.headers.authorization;
-                if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
-                    (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
-                    const token = authorization.split(" ")[1];
-                    let user: User = await LoginProvider.validateToken(token, span);
-                    // let user: User = Auth.getUser(token, "dashboard");
-                    // if (user == null) {
-                    //     try {
-                    //         user = await LoginProvider.validateToken(token, span);
-                    //     } catch (error) {
-                    //     }
-                    // }
-                    if (user == null) {
-                        try {
-                            user = await DBHelper.FindById(user._id, undefined, span);
-                        } catch (error) {
-                        }
-                    }
-                    if (user != null) {
-                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
-                        if (allowed.length > 0) {
-                            // await Auth.AddUser(user, token, "dashboard");
-                            return res.send({
-                                status: "success",
-                                display_status: "Success",
-                                message: "Connection OK"
-                            });
-                        } else {
-                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
-                        }
-                    }
+
+                if (NoderedUtil.IsNullEmpty(authorization)) {
                     res.statusCode = 401;
+                    res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
                     res.end('Unauthorized');
                     return;
                 }
 
-                // parse login and password from headers
-                const b64auth = (authorization || '').split(' ')[1] || ''
-                // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
-                const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
-                if (login && password) {
-                    span?.setAttribute("username", login);
-                    let user: User = await Auth.ValidateByPassword(login, password, span);
-                    // let user: User = Auth.getUser(b64auth, "dashboard");
-                    // if (user == null) user = await Auth.ValidateByPassword(login, password, span);
-                    if (user != null) {
-                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
-                        if (allowed.length > 0) {
-                            // Auth.AddUser(user, b64auth, "dashboard");
-                            return res.send({
-                                status: "success",
-                                display_status: "Success",
-                                message: "Connection OK"
-                            });
-                        } else {
-                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
-                        }
+                var user: User = await DBHelper.FindByAuthorization(authorization, null, span);
+                if (user != null) {
+                    const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                    if (allowed.length > 0) {
+                        return res.send({
+                            status: "success",
+                            display_status: "Success",
+                            message: "Connection OK"
+                        });
+                    } else {
+                        console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
                     }
-                } else {
-                    Logger.instanse.warn("dashboardauth: Unauthorized, no username/password for " + req.url);
                 }
                 res.statusCode = 401;
                 res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
                 res.end('Unauthorized');
+                return;
             } catch (error) {
                 span?.recordException(error);
                 throw error;
