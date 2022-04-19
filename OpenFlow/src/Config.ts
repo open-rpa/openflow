@@ -102,12 +102,6 @@ export class Config {
         Config.cache_store_redis_port = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
         Config.cache_store_redis_password = Config.getEnv("cache_store_redis_password", "");
 
-        Config.api_credential_cache_seconds = parseInt(Config.getEnv("api_credential_cache_seconds", "900"));
-        Config.dashboard_credential_cache_seconds = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "900"));
-        Config.grafana_credential_cache_seconds = parseInt(Config.getEnv("grafana_credential_cache_seconds", "900"));
-        Config.cleanacl_credential_cache_seconds = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
-        Config.mq_credential_cache_seconds = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
-
         Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "28800"));
         Config.oidc_authorization_code_ttl = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800"));
         Config.oidc_client_credentials_ttl = parseInt(Config.getEnv("oidc_client_credentials_ttl", "28800"));
@@ -288,12 +282,6 @@ export class Config {
     public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
     public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
 
-    public static api_credential_cache_seconds: number = parseInt(Config.getEnv("api_credential_cache_seconds", "900"));
-    public static dashboard_credential_cache_seconds: number = parseInt(Config.getEnv("dashboard_credential_cache_seconds", "900"));
-    public static grafana_credential_cache_seconds: number = parseInt(Config.getEnv("grafana_credential_cache_seconds", "900"));
-    public static cleanacl_credential_cache_seconds: number = parseInt(Config.getEnv("cleanacl_credential_cache_seconds", "900"));
-    public static mq_credential_cache_seconds: number = parseInt(Config.getEnv("mq_credential_cache_seconds", "900"));
-
     public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "28800")); // 8 hours
     public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "28800")); // 8 hours
     public static oidc_client_credentials_ttl: number = parseInt(Config.getEnv("oidc_client_credentials_ttl", "28800")); // 8 hours
@@ -318,7 +306,6 @@ export class Config {
 
     public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "20000"));
     public static decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
-    public static roles_cached_in_seconds: number = parseInt(Config.getEnv("roles_cached_in_seconds", "300"));
     public static max_recursive_group_depth: number = parseInt(Config.getEnv("max_recursive_group_depth", "2"));
     public static update_acl_based_on_groups: boolean = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
