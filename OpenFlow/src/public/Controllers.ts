@@ -4413,8 +4413,6 @@ export class NoderedCtrl {
             if (this.instances != null && this.instances.length > 0) {
                 this.instance = this.instances[0];
             }
-
-            console.debug("GetNoderedInstance:");
             if (this.instance !== null && this.instance !== undefined) {
                 if (this.instance.metadata.deletionTimestamp !== undefined) {
                     this.instancestatus = "pending deletion (" + this.instance.status.phase + ")";

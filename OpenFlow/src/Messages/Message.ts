@@ -11,7 +11,7 @@ import { Audit, tokenType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { KubeUtil } from "../KubeUtil";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectID, Cursor } from "mongodb";
+import { GridFSBucket, ObjectID, Cursor, Db } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage } from "@openiap/openflow-api";
@@ -787,18 +787,19 @@ export class Message {
             }
 
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
-                let mq = Auth.getUser(msg.exchangename, "mqe");
-                if (mq == null) {
-                    const arr = await Config.db.query(
-                        {
-                            query: { "name": msg.exchangename, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1,
-                            collectionname: "mq", jwt: rootjwt
-                        }, parent);
-                    if (arr.length > 0) {
-                        await Auth.AddUser(arr[0] as any, msg.exchangename, "mqe");
-                        mq = arr[0] as any;
-                    }
-                }
+                let mq = await DBHelper.FindExchangeByName(msg.exchangename, rootjwt, parent);
+                // let mq = Auth.getUser(msg.exchangename, "mqe");
+                // if (mq == null) {
+                //     const arr = await Config.db.query(
+                //         {
+                //             query: { "name": msg.exchangename, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1,
+                //             collectionname: "mq", jwt: rootjwt
+                //         }, parent);
+                //     if (arr.length > 0) {
+                //         await Auth.AddUser(arr[0] as any, msg.exchangename, "mqe");
+                //         mq = arr[0] as any;
+                //     }
+                // }
                 if (mq != null) {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
@@ -813,7 +814,7 @@ export class Message {
                     const q = new Base(); q._type = "exchange";
                     q.name = msg.exchangename;
                     const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
-                    await Auth.AddUser(res as any, msg.exchangename, "mqe");
+                    DBHelper.DeleteKey("exchange" + msg.exchangename);
                 }
 
             }
@@ -905,15 +906,16 @@ export class Message {
                     }
                 }
                 if (!allowed && msg.queuename.length == 24) {
+                    let mq = await DBHelper.FindById(msg.queuename, rootjwt, parent);
                     // Do i have permission to listen on a queue with this id ?
-                    let mq = Auth.getUser(msg.queuename, "mq");
-                    if (mq == null) {
-                        const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, parent);
-                        if (arr.length > 0) {
-                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                            mq = arr[0] as any;
-                        }
-                    }
+                    // let mq = Auth.getUser(msg.queuename, "mq");
+                    // if (mq == null) {
+                    //     const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, parent);
+                    //     if (arr.length > 0) {
+                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                    //         mq = arr[0] as any;
+                    //     }
+                    // }
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
@@ -928,14 +930,15 @@ export class Message {
                     }
                 }
                 if (!allowed) {
-                    let mq = Auth.getUser(msg.queuename, "mq");
-                    if (mq == null) {
-                        const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, parent);
-                        if (arr.length > 0) {
-                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                            mq = arr[0] as any;
-                        }
-                    }
+                    let mq = await DBHelper.FindQueueByName(msg.queuename, rootjwt, parent);
+                    // let mq = Auth.getUser(msg.queuename, "mq");
+                    // if (mq == null) {
+                    //     const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, parent);
+                    //     if (arr.length > 0) {
+                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                    //         mq = arr[0] as any;
+                    //     }
+                    // }
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
@@ -953,7 +956,6 @@ export class Message {
                     const q = new Base(); q._type = "queue";
                     q.name = msg.queuename;
                     const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
-                    await Auth.AddUser(res as any, msg.queuename, "mq");
                 }
             }
             msg.queuename = await cli.CreateConsumer(msg.queuename, parent);
@@ -1020,15 +1022,16 @@ export class Message {
                     if (isrole.length > 0) allowed = true;
                 }
                 if (!allowed && msg.queuename.length == 24) {
+                    let mq = await DBHelper.FindById(msg.queuename, rootjwt, parent);
                     // Do i have permission to send to a queue with this id ?
-                    let mq = Auth.getUser(msg.queuename, "mq");
-                    if (mq == null) {
-                        const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, span);
-                        if (arr.length > 0) {
-                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                            mq = arr[0] as any;
-                        }
-                    }
+                    // let mq = Auth.getUser(msg.queuename, "mq");
+                    // if (mq == null) {
+                    //     const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, span);
+                    //     if (arr.length > 0) {
+                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                    //         mq = arr[0] as any;
+                    //     }
+                    // }
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
@@ -1043,14 +1046,15 @@ export class Message {
                     }
                 }
                 if (!allowed) {
-                    let mq = Auth.getUser(msg.queuename, "mq");
-                    if (mq == null) {
-                        const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
-                        if (arr.length > 0) {
-                            await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                            mq = arr[0] as any;
-                        }
-                    }
+                    let mq = await DBHelper.FindQueueByName(msg.queuename, rootjwt, parent);
+                    // let mq = Auth.getUser(msg.queuename, "mq");
+                    // if (mq == null) {
+                    //     const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
+                    //     if (arr.length > 0) {
+                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
+                    //         mq = arr[0] as any;
+                    //     }
+                    // }
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
@@ -1078,14 +1082,15 @@ export class Message {
                     if (isrole.length > 0) allowed = true;
                 }
                 if (!allowed) {
-                    let mq = Auth.getUser(msg.exchange, "mqe");
-                    if (mq == null) {
-                        const arr = await Config.db.query({ query: { "name": msg.exchange, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
-                        if (arr.length > 0) {
-                            await Auth.AddUser(arr[0] as any, msg.exchange, "mqe");
-                            mq = arr[0] as any;
-                        }
-                    }
+                    let mq = await DBHelper.FindExchangeByName(msg.exchange, rootjwt, parent);
+                    // let mq = Auth.getUser(msg.exchange, "mqe");
+                    // if (mq == null) {
+                    //     const arr = await Config.db.query({ query: { "name": msg.exchange, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
+                    //     if (arr.length > 0) {
+                    //         await Auth.AddUser(arr[0] as any, msg.exchange, "mqe");
+                    //         mq = arr[0] as any;
+                    //     }
+                    // }
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
@@ -1652,18 +1657,18 @@ export class Message {
                 if (!(cli.user.validated == true) && Config.validate_user_form != "") {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
                         Logger.instanse.error(tuser.username + " failed logging in, not validated");
-                        Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                        await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                         tuser = null;
                     }
                 }
             }
             if (tuser != null && cli.user != null && cli.user.disabled) {
                 Logger.instanse.error(tuser.username + " failed logging in, user is disabled");
-                Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
             } else if (tuser != null) {
                 Logger.instanse.info(tuser.username + " successfully signed in");
-                Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 DBHelper.UpdateHeartbeat(cli);
             }
         } catch (error) {
@@ -1690,10 +1695,20 @@ export class Message {
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                     type = "jwtsignin";
                     tuser = Crypt.verityToken(msg.jwt);
+                    if (tuser != null) {
+                        if (NoderedUtil.IsNullEmpty(tuser._id)) {
+                            user = await DBHelper.FindByUsername(tuser.username, null, span);
+                        } else {
+                            user = await DBHelper.FindById(tuser._id, msg.jwt, span);
+                        }
+                    }
+                    if (tuser == null || user == null) {
+                        throw new Error("Failed resolving token ");
+                    }
                     if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
                         impostor = tuser.impostor;
                     }
-                    user = await DBHelper.FindByUsernameOrId(tuser.username, tuser._id, span);
+
                     if (user !== null && user !== undefined) {
                         // refresh, for roles and stuff
                         tuser = TokenUser.From(user);
@@ -1762,11 +1777,11 @@ export class Message {
                 if (cli) cli.clientversion = msg.clientversion;
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
-                    Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     if (Config.log_errors) Logger.instanse.error(tuser.username + " failed logging in using " + type);
                 } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
-                    Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     if (Config.log_errors) Logger.instanse.error("Disabled user " + tuser.username + " failed logging in using " + type);
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
@@ -1783,7 +1798,7 @@ export class Message {
                         impostor = undefined;
                     }
                     if (Config.log_errors) Logger.instanse.info(tuser.username + " successfully signed in");
-                    Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     const userid: string = user._id;
                     if (msg.longtoken) {
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -1813,7 +1828,7 @@ export class Message {
                                 imp = TokenUser.From(impostors[0]);
                             }
                             if (Config.log_errors) Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
-                            Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
+                            await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
                         user.selectedcustomerid = null;
@@ -1835,7 +1850,7 @@ export class Message {
                                 imp = TokenUser.From(impostors[0]);
                             }
 
-                            Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
+                            await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                             if (Config.log_errors) Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                         }
@@ -1851,7 +1866,7 @@ export class Message {
                         }
                         msg.user = tuser;
                         if (Config.log_errors) Logger.instanse.info(tuser.username + " successfully impersonated");
-                        Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
+                        await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
                         UpdateDoc.$set["firebasetoken"] = msg.firebasetoken;
@@ -1916,7 +1931,7 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
                 if (!(msg.user.validated == true) && Config.validate_user_form != "") {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
-                        Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                        await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                         if (Config.log_errors) Logger.instanse.error(msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
@@ -2461,14 +2476,14 @@ export class Message {
                 }
                 try {
                     await KubeUtil.instance().AppsV1Api.createNamespacedDeployment(namespace, (_deployment as any));
-                    Audit.NoderedAction(TokenUser.From(tuser), true, name, "createdeployment", nodered_image, null, span);
+                    await Audit.NoderedAction(TokenUser.From(tuser), true, name, "createdeployment", nodered_image, null, span);
                 } catch (error) {
                     if (error.response && error.response.body && error.response.body.message) {
                         Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
                     await handleError(null, error);
-                    Audit.NoderedAction(TokenUser.From(tuser), false, name, "createdeployment", nodered_image, null, span);
+                    await Audit.NoderedAction(TokenUser.From(tuser), false, name, "createdeployment", nodered_image, null, span);
                     throw error;
                 }
             } else {
@@ -2489,7 +2504,7 @@ export class Message {
                 }
                 try {
                     await KubeUtil.instance().AppsV1Api.replaceNamespacedDeployment(name, namespace, (deployment as any));
-                    Audit.NoderedAction(TokenUser.From(tuser), true, name, "replacedeployment", image, null, span);
+                    await Audit.NoderedAction(TokenUser.From(tuser), true, name, "replacedeployment", image, null, span);
                 } catch (error) {
                     Logger.instanse.error("[" + _tuser.username + "] failed updating noeredinstance");
                     Logger.instanse.error("[" + _tuser.username + "] " + JSON.stringify(error));
@@ -2497,7 +2512,7 @@ export class Message {
                         Logger.instanse.error(new Error(error.response.body.message));
                         throw new Error(error.response.body.message);
                     }
-                    Audit.NoderedAction(TokenUser.From(tuser), false, name, "replacedeployment", image, null, span);
+                    await Audit.NoderedAction(TokenUser.From(tuser), false, name, "replacedeployment", image, null, span);
                     throw new Error("failed updating noeredinstance");
                 }
             }
@@ -2639,9 +2654,9 @@ export class Message {
                 }
                 try {
                     await KubeUtil.instance().AppsV1Api.deleteNamespacedDeployment(name, namespace);
-                    Audit.NoderedAction(user, true, name, "deletedeployment", image, null, span);
+                    await Audit.NoderedAction(user, true, name, "deletedeployment", image, null, span);
                 } catch (error) {
-                    Audit.NoderedAction(user, false, name, "deletedeployment", image, null, span);
+                    await Audit.NoderedAction(user, false, name, "deletedeployment", image, null, span);
                     throw error;
                 }
             } else {
@@ -2806,16 +2821,16 @@ export class Message {
                         }
                         try {
                             await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                            Audit.NoderedAction(TokenUser.From(user), true, name, "deletepod", image, msg.instancename, span);
+                            await Audit.NoderedAction(TokenUser.From(user), true, name, "deletepod", image, msg.instancename, span);
                         } catch (error) {
-                            Audit.NoderedAction(TokenUser.From(user), false, name, "deletepod", image, msg.instancename, span);
+                            await Audit.NoderedAction(TokenUser.From(user), false, name, "deletepod", image, msg.instancename, span);
                             throw error;
                         }
                     }
                 }
             } else {
                 Logger.instanse.warn("[" + user.username + "] DeleteNoderedPod: found NO Namespaced Pods ???");
-                Audit.NoderedAction(TokenUser.From(user), false, null, "deletepod", image, msg.instancename, span);
+                await Audit.NoderedAction(TokenUser.From(user), false, null, "deletepod", image, msg.instancename, span);
             }
         } catch (error) {
             span?.recordException(error);
@@ -2905,9 +2920,9 @@ export class Message {
                     }
                     try {
                         await KubeUtil.instance().CoreV1Api.deleteNamespacedPod(item.metadata.name, namespace);
-                        Audit.NoderedAction(TokenUser.From(user), true, name, "restartdeployment", image, item.metadata.name, span);
+                        await Audit.NoderedAction(TokenUser.From(user), true, name, "restartdeployment", image, item.metadata.name, span);
                     } catch (error) {
-                        Audit.NoderedAction(TokenUser.From(user), false, name, "restartdeployment", image, item.metadata.name, span);
+                        await Audit.NoderedAction(TokenUser.From(user), false, name, "restartdeployment", image, item.metadata.name, span);
                     }
                 }
             }
@@ -2930,7 +2945,7 @@ export class Message {
         this.Reply();
         let msg: GetKubeNodeLabelsMessage;
         try {
-            Logger.instanse.debug("[" + cli.user.username + "] GetKubeNodeLabels");
+            // Logger.instanse.debug("[" + cli.user.username + "] GetKubeNodeLabels");
             msg = GetKubeNodeLabelsMessage.assign(this.data);
             if (Config.nodered_allow_nodeselector) {
                 const list = await KubeUtil.instance().CoreV1Api.listNode();
@@ -2981,7 +2996,7 @@ export class Message {
         try {
             const _tuser = Crypt.verityToken(this.jwt);
 
-            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
+            // Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
 
@@ -3036,7 +3051,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
             const _tuser = Crypt.verityToken(this.jwt);
-            Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
+            // Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             const namespace = Config.namespace;
@@ -3212,7 +3227,7 @@ export class Message {
                                 Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                                 const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                                 msg.result = obj.body;
-                                Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
+                                await Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
 
                             }
                         }
@@ -3232,19 +3247,19 @@ export class Message {
                             Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                             const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                             msg.result = obj.body;
-                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
+                            await Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
                         } else if (item.metadata.labels.app === name) {
                             Logger.instanse.debug("[" + cli.user.username + "] GetNoderedInstanceLog: " + name + " found one as " + item.metadata.name);
                             const obj = await await KubeUtil.instance().CoreV1Api.readNamespacedPodLog(item.metadata.name, namespace, "", false);
                             msg.result = obj.body;
-                            Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
+                            await Audit.NoderedAction(TokenUser.From(cli.user), true, name, "readpodlog", image, item.metadata.name, span);
                         }
                     }
                 }
 
             }
             if (NoderedUtil.IsNullUndefinded(msg.result)) {
-                Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null, span);
+                await Audit.NoderedAction(TokenUser.From(cli.user), false, name, "readpodlog", image, null, span);
             }
         } catch (error) {
             span?.recordException(error);
@@ -3269,14 +3284,14 @@ export class Message {
     private async StartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.StartNoderedInstance", parent);
-        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "startdeployment", null, null, span);
+        await Audit.NoderedAction(TokenUser.From(cli.user), true, null, "startdeployment", null, null, span);
         Logger.otel.endSpan(span);
         this.Send(cli);
     }
     private async StopNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.StopNoderedInstance", parent);
-        Audit.NoderedAction(TokenUser.From(cli.user), true, null, "stopdeployment", null, null, span);
+        await Audit.NoderedAction(TokenUser.From(cli.user), true, null, "stopdeployment", null, null, span);
         Logger.otel.endSpan(span);
         this.Send(cli);
     }
@@ -4664,7 +4679,7 @@ export class Message {
         if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
-        Auth.RemoveUser(cli.user._id, "passport");
+        DBHelper.DeleteKey("user" + cli.user._id);
         cli.user = await DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -5878,6 +5893,9 @@ export class Message {
             const jwt = this.jwt;
             msg = AddWorkitemQueueMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
+            if (NoderedUtil.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
+            if (NoderedUtil.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
+            if (NoderedUtil.IsNullEmpty(msg.initialdelay)) throw new Error("initialdelay is mandatory")
 
             var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt: rootjwt }, parent);
             if (queues.length > 0) {
@@ -6003,6 +6021,9 @@ export class Message {
                 await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
+                }
+                items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }
                 await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
@@ -6046,6 +6067,9 @@ export class Message {
             if (msg.purge) {
                 await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                if (items.length > 0) {
+                    items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+                }
                 if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }

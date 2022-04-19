@@ -72,7 +72,7 @@ export class DatabaseConnection extends events.EventEmitter {
     public static mongodb_replace: ValueRecorder;
     public static mongodb_delete: ValueRecorder;
     public static mongodb_deletemany: ValueRecorder;
-    public static semaphore = Auth.Semaphore(1);
+    // public static semaphore = Auth.Semaphore(1);
 
     public registerGlobalWatches: boolean = true;
     public queuemonitoringhandle: NodeJS.Timeout = null;
@@ -312,13 +312,13 @@ export class DatabaseConnection extends events.EventEmitter {
                         _type = item._type;
 
                         if (collectionname == "mq") {
-                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                         }
                         if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
-                            Auth.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                         }
                         if (collectionname == "config" && _type == "provider") {
                             await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
@@ -544,7 +544,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         (ace.rights as any) = b;
                     }
                     if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
-                        let _user = Auth.getUser(ace._id, "cleanacl");
+                        let _user = await DBHelper.FindById(ace._id, null, span);
                         if (NoderedUtil.IsNullUndefinded(_user)) {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
@@ -554,10 +554,10 @@ export class DatabaseConnection extends events.EventEmitter {
                             mongodbspan?.setAttribute("results", arr.length);
                             Logger.otel.endSpan(mongodbspan);
                             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: "users" });
-                            if (arr.length > 0) {
-                                _user = arr[0];
-                                await Auth.AddUser(_user, ace._id, "cleanacl");
-                            }
+                            // if (arr.length > 0) {
+                            //     _user = arr[0];
+                            //     await Auth.AddUser(_user, ace._id, "cleanacl");
+                            // }
                         }
                         if (NoderedUtil.IsNullUndefinded(_user)) {
                             item._acl.splice(i, 1);
@@ -956,8 +956,53 @@ export class DatabaseConnection extends events.EventEmitter {
     async getbyid<T extends Base>(id: string, collectionname: string, jwt: string, decrypt: boolean, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.getbyid", parent);
         try {
-            if (id === null || id === undefined) { throw Error("Id cannot be null"); }
+            if (id === null || id === undefined || id === "") { throw Error("Id cannot be null"); }
             const arr: T[] = await this.query<T>({ query: { _id: id }, top: 1, collectionname, jwt, decrypt }, span);
+            if (arr === null || arr.length === 0) { return null; }
+            return arr[0];
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    /**
+     * Get a single item based on name
+     * @param  {string} name Name to search for
+     * @param  {string} collectionname Collection to search
+     * @param  {string} jwt JWT of user who is making the query, to limit results based on permissions
+     * @returns Promise<T>
+     */
+    async getbyname<T extends Base>(name: string, collectionname: string, jwt: string, decrypt: boolean, parent: Span): Promise<T> {
+        const span: Span = Logger.otel.startSubSpan("db.getbyid", parent);
+        try {
+            if (name === null || name === undefined || name === "") { throw Error("Name cannot be null"); }
+            const arr: T[] = await this.query<T>({ query: { name }, top: 1, collectionname, jwt, decrypt }, span);
+            if (arr === null || arr.length === 0) { return null; }
+            return arr[0];
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    /**
+     * Get a single item based on username
+     * @param  {string} username Username to search for
+     * @param  {string} collectionname Collection to search
+     * @param  {string} jwt JWT of user who is making the query, to limit results based on permissions
+     * @returns Promise<T>
+     */
+    async getbyusername<T extends Base>(username: string, jwt: string, decrypt: boolean, parent: Span): Promise<T> {
+        const span: Span = Logger.otel.startSubSpan("db.getbyid", parent);
+        try {
+            if (username === null || username === undefined || username === "") { throw Error("Name cannot be null"); }
+            const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
+            const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
+            const query = { $or: [byuser, byid] };
+            const arr: T[] = await this.query<T>({ query: query, top: 1, collectionname: "users", jwt, decrypt }, span);
             if (arr === null || arr.length === 0) { return null; }
             return arr[0];
         } catch (error) {
@@ -1363,8 +1408,8 @@ export class DatabaseConnection extends events.EventEmitter {
             item = result.ops[0];
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                span?.addEvent("FindRoleByNameOrId users");
-                const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
+                span?.addEvent("FindRoleByName users");
+                const users: Role = await DBHelper.FindRoleByName("users", span);
                 users.AddMember(item);
                 span?.addEvent("Save Users");
                 await DBHelper.Save(users, Crypt.rootToken(), span);
@@ -1384,14 +1429,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
-                DBHelper.cached_roles = [];
+                // DBHelper.cached_roles = [];
                 if (item._type === "role") {
                     const r: Role = (item as any);
                     if (r.members.length > 0) {
                         if (Config.enable_openflow_amqp && !Config.supports_watch) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } else if (!Config.supports_watch) {
-                            Auth.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
+                            DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
                         }
                     }
                 }
@@ -1483,7 +1528,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             if (Config.enable_openflow_amqp && !Config.supports_watch) {
                                 amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                             } else if (!Config.supports_watch) {
-                                Auth.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
+                                DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
                             }
                         }
                     }
@@ -1564,8 +1609,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 let item = items[y];
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                    span?.addEvent("FindRoleByNameOrId");
-                    const users: Role = await DBHelper.FindRoleByNameOrId("users", jwt, span);
+                    span?.addEvent("FindRoleByName");
+                    const users: Role = await DBHelper.FindRoleByName("users", span);
                     users.AddMember(item);
                     span?.addEvent("CleanACL");
                     item = await this.CleanACL(item, user, collectionname, span);
@@ -1582,7 +1627,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
                     Logger.otel.endSpan(mongodbspan_inner2);
                     Logger.otel.endTimer(ot_end_inner2, DatabaseConnection.mongodb_replace, { collection: collectionname });
-                    DBHelper.cached_roles = [];
+                    // DBHelper.cached_roles = [];
                 }
                 if (collectionname === "config" && item._type === "oauthclient") {
                     if (user.HasRoleName("admins")) {
@@ -1948,20 +1993,20 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
                         q.item = await this.Cleanmembers(q.item as any, original);
-                        DBHelper.cached_roles = [];
+                        // DBHelper.cached_roles = [];
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
                         if (Config.enable_openflow_amqp && !Config.supports_watch) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } else if (!Config.supports_watch) {
-                            Auth.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
+                            DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
                         }
                     }
                     if (q.collectionname === "mq") {
                         if (Config.enable_openflow_amqp && !Config.supports_watch) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } else if (!Config.supports_watch) {
-                            Auth.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
+                            DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
                         }
                     }
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
@@ -2040,10 +2085,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (!custusers.IsMember(q.item._id)) {
                             custusers.AddMember(q.item);
                             await DBHelper.Save(custusers, Crypt.rootToken(), span);
-                            Auth.RemoveUser(q.item._id, "passport");
+                            DBHelper.DeleteKey("user" + q.item._id);
                         }
                     } else {
-                        Auth.RemoveUser(q.item._id, "passport");
+                        DBHelper.DeleteKey("user" + q.item._id);
                     }
                     await DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
@@ -2259,7 +2304,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
             }
             if (q.collectionname === "users" && q.item._type === "role") {
-                DBHelper.cached_roles = [];
+                // DBHelper.cached_roles = [];
             }
             return q;
         } catch (error) {
@@ -2390,14 +2435,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (Config.enable_openflow_amqp && !Config.supports_watch) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     } else if (!Config.supports_watch) {
-                        Auth.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
+                        DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
                     }
                 }
                 if (collectionname === "mq") {
                     if (Config.enable_openflow_amqp && !Config.supports_watch) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     } else if (!Config.supports_watch) {
-                        Auth.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
+                        DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
                     }
                 }
             }

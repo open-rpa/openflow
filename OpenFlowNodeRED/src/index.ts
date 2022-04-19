@@ -172,7 +172,7 @@ let server: http.Server = null;
                 } else {
                     throw new Error("missing encryption_key and jwt, signin not possible!");
                 }
-                const result = await NoderedUtil.SigninWithToken({ jwt });
+                const result = await NoderedUtil.SigninWithToken({ jwt, websocket: socket });
                 Logger.instanse.info("signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;

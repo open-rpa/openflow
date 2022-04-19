@@ -145,27 +145,33 @@ export class LoginProvider {
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
             const tuser: TokenUser = TokenUser.From(user);
-            await Auth.AddUser(tuser as any, tuser._id, "passport");
+            // await Auth.AddUser(tuser as any, tuser._id, "passport");
             done(null, user._id);
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             if (typeof userid !== 'string') userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
-            const _user = await Auth.getUser(userid, "passport");
+            const _user = await DBHelper.FindById(userid, null, null);
             if (_user == null) {
-                const user = await DBHelper.FindByUsernameOrId(null, userid, null);
-                if (user != null) {
-                    const tuser = TokenUser.From(user);
-                    await Auth.AddUser(tuser as any, tuser._id, "passport");
-                    done(null, tuser);
-                } else {
-                    done(null, null);
-                }
-
+                done(null, null);
             } else {
                 done(null, _user);
             }
+            // const _user = await Auth.getUser(userid, "passport");
+            // if (_user == null) {
+            //     const user = await DBHelper.FindById(userid, null, null);
+            //     if (user != null) {
+            //         const tuser = TokenUser.From(user);
+            //         await Auth.AddUser(tuser as any, tuser._id, "passport");
+            //         done(null, tuser);
+            //     } else {
+            //         done(null, null);
+            //     }
+
+            // } else {
+            //     done(null, _user);
+            // }
         });
 
         app.use(function (req, res, next) {
@@ -211,18 +217,16 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
                     (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
                     const token = authorization.split(" ")[1];
-                    let user: User = Auth.getUser(token, "dashboard");
-                    let tuser: TokenUser;
+                    let user: User = await LoginProvider.validateToken(token, span);
+                    // let user: User = Auth.getUser(token, "dashboard");
+                    // if (user == null) {
+                    //     try {
+                    //         user = await LoginProvider.validateToken(token, span);
+                    //     } catch (error) {
+                    //     }
+                    // }
                     if (user == null) {
                         try {
-                            user = await LoginProvider.validateToken(token, span);
-                            tuser = TokenUser.From(user);
-                        } catch (error) {
-                        }
-                    }
-                    if (user == null) {
-                        try {
-                            tuser = Crypt.verityToken(token);
                             user = await DBHelper.FindById(user._id, undefined, span);
                         } catch (error) {
                         }
@@ -230,7 +234,7 @@ export class LoginProvider {
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            await Auth.AddUser(user, token, "dashboard");
+                            // await Auth.AddUser(user, token, "dashboard");
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -251,12 +255,13 @@ export class LoginProvider {
                 const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
                 if (login && password) {
                     span?.setAttribute("username", login);
-                    let user: User = Auth.getUser(b64auth, "dashboard");
-                    if (user == null) user = await Auth.ValidateByPassword(login, password, span);
+                    let user: User = await Auth.ValidateByPassword(login, password, span);
+                    // let user: User = Auth.getUser(b64auth, "dashboard");
+                    // if (user == null) user = await Auth.ValidateByPassword(login, password, span);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            Auth.AddUser(user, b64auth, "dashboard");
+                            // Auth.AddUser(user, b64auth, "dashboard");
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -446,7 +451,7 @@ export class LoginProvider {
                         const user: User = await DBHelper.FindById(req.user._id, undefined, span);
                         const tuser: TokenUser = TokenUser.From(user);
                         if (tuser.validated) {
-                            Auth.RemoveUser(tuser._id, "passport");
+                            DBHelper.DeleteKey("user" + tuser._id);
                         }
                         // req.session.passport.user.validated = tuser.validated;
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
@@ -529,7 +534,7 @@ export class LoginProvider {
                         });
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
                         const user: TokenUser = Object.assign(tuser, req.body.data);
-                        Auth.RemoveUser(user._id, "passport");
+                        DBHelper.DeleteKey("user" + user._id);
                         // req.session.passport.user.validated = true;
                         // wewfefwewe
 
@@ -984,16 +989,16 @@ export class LoginProvider {
                         await DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
                         if (user.disabled) {
-                            Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
+                            await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                             done("Disabled user " + username, null);
                             return;
                         }
                         if (!(await Crypt.ValidatePassword(user, password, span))) {
-                            Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
+                            await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                             return done(null, false);
                         }
                     }
-                    Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", remoteip, "browser", "unknown", span);
+                    await Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", remoteip, "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     LoginProvider.login_providers.push(result);
@@ -1009,17 +1014,17 @@ export class LoginProvider {
                     user = await DBHelper.EnsureUser(Crypt.rootToken(), username, username, null, password, span);
                 } else {
                     if (user.disabled) {
-                        Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
+                        await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                         done("Disabled user " + username, null);
                         return;
                     }
                     if (!(await Crypt.ValidatePassword(user, password, span))) {
-                        Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
+                        await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                         return done(null, false);
                     }
                 }
                 const tuser: TokenUser = TokenUser.From(user);
-                Audit.LoginSuccess(tuser, "weblogin", "local", remoteip, "browser", "unknown", span);
+                await Audit.LoginSuccess(tuser, "weblogin", "local", remoteip, "browser", "unknown", span);
                 // tuser.roles.splice(40, tuser.roles.length)
                 Logger.otel.endSpan(span);
                 return done(null, tuser);
@@ -1148,18 +1153,18 @@ export class LoginProvider {
             }
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
                 done("unknown user " + username, null);
                 return;
             }
             if (_user.disabled) {
-                Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
 
             const tuser: TokenUser = TokenUser.From(_user);
-            Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
@@ -1198,16 +1203,16 @@ export class LoginProvider {
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
                 done("unknown user " + username, null); return;
             }
             if (_user.disabled) {
-                Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
             const tuser: TokenUser = TokenUser.From(_user);
-            Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
             done(null, tuser);
         } catch (error) {
             span?.recordException(error);

@@ -8,6 +8,7 @@ import { Logger } from "./Logger";
 import events = require("events");
 import { Auth } from "./Auth";
 import { Message } from "./Messages/Message";
+import { DBHelper } from "./DBHelper";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -535,7 +536,7 @@ export class amqpwrapper extends events.EventEmitter {
                 if (Config.log_amqp) Logger.instanse.info("[OF][" + options.exchange + "] Received command " + msg.command);
                 switch (msg.command) {
                     case "clearcache":
-                        Auth.clearCache("amqp broadcast");
+                        DBHelper.clearCache("amqp broadcast");
                         break;
                     case "housekeeping":
                         // if (this.IsMyconsumerTag(options.consumerTag)) break;
@@ -553,7 +554,7 @@ export class amqpwrapper extends events.EventEmitter {
                             await Config.db.shutdown();
                             await Logger.otel.shutdown();
                             await Logger.License.shutdown()
-                            await Auth.shutdown();
+                            // await Auth.shutdown();
                         } catch (error) {
                             console.error(error);
                         }
