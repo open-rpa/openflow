@@ -153,7 +153,7 @@ export class DBHelper {
             let item = await this.memoryCache.wrap("queuename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + name);
-                return Config.db.getbyname<User>(name, "queuename_", jwt, true, span);
+                return Config.db.getbyname<User>(name, "mq", jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
@@ -191,7 +191,7 @@ export class DBHelper {
             let item = await this.memoryCache.wrap("exchangename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + name);
-                return Config.db.getbyname<User>(name, "exchangename_", jwt, true, span);
+                return Config.db.getbyname<User>(name, "mq", jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
