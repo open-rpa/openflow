@@ -4591,7 +4591,7 @@ export class Message {
                 await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
 
-            const global_customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "global customer admins", "62545f1f1ddfe5ab4cc946d5", span);
+            const global_customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "customer admins", WellknownIds.customer_admins, span);
 
             const customeradmins: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
             customeradmins.name = msg.customer.name + " admins";
@@ -4610,9 +4610,8 @@ export class Message {
             customeradmins.customerid = msg.customer._id;
             await DBHelper.Save(customeradmins, rootjwt, span);
 
-            const customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "customer admins", WellknownIds.customer_admins, span);
-            customer_admins.AddMember(customeradmins);
-            await DBHelper.Save(customer_admins, rootjwt, span);
+            // customer_admins.AddMember(customeradmins);
+            // await DBHelper.Save(customer_admins, rootjwt, span);
 
             const customerusers: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " users", msg.customer.users, span);
             customerusers.name = msg.customer.name + " users";
