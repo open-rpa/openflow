@@ -150,7 +150,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(name)) return null;
-            let item = await this.memoryCache.wrap("mq" + name, () => {
+            let item = await this.memoryCache.wrap("queuename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + name);
                 return Config.db.getbyname<User>(name, "mq", jwt, true, span);
@@ -188,7 +188,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(name)) return null;
-            let item = await this.memoryCache.wrap("mq" + name, () => {
+            let item = await this.memoryCache.wrap("exchangename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + name);
                 return Config.db.getbyname<User>(name, "mq", jwt, true, span);

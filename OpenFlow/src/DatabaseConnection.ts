@@ -314,6 +314,8 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (collectionname == "mq") {
                             // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                             await DBHelper.memoryCache.del("mq" + item._id);
+                            if (_type == "exchange") await DBHelper.memoryCache.del("exchangename_" + item.name);
+                            if (_type == "queue") await DBHelper.memoryCache.del("queuename_" + item.name);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                             // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
@@ -1774,31 +1776,25 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                     } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                         customer = null;
-                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
-                            customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, true, span);
-                            if (customer != null) user2.customerid = user.selectedcustomerid;
-                        }
-                        if (customer == null) {
-                            if (!user.HasRoleName("admins") && !user.HasRoleName("resellers")) {
-                                user2.customerid = user.customerid;
-                                customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
-                                if (customer != null) user2.customerid = user.customerid;
-                                if (customer == null) {
-                                    throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
-                                }
-                            }
-                        }
-                        // user2.customerid = user.customerid;
-                        // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                        // customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
+                        // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                        //     customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, true, span);
+                        //     if (customer != null) user2.customerid = user.selectedcustomerid;
+                        // }
+                        // if (customer == null) {
+                        //     if (!user.HasRoleName("admins") && !user.HasRoleName("resellers")) {
+                        //         user2.customerid = user.customerid;
+                        //         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
+                        //         if (customer != null) user2.customerid = user.customerid;
+                        //         if (customer == null) {
+                        //             throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
+                        //         }
+                        //     }
+                        // }
                     } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
-                        // We can update, we just don't want to allow inserts ?
-                        // throw new Error("Access denied (not admin or customer admin)");
-                        // user2.customerid = user.customerid;
-                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                        if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                            customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
-                        }
+                        // if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        // if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                        //     customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span);
+                        // }
                     }
                     if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
                         const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, true, span);
