@@ -5,6 +5,7 @@ import { Config } from "./Config";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { DBHelper } from "./DBHelper";
 export class Crypt {
     static encryption_key: string = Config.aes_secret.substr(0, 32); // must be 256 bytes (32 characters)
     static iv_length: number = 16; // for AES, this is always 16
@@ -120,11 +121,21 @@ export class Crypt {
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
-    static verityToken(token: string): TokenUser {
+    static async verityToken(token: string): Promise<TokenUser> {
         if (NoderedUtil.IsNullEmpty(token)) {
             throw new Error('jwt must be provided');
         }
         const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
+        if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id) && o.data._id != WellknownIds.root) {
+            var id = o.data._id;
+            o.data = await DBHelper.FindById(o.data._id, token, null);
+            if (NoderedUtil.IsNullUndefinded(o)) {
+                var b = true;
+            }
+            if (id != o.data._id) {
+                var b = true;
+            }
+        }
         return TokenUser.assign(o.data);
 
     }

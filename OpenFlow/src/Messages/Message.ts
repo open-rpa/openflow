@@ -778,7 +778,7 @@ export class Message {
             }
             const jwt: string = msg.jwt || this.jwt;
             const rootjwt = Crypt.rootToken();
-            const tuser = Crypt.verityToken(jwt);
+            const tuser = await Crypt.verityToken(jwt);
             if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 let name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
@@ -855,7 +855,7 @@ export class Message {
 
             // ################################################################################################################
 
-            const tuser = Crypt.verityToken(jwt);
+            const tuser = await Crypt.verityToken(jwt);
             if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(msg.queuename)) {
                 // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
                 if (msg.queuename.length == 24) {
@@ -1011,7 +1011,7 @@ export class Message {
             }
 
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
-                const tuser = Crypt.verityToken(jwt);
+                const tuser = await Crypt.verityToken(jwt);
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
                     // Queue is for me
@@ -1071,7 +1071,7 @@ export class Message {
                 }
             }
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchange)) {
-                const tuser = Crypt.verityToken(jwt);
+                const tuser = await Crypt.verityToken(jwt);
                 let allowed: boolean = false;
                 if (tuser._id == msg.exchange) {
                     // Queue is for me
@@ -1113,7 +1113,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                const tuser = Crypt.verityToken(msg.jwt);
+                const tuser = await Crypt.verityToken(msg.jwt);
                 msg.user = tuser;
             }
             if (typeof sendthis === "object") {
@@ -1155,7 +1155,7 @@ export class Message {
         try {
             msg = CloseQueueMessage.assign(this.data);
             const jwt: string = msg.jwt || this.jwt;
-            const tuser = Crypt.verityToken(jwt);
+            const tuser = await Crypt.verityToken(jwt);
             await cli.CloseConsumer(tuser, msg.queuename, parent);
         } catch (error) {
             await handleError(cli, error);
@@ -1231,11 +1231,11 @@ export class Message {
                 span?.setAttribute("cache size", keys.length + 1);
                 msg.result = result;
             }
-            const _tuser = Crypt.verityToken(this.jwt);
+            const _tuser = await Crypt.verityToken(this.jwt);
             if (Config.enable_entity_restriction && !_tuser.HasRoleId("admins")) {
                 await Config.db.loadEntityRestrictions(span);
                 if (Config.db.EntityRestrictions.length > 1) {
-                    const tuser = Crypt.verityToken(this.jwt);
+                    const tuser = await Crypt.verityToken(this.jwt);
                     const authorized = Config.db.EntityRestrictions.filter(x => x.IsAuthorized(tuser));
                     const allall = authorized.filter(x => x.collection == "");
                     if (allall.length == 0) {
@@ -1648,7 +1648,7 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 tuser = TokenUser.From(cli.user);
             } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-                tuser = Crypt.verityToken(cli.jwt);
+                tuser = await Crypt.verityToken(cli.jwt);
                 const impostor: string = tuser.impostor;
                 cli.user = await DBHelper.FindById(cli.user._id, undefined, span);
                 if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -1698,7 +1698,7 @@ export class Message {
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                     type = "jwtsignin";
-                    tuser = Crypt.verityToken(msg.jwt);
+                    tuser = await Crypt.verityToken(msg.jwt);
                     if (tuser != null) {
                         if (NoderedUtil.IsNullEmpty(tuser._id)) {
                             user = await DBHelper.FindByUsername(tuser.username, null, span);
@@ -1966,8 +1966,9 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceName", parent);
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
+            const user: TokenUser = await Crypt.verityToken(jwt);
             var qs: any[] = [{ _id: _id }];
-            qs.push(Config.db.getbasequery(jwt, "_acl", [Rights.update]))
+            qs.push(Config.db.getbasequery(user, "_acl", [Rights.update]))
             const res = await Config.db.query<User>({ query: { "$and": qs }, top: 1, collectionname: "users", jwt }, span);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id + " or permission denied");
@@ -2038,7 +2039,7 @@ export class Message {
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             let _id = msg._id;
 
-            const tuser = Crypt.verityToken(this.jwt);
+            const tuser = await Crypt.verityToken(this.jwt);
 
             Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance");
             if (_id === null || _id === undefined || _id === "") _id = tuser._id;
@@ -2248,7 +2249,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message._EnsureNoderedInstance", parent);
         try {
 
-            const _tuser = Crypt.verityToken(this.jwt);
+            const _tuser = await Crypt.verityToken(this.jwt);
 
             if (_id === null || _id === undefined || _id === "") _id = _tuser._id;
             const name = await this.GetInstanceName(_id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2637,7 +2638,7 @@ export class Message {
     private async _DeleteNoderedInstance(_id: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message._DeleteNoderedInstance", parent);
         try {
-            const user = Crypt.verityToken(jwt);
+            const user = await Crypt.verityToken(jwt);
             if (_id === null || _id === undefined || _id === "") _id = user._id;
             const name = await this.GetInstanceName(_id, user._id, user.username, jwt, span);
 
@@ -2761,7 +2762,7 @@ export class Message {
         let msg: DeleteNoderedPodMessage;
         const span: Span = Logger.otel.startSubSpan("message.dockerDeleteNoderedPod", parent);
         try {
-            const user = Crypt.verityToken(this.jwt);
+            const user = await Crypt.verityToken(this.jwt);
             Logger.instanse.debug("[" + user.username + "] dockerDeleteNoderedPod");
             msg = DeleteNoderedPodMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
@@ -2802,7 +2803,7 @@ export class Message {
         let msg: DeleteNoderedPodMessage;
         let user: User;
         try {
-            const user = Crypt.verityToken(this.jwt);
+            const user = await Crypt.verityToken(this.jwt);
             Logger.instanse.debug("[" + user.username + "] DeleteNoderedInstance");
             msg = DeleteNoderedPodMessage.assign(this.data);
             const namespace = Config.namespace;
@@ -2864,7 +2865,7 @@ export class Message {
         let msg: RestartNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.DockerRestartNoderedInstance", parent);
         try {
-            const user = Crypt.verityToken(this.jwt);
+            const user = await Crypt.verityToken(this.jwt);
             Logger.instanse.debug("[" + user.username + "] DockerRestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
@@ -2906,7 +2907,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.KubeRestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
-            const user = Crypt.verityToken(this.jwt);
+            const user = await Crypt.verityToken(this.jwt);
             Logger.instanse.debug("[" + user.username + "] KubeRestartNoderedInstance");
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, user._id, user.username, this.jwt, span);
@@ -2998,7 +2999,7 @@ export class Message {
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            const _tuser = Crypt.verityToken(this.jwt);
+            const _tuser = await Crypt.verityToken(this.jwt);
 
             // Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
@@ -3054,7 +3055,7 @@ export class Message {
         let msg: GetNoderedInstanceMessage;
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         try {
-            const _tuser = Crypt.verityToken(this.jwt);
+            const _tuser = await Crypt.verityToken(this.jwt);
             // Logger.instanse.debug("[" + _tuser.username + "] GetNoderedInstance");
             msg = GetNoderedInstanceMessage.assign(this.data);
             const name = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -3378,7 +3379,7 @@ export class Message {
                 msg.metadata._acl = [];
                 Base.addRight(msg.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
             }
-            const user: TokenUser = Crypt.verityToken(msg.jwt);
+            const user: TokenUser = await Crypt.verityToken(msg.jwt);
             msg.metadata._createdby = user.name;
             msg.metadata._createdbyid = user._id;
             msg.metadata._created = new Date(new Date().toISOString());
@@ -3530,7 +3531,7 @@ export class Message {
             (msg.metadata as any).filename = file.metadata.filename;
             (msg.metadata as any).path = file.metadata.path;
 
-            const user: TokenUser = Crypt.verityToken(msg.jwt);
+            const user: TokenUser = await Crypt.verityToken(msg.jwt);
             msg.metadata._modifiedby = user.name;
             msg.metadata._modifiedbyid = user._id;
             msg.metadata._modified = new Date(new Date().toISOString());;
@@ -3574,7 +3575,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            const tuser = Crypt.verityToken(msg.jwt);
+            const tuser = await Crypt.verityToken(msg.jwt);
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
             let workflow: any = null;
             if (NoderedUtil.IsNullEmpty(msg.queue)) {
@@ -3673,7 +3674,7 @@ export class Message {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
-            const tuser = Crypt.verityToken(jwt);
+            const tuser = await Crypt.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -3799,7 +3800,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
 
 
-            const user = Crypt.verityToken(cli.jwt);
+            const user = await Crypt.verityToken(cli.jwt);
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
                 throw new Error("Access denied, getting invoice (not in '" + customer.name + " admins')");
             }
@@ -4008,7 +4009,7 @@ export class Message {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
 
-            const tuser = Crypt.verityToken(jwt);
+            const tuser = await Crypt.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -4387,7 +4388,7 @@ export class Message {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
                 if (msg.object == "billing_portal/sessions") {
-                    const tuser = Crypt.verityToken(cli.jwt);
+                    const tuser = await Crypt.verityToken(cli.jwt);
                     let customer: Customer;
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
@@ -5304,7 +5305,7 @@ export class Message {
                 var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
                 if (customer == null) msg.customerid = null;
             }
-            user = User.assign(Crypt.verityToken(this.jwt));
+            user = User.assign(await Crypt.verityToken(this.jwt));
             if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
 
             if (NoderedUtil.IsNullEmpty(msg.customerid)) {
@@ -5343,7 +5344,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
 
             msg = AddWorkitemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
@@ -5472,7 +5473,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
             let isRelevant: boolean = false;
 
             let end: number = new Date().getTime();
@@ -5618,7 +5619,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
 
             let retry: boolean = false;
 
@@ -5789,7 +5790,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
 
             msg = PopWorkitemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
@@ -5848,7 +5849,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
 
             msg = DeleteWorkitemMessage.assign(this.data);
 
@@ -5904,7 +5905,7 @@ export class Message {
             if (queues.length > 0) {
                 throw new Error("Work item queue with name " + msg.name + " already exists");
             }
-            user = User.assign(Crypt.verityToken(this.jwt));
+            user = User.assign(await Crypt.verityToken(this.jwt));
 
             var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
             const workitem_queue_admins: Role = await DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
@@ -6004,7 +6005,7 @@ export class Message {
                 if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
                 wiq = queues[0];
             }
-            user = User.assign(Crypt.verityToken(this.jwt));
+            user = User.assign(await Crypt.verityToken(this.jwt));
 
             if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
             wiq.name = msg.name;
