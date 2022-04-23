@@ -175,6 +175,7 @@ export interface iupdateworkitem {
     name: string;
     config: any;
     workitem: string;
+    error: string;
 }
 export class updateworkitem {
     public node: Red = null;
@@ -199,10 +200,12 @@ export class updateworkitem {
             const workitem = await Util.EvaluateNodeProperty<Workitem>(this, msg, "workitem");
             const files = await Util.EvaluateNodeProperty<MessageWorkitemFile[]>(this, msg, "files");
             const state: any = await Util.EvaluateNodeProperty<string>(this, msg, "state");
-            const errormessage = await Util.EvaluateNodeProperty<string>(this, msg, "errormessage");
+            const _errormessage = await Util.EvaluateNodeProperty<string>(this, msg, "error");
             const ignoremaxretries = await Util.EvaluateNodeProperty<boolean>(this, msg, "ignoremaxretries");
             var errorsource: string = "";
-            const { _id, name, payload, errortype } = workitem;
+            let { _id, name, payload, errortype, errormessage } = workitem;
+            if (!NoderedUtil.IsNullEmpty(_errormessage) && NoderedUtil.IsNullEmpty(errormessage)) errormessage = _errormessage;
+
             const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource, errortype })
             if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                 Util.SetMessageProperty(msg, this.config.workitem, result);

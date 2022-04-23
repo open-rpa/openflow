@@ -238,6 +238,11 @@ RED.nodes.registerType('workitem addworkitems', {
   <input style="width:70%" type="text" id="node-input-files" placeholder="Set this to, to add or update files on this workitem">
 </div>
 <div class="form-row">
+  <label><i class="fa fa-tag"></i> Error</label>
+  <input type="hidden" id="node-input-errortype">
+  <input style="width:70%" type="text" id="node-input-error" placeholder="Set this to, to add an error description when retrying or failing">
+</div>
+<div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
   <input type="text" id="node-config-input-name" placeholder="Node name">
 </div>
@@ -258,6 +263,8 @@ RED.nodes.registerType('workitem updateworkitem', {
     ignoremaxretriestype: { value: "" },
     files: { value: "newfiles", validate: validate("filestype") },
     filestype: { value: "msg" },
+    error: { value: "error", validate: validate("errortype") },
+    errortype: { value: "msg" },
     state: { value: "successful", required: true }
   },
   inputs: 1,
@@ -286,6 +293,12 @@ RED.nodes.registerType('workitem updateworkitem', {
     $("#node-input-files").typedInput({
       default: 'msg',
       typeField: $("#node-input-filestype"),
+      types: ['msg', 'flow', 'global']
+    });
+    if (this.errortype === null) $("#node-input-errortype").val('msg');
+    $("#node-input-error").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-errortype"),
       types: ['msg', 'flow', 'global']
     });
   }

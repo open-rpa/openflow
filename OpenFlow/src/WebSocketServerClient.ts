@@ -312,12 +312,13 @@ export class WebSocketServerClient {
                 const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
                 AssertExchangeOptions.exclusive = exclusive;
                 exchangequeue = await amqpwrapper.Instance().AddExchangeConsumer(user, exchange, algorithm, routingkey, AssertExchangeOptions, this.jwt, addqueue, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                    ack();
                     const _data = msg;
                     try {
                         const result = await this.Queue(msg, exchange, options);
                         done(result);
+                        ack();
                     } catch (error) {
+                        ack(false);
                         // setTimeout(() => {
                         //     ack(false);
                         //     done(_data);
@@ -384,16 +385,17 @@ export class WebSocketServerClient {
                     }
                 }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(this.user, qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                    ack();
                     // const _data = msg;
                     var _data = msg;
                     try {
                         Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                         _data = await this.Queue(msg, qname, options);;
+                        ack();
                         // const result = await this.Queue(msg, qname, options);
                         // done(result);
                         Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
+                        ack(false);
                         // setTimeout(() => {
                         //     ack(false);
                         //     done(_data);

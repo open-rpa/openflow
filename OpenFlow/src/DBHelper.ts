@@ -22,8 +22,10 @@ export class DBHelper {
                 host: Config.cache_store_redis_host,
                 port: Config.cache_store_redis_port,
                 password: Config.cache_store_redis_password,
+                ignoreCacheErrors: true,
                 db: 0,
-                ttl: Config.cache_store_ttl_seconds
+                ttl: Config.cache_store_ttl_seconds,
+                max: Config.cache_store_max
             })
             // listen for redis connection error event
             var redisClient = this.memoryCache.store.getClient();
@@ -33,13 +35,27 @@ export class DBHelper {
             DBHelper.ensureotel();
             return;
         }
-        this.memoryCache = cacheManager.caching({ store: 'memory', max: Config.cache_store_max, ttl: Config.cache_store_ttl_seconds /*seconds*/ });
+        this.memoryCache = cacheManager.caching({
+            store: 'memory',
+            ignoreCacheErrors: true,
+            max: Config.cache_store_max,
+            ttl: Config.cache_store_ttl_seconds
+        });
         DBHelper.ensureotel();
     }
     public static async clearCache(reason: string) {
         this.init();
         // Auth.ensureotel();
-        this.memoryCache.reset();
+        // this.memoryCache.reset();
+        var keys: string[];
+        if (Config.cache_store_type == "redis") {
+            keys = await this.memoryCache.keys('*');
+        } else {
+            keys = await this.memoryCache.keys();
+        }
+        for (var i = 0; i < keys.length; i++) {
+            this.memoryCache.del(keys[i]);
+        }
         if (Config.log_cache) Logger.instanse.debug("clearCache called with reason: " + reason);
     }
     public static async DeleteKey(key) {
@@ -87,13 +103,14 @@ export class DBHelper {
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("users" + _id, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+                // if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + _id);
-                return Config.db.getbyid<User>(_id, "users", jwt, true, span);;
+                return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
             });
             DBHelper.ensureotel();
             if (NoderedUtil.IsNullUndefinded(item)) return null;
-            return this.DecorateWithRoles(User.assign(item), span);
+            var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
+            return res2;
         } catch (error) {
             span?.recordException(error);
             throw error;

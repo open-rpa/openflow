@@ -318,23 +318,23 @@ export class DatabaseConnection extends events.EventEmitter {
                             if (_type == "queue") await DBHelper.memoryCache.del("queuename_" + item.name);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                            // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
-                            await DBHelper.memoryCache.del("users" + item._id);
-                            if (_type == "role") {
-                                var role: Role = item as Role;
-                                await DBHelper.memoryCache.del("rolename_" + item.name);
-                                // this.WellknownIdsArray.indexOf(item._id) == -1
-                                if (!NoderedUtil.IsNullUndefinded(role.members) && role.members.length > 0 && item._id != WellknownIds.users) {
-                                    for (let i = 0; i < role.members.length; i++) {
-                                        let member = role.members[i];
-                                        await DBHelper.memoryCache.del("users" + member._id);
-                                        await DBHelper.memoryCache.del("username_" + member.name);
-                                        await DBHelper.memoryCache.del("rolename_" + member.name);
-                                    }
-                                }
-                            } else {
-                                await DBHelper.memoryCache.del("username_" + item.name);
-                            }
+                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            // await DBHelper.memoryCache.del("users" + item._id);
+                            // if (_type == "role") {
+                            //     var role: Role = item as Role;
+                            //     await DBHelper.memoryCache.del("rolename_" + item.name);
+                            //     // this.WellknownIdsArray.indexOf(item._id) == -1
+                            //     if (!NoderedUtil.IsNullUndefinded(role.members) && role.members.length > 0 && item._id != WellknownIds.users) {
+                            //         for (let i = 0; i < role.members.length; i++) {
+                            //             let member = role.members[i];
+                            //             await DBHelper.memoryCache.del("users" + member._id);
+                            //             await DBHelper.memoryCache.del("username_" + member.name);
+                            //             await DBHelper.memoryCache.del("rolename_" + member.name);
+                            //         }
+                            //     }
+                            // } else {
+                            //     await DBHelper.memoryCache.del("username_" + item.name);
+                            // }
                         }
                         if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
                             DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
@@ -475,13 +475,13 @@ export class DatabaseConnection extends events.EventEmitter {
         let result = await DatabaseConnection.toArray(this.db.listCollections());
         result = result.filter(x => x.name.indexOf("system.") === -1);
         result.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}))
-        Crypt.verityToken(jwt);
+        await Crypt.verityToken(jwt);
         return result;
     }
     async DropCollection(collectionname: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
         try {
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins")) throw new Error("Access denied, droppping collection " + collectionname);
@@ -848,7 +848,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             span?.addEvent("verityToken");
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
 
             span?.addEvent("getbasequery");
             if (collectionname === "files") { collectionname = "fs.files"; }
@@ -856,18 +856,18 @@ export class DatabaseConnection extends events.EventEmitter {
                 let impersonationquery;
                 if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read], span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read]), impersonationquery] };
+                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read]), impersonationquery] };
                 } else {
-                    _query = { $and: [query, this.getbasequery(jwt, "metadata._acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read])] };
                 }
                 projection = null;
             } else {
                 let impersonationquery: any;
                 if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "_acl", [Rights.read], span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read]), impersonationquery] };
+                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read]), impersonationquery] };
                 } else {
-                    _query = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read])] };
                 }
             }
             if (!top) { top = 500; }
@@ -896,6 +896,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (Config.log_queries) Logger.instanse.debug("[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
             return arr;
         } catch (error) {
+            Logger.instanse.error("[" + collectionname + "] query error " + (error.message ? error.message : error));
             console.log(JSON.stringify(_query, null, 2));
             span?.recordException(error);
             throw error;
@@ -1078,7 +1079,7 @@ export class DatabaseConnection extends events.EventEmitter {
             } else
                 return value; // leave any other value as-is
         });
-        const user: TokenUser = Crypt.verityToken(jwt);
+        const user: TokenUser = await Crypt.verityToken(jwt);
         if (Config.otel_trace_include_query) span?.setAttribute("aggregates", JSON.stringify(aggregates));
         span?.setAttribute("collection", collectionname);
         span?.setAttribute("username", user.username);
@@ -1086,9 +1087,9 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.addEvent("getbasequery");
         let base: object;
         if (DatabaseConnection.usemetadata(collectionname)) {
-            base = this.getbasequery(jwt, "metadata._acl", [Rights.read]);
+            base = this.getbasequery(user, "metadata._acl", [Rights.read]);
         } else {
-            base = this.getbasequery(jwt, "_acl", [Rights.read]);
+            base = this.getbasequery(user, "_acl", [Rights.read]);
         }
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
@@ -1154,9 +1155,10 @@ export class DatabaseConnection extends events.EventEmitter {
             });
         } else { aggregates = null; }
 
+        const user: TokenUser = await Crypt.verityToken(jwt);
         // TODO: Should we filter on rights other than read ? should a person with reade be allowed to know when it was updated ?
         // a person with read, would beablt to know anyway, so guess read should be enough for now ... 
-        const base = this.getbasequery(jwt, "fullDocument._acl", [Rights.read]);
+        const base = this.getbasequery(user, "fullDocument._acl", [Rights.read]);
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
@@ -1198,11 +1200,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     return value; // leave any other value as-is
             });
         }
+        const user: TokenUser = await Crypt.verityToken(jwt);
         let q: any;
         if (query !== null && query !== undefined) {
-            q = { $and: [query, this.getbasequery(jwt, "_acl", [Rights.read])] };
+            q = { $and: [query, this.getbasequery(user, "_acl", [Rights.read])] };
         } else {
-            q = this.getbasequery(jwt, "_acl", [Rights.read]);
+            q = this.getbasequery(user, "_acl", [Rights.read]);
         }
 
         if (finalize != null && finalize != undefined) {
@@ -1254,7 +1257,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
             span?.addEvent("verityToken");
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.addEvent("ensureResource");
             item = this.ensureResource(item, collectionname);
@@ -1493,7 +1496,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 throw new Error("jwt is null");
             }
             await this.connect(span);
-            const user = Crypt.verityToken(jwt);
+            const user = await Crypt.verityToken(jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
@@ -1726,7 +1729,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q === null || q === undefined) { throw Error("UpdateOneMessage cannot be null"); }
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect(span);
-            const user: TokenUser = Crypt.verityToken(q.jwt);
+            const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
                 throw new Error("Access denied, no authorization to UpdateOne with current ACL");
@@ -1990,10 +1993,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             let _query: Object = {};
             if (DatabaseConnection.usemetadata(q.collectionname)) {
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, "metadata._acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, "_acl", [Rights.update])] };
             }
             if (Config.api_bypass_perm_check) { _query = q.query; }
 
@@ -2143,7 +2146,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q === null || q === undefined) { throw Error("UpdateManyMessage cannot be null"); }
             if (q.item === null || q.item === undefined) { throw Error("Cannot update null item"); }
             await this.connect();
-            const user: TokenUser = Crypt.verityToken(q.jwt);
+            const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
@@ -2187,10 +2190,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(q.collectionname)) {
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "metadata._acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, "metadata._acl", [Rights.update])] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = { $and: [q.query, this.getbasequery(q.jwt, "_acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, "_acl", [Rights.update])] };
             }
 
             if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
@@ -2277,7 +2280,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     query = { _id: q.item._id };
                 }
             }
-            const user: TokenUser = Crypt.verityToken(q.jwt);
+            const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             let exists: Base[] = [];
             if (query != null) {
@@ -2363,17 +2366,17 @@ export class DatabaseConnection extends events.EventEmitter {
         try {
 
             await this.connect();
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
             let _query: any = {};
             if (typeof id === 'string' || id instanceof String) {
-                _query = { $and: [{ _id: id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
+                _query = { $and: [{ _id: id }, this.getbasequery(user, "_acl", [Rights.delete])] };
             } else {
-                _query = { $and: [{ id }, this.getbasequery(jwt, "_acl", [Rights.delete])] };
+                _query = { $and: [{ id }, this.getbasequery(user, "_acl", [Rights.delete])] };
             }
 
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
-                _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(jwt, "metadata._acl", [Rights.delete])] };
+                _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, "metadata._acl", [Rights.delete])] };
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection(collectionname).find(_query).toArray();
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
@@ -2486,14 +2489,14 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
             await this.connect();
-            const user: TokenUser = Crypt.verityToken(jwt);
+            const user: TokenUser = await Crypt.verityToken(jwt);
             let _query: any = {};
             let aclfield = "_acl";
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 aclfield = "metadata._acl"
             }
-            const baseq = this.getbasequery(jwt, aclfield, [Rights.delete]);
+            const baseq = this.getbasequery(user, aclfield, [Rights.delete]);
             if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
                 _query = { $and: [{ _id: { "$in": ids } }, baseq] };
             } else if (!NoderedUtil.IsNullUndefinded(query)) {
@@ -2698,11 +2701,10 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {number[]} bits Permission wanted on objects
      * @returns Object MongoDB query
      */
-    public getbasequery(jwt: string, field: string, bits: number[]): Object {
+    public getbasequery(user: TokenUser | User, field: string, bits: number[]): Object {
         if (Config.api_bypass_perm_check) {
             return { _id: { $ne: "bum" } };
         }
-        const user: TokenUser = Crypt.verityToken(jwt);
         if (user._id === WellknownIds.root) {
             return { _id: { $ne: "bum" } };
         }
@@ -2744,14 +2746,14 @@ export class DatabaseConnection extends events.EventEmitter {
         if (NoderedUtil.IsNullUndefinded(user)) return null;
         if (user._type == "user" || user._type == "role") {
             user = await DBHelper.DecorateWithRoles(user as any, parent);
-            const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
-            return this.getbasequery(jwt, field, bits);
+            // const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
+            return this.getbasequery(user, field, bits);
         } else if (user._type == "customer") {
             user = await DBHelper.DecorateWithRoles(user as any, parent);
             user.roles.push(new Rolemember(user.name + " users", (user as any).users))
             user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
-            const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
-            return this.getbasequery(jwt, field, bits);
+            // const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
+            return this.getbasequery(user, field, bits);
         }
         // throw new Error("Cannot create filter for an " + user._type)
     }

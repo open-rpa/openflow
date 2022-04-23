@@ -241,15 +241,6 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         await DBHelper.Save(workitem_queue_users, jwt, span);
 
-
-        if (Config.multi_tenant) {
-            const global_customer_admins: Role = await DBHelper.EnsureRole(jwt, "global customer admins", "62545f1f1ddfe5ab4cc946d5", span);
-            global_customer_admins.AddMember(admins);
-            Base.removeRight(global_customer_admins, WellknownIds.admins, [Rights.full_control]);
-            await DBHelper.Save(global_customer_admins, jwt, span);
-
-        }
-
         await Config.db.ensureindexes(span);
 
         if (Config.auto_hourly_housekeeping) {

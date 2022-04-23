@@ -544,7 +544,7 @@ export class LoginProvider {
                 let jwt: string = null;
                 const authHeader = req.headers.authorization;
                 if (authHeader) {
-                    user = Crypt.verityToken(authHeader);
+                    user = await Crypt.verityToken(authHeader);
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 else if (req.user) {
@@ -581,7 +581,7 @@ export class LoginProvider {
                 db: Config.db,
                 file: (req, file) => {
                     return new Promise((resolve, reject) => {
-                        crypto.randomBytes(16, (err, buf) => {
+                        crypto.randomBytes(16, async (err, buf) => {
                             if (err) {
                                 return reject(err);
                             }
@@ -595,7 +595,7 @@ export class LoginProvider {
                             let jwt: string = null;
                             const authHeader = req.headers.authorization;
                             if (authHeader) {
-                                user = Crypt.verityToken(authHeader);
+                                user = await Crypt.verityToken(authHeader);
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             else if (req.user) {
@@ -651,7 +651,7 @@ export class LoginProvider {
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
-                        user = Crypt.verityToken(authHeader);
+                        user = await Crypt.verityToken(authHeader);
                         jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                     }
                     else if (req.user) {
@@ -696,7 +696,7 @@ export class LoginProvider {
                     let jwt: string = null;
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
-                        user = Crypt.verityToken(authHeader);
+                        user = await Crypt.verityToken(authHeader);
                         jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                     }
                     else if (req.user) {
@@ -744,7 +744,7 @@ export class LoginProvider {
                 let jwt: string = null;
                 const authHeader = req.headers.authorization;
                 if (authHeader) {
-                    user = Crypt.verityToken(authHeader);
+                    user = await Crypt.verityToken(authHeader);
                     jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                 }
                 else if (req.user) {
