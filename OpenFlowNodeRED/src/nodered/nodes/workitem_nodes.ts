@@ -180,14 +180,11 @@ export interface iupdateworkitem {
 export class updateworkitem {
     public node: Red = null;
     public name: string = "";
-    private workitemqueue_config: workitemqueue_config;
     constructor(public config: iupdateworkitem) {
         RED.nodes.createNode(this, config);
         try {
             this.node = this;
             this.name = config.name;
-            var conf = RED.nodes.getNode(this.config.config);
-            if (conf != null) this.workitemqueue_config = conf.config;
             this.node.on("close", this.onclose);
             this.node.on("input", this.oninput);
         } catch (error) {
