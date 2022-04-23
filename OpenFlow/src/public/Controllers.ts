@@ -7121,21 +7121,10 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             try {
-                this.projects = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "project" }, projection: { "name": 1 } });
-                this.projects.forEach((e: any) => { e.display = e.name });
-                this.projects.unshift({ "_id": "", "name": "", "display": "(no project)" } as any);
-                this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, top: 500 });
-                this.workflows.forEach((e: any) => { e.display = e.projectandname });
-                this.workflows.unshift({ "_id": "", "name": "", "display": "(no workflow)" } as any);
-                this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, projection: { "name": 1 }, top: 500 });
-                this.users.forEach((e: any) => { e.display = e.name });
-                this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
-                this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, projection: { "name": 1 }, top: 500 });
-                this.amqpqueues.forEach((e: any) => { e.display = e.name });
-                this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
+                    await this.loadselects();
                     this.model = new WorkitemQueue();
                     this.model.maxretries = 3;
                     this.model.retrydelay = 0;
@@ -7148,12 +7137,31 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         });
     }
-    processdata() {
+    async loadselects() {
+        this.projects = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "project" }, projection: { "name": 1 } });
+        this.projects.forEach((e: any) => { e.display = e.name });
+        this.projects.unshift({ "_id": "", "name": "", "display": "(no project)" } as any);
+        let queryas: string = null;
+        if (this.model != null) queryas = this.model.robotqueue;
+        console.log("queryas", queryas)
+        this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, top: 500, queryas });
+        this.workflows.forEach((e: any) => { e.display = e.projectandname });
+        this.workflows.unshift({ "_id": "", "name": "", "display": "(no workflow)" } as any);
+        this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, projection: { "name": 1 }, top: 500 });
+        this.users.forEach((e: any) => { e.display = e.name });
+        this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
+        this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, projection: { "name": 1 }, top: 500 });
+        this.amqpqueues.forEach((e: any) => { e.display = e.name });
+        this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async processdata() {
         this.loading = false;
         if (NoderedUtil.IsNullEmpty(this.model.projectid)) this.model.projectid = "";
         if (NoderedUtil.IsNullEmpty(this.model.workflowid)) this.model.workflowid = "";
         if (NoderedUtil.IsNullEmpty(this.model.robotqueue)) this.model.robotqueue = "";
         if (NoderedUtil.IsNullEmpty(this.model.amqpqueue)) this.model.amqpqueue = "";
+        await this.loadselects();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
