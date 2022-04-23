@@ -206,6 +206,11 @@ export class updateworkitem {
             let { _id, name, payload, errortype, errormessage } = workitem;
             if (!NoderedUtil.IsNullEmpty(_errormessage) && NoderedUtil.IsNullEmpty(errormessage)) errormessage = _errormessage;
 
+            if (!NoderedUtil.IsNullEmpty(msg.error) && (NoderedUtil.IsNullUndefinded(workitem) || NoderedUtil.IsNullEmpty(_id))) {
+                this.node.status({ fill: "blue", shape: "dot", text: "Ignore missing workitem" });
+                return;
+            }
+
             const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource, errortype })
             if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                 Util.SetMessageProperty(msg, this.config.workitem, result);
