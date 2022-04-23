@@ -290,7 +290,9 @@ export class amqpwrapper extends events.EventEmitter {
                     } catch (error) {
                         Logger.instanse.error(error);
                     }
-                    if (this.channel != null) await this.channel.cancel(exc[0].queue.consumerTag);
+                    if (this.channel != null) {
+                        if (exc[0].queue) await this.channel.cancel(exc[0].queue.consumerTag);
+                    }
                     this.exchanges = this.exchanges.filter(q => q.queue.consumerTag != queue.consumerTag);
                 }
                 var q = this.queues.filter(x => x.consumerTag == queue.consumerTag);
