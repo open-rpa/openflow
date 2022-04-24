@@ -7,7 +7,6 @@ import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { NoderedUtil, TokenUser, User, WellknownIds } from '@openiap/openflow-api';
-import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 
@@ -29,7 +28,6 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
     async after() {
         await Config.db.shutdown();
         await Logger.otel.shutdown();
-        Auth.shutdown();
     }
     @test async 'FindByUsername'() {
         var user = await DBHelper.FindByUsername("testuser", this.rootToken, null);
@@ -83,15 +81,16 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.notStrictEqual(role, null, "Failed locating role users")
     }
     @test async 'FindRoleByNameOrId'() {
-        var role = await DBHelper.FindRoleByNameOrId(this.testUser.username, null, null);
+        var role = await DBHelper.FindRoleByName(this.testUser.username, null);
         assert.strictEqual(role, null, "returned something with illegal name")
-        role = await DBHelper.FindRoleByNameOrId(null, this.testUser._id, null);
+        role = await DBHelper.FindRoleById(this.testUser._id, null, null);
         assert.strictEqual(role, null, "returned something with illegal id")
-        role = await DBHelper.FindRoleByNameOrId("users", null, null);
+        role = await DBHelper.FindRoleByName("users", null);
         assert.notStrictEqual(role, null, "Failed locating role users")
-        role = await DBHelper.FindRoleByNameOrId(null, WellknownIds.users, null);
+        role = await DBHelper.FindRoleById(WellknownIds.users, null, null);
         assert.notStrictEqual(role, null, "Failed locating role users")
-        await assert.rejects(DBHelper.FindRoleByNameOrId(null, null, null));
+        await assert.rejects(DBHelper.FindRoleByName(null, null));
+        await assert.rejects(DBHelper.FindRoleById(null, null, null));
     }
     @timeout(5000)
     @test async 'EnsureUser'() {

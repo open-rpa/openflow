@@ -21,7 +21,6 @@ import { Auth } from '../OpenFlow/src/Auth';
     async after() {
         await Config.db.shutdown();
         await Logger.otel.shutdown();
-        Auth.shutdown();
     }
     @test 'reload'() {
         Config.reload();

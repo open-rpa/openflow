@@ -24,7 +24,6 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
     async after() {
         await Config.db.shutdown();
         await Logger.otel.shutdown();
-        Auth.shutdown();
     }
     @timeout(10000)
     @test async 'ValidatePassword'() {

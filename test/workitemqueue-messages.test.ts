@@ -38,7 +38,6 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         await Config.db.shutdown();
         await Logger.otel.shutdown();
         Logger.License.shutdown();
-        Auth.shutdown();
         // wtf.dump();
     }
     async GetItem(name) {

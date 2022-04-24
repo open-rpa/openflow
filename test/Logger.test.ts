@@ -7,8 +7,8 @@ import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { NoderedUtil } from '@openiap/openflow-api';
-import { license_data } from '../OpenFlow/src/otelspec';
 import { Auth } from '../OpenFlow/src/Auth';
+import { i_license_data } from '../OpenFlow/src/commoninterfaces';
 
 @suite class logger_test {
     @timeout(10000)
@@ -23,7 +23,6 @@ import { Auth } from '../OpenFlow/src/Auth';
         await Config.db.shutdown();
         await Logger.otel.shutdown();
         Logger.License.shutdown();
-        Auth.shutdown();
     }
     @test async 'test info'() {
         assert.ok(!NoderedUtil.IsNullUndefinded(Logger.myFormat), "Logger missing winston error formatter");
@@ -32,7 +31,7 @@ import { Auth } from '../OpenFlow/src/Auth';
     }
     @test async 'v1_lic'() {
         const months: number = 1;
-        const data: license_data = {} as any;
+        const data: i_license_data = {} as any;
         let template = Logger.License.template_v1;
         data.licenseVersion = 1;
         data.email = "test@user.com";
@@ -52,7 +51,7 @@ import { Auth } from '../OpenFlow/src/Auth';
     }
     @test async 'v2_lic'() {
         const months: number = 1;
-        const data: license_data = {} as any;
+        const data: i_license_data = {} as any;
         let template = Logger.License.template_v2;
         let ofid = Logger.License.ofid(false);
         assert.ok(!NoderedUtil.IsNullEmpty(ofid));

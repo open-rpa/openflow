@@ -6,8 +6,7 @@ import { Config } from "../OpenFlow/src/Config";
 import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
-import { KubeUtil } from '../OpenFlow/src/KubeUtil';
-import { Auth } from '../OpenFlow/src/Auth';
+import { KubeUtil } from '../OpenFlow/src/ee/KubeUtil';
 
 @suite class kubeutil_test {
     @timeout(10000)
@@ -21,7 +20,6 @@ import { Auth } from '../OpenFlow/src/Auth';
     async after() {
         await Config.db.shutdown();
         await Logger.otel.shutdown();
-        Auth.shutdown();
     }
     @test async 'GetStatefulSet'() {
         var sfs = await KubeUtil.instance().GetStatefulSet(Config.namespace, "findme");

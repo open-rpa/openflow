@@ -31,7 +31,6 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         await Config.db.shutdown();
         await Logger.otel.shutdown();
         Logger.License.shutdown();
-        Auth.shutdown();
     }
     @test async 'Unselect customer as root'() {
         var q = new SelectCustomerMessage();

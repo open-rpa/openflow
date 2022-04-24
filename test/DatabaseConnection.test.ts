@@ -29,20 +29,11 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     async after() {
         await Config.db.shutdown();
         await Logger.otel.shutdown();
-        Auth.shutdown();
     }
     @test async 'dbconstructor'() {
         var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await db.connect(null);
         db.shutdown();
-    }
-    @test async 'semaphore'() {
-        setTimeout(async () => {
-            await DatabaseConnection.semaphore.up();
-        }, 500);
-        await DatabaseConnection.semaphore.down();
-        await DatabaseConnection.semaphore.down();
-        await DatabaseConnection.semaphore.up();
     }
     @test async 'ListCollections'() {
         var rootcollections = await Config.db.ListCollections(this.rootToken);
