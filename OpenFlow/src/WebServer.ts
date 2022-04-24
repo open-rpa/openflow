@@ -14,8 +14,6 @@ import { Config } from "./Config";
 import { NoderedUtil } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
-import { WebSocketServer } from "./WebSocketServer";
-import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 var _hostname = "";

@@ -7,14 +7,12 @@ import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { Auth } from "./Auth";
 const { JSONPath } = require('jsonpath-plus');
 import events = require("events");
 import { amqpwrapper } from "./amqpwrapper";
 import { WebSocketServer } from "./WebSocketServer";
 import { clsstream } from "./WebSocketServerClient";
 import { SocketMessage } from "./SocketMessage";
-import { Log } from "@kubernetes/client-node";
 import { LoginProvider } from "./LoginProvider";
 import { WebServer } from "./WebServer";
 

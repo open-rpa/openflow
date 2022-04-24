@@ -6,7 +6,7 @@ import { Message } from "./Messages/Message";
 import { Config } from "./Config";
 import { SigninMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
+import { ValueRecorder, BaseObserver } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
 import { DBHelper } from "./DBHelper";
 import { DatabaseConnection } from "./DatabaseConnection";

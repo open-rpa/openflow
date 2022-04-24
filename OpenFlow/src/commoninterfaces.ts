@@ -3,7 +3,6 @@ import { BasicTracerProvider } from "@opentelemetry/tracing";
 import { HrTime, Span, setSpan } from "@opentelemetry/api";
 import { ValueRecorder } from "@opentelemetry/api-metrics";
 import { Labels } from "@opentelemetry/api-metrics";
-import { DeletedCtrl } from "./public/Controllers";
 import { TokenUser } from "@openiap/openflow-api";
 
 export interface i_license_data {

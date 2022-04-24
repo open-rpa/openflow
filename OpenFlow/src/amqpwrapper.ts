@@ -6,7 +6,6 @@ import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import events = require("events");
-import { Auth } from "./Auth";
 import { Message } from "./Messages/Message";
 import { DBHelper } from "./DBHelper";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
