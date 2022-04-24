@@ -3,29 +3,26 @@ import { BasicTracerProvider } from "@opentelemetry/tracing";
 import { HrTime, Span, setSpan } from "@opentelemetry/api";
 import { ValueRecorder } from "@opentelemetry/api-metrics";
 import { Labels } from "@opentelemetry/api-metrics";
+import { DeletedCtrl } from "./public/Controllers";
+import { TokenUser } from "@openiap/openflow-api";
 
-export declare class license_data {
+export interface i_license_data {
     licenseVersion: number;
     email: string;
     expirationDate: Date;
     domain: string;
 }
-/**
- * LicenseFile Class
- */
-export declare class LicenseFile {
+export interface i_license_file {
     template_v1: string;
     template_v2: string;
     license_public_key: string;
     privateKey: string;
     validlicense: boolean;
     licenserror: string;
-    data: license_data;
-    private _ofid;
+    data: i_license_data;
     ofid(force: boolean): any;
     validate(): void;
     shutdown(): void;
-    private validateTimer;
     /**
      *  Generate license file
      *
@@ -62,29 +59,12 @@ export declare class LicenseFile {
     _render(template: any, data: any): any;
     _prepareDataObject(data: any): {};
 }
-
-export declare class otel {
+export interface i_otel {
     default_boundaries: number[];
-    static fakespan: {
-        context: () => any;
-        setAttribute: () => any;
-        setAttributes: () => any;
-        addEvent: () => any;
-        setStatus: () => any;
-        updateName: () => any;
-        end: () => any;
-        isRecording: () => any;
-        recordException: () => any;
-    };
-    static instance: otel;
     traceprovider: BasicTracerProvider;
     meterprovider: MeterProvider;
     meter: Meter;
     defaultlabels: any;
-    private static nodejs_heap_size_used_bytes;
-    private static nodejs_heap_size_total_bytes;
-    private static perfTimeout;
-    static configure(): otel;
     startSpan(name: string): Span;
     startSubSpan(name: string, parent: Span): Span;
     endSpan(span: Span): void;
@@ -92,4 +72,15 @@ export declare class otel {
     endTimer(startTime: HrTime, recorder: ValueRecorder, labels?: Labels): any;
     setdefaultlabels(): void;
     shutdown(): Promise<void>;
+}
+
+export interface i_nodered_driver {
+    detect(): Promise<boolean>;
+    EnsureNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void>;
+    GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<any[]>;
+    RestartNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void>;
+    DeleteNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void>;
+    DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, skipcreate: boolean, parent: Span): Promise<void>;
+    GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, skipcreate: boolean, parent: Span): Promise<string>;
+    NodeLabels(parent: Span): Promise<any>;
 }

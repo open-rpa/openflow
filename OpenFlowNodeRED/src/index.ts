@@ -12,7 +12,7 @@ Logger.instanse.info("starting openflow nodered");
 
 let _otel_require: any = null;
 try {
-    _otel_require = require("./otel");
+    _otel_require = require("./ee/otel");
 } catch (error) {
 
 }

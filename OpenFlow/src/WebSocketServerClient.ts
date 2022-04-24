@@ -318,12 +318,10 @@ export class WebSocketServerClient {
                         done(result);
                         ack();
                     } catch (error) {
-                        ack(false);
-                        // setTimeout(() => {
-                        //     ack(false);
-                        //     done(_data);
-                        //     console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
-                        // }, Config.amqp_requeue_time);
+                        setTimeout(() => {
+                            ack(false);
+                            console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                        }, Config.amqp_requeue_time);
                     }
                 }, span);
                 if (exchangequeue) {
@@ -395,12 +393,10 @@ export class WebSocketServerClient {
                         // done(result);
                         Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
-                        ack(false);
-                        // setTimeout(() => {
-                        //     ack(false);
-                        //     done(_data);
-                        //     Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
-                        // }, Config.amqp_requeue_time);
+                        setTimeout(() => {
+                            ack(false);
+                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                        }, Config.amqp_requeue_time);
                     } finally {
                         try {
                             done(_data);

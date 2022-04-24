@@ -367,13 +367,7 @@ Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
 let GrafanaProxy: any = null;
 try {
-    GrafanaProxy = require("./grafana-proxy");
-} catch (error) {
-
-}
-let Prometheus: any = null;
-try {
-    Prometheus = require("./Prometheus");
+    GrafanaProxy = require("./ee/grafana-proxy");
 } catch (error) {
 
 }
