@@ -35,9 +35,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     @timeout(10000)
     async after() {
         Config.workitem_queue_monitoring_enabled = false;
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        Logger.License.shutdown();
+        await Logger.shutdown();
         // wtf.dump();
     }
     async GetItem(name) {
@@ -228,6 +226,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     @timeout(50000)
     async 'Create work item queue'(name) {
         var q: any = new AddWorkitemQueueMessage();
+        q.maxretries = 3; q.retrydelay = 0; q.initialdelay = 0;
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
