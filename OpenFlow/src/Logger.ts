@@ -42,6 +42,11 @@ export class Logger {
             return "n/a";
         }
     };
+    public static async shutdown() {
+        Logger.License.shutdown();
+        await Config.db.shutdown();
+        await Logger.otel.shutdown();
+    }
     static configure(skipotel: boolean, skiplic: boolean): winston.Logger {
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {
