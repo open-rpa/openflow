@@ -404,10 +404,66 @@ export class LoginProvider {
                 Logger.otel.endSpan(span);
             }
         });
+        app.post("/AddTokenRequest", async (req: any, res: any, next: any): Promise<void> => {
+            const span: Span = Logger.otel.startSpan("LoginProvider.login");
+            try {
+                const key = req.body.key;
+                var exists = await DBHelper.FindRequestTokenID(key, span);
+                if (!NoderedUtil.IsNullUndefinded(exists)) return res.status(500).send({ message: "Illegal key" });
+                await DBHelper.AdddRequestTokenID(key, {}, span);
+                res.status(200).send({ message: "ok" });
+            } catch (error) {
+                span?.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                Logger.otel.endSpan(span);
+            }
+        });
+        app.get("/GetTokenRequest", async (req: any, res: any, next: any): Promise<void> => {
+            const span: Span = Logger.otel.startSpan("LoginProvider.login");
+            try {
+                const key = req.query.key;
+                var exists = await DBHelper.FindRequestTokenID(key, span);
+                if (NoderedUtil.IsNullUndefinded(exists)) return res.status(500).send({ message: "Illegal key" });
+                res.status(200).send(Object.assign(exists, { message: "ok" }));
+                if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
+                    await DBHelper.RemoveRequestTokenID(key, span);
+                }
+            } catch (error) {
+                span?.recordException(error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } finally {
+                Logger.otel.endSpan(span);
+            }
+        });
         app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+                let key = req.query.key;
+                if (NoderedUtil.IsNullEmpty(key) && !NoderedUtil.IsNullEmpty(req.cookies.requesttoken)) key = req.cookies.requesttoken;
+
+                if (!NoderedUtil.IsNullEmpty(key)) {
+                    if (req.user) {
+                        const user: User = await DBHelper.FindById(req.user._id, undefined, span);
+                        var exists = await DBHelper.FindRequestTokenID(key, span);
+                        if (!NoderedUtil.IsNullUndefinded(exists)) {
+                            await DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
+                            res.cookie("requesttoken", "", { expires: new Date(0) });
+                        }
+                    } else {
+                        res.cookie("requesttoken", key, { maxAge: 36000, httpOnly: true });
+                    }
+                }
+                if (!NoderedUtil.IsNullEmpty(req.query.key)) {
+                    if (req.user) {
+                        res.cookie("originalUrl", "", { expires: new Date(0) });
+                        this.redirect(res, "/");
+                    } else {
+                        res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                        this.redirect(res, "/login");
+                    }
+                }
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {

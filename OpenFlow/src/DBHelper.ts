@@ -118,6 +118,43 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
+    public static async FindRequestTokenID(key: string, parent: Span): Promise<any> {
+        this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        try {
+            if (NoderedUtil.IsNullEmpty(key)) return null;
+            return await this.memoryCache.get("requesttoken" + key);
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async AdddRequestTokenID(key: string, data: any, parent: Span): Promise<any> {
+        this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        try {
+            return await this.memoryCache.set("requesttoken" + key, data);
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async RemoveRequestTokenID(key: string, parent: Span): Promise<any> {
+        this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        try {
+            return await this.memoryCache.del("requesttoken" + key);
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     public static async FindByAuthorization(authorization: string, jwt: string, parent: Span): Promise<User> {
         if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
             (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
