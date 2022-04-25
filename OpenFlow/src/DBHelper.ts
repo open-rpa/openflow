@@ -54,7 +54,9 @@ export class DBHelper {
             keys = await this.memoryCache.keys();
         }
         for (var i = 0; i < keys.length; i++) {
-            this.memoryCache.del(keys[i]);
+            if (keys[i] && !keys[i].startsWith("requesttoken")) {
+                this.memoryCache.del(keys[i]);
+            }
         }
         if (Config.log_cache) Logger.instanse.debug("clearCache called with reason: " + reason);
     }

@@ -424,15 +424,46 @@ export class LoginProvider {
             try {
                 const key = req.query.key;
                 var exists = await DBHelper.FindRequestTokenID(key, span);
-                if (NoderedUtil.IsNullUndefinded(exists)) return res.status(500).send({ message: "Illegal key" });
-                res.status(200).send(Object.assign(exists, { message: "ok" }));
+                if (NoderedUtil.IsNullUndefinded(exists)) {
+                    res.status(200).send({ message: "Illegal key" });
+                    return;
+                    // return res.status(500).send({ message: "Illegal key" });
+                }
+
                 if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
-                    await DBHelper.RemoveRequestTokenID(key, span);
+                    if (Config.validate_user_form != "") {
+                        try {
+                            var tuser = await await Crypt.verityToken(exists.jwt);
+                            var user = await DBHelper.FindById(tuser._id, exists.jwt, span);
+                            if (user.validated == true) {
+                                await DBHelper.RemoveRequestTokenID(key, span);
+                                res.status(200).send(Object.assign(exists, { message: "ok" }));
+
+                            } else {
+                                res.status(200).send({ message: "ok" });
+                            }
+                        } catch (error) {
+                            Logger.instanse.error(error.message ? error.message : error);
+                        }
+                    } else {
+                        res.status(200).send(Object.assign(exists, { message: "ok" }));
+                        await DBHelper.RemoveRequestTokenID(key, span);
+                    }
+                } else {
+                    res.status(200).send(Object.assign(exists, { message: "ok" }));
                 }
             } catch (error) {
+                Logger.instanse.error(error.message ? error.message : error);
                 span?.recordException(error);
-                return res.status(500).send({ message: error.message ? error.message : error });
+                try {
+                    res.status(500).send({ message: error.message ? error.message : error });
+                } catch (error) {
+                }
             } finally {
+                try {
+                    res.end();
+                } catch (error) {
+                }
                 Logger.otel.endSpan(span);
             }
         });
