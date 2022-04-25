@@ -255,10 +255,10 @@ export class amqpwrapper extends events.EventEmitter {
                 } catch (error) {
                 }
             })
-            this.channel.on('close', () => {
+            this.channel.on('close', async () => {
                 this.connected = false;
                 try {
-                    if (this.conn != null) this.conn.close();
+                    if (this.conn != null) await this.conn.close();
                 } catch (error) {
                 }
                 this.channel = null;
@@ -285,7 +285,7 @@ export class amqpwrapper extends events.EventEmitter {
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
-                        this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
+                        await this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
                     } catch (error) {
                         Logger.instanse.error(error);
                     }
