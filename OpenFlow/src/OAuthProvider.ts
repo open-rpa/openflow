@@ -8,8 +8,6 @@ import { MongoAdapter } from "./MongoAdapter";
 import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { LoginProvider } from "./LoginProvider";
-import { Auth } from "./Auth";
 
 const Request = OAuthServer.Request;
 const Response = OAuthServer.Response;

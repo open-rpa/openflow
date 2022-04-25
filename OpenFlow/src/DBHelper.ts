@@ -54,7 +54,9 @@ export class DBHelper {
             keys = await this.memoryCache.keys();
         }
         for (var i = 0; i < keys.length; i++) {
-            this.memoryCache.del(keys[i]);
+            if (keys[i] && !keys[i].startsWith("requesttoken")) {
+                this.memoryCache.del(keys[i]);
+            }
         }
         if (Config.log_cache) Logger.instanse.debug("clearCache called with reason: " + reason);
     }
@@ -111,6 +113,43 @@ export class DBHelper {
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
             return res2;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async FindRequestTokenID(key: string, parent: Span): Promise<any> {
+        this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        try {
+            if (NoderedUtil.IsNullEmpty(key)) return null;
+            return await this.memoryCache.get("requesttoken" + key);
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async AdddRequestTokenID(key: string, data: any, parent: Span): Promise<any> {
+        this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        try {
+            return await this.memoryCache.set("requesttoken" + key, data);
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async RemoveRequestTokenID(key: string, parent: Span): Promise<any> {
+        this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        try {
+            return await this.memoryCache.del("requesttoken" + key);
         } catch (error) {
             span?.recordException(error);
             throw error;

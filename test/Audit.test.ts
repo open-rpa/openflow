@@ -11,7 +11,6 @@ import { TokenUser, User } from '@openiap/openflow-api';
 import { Audit } from '../OpenFlow/src/Audit';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
-import { Auth } from '../OpenFlow/src/Auth';
 
 @suite class audit_test {
     private rootToken: string;
@@ -27,9 +26,7 @@ import { Auth } from '../OpenFlow/src/Auth';
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        Auth.shutdown();
+        await Logger.shutdown();
         // wtf.dump()
     }
     @test async 'reload'() {
@@ -46,3 +43,4 @@ import { Auth } from '../OpenFlow/src/Auth';
 
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/Audit.test.ts'
+// cls | ts-mocha --paths -p test/tsconfig.json 'test/Audit.test.ts'

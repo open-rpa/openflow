@@ -3,9 +3,8 @@ import * as fs from "fs";
 import * as path from "path";
 import * as retry from "async-retry";
 import { DatabaseConnection } from "./DatabaseConnection";
-import { Logger } from "./Logger";
+// import { Logger } from "./Logger";
 import { NoderedUtil } from "@openiap/openflow-api";
-
 export class Config {
     public static getversion(): string {
         let versionfile: string = path.join(__dirname, "VERSION");
@@ -439,7 +438,8 @@ export class Config {
         }, {
             retries: 50,
             onRetry: function (error: Error, count: number): void {
-                Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
+                console.log("retry " + count + " error " + error.message + " getting " + url);
+                // Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
             }
         });
     }

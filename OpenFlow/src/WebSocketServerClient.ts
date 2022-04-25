@@ -8,8 +8,8 @@ import { ChangeStream } from "mongodb";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { WebServer } from "./WebServer";
 import { clientType } from "./Audit";
+import express = require("express");
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -76,6 +76,14 @@ export class WebSocketServerClient {
         this.commandcounter[command] = result;
         return result;
     }
+    public static remoteip(req: express.Request) {
+        let remoteip: string = req.socket.remoteAddress;
+        if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
+        if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"] as string;
+        if (req.headers["x-forwarded-for"] != null) remoteip = req.headers["x-forwarded-for"] as string;
+        if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"] as string;
+        return remoteip;
+    }
     constructor(socketObject: WebSocket, req: any) {
         this.id = NoderedUtil.GetUniqueIdentifier();
         this._socketObject = socketObject;
@@ -87,7 +95,7 @@ export class WebSocketServerClient {
         }
         //if (NoderedUtil.IsNullEmpty(this.remoteip) && !NoderedUtil.IsNullUndefinded(req) && !NoderedUtil.IsNullUndefinded(req.headers)) {
         if (!NoderedUtil.IsNullUndefinded(req)) {
-            this.remoteip = WebServer.remoteip(req);
+            this.remoteip = WebSocketServerClient.remoteip(req);
         }
         Logger.instanse.info("new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", this.open.bind(this));
@@ -318,12 +326,10 @@ export class WebSocketServerClient {
                         done(result);
                         ack();
                     } catch (error) {
-                        ack(false);
-                        // setTimeout(() => {
-                        //     ack(false);
-                        //     done(_data);
-                        //     console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
-                        // }, Config.amqp_requeue_time);
+                        setTimeout(() => {
+                            ack(false);
+                            console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                        }, Config.amqp_requeue_time);
                     }
                 }, span);
                 if (exchangequeue) {
@@ -395,12 +401,10 @@ export class WebSocketServerClient {
                         // done(result);
                         Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
-                        ack(false);
-                        // setTimeout(() => {
-                        //     ack(false);
-                        //     done(_data);
-                        //     Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
-                        // }, Config.amqp_requeue_time);
+                        setTimeout(() => {
+                            ack(false);
+                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                        }, Config.amqp_requeue_time);
                     } finally {
                         try {
                             done(_data);

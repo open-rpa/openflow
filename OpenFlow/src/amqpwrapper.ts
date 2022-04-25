@@ -6,7 +6,6 @@ import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import events = require("events");
-import { Auth } from "./Auth";
 import { Message } from "./Messages/Message";
 import { DBHelper } from "./DBHelper";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
@@ -256,10 +255,10 @@ export class amqpwrapper extends events.EventEmitter {
                 } catch (error) {
                 }
             })
-            this.channel.on('close', () => {
+            this.channel.on('close', async () => {
                 this.connected = false;
                 try {
-                    if (this.conn != null) this.conn.close();
+                    if (this.conn != null) await this.conn.close();
                 } catch (error) {
                 }
                 this.channel = null;
@@ -286,11 +285,13 @@ export class amqpwrapper extends events.EventEmitter {
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
-                        this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
+                        await this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
                     } catch (error) {
                         Logger.instanse.error(error);
                     }
-                    if (this.channel != null) await this.channel.cancel(exc[0].queue.consumerTag);
+                    if (this.channel != null) {
+                        if (exc[0].queue) await this.channel.cancel(exc[0].queue.consumerTag);
+                    }
                     this.exchanges = this.exchanges.filter(q => q.queue.consumerTag != queue.consumerTag);
                 }
                 var q = this.queues.filter(x => x.consumerTag == queue.consumerTag);

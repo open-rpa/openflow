@@ -10,9 +10,6 @@ import { NoderedUtil, User } from '@openiap/openflow-api';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
-import { Auth } from '../OpenFlow/src/Auth';
-
-
 
 @suite class amqp_test {
     private rootToken: string;
@@ -35,9 +32,7 @@ import { Auth } from '../OpenFlow/src/Auth';
     @timeout(5000)
     async after() {
         this.amqp.shutdown();
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        // Auth.shutdown();
+        await Logger.shutdown();
     }
     // @test async 'connecterror'() {
     //     // var amqp = new amqpwrapper('bogus://url');
@@ -125,4 +120,5 @@ import { Auth } from '../OpenFlow/src/Auth';
         await assert.rejects(this.amqp.RemoveQueueConsumer(this.testUser, null, null));
     }
 }
-// cls | ts-mocha --paths -p test/tsconfig.json .\test\amqp.test.ts
+// cls | ./node_modules/.bin/_mocha 'test/**/amqp.test.ts'
+// cls | ts-mocha --paths -p test/tsconfig.json 'test/amqp.test.ts'

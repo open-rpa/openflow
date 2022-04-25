@@ -5,14 +5,13 @@ import { WebSocketServer } from "./WebSocketServer";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
-import { WellknownIds, Role, Rights, User, Base, NoderedUtil } from "@openiap/openflow-api";
+import { amqpwrapper } from "./amqpwrapper";
+import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
 import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
 import { Message } from "./Messages/Message";
-import { Auth } from "./Auth";
 
 Logger.configure(false, false);
 Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);
@@ -367,13 +366,7 @@ Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
 let GrafanaProxy: any = null;
 try {
-    GrafanaProxy = require("./grafana-proxy");
-} catch (error) {
-
-}
-let Prometheus: any = null;
-try {
-    Prometheus = require("./Prometheus");
+    GrafanaProxy = require("./ee/grafana-proxy");
 } catch (error) {
 
 }

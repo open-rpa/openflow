@@ -7,7 +7,6 @@ import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { NoderedUtil, TokenUser, User, WellknownIds } from '@openiap/openflow-api';
-import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 
@@ -27,16 +26,16 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        Auth.shutdown();
+        await Logger.shutdown();
     }
     @test async 'FindByUsername'() {
         var user = await DBHelper.FindByUsername("testuser", this.rootToken, null);
         assert.notStrictEqual(user, null, "Failed locating test user as root")
         user = await DBHelper.FindByUsername("testuser", this.userToken, null);
         assert.notStrictEqual(user, null, "Failed locating test user as self")
-        await assert.rejects(DBHelper.FindByUsername(null, this.rootToken, null));
+        user = await DBHelper.FindByUsername(null, this.rootToken, null);
+        assert.strictEqual(user, null, "Returned user with null as username")
+        // await assert.rejects(DBHelper.FindByUsername(null, this.rootToken, null));
     }
     @test async 'FindById'() {
         var user = await DBHelper.FindById(this.testUser._id, this.rootToken, null);
@@ -45,7 +44,9 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.notStrictEqual(user, null, "Failed locating test user as self")
         user = await DBHelper.FindById("nonexisting", this.userToken, null);
         assert.strictEqual(user, null, "returned something with illegal id")
-        await assert.rejects(DBHelper.FindById(null, this.rootToken, null));
+        user = await DBHelper.FindById(null, this.rootToken, null);
+        assert.strictEqual(user, null, "Returned user with null as id")
+        // await assert.rejects(DBHelper.FindById(null, this.rootToken, null));
     }
     @test async 'FindByUsernameOrId'() {
         var user = await DBHelper.FindByUsernameOrId(this.testUser.username, null, null);
@@ -56,14 +57,18 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.strictEqual(user, null, "returned something with illegal username")
         user = await DBHelper.FindByUsernameOrId(null, "does not exist", null);
         assert.strictEqual(user, null, "returned something with illegal id")
-        await assert.rejects(DBHelper.FindByUsernameOrId(null, null, null));
+        user = await DBHelper.FindByUsernameOrId(null, null, null)
+        assert.strictEqual(user, null, "Returned user with null as id and username")
+        // await assert.rejects(DBHelper.FindByUsernameOrId(null, null, null));
     }
     @test async 'FindByUsernameOrFederationid'() {
         var user = await DBHelper.FindByUsernameOrFederationid(this.testUser.username, null);
         assert.notStrictEqual(user, null, "Failed locating user by username")
         user = await DBHelper.FindByUsernameOrFederationid("test@federation.id", null);
         assert.notStrictEqual(user, null, "Failed locating user by federation id")
-        await assert.rejects(DBHelper.FindByUsernameOrFederationid(null, null));
+        user = await DBHelper.FindByUsernameOrFederationid(null, null)
+        assert.strictEqual(user, null, "Returned user with null as username and Federationid")
+        // await assert.rejects(DBHelper.FindByUsernameOrFederationid(null, null));
     }
     @test async 'DecorateWithRoles'() {
         var tuser = TokenUser.From(this.testUser);
@@ -74,7 +79,9 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         tuser.roles = [];
         tuser = await DBHelper.DecorateWithRoles(tuser, null);
         assert.notStrictEqual(tuser.roles.length, 0, "No roles added to user")
-        await assert.rejects(DBHelper.DecorateWithRoles(null, null));
+        tuser = await DBHelper.DecorateWithRoles(null, null)
+        assert.strictEqual(tuser, null, "DecorateWithRoles Returned user with null argument")
+        // await assert.rejects(DBHelper.DecorateWithRoles(null, null));
     }
     @test async 'FindRoleByName'() {
         var role = await DBHelper.FindRoleByName(this.testUser.username, null);
@@ -83,15 +90,19 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         assert.notStrictEqual(role, null, "Failed locating role users")
     }
     @test async 'FindRoleByNameOrId'() {
-        var role = await DBHelper.FindRoleByNameOrId(this.testUser.username, null, null);
+        var role = await DBHelper.FindRoleByName(this.testUser.username, null);
         assert.strictEqual(role, null, "returned something with illegal name")
-        role = await DBHelper.FindRoleByNameOrId(null, this.testUser._id, null);
-        assert.strictEqual(role, null, "returned something with illegal id")
-        role = await DBHelper.FindRoleByNameOrId("users", null, null);
+        role = await DBHelper.FindRoleByName("users", null);
         assert.notStrictEqual(role, null, "Failed locating role users")
-        role = await DBHelper.FindRoleByNameOrId(null, WellknownIds.users, null);
+        role = await DBHelper.FindRoleById(WellknownIds.users, null, null);
         assert.notStrictEqual(role, null, "Failed locating role users")
-        await assert.rejects(DBHelper.FindRoleByNameOrId(null, null, null));
+        role = await DBHelper.FindRoleByName(null, null);
+        assert.strictEqual(role, null, "Returned role with null as username")
+        role = await DBHelper.FindRoleById(null, null, null);
+        assert.strictEqual(role, null, "Returned userrole with null as id")
+
+        // await assert.rejects(DBHelper.FindRoleByName(null, null));
+        // await assert.rejects(DBHelper.FindRoleById(null, null, null));
     }
     @timeout(5000)
     @test async 'EnsureUser'() {

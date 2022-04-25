@@ -25,6 +25,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     async after() {
         await this.socket.close(1000, "Close by user");
         this.socket.events.removeAllListeners()
+        await Logger.shutdown();
         // wtf.dump()
     }
     @timeout(10000)

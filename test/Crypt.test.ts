@@ -7,7 +7,6 @@ import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { User } from '@openiap/openflow-api';
-import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
 import { DBHelper } from '../OpenFlow/src/DBHelper';
 @suite class crypt_test {
@@ -22,9 +21,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         this.testUser = await DBHelper.FindByUsername("testuser", Crypt.rootToken(), null)
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        Auth.shutdown();
+        await Logger.shutdown();
     }
     @timeout(10000)
     @test async 'ValidatePassword'() {

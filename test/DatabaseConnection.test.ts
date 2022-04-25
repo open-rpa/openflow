@@ -27,22 +27,12 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        Auth.shutdown();
+        await Logger.shutdown();
     }
     @test async 'dbconstructor'() {
         var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await db.connect(null);
         db.shutdown();
-    }
-    @test async 'semaphore'() {
-        setTimeout(async () => {
-            await DatabaseConnection.semaphore.up();
-        }, 500);
-        await DatabaseConnection.semaphore.down();
-        await DatabaseConnection.semaphore.down();
-        await DatabaseConnection.semaphore.up();
     }
     @test async 'ListCollections'() {
         var rootcollections = await Config.db.ListCollections(this.rootToken);

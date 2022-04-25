@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { NoderedUtil } from "@openiap/openflow-api";
 import * as fs from "fs";
+import { i_license_data } from "./commoninterfaces";
 import { Config } from "./Config";
 import { Logger } from "./Logger";
-import { license_data } from "./otelspec";
 function printusage() {
     console.log("openflow-cli [--months 3][--email email] domain");
     console.log("   --months - Set number of months, default 3");
@@ -20,7 +20,7 @@ const optionDefinitions = [
 
 let _lic_require: any = null;
 try {
-    _lic_require = require("./license-file");
+    _lic_require = require("./ee/license-file");
 } catch (error) {
 }
 if (_lic_require != null) {
@@ -55,7 +55,7 @@ try {
         console.log("no such file or directory, open config/private_key.pem");
         process.exit();
     }
-    const data: license_data = {} as any;
+    const data: i_license_data = {} as any;
     let template = Logger.License.template_v1;
     data.licenseVersion = 1;
     data.email = options.email;

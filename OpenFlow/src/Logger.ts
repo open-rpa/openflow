@@ -1,11 +1,13 @@
 import { NoderedUtil } from "@openiap/openflow-api";
 import * as winston from "winston";
+import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
-import { LicenseFile, otel } from "./otelspec";
+import { dockerdriver } from "./dockerdriver";
 const path = require('path');
 export class Logger {
-    public static otel: otel;
-    public static License: LicenseFile;
+    public static otel: i_otel;
+    public static License: i_license_file;
+    public static nodereddriver: i_nodered_driver;
     static myFormat = winston.format.printf(info => {
         if (info instanceof Error || info.stack) {
             return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
@@ -40,6 +42,11 @@ export class Logger {
             return "n/a";
         }
     };
+    public static async shutdown() {
+        Logger.License.shutdown();
+        await Config.db.shutdown();
+        await Logger.otel.shutdown();
+    }
     static configure(skipotel: boolean, skiplic: boolean): winston.Logger {
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {
@@ -86,7 +93,7 @@ export class Logger {
 
         let _lic_require: any = null;
         try {
-            if (!skiplic) _lic_require = require("./license-file");
+            if (!skiplic) _lic_require = require("./ee/license-file");
         } catch (error) {
         }
         if (_lic_require != null) {
@@ -97,12 +104,44 @@ export class Logger {
             Logger.License.shutdown = () => undefined;
         }
 
+        this.nodereddriver = null;
+        if (!NoderedUtil.isKubernetes() && NoderedUtil.isDocker()) {
+            if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
+                try {
+                    this.nodereddriver = new dockerdriver();
+                    if (!this.nodereddriver.detect()) {
+                        this.nodereddriver = null;
+                    }
+                } catch (error) {
+                    this.nodereddriver = null;
+                    Logger.instanse.error(error);
+                }
+            }
+        }
+        if (this.nodereddriver == null) {
+            let _driver: any = null;
+            try {
+                _driver = require("./ee/kubedriver");
+            } catch (error) {
+            }
+            try {
+                if (_driver != null) {
+                    this.nodereddriver = new _driver.kubedriver();
+                    if (!this.nodereddriver.detect()) {
+                        this.nodereddriver = null;
+                    }
+                }
+            } catch (error) {
+                this.nodereddriver = null;
+                Logger.instanse.error(error);
+            }
+        }
 
 
 
         let _otel_require: any = null;
         try {
-            if (!skipotel) _otel_require = require("./otel");
+            if (!skipotel) _otel_require = require("./ee/otel");
         } catch (error) {
 
         }
@@ -176,4 +215,5 @@ export class Logger {
             }
         }
     }
+
 }
