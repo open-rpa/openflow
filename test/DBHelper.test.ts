@@ -26,8 +26,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
+        await Logger.shutdown();
     }
     @test async 'FindByUsername'() {
         var user = await DBHelper.FindByUsername("testuser", this.rootToken, null);

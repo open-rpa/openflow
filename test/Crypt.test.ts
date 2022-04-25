@@ -21,8 +21,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         this.testUser = await DBHelper.FindByUsername("testuser", Crypt.rootToken(), null)
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
+        await Logger.shutdown();
     }
     @timeout(10000)
     @test async 'ValidatePassword'() {

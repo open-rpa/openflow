@@ -26,8 +26,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
+        await Logger.shutdown();
         // wtf.dump()
     }
     @test async 'reload'() {

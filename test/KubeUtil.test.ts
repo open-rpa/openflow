@@ -18,8 +18,7 @@ import { KubeUtil } from '../OpenFlow/src/ee/KubeUtil';
         await Config.db.connect(null);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
+        await Logger.shutdown();
     }
     @test async 'GetStatefulSet'() {
         var sfs = await KubeUtil.instance().GetStatefulSet(Config.namespace, "findme");

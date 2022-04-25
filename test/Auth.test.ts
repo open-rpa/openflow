@@ -20,8 +20,7 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
         await Config.db.connect(null);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
+        await Logger.shutdown();
     }
     @test async 'ValidateByPassword'() {
         await assert.rejects(async () => {

@@ -20,9 +20,7 @@ import { i_license_data } from '../OpenFlow/src/commoninterfaces';
         await Config.db.connect(null);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        Logger.License.shutdown();
+        await Logger.shutdown();
     }
     @test async 'test info'() {
         assert.ok(!NoderedUtil.IsNullUndefinded(Logger.myFormat), "Logger missing winston error formatter");

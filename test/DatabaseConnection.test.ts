@@ -27,8 +27,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
+        await Logger.shutdown();
     }
     @test async 'dbconstructor'() {
         var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);

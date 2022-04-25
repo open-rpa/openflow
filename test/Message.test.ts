@@ -28,9 +28,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }
     async after() {
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        Logger.License.shutdown();
+        await Logger.shutdown();
     }
     @test async 'Unselect customer as root'() {
         var q = new SelectCustomerMessage();

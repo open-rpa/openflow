@@ -32,9 +32,7 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
     @timeout(5000)
     async after() {
         this.amqp.shutdown();
-        await Config.db.shutdown();
-        await Logger.otel.shutdown();
-        // Auth.shutdown();
+        await Logger.shutdown();
     }
     // @test async 'connecterror'() {
     //     // var amqp = new amqpwrapper('bogus://url');
