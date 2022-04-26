@@ -395,6 +395,7 @@ export class LoginProvider {
                     collections_with_text_index: DatabaseConnection.collections_with_text_index,
                     timeseries_collections: DatabaseConnection.timeseries_collections,
                     ping_clients_interval: Config.ping_clients_interval,
+                    validlicense: Logger.License.validlicense
                 }
                 res.end(JSON.stringify(res2));
             } catch (error) {

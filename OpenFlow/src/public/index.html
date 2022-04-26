@@ -41,12 +41,15 @@
         ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
           translate lib="web">rpaworkflows</span></a>
 
+      <a href="//grafana.{{menuctrl.WebSocketClientService.domain}}" class="sidebar-link" id="menugrafana" target="_blank"
+        ng-show="menuctrl.WebSocketClientService.validlicense"><span
+          translate lib="web">grafana</span></a>
+
       <div ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide admins')) || menuctrl.hasrole('admins')">
         <h5 class="sidebar-title">User management</h5>
         <div class="sidebar-divider"></div>
-        <a class="sidebar-link" 
-        ng-class="{active: menuctrl.PathIs(['/User/{{menuctrl.user._id}}'])}"
-        ng-href="#/User/{{menuctrl.user._id}}"> {{menuctrl.user.name || menuctrl.user.username
+        <a class="sidebar-link" ng-class="{active: menuctrl.PathIs(['/User/{{menuctrl.user._id}}'])}"
+          ng-href="#/User/{{menuctrl.user._id}}"> {{menuctrl.user.name || menuctrl.user.username
           }} </a>
 
         <a class="sidebar-link" href="#/Users" id="menuadminusers"
@@ -65,9 +68,9 @@
       <div class="sidebar-divider"></div>
 
       <a href="#/WorkitemQueues" class="sidebar-link" id="menuworkitems"
-      ng-class="{active: menuctrl.PathIs(['/WorkitemQueues', '/WorkitemQueue/', '/WorkitemQueue'])}"
-      ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('workitem queue users'))"><span translate
-        lib="web">workitemqueues</span></a>
+        ng-class="{active: menuctrl.PathIs(['/WorkitemQueues', '/WorkitemQueue/', '/WorkitemQueue'])}"
+        ng-show="(menuctrl.hasrole('admins') || menuctrl.hasrole('workitem queue users'))"><span translate
+          lib="web">workitemqueues</span></a>
 
 
       <a href="#/Entities" class="sidebar-link" id="menuentities"
@@ -90,14 +93,12 @@
       <a class="sidebar-link" href="#/Forms" id="menuadminforms"
         ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
           lib="web">forms</span></a>
-      <a class="sidebar-link" href="#/Providers" 
-      ng-class="{active: menuctrl.PathIs(['/Providers', '/Provider', '/Provider/'])}"
-      ng-show="menuctrl.hasrole('admins')"><span translate
-          lib="web">providers</span></a>
-      <a class="sidebar-link" href="#/OAuthClients" 
-      ng-class="{active: menuctrl.PathIs(['/OAuthClients', '/OAuthClient', '/OAuthClient/'])}"
-      ng-show="menuctrl.hasrole('admins')"><span translate
-          lib="web">oauthclients</span></a>
+      <a class="sidebar-link" href="#/Providers"
+        ng-class="{active: menuctrl.PathIs(['/Providers', '/Provider', '/Provider/'])}"
+        ng-show="menuctrl.hasrole('admins')"><span translate lib="web">providers</span></a>
+      <a class="sidebar-link" href="#/OAuthClients"
+        ng-class="{active: menuctrl.PathIs(['/OAuthClients', '/OAuthClient', '/OAuthClient/'])}"
+        ng-show="menuctrl.hasrole('admins')"><span translate lib="web">oauthclients</span></a>
       <a class="sidebar-link" id="menuadminfiles" ng-class="{active: menuctrl.PathIs(['/Files'])}" href="#/Files"><span
           translate lib="web">files</span></a>
       <a class="sidebar-link" ng-class="{active: menuctrl.PathIs(['/hdrobots'])}" href="#/hdrobots"><span translate
