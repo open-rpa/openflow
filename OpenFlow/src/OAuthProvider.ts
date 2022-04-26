@@ -736,25 +736,35 @@ export class Account {
     claims() {
         return this.user;
     }
-    static async findAccount(ctx: KoaContextWithOIDC, id): Promise<any> {
-        let acc = await DBHelper.FindById(id, undefined, undefined);
+    static async findAccount(ctx: KoaContextWithOIDC, id, test): Promise<any> {
+        let acc = await DBHelper.memoryCache.get("oidc" + id);
+        if (acc == null) {
+            acc = await DBHelper.FindById(id, undefined, undefined);
+        }
         // let acc = Auth.getUser(id, "oidc");
         // if (!acc) {
         //     const user = await DBHelper.FindById(id, undefined, undefined);
         //     await Auth.AddUser(user, id, "oidc")
         // }
-        return new Account(id, TokenUser.From(acc));
+        var res = new Account(id, TokenUser.From(acc))
+        return res;
     }
     static AddAccount(tuser: TokenUser, client: any) {
         try {
             let role = client.defaultrole;
             const keys: string[] = Object.keys(client.rolemappings);
+            Logger.instanse.info("[OAuth][" + tuser.username + "] Lookup roles for " + tuser.username);
             for (let i = 0; i < keys.length; i++) {
-                if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
+                if (tuser.HasRoleName(keys[i])) {
+                    Logger.instanse.info("[OAuth][" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
+                    role = client.rolemappings[keys[i]];
+                }
             }
             (tuser as any).role = role;
-            DBHelper.DeleteKey("user" + tuser._id);
-            return new Account(tuser._id, TokenUser.From(tuser));
+            DBHelper.memoryCache.set("oidc" + tuser._id, tuser);
+            // DBHelper.DeleteKey("user" + tuser._id);
+            var res = new Account(tuser._id, tuser);
+            return res;
             // let acc = Auth.getUser(tuser._id, "oidc");
             // if (!acc) {
             //     let role = client.defaultrole;
