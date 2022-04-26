@@ -44,7 +44,7 @@ export class WebSocketClientService {
                 if (data.timeseries_collections) this.timeseries_collections = data.timeseries_collections;
 
                 this.ping_clients_interval = data.ping_clients_interval;
-
+                this.validlicense = data.validlicense;
 
 
                 if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) {
@@ -186,6 +186,7 @@ export class WebSocketClientService {
     public collections_with_text_index: string[] = [];
     public timeseries_collections: string[] = [];
     public ping_clients_interval: number = 10000;
+    public validlicense: boolean = false;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();
