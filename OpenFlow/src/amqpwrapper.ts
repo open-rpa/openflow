@@ -256,17 +256,19 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             })
             this.channel.on('close', async () => {
-                this.connected = false;
-                try {
-                    if (this.conn != null) await this.conn.close();
-                } catch (error) {
-                }
-                this.channel = null;
-                if (this.timeout != null) {
-                    clearTimeout(this.timeout);
-                    this.timeout = null;
-                }
-                this.timeout = setTimeout(this.connect.bind(this), 1000);
+                Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange");
+                process.exit(406);
+                // this.connected = false;
+                // try {
+                //     if (this.conn != null) await this.conn.close();
+                // } catch (error) {
+                // }
+                // this.channel = null;
+                // if (this.timeout != null) {
+                //     clearTimeout(this.timeout);
+                //     this.timeout = null;
+                // }
+                // this.timeout = setTimeout(this.connect.bind(this), 1000);
             });
         } catch (error) {
             span?.recordException(error);
