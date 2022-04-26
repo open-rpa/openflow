@@ -138,6 +138,11 @@ export class amqpwrapper extends events.EventEmitter {
             try {
                 span?.addEvent("AddReplyQueue");
                 await this.AddReplyQueue(span);
+                this.channel.on('error', (error) => {
+                    if (error.code != 404) {
+                        Logger.instanse.error(error);
+                    }
+                });
             } catch (error) {
                 Logger.instanse.error(error);
                 if (Config.NODE_ENV == "production") {
@@ -145,11 +150,6 @@ export class amqpwrapper extends events.EventEmitter {
                     process.exit(405);
                 }
             }
-            this.channel.on('error', (error) => {
-                if (error.code != 404) {
-                    Logger.instanse.error(error);
-                }
-            });
             try {
                 await this.Adddlx(span);
                 await this.AddOFExchange(span);
