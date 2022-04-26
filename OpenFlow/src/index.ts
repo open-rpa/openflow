@@ -59,7 +59,7 @@ function doHouseKeeping() {
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
     var h = dt.getHours();
     var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-    msg2.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error));
+    msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error));
 
     // var dt = new Date(new Date().toISOString());
     // var msg = new Message(); msg.jwt = Crypt.rootToken();

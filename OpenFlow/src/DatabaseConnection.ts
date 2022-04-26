@@ -260,11 +260,15 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
                         Logger.instanse.verbose("[workitems] Send invoke message to robot queue " + wiq.workflowid);
-                        await amqpwrapper.Instance().send(null, wiq.robotqueue, payload, 5000, null, null, 2);
+                        let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
+                        if (expiration < 500) expiration = 500;
+                        await amqpwrapper.Instance().send(null, wiq.robotqueue, payload, expiration, null, null, 2);
                     }
                     if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
                         Logger.instanse.verbose("[workitems] Send invoke message to amqp queue " + wiq.amqpqueue);
-                        await amqpwrapper.Instance().send(null, wiq.amqpqueue, payload, 5000, null, null, 2);
+                        let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
+                        if (expiration < 500) expiration = 500;
+                        await amqpwrapper.Instance().send(null, wiq.amqpqueue, payload, expiration, null, null, 2);
                     }
                 }
             }

@@ -138,7 +138,7 @@ export class Message {
                     await this.GetNoderedInstance(span);
                     break;
                 case "housekeeping":
-                    await this.Housekeeping(false, false, false, span);
+                    await this.Housekeeping(span);
                     break;
                 case "updateworkitemqueue":
                     await this.UpdateWorkitemQueue(span);
@@ -656,10 +656,7 @@ export class Message {
                     if (Config.enable_openflow_amqp) {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
-                        // await this.Housekeeping(false, false, false, span);
-                        Message.lastHouseKeeping = null;
-                        var msg = JSON.parse(this.data);
-                        await this.Housekeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
+                        await this.Housekeeping(span);
                         cli.Send(this);
                     }
                     break;
@@ -3559,7 +3556,33 @@ export class Message {
         if (diffminutes < 60) return false;
         return true;
     }
-    public async Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
+    private async Housekeeping(parent: Span): Promise<void> {
+        this.Reply();
+        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
+        let msg: any;
+        try {
+            msg = JSON.parse(this.data);
+            Message.lastHouseKeeping = null;
+            if (NoderedUtil.IsNullEmpty(msg.skipnodered)) msg.skipnodered = false;
+            if (NoderedUtil.IsNullEmpty(msg.skipcalculatesize)) msg.skipcalculatesize = false;
+            if (NoderedUtil.IsNullEmpty(msg.skipupdateusersize)) msg.skipupdateusersize = false;
+            await this._Housekeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
+        } catch (error) {
+            span?.recordException(error);
+            this.data = "";
+            await handleError(null, error);
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span?.recordException(error);
+            this.data = "";
+            await handleError(null, error);
+        }
+        Logger.otel.endSpan(span);
+    }
+    public async _Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
         if (Message.lastHouseKeeping == null) {
             Message.lastHouseKeeping = new Date();
             Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
@@ -3764,8 +3787,15 @@ export class Message {
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
                 let totalusage = 0;
                 let index = 0;
+                let skip_collections = [];
+                if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
                 for (let col of collections) {
                     if (col.name == "fs.chunks") continue;
+                    if (skip_collections.indexOf(col.name) > -1) {
+                        Logger.instanse.debug("[housekeeping][" + col.name + "] skipped due to housekeeping_skip_collections setting");
+                        continue;
+                    }
+
                     index++;
                     let aggregates: any = [
                         {

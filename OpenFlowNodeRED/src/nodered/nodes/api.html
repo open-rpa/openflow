@@ -1796,8 +1796,67 @@ you can set filename using msg.filename<br>
 </script>
 
 
+<script type="text/x-red" data-template-name="api drop collection">
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Collection name</label>
+        <input type="hidden" id="node-input-collectionametype">
+        <input style="width:70%" type="text" id="node-input-collectioname">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api drop collection">
+    <p>drop collection in the database <br>
+    </p>
+</script>
+<script type="text/javascript">
+    // https://fontawesome.com/v4.7/icon/list
+    RED.nodes.registerType('api drop collection', {
+        category: 'api',
+        color: "#E9967A",
+        paletteLabel: 'drop collection',
+        icon: "font-awesome/fa-list",
+        defaults: {
+            name: { value: "" },
+            collectioname: { value: "collectionname", validate: validate("collectionametype"), required: true },
+            collectionametype: { value: "msg", required: true },
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "drop collection";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            if (this.collectionametype === null) $("#node-input-collectionametype").val('msg');
+            if (this.collectionametype === 'val') $("#node-input-collectionametype").val('str');
+            $("#node-input-collectioname").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-collectionametype"),
+                types: ['msg', 'str']
+            });
+        }
+    });
+</script>
+
 
 <script type="text/x-red" data-template-name="api housekeeping">
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Skip Nodered</label>
+        <input type="checkbox" id="node-input-skipnodered" style="width: auto;">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Skip Calculate Size</label>
+        <input type="checkbox" id="node-input-skipcalculatesize" style="width: auto;">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Skip Update User Size</label>
+        <input type="checkbox" id="node-input-skipupdateusersize" style="width: auto;">
+    </div>
     <div class="form-row">
         <label><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
@@ -1816,6 +1875,9 @@ you can set filename using msg.filename<br>
         icon: "font-awesome/fa-list",
         defaults: {
             name: { value: "" },
+            skipnodered: { value: false },
+            skipcalculatesize: { value: false },
+            skipupdateusersize: { value: false },
         },
         inputs: 1,
         outputs: 1,
