@@ -271,7 +271,7 @@ export class amqpwrapper extends events.EventEmitter {
         } catch (error) {
             span?.recordException(error);
             Logger.instanse.error(error);
-            return;
+            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }

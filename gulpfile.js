@@ -246,12 +246,12 @@ gulp.task("compose", shell.task([
 ]));
 
 gulp.task("latest", shell.task([
-    'docker tag openiap/nodered:edge openiap/nodered:latest',
-    'echo "Push openiap/nodered"',
-    'docker push openiap/nodered:latest',
     'docker tag openiap/openflow:edge openiap/openflow:latest',
     'echo "Push openiap/openflow"',
     'docker push openiap/openflow:latest',
+    'docker tag openiap/nodered:edge openiap/nodered:latest',
+    'echo "Push openiap/nodered"',
+    'docker push openiap/nodered:latest',
     'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:latest',
     'echo "Push openiap/nodered-puppeteer"',
     'docker push openiap/nodered-puppeteer:latest',
