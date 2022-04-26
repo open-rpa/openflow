@@ -30,6 +30,8 @@ export = function (RED: Red) {
     RED.nodes.registerType("api upload file", api.upload_file);
 
     RED.nodes.registerType("api list collections", api.list_collections);
+    RED.nodes.registerType("api drop collection", api.drop_collection);
+
     RED.nodes.registerType("api housekeeping", api.housekeeping);
 
     RED.httpAdmin.get("/api_roles", RED.auth.needsPermission('serial.read'), api.get_api_roles);

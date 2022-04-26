@@ -1430,10 +1430,43 @@ export class list_collections {
 
 
 
+export interface Idrop_collection {
+    name: string;
+    collectioname: string;
+}
+export class drop_collection {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Idrop_collection) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            this.node.status({});
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+            const collectionname: any = await Util.EvaluateNodeProperty<string>(this, msg, "collectioname");
+            await NoderedUtil.DropCollection({ collectionname, priority });
+            this.node.send(msg);
+            this.node.status({});
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    onclose() {
+    }
+}
+
 
 export interface Ihousekeeping {
     name: string;
-    results: string;
+    skipnodered: boolean
+    skipcalculatesize: boolean;
+    skipupdateusersize: boolean;
 }
 export class housekeeping {
     public node: Red = null;
@@ -1450,8 +1483,10 @@ export class housekeeping {
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
 
+            const { skipnodered, skipcalculatesize, skipupdateusersize } = this.config;
+
             this.node.status({ fill: "blue", shape: "dot", text: "Running house keeping" });
-            await NoderedUtil.HouseKeeping({ jwt: msg.jwt, priority });
+            await NoderedUtil.HouseKeeping({ skipnodered, skipcalculatesize, skipupdateusersize, jwt: msg.jwt, priority });
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "Complete" });
         } catch (error) {
