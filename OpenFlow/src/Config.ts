@@ -1,10 +1,10 @@
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
 import * as path from "path";
-import * as retry from "async-retry";
 import { DatabaseConnection } from "./DatabaseConnection";
 // import { Logger } from "./Logger";
 import { NoderedUtil } from "@openiap/openflow-api";
+import { promiseRetry } from "./Logger";
 export class Config {
     public static getversion(): string {
         let versionfile: string = path.join(__dirname, "VERSION");
@@ -428,22 +428,16 @@ export class Config {
     }
     public static async parse_federation_metadata(url: string): Promise<any> {
         // if anything throws, we retry
-        return retry(async bail => {
+        return promiseRetry(async () => {
             const reader: any = await fetch({ url });
-            if (NoderedUtil.IsNullUndefinded(reader)) { bail(new Error("Failed getting result")); return; }
+            if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); return; }
             const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {
                 config.cert = reader.signingCerts;
             }
             return config;
-        }, {
-            retries: 50,
-            onRetry: function (error: Error, count: number): void {
-                console.log("retry " + count + " error " + error.message + " getting " + url);
-                // Logger.instanse.warn("retry " + count + " error " + error.message + " getting " + url);
-            }
-        });
+        }, 10, 1000);
     }
     public static parseArray(s: string): string[] {
         let arr = s.split(",");

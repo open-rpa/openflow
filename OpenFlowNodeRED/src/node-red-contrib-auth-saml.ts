@@ -3,8 +3,7 @@ import * as path from "path";
 import * as SAMLStrategy from "passport-saml";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as https from "https";
-import * as retry from "async-retry";
-import { Logger } from "./Logger";
+import { Logger, promiseRetry } from "./Logger";
 import { Config } from "./Config";
 export const logger = Logger.configure();
 import { FileSystemCache } from "@openiap/openflow-api";
@@ -73,24 +72,19 @@ export class noderedcontribauthsaml {
             console.error(error);
         }
         // if anything throws, we retry
-        const metadata: any = await retry(async bail => {
+        const metadata: any = await promiseRetry(async () => {
             if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
             const reader: any = await fetch({ url, backupStore });
             if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
+            if (reader === null || reader === undefined) { throw new Error("Failed getting result"); return; }
             const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {
                 config.cert = reader.signingCerts;
             }
             return config;
-        }, {
-            retries: 50,
-            onRetry: function (error: Error, count: number): void {
-                console.error("retry " + count + " error " + error.message + " getting " + url);
-            }
-        });
+        }, 50, 1000);
         return metadata;
     }
     constructor(baseURL: string) {

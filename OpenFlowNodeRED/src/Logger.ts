@@ -3,6 +3,36 @@ import { Config } from "./Config";
 const path = require('path');
 import { format } from 'winston';
 import { i_otel } from "./commoninterfaces";
+
+const MAX_RETRIES_DEFAULT = 5
+export async function promiseRetry<T>(
+    fn: () => Promise<T>,
+    retries = MAX_RETRIES_DEFAULT,
+    retryIntervalMillis: number,
+    previousError?: Error
+): Promise<T> {
+    return !retries
+        ? Promise.reject(previousError)
+        : fn().catch(async (error) => {
+            await new Promise((resolve) => setTimeout(resolve, retryIntervalMillis))
+            return promiseRetry(fn, retries - 1, retryIntervalMillis, error)
+        })
+}
+
+// Object.defineProperty(Promise, 'retry', {
+//     configurable: true,
+//     writable: true,
+//     value: function retry(retries, executor) {
+//         // console.warn(`${retries} retries left!`)
+//         if (typeof retries !== 'number') {
+//             throw new TypeError('retries is not a number')
+//         }
+//         return new Promise(executor).catch(error => {
+//             retries > 0 ? (Promise as any).retry(retries - 1, executor) : Promise.reject(error);
+//         }
+//         )
+//     }
+// })
 export class Logger {
     public static otel: i_otel;
     static configure(): winston.Logger {

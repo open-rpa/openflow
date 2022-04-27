@@ -28,20 +28,6 @@ const jsondiffpatch = require('jsondiffpatch').create({
 });
 
 
-Object.defineProperty(Promise, 'retry', {
-    configurable: true,
-    writable: true,
-    value: function retry(retries, executor) {
-        // console.warn(`${retries} retries left!`)
-        if (typeof retries !== 'number') {
-            throw new TypeError('retries is not a number')
-        }
-        return new Promise(executor).catch(error => retries > 0
-            ? (Promise as any).retry(retries - 1, executor)
-            : Promise.reject(error)
-        )
-    }
-})
 export type GetDocumentVersionOptions = {
     collectionname: string,
     id: string,
@@ -159,18 +145,22 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
         this.streams = [];
-        this.cli = await (Promise as any).retry(100, (resolve, reject) => {
-            const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
-            MongoClient.connect(this.mongodburl, options).then((cli) => {
-                this.replicat = (cli as any).s.options.replicaSet;
-                resolve(cli);
-                span?.addEvent("Connected to mongodb");
-            }).catch((reason) => {
-                span?.recordException(reason);
-                console.error(reason);
-                reject(reason);
-            });
-        });
+        // this.cli = await (Promise as any).retry(100, (resolve, reject) => {
+        //     const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
+        //     MongoClient.connect(this.mongodburl, options).then((cli) => {
+        //         this.replicat = (cli as any).s.options.replicaSet;
+        //         resolve(cli);
+        //         span?.addEvent("Connected to mongodb");
+        //     }).catch((reason) => {
+        //         span?.recordException(reason);
+        //         console.error(reason);
+        //         reject(reason);
+        //     });
+        // });
+        span?.addEvent("connecting to mongodb");
+        const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
+        this.cli = await MongoClient.connect(this.mongodburl, options);
+        span?.addEvent("Connected to mongodb");
 
         Logger.instanse.silly(`Really connected to mongodb`);
         const errEvent = (error) => {
