@@ -126,6 +126,12 @@ export class Crypt {
             throw new Error('jwt must be provided');
         }
         const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
+        let impostor: string = null;
+        if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
+            if (!NoderedUtil.IsNullEmpty(o.data.impostor)) {
+                impostor = o.data.impostor;
+            }
+        }
         if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id) && o.data._id != WellknownIds.root) {
             var id = o.data._id;
             o.data = await DBHelper.FindById(o.data._id, token, null);
@@ -136,6 +142,7 @@ export class Crypt {
                 var b = true;
             }
         }
+        if (!NoderedUtil.IsNullEmpty(impostor)) o.data.impostor = impostor;
         return TokenUser.assign(o.data);
 
     }
