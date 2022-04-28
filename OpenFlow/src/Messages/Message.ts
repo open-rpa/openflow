@@ -1917,6 +1917,8 @@ export class Message {
                     }
                     // await DBHelper.Save(user, Crypt.rootToken());
                     await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    DBHelper.memoryCache.del("users" + user._id);
+                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) DBHelper.memoryCache.del("users" + tuser.impostor);
                 }
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
