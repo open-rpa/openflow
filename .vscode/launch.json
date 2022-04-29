@@ -34,7 +34,8 @@
             "runtimeArgs": [
                 "--nolazy",
                 "--trace-warnings",
-                "--inspect"
+                "--inspect",
+                "--preserve-symlinks"
             ],
             "showAsyncStacks": true,
             "trace": true,

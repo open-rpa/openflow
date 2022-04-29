@@ -1,6 +1,6 @@
 import * as OAuthServer from "oauth2-server";
 import * as express from "express";
-import { TokenUser, Base, NoderedUtil, User } from "@openiap/openflow-api";
+import { TokenUser, Base, NoderedUtil, User, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Provider, KoaContextWithOIDC } from "oidc-provider";
@@ -715,12 +715,6 @@ export class Account {
         DBHelper.DeleteKey("user" + accountId);
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
-        // var roles = [];
-        // user.roles.forEach(role => {
-        //     roles.push(role.name);
-        // });
-        // user.roles = roles;
-
         // node-bb username hack
         if (NoderedUtil.IsNullEmpty(user.email)) user.email = user.username;
         if (user.name == user.email && user.email.indexOf("@") > -1) {
@@ -741,11 +735,6 @@ export class Account {
         if (acc == null) {
             acc = await DBHelper.FindById(id, undefined, undefined);
         }
-        // let acc = Auth.getUser(id, "oidc");
-        // if (!acc) {
-        //     const user = await DBHelper.FindById(id, undefined, undefined);
-        //     await Auth.AddUser(user, id, "oidc")
-        // }
         var res = new Account(id, TokenUser.From(acc))
         return res;
     }
@@ -765,78 +754,25 @@ export class Account {
             // DBHelper.DeleteKey("user" + tuser._id);
             var res = new Account(tuser._id, tuser);
             return res;
-            // let acc = Auth.getUser(tuser._id, "oidc");
-            // if (!acc) {
-            //     let role = client.defaultrole;
-            //     const keys: string[] = Object.keys(client.rolemappings);
-            //     for (let i = 0; i < keys.length; i++) {
-            //         if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
-            //     }
-            //     (tuser as any).role = role;
-            //     Auth.AddUser(tuser, tuser._id, "oidc")
-            // }
-            // return new Account(tuser._id, TokenUser.From(tuser));
         } catch (error) {
             console.error(error);
         }
         return undefined;
     }
+    static async GetTokenRequest(code: string, parent: Span) {
+        let tokens = await Config.db.query<Base>({ query: { _type: "tokenrequest", "code": code }, top: 1, collectionname: "oauthtokens", jwt: Crypt.rootToken() }, parent);
+        if (tokens.length == 0) return null;
+        return tokens[0];
+    }
+    static async AddTokenRequest(code: string, item: Base, parent: Span) {
+        var q: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
+        q.item = item; q.uniqeness = "_type,code"; q.collectionname = "oauthtokens", q.jwt = Crypt.rootToken();
+        q.w = 1; q.j = true;
+        let token = await Config.db.InsertOrUpdateOne<Base>(q, parent);
+        return token.item;
+    }
+    static async RemoveTokenRequest(code: string, parent: Span) {
+        let tokens = await Config.db.DeleteMany({ _type: "tokenrequest", "code": code }, null, "oauthtokens", Crypt.rootToken(), parent);
+        return tokens[0];
+    }
 }
-
-// const accountStorage = new Map();
-// export class Account {
-//     constructor(public accountId: string, public user: TokenUser) {
-//         accountStorage.set(`Account:${this.accountId}`, this);
-//         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
-//         user = Object.assign(user, { accountId: accountId, sub: accountId });
-//         // var roles = [];
-//         // user.roles.forEach(role => {
-//         //     roles.push(role.name);
-//         // });
-//         // user.roles = roles;
-
-//         // node-bb username hack
-//         if (NoderedUtil.IsNullEmpty(user.email)) user.email = user.username;
-//         if (user.name == user.email && user.email.indexOf("@") > -1) {
-//             user.name = user.email.substr(0, user.email.indexOf("@") - 1);
-//         }
-//         if (user.name == user.email && user.email.indexOf("@") == -1) {
-//             user.email = user.email + "@unknown.local"
-//         }
-//         if (user.name == user.email) {
-//             user.name = "user " + user.email;
-//         }
-//     }
-//     static get storage() {
-//         return accountStorage;
-//     }
-//     claims() {
-//         return this.user;
-//     }
-//     static async findAccount(ctx: KoaContextWithOIDC, id) {
-//         let acc = accountStorage.get(`Account:${id}`);
-//         if (!acc) {
-//             const user = await DBHelper.FindById(id, undefined, undefined);
-//             acc = new Account(id, TokenUser.From(user));
-//         }
-//         return acc;
-//     }
-//     static AddAccount(tuser: TokenUser, client: any) {
-//         try {
-//             let acc = accountStorage.get(`Account:${tuser._id}`);
-//             if (!acc) {
-//                 let role = client.defaultrole;
-//                 const keys: string[] = Object.keys(client.rolemappings);
-//                 for (let i = 0; i < keys.length; i++) {
-//                     if (tuser.HasRoleName(keys[i])) role = client.rolemappings[keys[i]];
-//                 }
-//                 (tuser as any).role = role;
-//                 acc = new Account(tuser._id, tuser);
-//             }
-//             return acc;
-//         } catch (error) {
-//             console.error(error);
-//         }
-//         return undefined;
-//     }
-// }

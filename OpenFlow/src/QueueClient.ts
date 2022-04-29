@@ -108,8 +108,9 @@ export class QueueClient {
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(this.queue)) {
                     Logger.instanse.warn("SendForProcessing queue is null, shutdown amqp connection");
-                    amqpwrapper.Instance().shutdown();
-                    amqpwrapper.Instance().connect(null);
+                    process.exit(406);
+                    // amqpwrapper.Instance().shutdown();
+                    // amqpwrapper.Instance().connect(null);
                 } else {
                     Logger.instanse.error(error);
                 }

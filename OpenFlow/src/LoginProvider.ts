@@ -13,8 +13,8 @@ const multer = require('multer');
 // const GridFsStorage = require('multer-gridfs-storage');
 import { GridFsStorage } from "multer-gridfs-storage";
 import { GridFSBucket, ObjectID, Binary } from "mongodb";
-import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role } from "@openiap/openflow-api";
-import { DBHelper } from "./DBHelper";
+import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
+import { DBHelper, TokenRequest } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
@@ -409,7 +409,7 @@ export class LoginProvider {
             const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
                 const key = req.body.key;
-                var exists = await DBHelper.FindRequestTokenID(key, span);
+                let exists: TokenRequest = await DBHelper.FindRequestTokenID(key, span);
                 if (!NoderedUtil.IsNullUndefinded(exists)) return res.status(500).send({ message: "Illegal key" });
                 await DBHelper.AdddRequestTokenID(key, {}, span);
                 res.status(200).send({ message: "ok" });
@@ -424,11 +424,11 @@ export class LoginProvider {
             const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
                 const key = req.query.key;
-                var exists = await DBHelper.FindRequestTokenID(key, span);
+                let exists: TokenRequest = null;
+                exists = await DBHelper.FindRequestTokenID(key, span);
                 if (NoderedUtil.IsNullUndefinded(exists)) {
                     res.status(200).send({ message: "Illegal key" });
                     return;
-                    // return res.status(500).send({ message: "Illegal key" });
                 }
 
                 if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
@@ -478,7 +478,7 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(key)) {
                     if (req.user) {
                         const user: User = await DBHelper.FindById(req.user._id, undefined, span);
-                        var exists = await DBHelper.FindRequestTokenID(key, span);
+                        var exists: TokenRequest = await DBHelper.FindRequestTokenID(key, span);
                         if (!NoderedUtil.IsNullUndefinded(exists)) {
                             await DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
                             res.cookie("requesttoken", "", { expires: new Date(0) });
@@ -523,7 +523,10 @@ export class LoginProvider {
             } catch (error) {
                 span?.recordException(error);
                 console.error(error.message ? error.message : error);
-                return res.status(500).send({ message: error.message ? error.message : error });
+                try {
+                    return res.status(500).send({ message: error.message ? error.message : error });
+                } catch (error) {
+                }
             }
             Logger.otel.endSpan(span);
         });

@@ -10,13 +10,30 @@ import { LoginProvider } from "./LoginProvider";
 import * as cacheManager from "cache-manager";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
+var mongoStore = require('@skadefro/cache-manager-mongodb');
 
 export class DBHelper {
 
     public static memoryCache: any;
+    public static mongoCache: any;
     public static async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
-        if (Config.cache_store_type == "redis") {
+
+        this.mongoCache = cacheManager.caching({
+            store: mongoStore,
+            uri: Config.mongodb_url,
+            options: {
+                collection: "_cache",
+                compression: false,
+                poolSize: 5
+            }
+        });
+
+        if (Config.cache_store_type == "mongodb") {
+            this.memoryCache = this.mongoCache;
+            DBHelper.ensureotel();
+            return;
+        } else if (Config.cache_store_type == "redis") {
             this.memoryCache = cacheManager.caching({
                 store: redisStore,
                 host: Config.cache_store_redis_host,
@@ -32,6 +49,7 @@ export class DBHelper {
             redisClient.on('error', (error) => {
                 console.log(error);
             });
+
             DBHelper.ensureotel();
             return;
         }
@@ -45,8 +63,6 @@ export class DBHelper {
     }
     public static async clearCache(reason: string) {
         this.init();
-        // Auth.ensureotel();
-        // this.memoryCache.reset();
         var keys: string[];
         if (Config.cache_store_type == "redis") {
             keys = await this.memoryCache.keys('*');
@@ -71,16 +87,6 @@ export class DBHelper {
             DBHelper.item_cache = Logger.otel.meter.createValueObserver("openflow_item_cache_count", {
                 description: 'Total number of cached items'
             }, async (res) => {
-                // let keys: string[] = Object.keys(this.authorizationCache);
-                // let types = {};
-                // for (let i = keys.length - 1; i >= 0; i--) {
-                //     if (!types[this.authorizationCache[keys[i]].type]) types[this.authorizationCache[keys[i]].type] = 0;
-                //     types[this.authorizationCache[keys[i]].type]++;
-                // }
-                // keys = Object.keys(types);
-                // for (let i = keys.length - 1; i >= 0; i--) {
-                //     res.observe(types[keys[i]], { ...Logger.otel.defaultlabels, type: keys[i] })
-                // }
                 var keys: any = null;
                 try {
                     if (Config.cache_store_type == "redis") {
@@ -105,7 +111,6 @@ export class DBHelper {
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("users" + _id, () => {
-                // if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
             });
@@ -120,12 +125,16 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindRequestTokenID(key: string, parent: Span): Promise<any> {
+    public static async FindRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
             if (NoderedUtil.IsNullEmpty(key)) return null;
-            return await this.memoryCache.get("requesttoken" + key);
+            if (Config.cache_store_type == "redis") {
+                return await this.memoryCache.get("requesttoken" + key);
+            } else {
+                return await this.mongoCache.get("requesttoken" + key);
+            }
         } catch (error) {
             span?.recordException(error);
             throw error;
@@ -133,11 +142,15 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async AdddRequestTokenID(key: string, data: any, parent: Span): Promise<any> {
+    public static async AdddRequestTokenID(key: string, data: any, parent: Span): Promise<TokenRequest> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
-            return await this.memoryCache.set("requesttoken" + key, data);
+            if (Config.cache_store_type == "redis") {
+                return await this.memoryCache.set("requesttoken" + key, data);
+            } else {
+                return await this.mongoCache.set("requesttoken" + key, data);
+            }
         } catch (error) {
             span?.recordException(error);
             throw error;
@@ -145,11 +158,15 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async RemoveRequestTokenID(key: string, parent: Span): Promise<any> {
+    public static async RemoveRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
-            return await this.memoryCache.del("requesttoken" + key);
+            if (Config.cache_store_type == "redis") {
+                return await this.memoryCache.del("requesttoken" + key);
+            } else {
+                return await this.mongoCache.del("requesttoken" + key);
+            }
         } catch (error) {
             span?.recordException(error);
             throw error;
@@ -598,4 +615,13 @@ export class DBHelper {
             return { $set: updatedoc };
         }
     }
+}
+export class TokenRequest extends Base {
+    constructor(code: string) {
+        super();
+        this._type = "tokenrequest";
+        if (NoderedUtil.IsNullEmpty(code)) this.code = "";
+    }
+    public code: string;
+    public jwt: string;
 }

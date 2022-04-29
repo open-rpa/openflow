@@ -186,7 +186,7 @@ export class dockerdriver implements i_nodered_driver {
 
         }
     }
-    public async GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<any[]> {
+    public async GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         try {
             span?.addEvent("init Docker()");
@@ -199,6 +199,33 @@ export class dockerdriver implements i_nodered_driver {
                 var Created = new Date(item.Created * 1000);
                 item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
                 item.status = { phase: item.State }
+
+
+                // const itemname = item.metadata.name;
+                // const billed = item.metadata.labels.billed;
+                // const image = item.spec.containers[0].image
+                // const userid = item.metadata.labels.userid;
+                // const image = item.Image;
+                // const date = new Date();
+                // const a: number = (date as any) - (Created as any);
+                // // const diffminutes = a / (1000 * 60);
+                // const diffhours = a / (1000 * 60 * 60);
+                // if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
+                //     try {
+                //         if (billed != "true" && diffhours > 24) {
+                //             Logger.instanse.debug("[" + tokenUser.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
+                //             await this.DeleteNoderedInstance(jwt, tokenUser, _id, name, true, span);
+                //         }
+                //     } catch (error) {
+                //     }
+                // } else if (image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) {
+                //     if (billed != "true" && diffhours > 24) {
+                //         console.debug("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                //     } else {
+                //         console.debug("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
+                //     }
+                // }
+
                 if (item.Names[0] == "/" + name) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
@@ -227,7 +254,7 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async RestartNoderedInstance(jwt: string, tuser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void> {
+    public async RestartNoderedInstance(jwt: string, tuser: TokenUser, _id: string, name: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.DockerRestartNoderedInstance", parent);
         try {
             span?.addEvent("init Docker()");
@@ -275,7 +302,7 @@ export class dockerdriver implements i_nodered_driver {
             });
         })
     }
-    public async GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, skipcreate: boolean, parent: Span): Promise<string> {
+    public async GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<string> {
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
         try {
             var result: string = null;
@@ -314,10 +341,10 @@ export class dockerdriver implements i_nodered_driver {
         }
 
     }
-    public async DeleteNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void> {
-        this.DeleteNoderedPod(jwt, tokenUser, _id, name, null, skipcreate, parent);
+    public async DeleteNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<void> {
+        this.DeleteNoderedPod(jwt, tokenUser, _id, name, null, parent);
     }
-    public async DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, skipcreate: boolean, parent: Span): Promise<void> {
+    public async DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.dockerDeleteNoderedPod", parent);
         try {
             Logger.instanse.debug("[" + user.username + "] dockerDeleteNoderedPod");

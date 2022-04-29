@@ -1917,6 +1917,8 @@ export class Message {
                     }
                     // await DBHelper.Save(user, Crypt.rootToken());
                     await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    DBHelper.memoryCache.del("users" + user._id);
+                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) DBHelper.memoryCache.del("users" + tuser.impostor);
                 }
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -2008,7 +2010,7 @@ export class Message {
             msg = DeleteNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
-            await Logger.nodereddriver.DeleteNoderedInstance(this.jwt, _tuser, msg._id, instancename, false, span);
+            await Logger.nodereddriver.DeleteNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
         } catch (error) {
             span?.recordException(error);
             this.data = "";
@@ -2032,7 +2034,7 @@ export class Message {
             msg = DeleteNoderedPodMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
-            await Logger.nodereddriver.DeleteNoderedPod(this.jwt, _tuser, msg._id, instancename, msg.instancename, false, span);
+            await Logger.nodereddriver.DeleteNoderedPod(this.jwt, _tuser, msg._id, instancename, msg.instancename, span);
         } catch (error) {
             span?.recordException(error);
             this.data = "";
@@ -2056,7 +2058,7 @@ export class Message {
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
-            await Logger.nodereddriver.RestartNoderedInstance(this.jwt, _tuser, msg._id, instancename, false, span);
+            await Logger.nodereddriver.RestartNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
         } catch (error) {
             span?.recordException(error);
             this.data = "";
@@ -2103,7 +2105,7 @@ export class Message {
             msg = GetNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
-            msg.results = await Logger.nodereddriver.GetNoderedInstance(this.jwt, _tuser, msg._id, instancename, false, span);
+            msg.results = await Logger.nodereddriver.GetNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
         } catch (error) {
             span?.recordException(error);
             this.data = "";
@@ -2127,7 +2129,7 @@ export class Message {
             msg = GetNoderedInstanceLogMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
-            msg.result = await Logger.nodereddriver.GetNoderedInstanceLog(this.jwt, _tuser, msg._id, instancename, msg.instancename, false, span);
+            msg.result = await Logger.nodereddriver.GetNoderedInstanceLog(this.jwt, _tuser, msg._id, instancename, msg.instancename, span);
         } catch (error) {
             span?.recordException(error);
             this.data = "";
@@ -4375,6 +4377,8 @@ export class Message {
             }
             if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
+            var additems = [];
+
             // isRelevant = (msg.items.length > 0);
             for (let i = 0; i < msg.items.length; i++) {
                 let item = msg.items[i];
@@ -4463,8 +4467,10 @@ export class Message {
                     }
                 }
                 delete item.files;
-                wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+                // wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+                additems.push(wi);
             }
+            await Config.db.InsertMany(additems, "workitems", 1, true, jwt, parent);
 
             delete msg.items;
             msg.items = [];
@@ -4549,6 +4555,7 @@ export class Message {
                 } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
                     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
                 }
+                if (msg.errortype == "business") msg.state == "failed";
                 if (msg.state == "retry") {
                     if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
                     if (wi.retries < wiq.maxretries || msg.ignoremaxretries) {

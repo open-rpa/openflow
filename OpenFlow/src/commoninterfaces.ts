@@ -76,10 +76,10 @@ export interface i_otel {
 export interface i_nodered_driver {
     detect(): Promise<boolean>;
     EnsureNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void>;
-    GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<any[]>;
-    RestartNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void>;
-    DeleteNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void>;
-    DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, skipcreate: boolean, parent: Span): Promise<void>;
-    GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, skipcreate: boolean, parent: Span): Promise<string>;
+    GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<any[]>;
+    RestartNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<void>;
+    DeleteNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<void>;
+    DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<void>;
+    GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<string>;
     NodeLabels(parent: Span): Promise<any>;
 }

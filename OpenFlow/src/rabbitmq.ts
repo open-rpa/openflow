@@ -1,9 +1,8 @@
 import { Config } from "./Config";
-import * as retry from "async-retry";
 import * as url from "url";
 import { AssertQueue } from "./amqpwrapper";
 import { NoderedUtil } from "@openiap/openflow-api";
-import { Logger } from "./Logger";
+import { Logger, promiseRetry } from "./Logger";
 const got = require("got");
 
 export class rabbitmq {
@@ -46,7 +45,7 @@ export class rabbitmq {
     async checkQueueConsumerCount(queuename: string): Promise<boolean> {
         let result: boolean = false;
         try {
-            result = await retry(async bail => {
+            result = await promiseRetry(async () => {
                 const queue = await rabbitmq.getqueue(Config.amqp_url, '/', queuename);
                 // const queue = await amqpwrapper.getqueue(queuename);
                 let hasConsumers: boolean = false;
@@ -66,15 +65,7 @@ export class rabbitmq {
                     // return bail();
                 }
                 return hasConsumers;
-            }, {
-                retries: 10,
-                minTimeout: 500,
-                maxTimeout: 500,
-                onRetry: function (error: Error, count: number): void {
-                    result = false;
-                    console.warn("retry " + count + " error " + error.message + " getting " + url);
-                }
-            });
+            }, 10, 1000);
         } catch (error) {
             Logger.instanse.debug(error.message ? error.message : error);
         }

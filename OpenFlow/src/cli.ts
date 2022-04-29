@@ -2,6 +2,8 @@
 // npm link --force
 // npm i npm install --global --production windows-build-tools
 import * as fs from "fs";
+import { Logger } from './Logger';
+Logger.configure(true, true);
 import { Config } from "./Config";
 import { logger, loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
 import { WebSocketClient, NoderedUtil } from "@openiap/openflow-api";

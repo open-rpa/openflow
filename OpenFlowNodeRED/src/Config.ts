@@ -1,9 +1,9 @@
 import * as https from "https";
-import * as retry from "async-retry";
 import * as fs from "fs";
 import * as path from "path";
 import { fetch, toPassportConfig } from "passport-saml-metadata";
 import { NoderedUtil } from "@openiap/openflow-api";
+import { promiseRetry } from "./Logger";
 const { networkInterfaces } = require('os');
 export class Config {
     public static getversion(): string {
@@ -250,23 +250,18 @@ export class Config {
         }
 
         // if anything throws, we retry
-        const metadata: any = await retry(async bail => {
+        const metadata: any = await promiseRetry(async () => {
             if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             const reader: any = await fetch({ url });
             if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (reader === null || reader === undefined) { bail(new Error("Failed getting result")); return; }
+            if (reader === null || reader === undefined) { throw new Error("Failed getting result"); return; }
             const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {
                 config.cert = reader.signingCerts;
             }
             return config;
-        }, {
-            retries: 50,
-            onRetry: function (error: Error, count: number): void {
-                console.log("retry " + count + " error " + error.message + " getting " + url);
-            }
-        });
+        }, 10, 1000);
         return metadata;
     }
 

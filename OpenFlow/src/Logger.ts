@@ -4,6 +4,22 @@ import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
 import { dockerdriver } from "./dockerdriver";
 const path = require('path');
+
+const MAX_RETRIES_DEFAULT = 5
+export async function promiseRetry<T>(
+    fn: () => Promise<T>,
+    retries = MAX_RETRIES_DEFAULT,
+    retryIntervalMillis: number,
+    previousError?: Error
+): Promise<T> {
+    return !retries
+        ? Promise.reject(previousError)
+        : fn().catch(async (error) => {
+            await new Promise((resolve) => setTimeout(resolve, retryIntervalMillis))
+            return promiseRetry(fn, retries - 1, retryIntervalMillis, error)
+        })
+}
+
 export class Logger {
     public static otel: i_otel;
     public static License: i_license_file;
