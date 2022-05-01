@@ -8,7 +8,6 @@ import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { NoderedUtil, User } from '@openiap/openflow-api';
 import { Crypt } from '../OpenFlow/src/Crypt';
-import { DBHelper } from '../OpenFlow/src/DBHelper';
 import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
 
 @suite class amqp_test {
@@ -23,7 +22,7 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
-        this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
+        this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         this.amqp = new amqpwrapper(Config.amqp_url);
         amqpwrapper.SetInstance(this.amqp);
         Config.log_amqp = false;

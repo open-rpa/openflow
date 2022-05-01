@@ -6,17 +6,18 @@ import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { BaseObserver } from "@opentelemetry/api-metrics"
-import { LoginProvider } from "./LoginProvider";
+import { LoginProvider, Provider } from "./LoginProvider";
 import * as cacheManager from "cache-manager";
+import { TokenRequest } from "./TokenRequest";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 var mongoStore = require('@skadefro/cache-manager-mongodb');
 
 export class DBHelper {
 
-    public static memoryCache: any;
-    public static mongoCache: any;
-    public static async init() {
+    public memoryCache: any;
+    public mongoCache: any;
+    public async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
 
         this.mongoCache = cacheManager.caching({
@@ -31,7 +32,7 @@ export class DBHelper {
 
         if (Config.cache_store_type == "mongodb") {
             this.memoryCache = this.mongoCache;
-            DBHelper.ensureotel();
+            this.ensureotel();
             return;
         } else if (Config.cache_store_type == "redis") {
             this.memoryCache = cacheManager.caching({
@@ -50,7 +51,7 @@ export class DBHelper {
                 console.log(error);
             });
 
-            DBHelper.ensureotel();
+            this.ensureotel();
             return;
         }
         this.memoryCache = cacheManager.caching({
@@ -59,9 +60,9 @@ export class DBHelper {
             max: Config.cache_store_max,
             ttl: Config.cache_store_ttl_seconds
         });
-        DBHelper.ensureotel();
+        this.ensureotel();
     }
-    public static async clearCache(reason: string) {
+    public async clearCache(reason: string) {
         this.init();
         var keys: string[];
         if (Config.cache_store_type == "redis") {
@@ -76,15 +77,15 @@ export class DBHelper {
         }
         if (Config.log_cache) Logger.instanse.debug("clearCache called with reason: " + reason);
     }
-    public static async DeleteKey(key) {
+    public async DeleteKey(key) {
         this.init();
         if (Config.log_cache) Logger.instanse.debug("Remove from cache : " + key);
         this.memoryCache.del(key);
     }
-    public static item_cache: BaseObserver = null;
-    public static ensureotel() {
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter) && NoderedUtil.IsNullUndefinded(DBHelper.item_cache)) {
-            DBHelper.item_cache = Logger.otel.meter.createValueObserver("openflow_item_cache_count", {
+    public item_cache: BaseObserver = null;
+    public ensureotel() {
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter) && NoderedUtil.IsNullUndefinded(this.item_cache)) {
+            this.item_cache = Logger.otel.meter.createValueObserver("openflow_item_cache_count", {
                 description: 'Total number of cached items'
             }, async (res) => {
                 var keys: any = null;
@@ -105,7 +106,7 @@ export class DBHelper {
             });
         }
     }
-    public static async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
+    public async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
@@ -114,7 +115,7 @@ export class DBHelper {
                 if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
             });
-            DBHelper.ensureotel();
+            this.ensureotel();
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
             return res2;
@@ -125,7 +126,37 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
+    public async GetProviders(parent: Span): Promise<Provider[]> {
+        this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
+        try {
+            let items = await this.memoryCache.wrap("providers", () => {
+                return Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
+            });
+            // const result: Provider[] = [];
+            items.forEach(provider => {
+                // const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
+                provider.logo = "fa-question-circle";
+                if (provider.provider === "google") { provider.logo = "fa-google"; }
+                if (provider.provider === "saml") { provider.logo = "fa-windows"; }
+                //result.push(item);
+            });
+            if (items.length === 0) {
+                const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
+                items.push(item);
+            }
+            return items;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async ClearProviders() {
+        await this.memoryCache.del("providers");
+    }
+    public async FindRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
@@ -142,7 +173,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async AdddRequestTokenID(key: string, data: any, parent: Span): Promise<TokenRequest> {
+    public async AdddRequestTokenID(key: string, data: any, parent: Span): Promise<TokenRequest> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
@@ -158,7 +189,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async RemoveRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
+    public async RemoveRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
@@ -174,7 +205,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindByAuthorization(authorization: string, jwt: string, parent: Span): Promise<User> {
+    public async FindByAuthorization(authorization: string, jwt: string, parent: Span): Promise<User> {
         if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
             (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
             const token = authorization.split(" ")[1];
@@ -199,7 +230,7 @@ export class DBHelper {
             return this.DecorateWithRoles(User.assign(item), parent);
         }
     }
-    public static async FindQueueById(_id: string, jwt: string, parent: Span): Promise<User> {
+    public async FindQueueById(_id: string, jwt: string, parent: Span): Promise<User> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
@@ -218,7 +249,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindQueueByName(name: string, jwt: string, parent: Span): Promise<User> {
+    public async FindQueueByName(name: string, jwt: string, parent: Span): Promise<User> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
@@ -237,7 +268,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindExchangeById(_id: string, jwt: string, parent: Span): Promise<User> {
+    public async FindExchangeById(_id: string, jwt: string, parent: Span): Promise<User> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
@@ -256,7 +287,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindExchangeByName(name: string, jwt: string, parent: Span): Promise<User> {
+    public async FindExchangeByName(name: string, jwt: string, parent: Span): Promise<User> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
@@ -275,7 +306,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindRoleById(_id: string, jwt: string, parent: Span): Promise<Role> {
+    public async FindRoleById(_id: string, jwt: string, parent: Span): Promise<Role> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
@@ -294,7 +325,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
+    public async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
@@ -313,7 +344,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindByUsernameOrId(username: string, id: string, parent: Span): Promise<User> {
+    public async FindByUsernameOrId(username: string, id: string, parent: Span): Promise<User> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsernameOrId", parent);
         try {
@@ -327,11 +358,11 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async FindByUsernameOrFederationid(username: string, parent: Span): Promise<User> {
+    public async FindByUsernameOrFederationid(username: string, parent: Span): Promise<User> {
         var result = await this.FindByUsername(username, null, parent);
         return result;
     }
-    public static async DecorateWithRoles<T extends TokenUser | User>(user: T, parent: Span): Promise<T> {
+    public async DecorateWithRoles<T extends TokenUser | User>(user: T, parent: Span): Promise<T> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
@@ -461,7 +492,7 @@ export class DBHelper {
         }
         return user as any;
     }
-    public static async FindRoleByName(name: string, parent: Span): Promise<Role> {
+    public async FindRoleByName(name: string, parent: Span): Promise<Role> {
         this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
@@ -480,10 +511,10 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
+    public async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
         await Config.db._UpdateOne(null, item, "users", 2, false, jwt, parent);
     }
-    public static async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
+    public async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
             let role: Role = await this.FindRoleByName(name, span);
@@ -505,7 +536,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async EnsureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
+    public async EnsureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
             span?.addEvent("FindByUsernameOrId");
@@ -537,13 +568,13 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public static async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<void> {
+    public async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<void> {
         if (Config.auto_create_personal_nodered_group || force) {
             let name = user.username;
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
-            let noderedadmins = await DBHelper.FindRoleById(name + "noderedadmins", jwt, parent);
+            let noderedadmins = await this.FindRoleById(name + "noderedadmins", jwt, parent);
             if (noderedadmins == null) {
                 noderedadmins = await this.EnsureRole(jwt, name + "noderedadmins", null, parent);
                 Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
@@ -557,7 +588,7 @@ export class DBHelper {
             name = name.split("@").join("").split(".").join("");
             name = name.toLowerCase();
 
-            let noderedadmins = await DBHelper.FindRoleById(name + "nodered api users", jwt, parent);
+            let noderedadmins = await this.FindRoleById(name + "nodered api users", jwt, parent);
             if (noderedadmins == null) {
                 noderedadmins = await this.EnsureRole(jwt, name + "nodered api users", null, parent);
                 Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
@@ -567,7 +598,7 @@ export class DBHelper {
             }
         }
     }
-    public static async UpdateHeartbeat(cli: WebSocketServerClient): Promise<any> {
+    public async UpdateHeartbeat(cli: WebSocketServerClient): Promise<any> {
         const dt = new Date(new Date().toISOString());
         const updatedoc = { _heartbeat: dt, lastseen: dt };
         cli.user._heartbeat = dt; cli.user.lastseen = dt;
@@ -615,13 +646,4 @@ export class DBHelper {
             return { $set: updatedoc };
         }
     }
-}
-export class TokenRequest extends Base {
-    constructor(code: string) {
-        super();
-        this._type = "tokenrequest";
-        if (NoderedUtil.IsNullEmpty(code)) this.code = "";
-    }
-    public code: string;
-    public jwt: string;
 }

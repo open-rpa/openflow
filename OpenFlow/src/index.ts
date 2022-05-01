@@ -7,7 +7,6 @@ import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { amqpwrapper } from "./amqpwrapper";
 import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
-import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
@@ -71,17 +70,17 @@ async function initDatabase(parent: Span): Promise<boolean> {
     const span: Span = Logger.otel.startSubSpan("initDatabase", parent);
     try {
         const jwt: string = Crypt.rootToken();
-        const admins: Role = await DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
-        const users: Role = await DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
-        const root: User = await DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, span);
+        const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
+        const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
+        const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
         Base.addRight(root, WellknownIds.root, "root", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.root, [Rights.delete]);
-        await DBHelper.Save(root, jwt, span);
+        await Logger.DBHelper.Save(root, jwt, span);
 
-        const robot_agent_users: Role = await DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
+        const robot_agent_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
         Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
         Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
@@ -92,11 +91,11 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
             Base.addRight(robot_agent_users, robot_agent_users._id, "robot agent users", [Rights.read]);
         }
-        await DBHelper.Save(robot_agent_users, jwt, span);
+        await Logger.DBHelper.Save(robot_agent_users, jwt, span);
 
         Base.addRight(admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(admins, WellknownIds.admins, [Rights.delete]);
-        await DBHelper.Save(admins, jwt, span);
+        await Logger.DBHelper.Save(admins, jwt, span);
 
         Base.addRight(users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(users, WellknownIds.admins, [Rights.delete]);
@@ -107,10 +106,10 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.removeRight(users, users._id, [Rights.full_control]);
             Base.addRight(users, users._id, "users", [Rights.read]);
         }
-        await DBHelper.Save(users, jwt, span);
+        await Logger.DBHelper.Save(users, jwt, span);
 
 
-        const personal_nodered_users: Role = await DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
+        const personal_nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
         personal_nodered_users.AddMember(admins);
         Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
@@ -121,13 +120,13 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
             Base.addRight(personal_nodered_users, personal_nodered_users._id, "personal nodered users", [Rights.read]);
         }
-        await DBHelper.Save(personal_nodered_users, jwt, span);
-        const nodered_admins: Role = await DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
+        await Logger.DBHelper.Save(personal_nodered_users, jwt, span);
+        const nodered_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
         nodered_admins.AddMember(admins);
         Base.addRight(nodered_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_admins, WellknownIds.admins, [Rights.delete]);
-        await DBHelper.Save(nodered_admins, jwt, span);
-        const nodered_users: Role = await DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
+        await Logger.DBHelper.Save(nodered_admins, jwt, span);
+        const nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
         nodered_users.AddMember(admins);
         Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
@@ -138,8 +137,8 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
             Base.addRight(nodered_users, nodered_users._id, "nodered users", [Rights.read]);
         }
-        await DBHelper.Save(nodered_users, jwt, span);
-        const nodered_api_users: Role = await DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
+        await Logger.DBHelper.Save(nodered_users, jwt, span);
+        const nodered_api_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
         nodered_api_users.AddMember(admins);
         Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
@@ -150,34 +149,34 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
             Base.addRight(nodered_api_users, nodered_api_users._id, "nodered api users", [Rights.read]);
         }
-        await DBHelper.Save(nodered_api_users, jwt, span);
+        await Logger.DBHelper.Save(nodered_api_users, jwt, span);
 
         if (Config.multi_tenant) {
             try {
-                const resellers: Role = await DBHelper.EnsureRole(jwt, "resellers", WellknownIds.resellers, span);
+                const resellers: Role = await Logger.DBHelper.EnsureRole(jwt, "resellers", WellknownIds.resellers, span);
                 Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
                 Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
                 resellers.AddMember(admins);
-                await DBHelper.Save(resellers, jwt, span);
+                await Logger.DBHelper.Save(resellers, jwt, span);
 
-                const customer_admins: Role = await DBHelper.EnsureRole(jwt, "customer admins", WellknownIds.customer_admins, span);
+                const customer_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "customer admins", WellknownIds.customer_admins, span);
                 Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
                 Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
-                await DBHelper.Save(customer_admins, jwt, span);
+                await Logger.DBHelper.Save(customer_admins, jwt, span);
             } catch (error) {
                 console.error(error);
             }
         }
 
 
-        const robot_admins: Role = await DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
+        const robot_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
         robot_admins.AddMember(admins);
         Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_admins, WellknownIds.admins, [Rights.delete]);
-        await DBHelper.Save(robot_admins, jwt, span);
-        const robot_users: Role = await DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
+        await Logger.DBHelper.Save(robot_admins, jwt, span);
+        const robot_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
         robot_users.AddMember(admins);
         robot_users.AddMember(users);
         Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -189,14 +188,14 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
             Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read, Rights.invoke, Rights.update]);
         }
-        await DBHelper.Save(robot_users, jwt, span);
+        await Logger.DBHelper.Save(robot_users, jwt, span);
 
         if (!admins.IsMember(root._id)) {
             admins.AddMember(root);
-            await DBHelper.Save(admins, jwt, span);
+            await Logger.DBHelper.Save(admins, jwt, span);
         }
 
-        const filestore_admins: Role = await DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins, span);
+        const filestore_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins, span);
         filestore_admins.AddMember(admins);
         Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
@@ -204,8 +203,8 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
             Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
         }
-        await DBHelper.Save(filestore_admins, jwt, span);
-        const filestore_users: Role = await DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users, span);
+        await Logger.DBHelper.Save(filestore_admins, jwt, span);
+        const filestore_users: Role = await Logger.DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users, span);
         filestore_users.AddMember(admins);
         if (!Config.multi_tenant) {
             filestore_users.AddMember(users);
@@ -219,26 +218,26 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
             Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
         }
-        await DBHelper.Save(filestore_users, jwt, span);
+        await Logger.DBHelper.Save(filestore_users, jwt, span);
 
 
 
-        const workitem_queue_admins: Role = await DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", span);
+        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", span);
         workitem_queue_admins.AddMember(admins);
         Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
             Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.full_control]);
         }
-        await DBHelper.Save(workitem_queue_admins, jwt, span);
+        await Logger.DBHelper.Save(workitem_queue_admins, jwt, span);
 
-        const workitem_queue_users: Role = await DBHelper.EnsureRole(jwt, "workitem queue users", "62544134231309e2cd2052ce", span);
+        const workitem_queue_users: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue users", "62544134231309e2cd2052ce", span);
         Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
             Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.full_control]);
         }
-        await DBHelper.Save(workitem_queue_users, jwt, span);
+        await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
 
         await Config.db.ensureindexes(span);
 

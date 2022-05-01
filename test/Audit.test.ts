@@ -10,7 +10,6 @@ import { Logger } from '../OpenFlow/src/Logger';
 import { TokenUser, User } from '@openiap/openflow-api';
 import { Audit } from '../OpenFlow/src/Audit';
 import { Crypt } from '../OpenFlow/src/Crypt';
-import { DBHelper } from '../OpenFlow/src/DBHelper';
 
 @suite class audit_test {
     private rootToken: string;
@@ -23,7 +22,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
-        this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
+        this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
     }
     async after() {
         await Logger.shutdown();

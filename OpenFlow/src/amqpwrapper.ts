@@ -7,7 +7,6 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import events = require("events");
 import { Message } from "./Messages/Message";
-import { DBHelper } from "./DBHelper";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -539,7 +538,7 @@ export class amqpwrapper extends events.EventEmitter {
                 if (Config.log_amqp) Logger.instanse.info("[OF][" + options.exchange + "] Received command " + msg.command);
                 switch (msg.command) {
                     case "clearcache":
-                        DBHelper.clearCache("amqp broadcast");
+                        Logger.DBHelper.clearCache("amqp broadcast");
                         break;
                     case "housekeeping":
                         // if (this.IsMyconsumerTag(options.consumerTag)) break;

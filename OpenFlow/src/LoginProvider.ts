@@ -14,10 +14,10 @@ const multer = require('multer');
 import { GridFsStorage } from "multer-gridfs-storage";
 import { GridFSBucket, ObjectID, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
-import { DBHelper, TokenRequest } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
+import { TokenRequest } from "./TokenRequest";
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -57,7 +57,7 @@ export class samlauthstrategyoptions {
 }
 export class LoginProvider {
     public static _providers: any = {};
-    public static login_providers: Provider[] = [];
+    // public static login_providers: Provider[] = [];
 
     public static remoteip(req: express.Request) {
         let remoteip: string = req.socket.remoteAddress;
@@ -99,7 +99,7 @@ export class LoginProvider {
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
-                        const user = await DBHelper.FindByUsername(username, null, span);
+                        const user = await Logger.DBHelper.FindByUsername(username, null, span);
                         if (user) {
                             resolve(user);
                         } else {
@@ -121,30 +121,6 @@ export class LoginProvider {
             }
         });
     }
-
-    static async getProviders(parent: Span): Promise<any[]> {
-        const span: Span = Logger.otel.startSubSpan("LoginProvider.getProviders", parent);
-        try {
-            LoginProvider.login_providers = await Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
-            const result: any[] = [];
-            LoginProvider.login_providers.forEach(provider => {
-                const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-                if (provider.provider === "google") { item.logo = "fa-google"; }
-                if (provider.provider === "saml") { item.logo = "fa-windows"; }
-                result.push(item);
-            });
-            if (result.length === 0) {
-                const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
-                result.push(item);
-            }
-            return result;
-        } catch (error) {
-            span?.recordException(error);
-            throw error;
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-    }
     static async configure(app: express.Express, baseurl: string): Promise<void> {
         app.use(passport.initialize());
         app.use(passport.session());
@@ -157,7 +133,7 @@ export class LoginProvider {
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             if (typeof userid !== 'string') userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
-            const _user = await DBHelper.FindById(userid, null, null);
+            const _user = await Logger.DBHelper.FindById(userid, null, null);
             if (_user == null) {
                 done(null, null);
             } else {
@@ -207,7 +183,7 @@ export class LoginProvider {
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            if (Config.log_login_provider) Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -227,7 +203,7 @@ export class LoginProvider {
                     return;
                 }
 
-                var user: User = await DBHelper.FindByAuthorization(authorization, null, span);
+                var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
                 if (user != null) {
                     const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                     if (allowed.length > 0) {
@@ -278,7 +254,7 @@ export class LoginProvider {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
-                    const user: User = await DBHelper.FindById(req.user._id, undefined, span);
+                    const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
                     res.end(JSON.stringify(user));
                 } else {
                     res.end(JSON.stringify({}));
@@ -409,9 +385,9 @@ export class LoginProvider {
             const span: Span = Logger.otel.startSpan("LoginProvider.login");
             try {
                 const key = req.body.key;
-                let exists: TokenRequest = await DBHelper.FindRequestTokenID(key, span);
+                let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                 if (!NoderedUtil.IsNullUndefinded(exists)) return res.status(500).send({ message: "Illegal key" });
-                await DBHelper.AdddRequestTokenID(key, {}, span);
+                await Logger.DBHelper.AdddRequestTokenID(key, {}, span);
                 res.status(200).send({ message: "ok" });
             } catch (error) {
                 span?.recordException(error);
@@ -425,7 +401,7 @@ export class LoginProvider {
             try {
                 const key = req.query.key;
                 let exists: TokenRequest = null;
-                exists = await DBHelper.FindRequestTokenID(key, span);
+                exists = await Logger.DBHelper.FindRequestTokenID(key, span);
                 if (NoderedUtil.IsNullUndefinded(exists)) {
                     res.status(200).send({ message: "Illegal key" });
                     return;
@@ -435,9 +411,9 @@ export class LoginProvider {
                     if (Config.validate_user_form != "") {
                         try {
                             var tuser = await await Crypt.verityToken(exists.jwt);
-                            var user = await DBHelper.FindById(tuser._id, exists.jwt, span);
+                            var user = await Logger.DBHelper.FindById(tuser._id, exists.jwt, span);
                             if (user.validated == true) {
-                                await DBHelper.RemoveRequestTokenID(key, span);
+                                await Logger.DBHelper.RemoveRequestTokenID(key, span);
                                 res.status(200).send(Object.assign(exists, { message: "ok" }));
 
                             } else {
@@ -448,7 +424,7 @@ export class LoginProvider {
                         }
                     } else {
                         res.status(200).send(Object.assign(exists, { message: "ok" }));
-                        await DBHelper.RemoveRequestTokenID(key, span);
+                        await Logger.DBHelper.RemoveRequestTokenID(key, span);
                     }
                 } else {
                     res.status(200).send(Object.assign(exists, { message: "ok" }));
@@ -477,10 +453,10 @@ export class LoginProvider {
 
                 if (!NoderedUtil.IsNullEmpty(key)) {
                     if (req.user) {
-                        const user: User = await DBHelper.FindById(req.user._id, undefined, span);
-                        var exists: TokenRequest = await DBHelper.FindRequestTokenID(key, span);
+                        const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                        var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                         if (!NoderedUtil.IsNullUndefinded(exists)) {
-                            await DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
+                            await Logger.DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
                             res.cookie("requesttoken", "", { expires: new Date(0) });
                         }
                     } else {
@@ -503,10 +479,10 @@ export class LoginProvider {
                 }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
                     if (req.user) {
-                        const user: User = await DBHelper.FindById(req.user._id, undefined, span);
+                        const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
                         const tuser: TokenUser = TokenUser.From(user);
                         if (tuser.validated) {
-                            DBHelper.DeleteKey("user" + tuser._id);
+                            Logger.DBHelper.DeleteKey("user" + tuser._id);
                         }
                         // req.session.passport.user.validated = tuser.validated;
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
@@ -548,7 +524,7 @@ export class LoginProvider {
                     Logger.otel.endSpan(span);
                     return;
                 }
-                Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
+                if (Config.log_login_provider) Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
                 Config.validate_user_form = "";
                 res.end(JSON.stringify({}));
                 res.end();
@@ -592,7 +568,7 @@ export class LoginProvider {
                         });
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
                         const user: TokenUser = Object.assign(tuser, req.body.data);
-                        DBHelper.DeleteKey("user" + user._id);
+                        Logger.DBHelper.DeleteKey("user" + user._id);
                         // req.session.passport.user.validated = true;
                         // wewfefwewe
 
@@ -619,7 +595,7 @@ export class LoginProvider {
             const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
             try {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                const result: any[] = await this.getProviders(span);
+                const result: Provider[] = await Logger.DBHelper.GetProviders(span);
                 res.setHeader("Content-Type", "application/json");
                 res.end(JSON.stringify(result));
                 res.end();
@@ -868,13 +844,10 @@ export class LoginProvider {
     static async RegisterProviders(app: express.Express, baseurl: string) {
         const span: Span = Logger.otel.startSpan("LoginProvider.RegisterProviders");
         try {
-            if (LoginProvider.login_providers.length === 0) {
-                const _jwt = Crypt.rootToken();
-                LoginProvider.login_providers = await Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: _jwt }, span);
-            }
             let hasLocal: boolean = false;
-            if (LoginProvider.login_providers.length === 0) { hasLocal = true; }
-            LoginProvider.login_providers.forEach(async (provider) => {
+            var providers = await Logger.DBHelper.GetProviders(span);
+            if (providers.length === 0) { hasLocal = true; }
+            providers.forEach(async (provider) => {
                 try {
                     if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                         if (provider.provider === "saml") {
@@ -898,6 +871,15 @@ export class LoginProvider {
                     LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
                 }
             }
+            const keys = Object.keys(LoginProvider._providers);
+            for (var i = 0; i < keys.length; i++) {
+                let key = keys[i];
+                var exists = providers.filter(x => x.id == key || (key == 'local' && x.provider == 'local'));
+                if (exists.length == 0) {
+                    if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Removing passport strategy " + key);
+                    passport.unuse(key);
+                }
+            }
         } catch (error) {
             span?.recordException(error);
             throw error;
@@ -906,6 +888,7 @@ export class LoginProvider {
         }
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
+        if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Adding new google strategy " + key);
         const options: googleauthstrategyoptions = new googleauthstrategyoptions();
         options.clientID = consumerKey;
         options.clientSecret = consumerSecret;
@@ -934,6 +917,7 @@ export class LoginProvider {
 
     // tslint:disable-next-line: max-line-length
     static CreateSAMLStrategy(app: express.Express, key: string, cert: string, singin_url: string, issuer: string, baseurl: string): passport.Strategy {
+        if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Adding new SAML strategy " + key);
         const options: samlauthstrategyoptions = new samlauthstrategyoptions();
         (options as any).passReqToCallback = true;
         options.entryPoint = singin_url;
@@ -1021,6 +1005,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy({ passReqToCallback: true }, async (req: any, username: string, password: string, done: any): Promise<void> => {
+            if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Adding new local strategy");
             const span: Span = Logger.otel.startSpan("LoginProvider.LocalLogin");
             try {
                 let remoteip: string = "";
@@ -1030,8 +1015,9 @@ export class LoginProvider {
                 span?.setAttribute("remoteip", remoteip);
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
-                if (LoginProvider.login_providers.length === 0) {
-                    user = await DBHelper.FindByUsername(username, null, span);
+                var providers = await Logger.DBHelper.GetProviders(span);
+                if (providers.length === 0) {
+                    user = await Logger.DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
                         let createUser: boolean = Config.auto_create_users;
                         if (!createUser) {
@@ -1040,11 +1026,11 @@ export class LoginProvider {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
-                        user = await DBHelper.EnsureUser(jwt, user.name, user.username, null, password, span);
+                        user = await Logger.DBHelper.EnsureUser(jwt, user.name, user.username, null, password, span);
 
-                        const admins: Role = await DBHelper.FindRoleByName("admins", span);
+                        const admins: Role = await Logger.DBHelper.FindRoleByName("admins", span);
                         admins.AddMember(user);
-                        await DBHelper.Save(admins, Crypt.rootToken(), span)
+                        await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
                         if (user.disabled) {
                             await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
@@ -1059,17 +1045,17 @@ export class LoginProvider {
                     await Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", remoteip, "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
-                    LoginProvider.login_providers.push(result);
+                    await Logger.DBHelper.ClearProviders();
                     const tuser: TokenUser = TokenUser.From(user);
                     return done(null, tuser);
                 }
-                user = await DBHelper.FindByUsername(username, null, span);
+                user = await Logger.DBHelper.FindByUsername(username, null, span);
                 if (NoderedUtil.IsNullUndefinded(user)) {
                     let createUser: boolean = Config.auto_create_users;
                     if (!createUser) {
                         return done(null, false);
                     }
-                    user = await DBHelper.EnsureUser(Crypt.rootToken(), username, username, null, password, span);
+                    user = await Logger.DBHelper.EnsureUser(Crypt.rootToken(), username, username, null, password, span);
                 } else {
                     if (user.disabled) {
                         await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
@@ -1105,7 +1091,7 @@ export class LoginProvider {
                     if (!err && user) {
                         req.logIn(user, function (err: any) {
                             if (err) {
-                                Logger.instanse.info("req.logIn failed");
+                                if (Config.log_login_provider) Logger.instanse.info("req.logIn failed");
                                 Logger.instanse.error(err);
                                 return next(err);
                             }
@@ -1113,7 +1099,7 @@ export class LoginProvider {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
                                     LoginProvider.redirect(res, originalUrl);
-                                    Logger.instanse.debug("redirect: " + originalUrl);
+                                    if (Config.log_login_provider) Logger.instanse.debug("redirect: " + originalUrl);
                                     return;
                                 } catch (error) {
                                     console.error(error.message ? error.message : error);
@@ -1133,7 +1119,7 @@ export class LoginProvider {
                         }
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
-                            Logger.instanse.debug("redirect: " + originalUrl);
+                            if (Config.log_login_provider) Logger.instanse.debug("redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
                             console.error(error.message ? error.message : error);
@@ -1158,8 +1144,8 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug("verify: " + username);
-            let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
+            if (Config.log_login_provider) Logger.instanse.debug("verify: " + username);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, span);
             let remoteip: string = "";
             if (!NoderedUtil.IsNullUndefinded(req)) {
                 remoteip = LoginProvider.remoteip(req);
@@ -1183,7 +1169,7 @@ export class LoginProvider {
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     const jwt: string = Crypt.rootToken();
-                    _user = await DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
+                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             } else {
                 if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -1191,7 +1177,7 @@ export class LoginProvider {
                         (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                     }
                     const jwt: string = Crypt.rootToken();
-                    await DBHelper.Save(_user, jwt, span);
+                    await Logger.DBHelper.Save(_user, jwt, span);
                 }
             }
 
@@ -1200,13 +1186,13 @@ export class LoginProvider {
                     const jwt: string = Crypt.rootToken();
                     const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                     for (let i = 0; i < strroles.length; i++) {
-                        const role: Role = await DBHelper.FindRoleByName(strroles[i], span);
+                        const role: Role = await Logger.DBHelper.FindRoleByName(strroles[i], span);
                         if (!NoderedUtil.IsNullUndefinded(role)) {
                             role.AddMember(_user);
-                            await DBHelper.Save(role, jwt, span);
+                            await Logger.DBHelper.Save(role, jwt, span);
                         }
                     }
-                    _user = await DBHelper.DecorateWithRoles(_user, span);
+                    _user = await Logger.DBHelper.DecorateWithRoles(_user, span);
                 }
             }
 
@@ -1245,8 +1231,8 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug("verify: " + username);
-            let _user: User = await DBHelper.FindByUsernameOrFederationid(username, span);
+            if (Config.log_login_provider) Logger.instanse.debug("verify: " + username);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
                 if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
@@ -1257,7 +1243,7 @@ export class LoginProvider {
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                    _user = await DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
+                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {

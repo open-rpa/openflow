@@ -9,8 +9,6 @@ import { NoderedUtil, SelectCustomerMessage, SigninMessage, User } from '@openia
 import { Crypt } from '../OpenFlow/src/Crypt';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
-import { Auth } from '../OpenFlow/src/Auth';
-import { DBHelper } from '../OpenFlow/src/DBHelper';
 
 @suite class message_test {
     private rootToken: string;
@@ -24,7 +22,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
-        this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
+        this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }
     async after() {

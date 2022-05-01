@@ -8,7 +8,6 @@ import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { User } from '@openiap/openflow-api';
 import { Crypt } from '../OpenFlow/src/Crypt';
-import { DBHelper } from '../OpenFlow/src/DBHelper';
 @suite class crypt_test {
     private testUser: User;
     @timeout(10000)
@@ -18,7 +17,7 @@ import { DBHelper } from '../OpenFlow/src/DBHelper';
         Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
-        this.testUser = await DBHelper.FindByUsername("testuser", Crypt.rootToken(), null)
+        this.testUser = await Logger.DBHelper.FindByUsername("testuser", Crypt.rootToken(), null)
     }
     async after() {
         await Logger.shutdown();

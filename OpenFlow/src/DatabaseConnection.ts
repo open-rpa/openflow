@@ -2,7 +2,6 @@ import { MongoClient, ObjectID, Db, Binary, InsertOneWriteOpResult, MapReduceOpt
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions } from "@openiap/openflow-api";
-import { DBHelper } from "./DBHelper";
 import { OAuthProvider } from "./OAuthProvider";
 import { ValueRecorder } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
@@ -300,17 +299,20 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     var item = next.fullDocument;
                     var _type = "";
+                    if (collectionname == "config" && NoderedUtil.IsNullUndefinded(item)) {
+                        item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
+                    }
                     if (!NoderedUtil.IsNullUndefinded(item)) {
                         _type = item._type;
 
                         if (collectionname == "mq") {
                             // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
-                            await DBHelper.memoryCache.del("mq" + item._id);
-                            if (_type == "exchange") await DBHelper.memoryCache.del("exchangename_" + item.name);
-                            if (_type == "queue") await DBHelper.memoryCache.del("queuename_" + item.name);
+                            await Logger.DBHelper.memoryCache.del("mq" + item._id);
+                            if (_type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + item.name);
+                            if (_type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + item.name);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                             // await DBHelper.memoryCache.del("users" + item._id);
                             // if (_type == "role") {
                             //     var role: Role = item as Role;
@@ -328,10 +330,11 @@ export class DatabaseConnection extends events.EventEmitter {
                             //     await DBHelper.memoryCache.del("username_" + item.name);
                             // }
                         }
-                        if (collectionname == "config" && (_type == "provider" || _type == "restriction" || _type == "resource")) {
-                            DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                        if (collectionname == "config" && (_type == "restriction" || _type == "resource")) {
+                            Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                         }
                         if (collectionname == "config" && _type == "provider") {
+                            await Logger.DBHelper.ClearProviders();
                             await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
                         }
                     }
@@ -555,7 +558,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         (ace.rights as any) = b;
                     }
                     if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
-                        let _user = await DBHelper.FindById(ace._id, null, span);
+                        let _user = await Logger.DBHelper.FindById(ace._id, null, span);
                         if (NoderedUtil.IsNullUndefinded(_user)) {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
@@ -1396,14 +1399,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
-                const exists = await DBHelper.FindByUsername(u.username, null, span);
+                const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
                 if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
             }
             if (collectionname === "users" && item._type === "role") {
                 const r: Role = (item as any);
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
-                const exists2 = await DBHelper.FindRoleByName(r.name, span);
+                const exists2 = await Logger.DBHelper.FindRoleByName(r.name, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
@@ -1423,17 +1426,17 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                 span?.addEvent("FindRoleByName users");
-                const users: Role = await DBHelper.FindRoleByName("users", span);
+                const users: Role = await Logger.DBHelper.FindRoleByName("users", span);
                 users.AddMember(item);
                 span?.addEvent("Save Users");
-                await DBHelper.Save(users, Crypt.rootToken(), span);
+                await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
                 let user2: TokenUser = item as any;
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     // TODO: Check user has permission to this customer
                     const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
                     if (!NoderedUtil.IsNullUndefinded(custusers)) {
                         custusers.AddMember(item);
-                        await DBHelper.Save(custusers, Crypt.rootToken(), span);
+                        await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
                     } else {
                         Logger.instanse.debug("[" + user.username + "][" + collectionname + "] Failed finding customer users " + customer.users + " role while updating item " + item._id);
                     }
@@ -1454,7 +1457,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (Config.enable_openflow_amqp && !Config.supports_watch) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } else if (!Config.supports_watch) {
-                            DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
+                            Logger.DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
                         }
                     }
                 }
@@ -1466,6 +1469,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (collectionname === "config" && item._type === "restriction") {
                 this.EntityRestrictions = null;
+            }
+            if (collectionname === "config" && item._type === "provider" && !Config.supports_watch) {
+                await Logger.DBHelper.ClearProviders();
+                await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
             }
             span?.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
@@ -1546,7 +1553,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             if (Config.enable_openflow_amqp && !Config.supports_watch) {
                                 amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                             } else if (!Config.supports_watch) {
-                                DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
+                                Logger.DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
                             }
                         }
                     }
@@ -1591,14 +1598,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                     if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
-                    const exists = await DBHelper.FindByUsername(u.username, null, span);
+                    const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
                     if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
                 }
                 if (collectionname === "users" && item._type === "role") {
                     const r: Role = (item as any);
                     if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
-                    const exists2 = await DBHelper.FindRoleByName(r.name, span);
+                    const exists2 = await Logger.DBHelper.FindRoleByName(r.name, span);
                     if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                 }
 
@@ -1628,14 +1635,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span?.addEvent("FindRoleByName");
-                    const users: Role = await DBHelper.FindRoleByName("users", span);
+                    const users: Role = await Logger.DBHelper.FindRoleByName("users", span);
                     users.AddMember(item);
                     span?.addEvent("CleanACL");
                     item = await this.CleanACL(item, user, collectionname, span);
                     span?.addEvent("Save");
-                    await DBHelper.Save(users, Crypt.rootToken(), span);
+                    await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
                     const user2: TokenUser = item as any;
-                    await DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
+                    await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
                 if (collectionname === "users" && item._type === "role") {
                     Base.addRight(item, item._id, item.name, [Rights.read]);
@@ -2015,14 +2022,14 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (Config.enable_openflow_amqp && !Config.supports_watch) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } else if (!Config.supports_watch) {
-                            DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
+                            Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
                         }
                     }
                     if (q.collectionname === "mq") {
                         if (Config.enable_openflow_amqp && !Config.supports_watch) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } else if (!Config.supports_watch) {
-                            DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
+                            Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
                         }
                     }
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
@@ -2091,6 +2098,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (q.collectionname === "config" && q.item._type === "restriction") {
                     this.EntityRestrictions = null;
                 }
+                if (q.collectionname === "config" && q.item._type === "provider" && !Config.supports_watch) {
+                    await Logger.DBHelper.ClearProviders();
+                    await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
+                }
                 DatabaseConnection.traversejsondecode(q.item);
                 if (q.collectionname === "users" && q.item._type === "user") {
                     let user2: TokenUser = q.item as any;
@@ -2100,13 +2111,13 @@ export class DatabaseConnection extends events.EventEmitter {
                         const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
                         if (!custusers.IsMember(q.item._id)) {
                             custusers.AddMember(q.item);
-                            await DBHelper.Save(custusers, Crypt.rootToken(), span);
-                            DBHelper.DeleteKey("user" + q.item._id);
+                            await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
+                            Logger.DBHelper.DeleteKey("user" + q.item._id);
                         }
                     } else {
-                        DBHelper.DeleteKey("user" + q.item._id);
+                        Logger.DBHelper.DeleteKey("user" + q.item._id);
                     }
-                    await DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
+                    await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
 
                 q.result = q.item;
@@ -2451,15 +2462,19 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (Config.enable_openflow_amqp && !Config.supports_watch) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     } else if (!Config.supports_watch) {
-                        DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
+                        Logger.DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
                     }
                 }
                 if (collectionname === "mq") {
                     if (Config.enable_openflow_amqp && !Config.supports_watch) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     } else if (!Config.supports_watch) {
-                        DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
+                        Logger.DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
                     }
+                }
+                if (collectionname === "config" && doc._type === "provider" && !Config.supports_watch) {
+                    await Logger.DBHelper.ClearProviders();
+                    // await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
                 }
             }
         } catch (error) {
@@ -2737,11 +2752,11 @@ export class DatabaseConnection extends events.EventEmitter {
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
         if (user._type == "user" || user._type == "role") {
-            user = await DBHelper.DecorateWithRoles(user as any, parent);
+            user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             // const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
             return this.getbasequery(user, field, bits);
         } else if (user._type == "customer") {
-            user = await DBHelper.DecorateWithRoles(user as any, parent);
+            user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             user.roles.push(new Rolemember(user.name + " users", (user as any).users))
             user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
             // const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);

@@ -8,8 +8,8 @@ import { SigninMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { ValueRecorder, BaseObserver } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
-import { DBHelper } from "./DBHelper";
 import { DatabaseConnection } from "./DatabaseConnection";
+const { RateLimiterMemory } = require('rate-limiter-flexible')
 
 export class WebSocketServer {
     private static _socketserver: WebSocket.Server;
@@ -22,6 +22,8 @@ export class WebSocketServer {
     public static websocket_messages: ValueRecorder;
     public static message_queue_count: BaseObserver;
     public static mongodb_watch_count: BaseObserver;
+    public static BaseRateLimiter: any;
+    public static ErrorRateLimiter: any;
     public static update_message_queue_count(cli: WebSocketServerClient) {
         if (!Config.prometheus_measure_queued_messages) return;
         if (NoderedUtil.IsNullUndefinded(WebSocketServer.message_queue_count)) return;
@@ -43,6 +45,15 @@ export class WebSocketServer {
     static configure(server: http.Server, parent: Span): void {
         const span: Span = Logger.otel.startSubSpan("WebSocketServer.configure", parent);
         try {
+            WebSocketServer.BaseRateLimiter = new RateLimiterMemory({
+                points: Config.socket_rate_limit_points,
+                duration: Config.socket_rate_limit_duration,
+            });
+            WebSocketServer.ErrorRateLimiter = new RateLimiterMemory({
+                points: Config.socket_error_rate_limit_points,
+                duration: Config.socket_error_rate_limit_duration,
+            });
+
             this._clients = [];
             this._socketserver = new WebSocket.Server({ server: server });
             this._socketserver.on("connection", (socketObject: WebSocket, req: any): void => {
@@ -169,7 +180,7 @@ export class WebSocketServer {
                                 p_all[cli.clientagent] += 1;
                             }
                         }
-                        var updateDoc = await DBHelper.UpdateHeartbeat(cli);
+                        var updateDoc = await Logger.DBHelper.UpdateHeartbeat(cli);
                         if (updateDoc != null) {
                             bulkUpdates.push({
                                 updateOne: {

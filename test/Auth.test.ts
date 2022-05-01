@@ -1,3 +1,4 @@
+var wtf = require('wtfnode');
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
@@ -21,6 +22,7 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
     }
     async after() {
         await Logger.shutdown();
+        // wtf.dump()
     }
     @test async 'ValidateByPassword'() {
         await assert.rejects(async () => {

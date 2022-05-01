@@ -2,7 +2,6 @@ import * as express from "express";
 import * as samlp from "samlp";
 import { Config } from "./Config";
 import { Audit } from "./Audit";
-import { LoginProvider } from "./LoginProvider";
 import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -151,7 +150,8 @@ export class SamlProvider {
             req.logout();
 
             if (!NoderedUtil.IsNullEmpty(providerid)) {
-                const p = LoginProvider.login_providers.filter(x => x.id == providerid);
+                var providers = await Logger.DBHelper.GetProviders(null);
+                const p = providers.filter(x => x.id == providerid);
                 if (p.length > 0) {
                     const provider = p[0];
                     if (!NoderedUtil.IsNullEmpty(provider.saml_signout_url)) {
