@@ -5,7 +5,6 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Provider, KoaContextWithOIDC } from "oidc-provider";
 import { MongoAdapter } from "./MongoAdapter";
-import { DBHelper } from "./DBHelper";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 
@@ -712,7 +711,7 @@ const semaphore = Semaphore(1);
 
 export class Account {
     constructor(public accountId: string, public user: TokenUser) {
-        DBHelper.DeleteKey("user" + accountId);
+        Logger.DBHelper.DeleteKey("user" + accountId);
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
         // node-bb username hack
@@ -731,9 +730,9 @@ export class Account {
         return this.user;
     }
     static async findAccount(ctx: KoaContextWithOIDC, id, test): Promise<any> {
-        let acc = await DBHelper.memoryCache.get("oidc" + id);
+        let acc = await Logger.DBHelper.memoryCache.get("oidc" + id);
         if (acc == null) {
-            acc = await DBHelper.FindById(id, undefined, undefined);
+            acc = await Logger.DBHelper.FindById(id, undefined, undefined);
         }
         var res = new Account(id, TokenUser.From(acc))
         return res;
@@ -750,7 +749,7 @@ export class Account {
                 }
             }
             (tuser as any).role = role;
-            DBHelper.memoryCache.set("oidc" + tuser._id, tuser);
+            Logger.DBHelper.memoryCache.set("oidc" + tuser._id, tuser);
             // DBHelper.DeleteKey("user" + tuser._id);
             var res = new Account(tuser._id, tuser);
             return res;

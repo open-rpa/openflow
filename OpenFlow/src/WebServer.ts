@@ -18,13 +18,9 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 var _hostname = "";
 
-const BaseRateLimiter = new RateLimiterMemory({
-    points: Config.api_rate_limit_points,
-    duration: Config.api_rate_limit_duration,
-});
 
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
-    BaseRateLimiter
+    WebServer.BaseRateLimiter
         .consume(WebServer.remoteip(req))
         .then((e) => {
             // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
@@ -49,8 +45,15 @@ export class WebServer {
         return remoteip;
     }
     public static app: express.Express;
+    public static BaseRateLimiter: any;
     static async configure(baseurl: string, parent: Span): Promise<http.Server> {
         const span: Span = Logger.otel.startSubSpan("WebServer.configure", parent);
+
+        WebServer.BaseRateLimiter = new RateLimiterMemory({
+            points: Config.api_rate_limit_points,
+            duration: Config.api_rate_limit_duration,
+        });
+
         try {
             if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
                 // websocket_rate_limit = Logger.otel.meter.createUpDownSumObserver("openflow_webserver_rate_limit_count", {

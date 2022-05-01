@@ -14,7 +14,6 @@ import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueM
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
-import { DBHelper } from "../DBHelper";
 import { WebSocketServer } from "../WebSocketServer";
 import { OAuthProvider } from "../OAuthProvider";
 import { Span } from "@opentelemetry/api";
@@ -23,15 +22,6 @@ import { QueueClient } from "../QueueClient";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 const pako = require('pako');
 const got = require("got");
-const { RateLimiterMemory } = require('rate-limiter-flexible')
-const BaseRateLimiter = new RateLimiterMemory({
-    points: Config.socket_rate_limit_points,
-    duration: Config.socket_rate_limit_duration,
-});
-const ErrorRateLimiter = new RateLimiterMemory({
-    points: Config.socket_error_rate_limit_points,
-    duration: Config.socket_error_rate_limit_duration,
-});
 
 let errorcounter: number = 0;
 var _hostname = "";
@@ -48,7 +38,7 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
         if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
         errorcounter++;
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
-        if (Config.socket_rate_limit) await ErrorRateLimiter.consume(cli.id);
+        if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
         if (Config.log_errors && Config.log_error_stack) {
             Logger.instanse.error(error);
         } else if (Config.log_errors) {
@@ -227,7 +217,7 @@ export class Message {
                 return;
             }
             try {
-                if (Config.socket_rate_limit) await BaseRateLimiter.consume(cli.id);
+                if (Config.socket_rate_limit) await WebSocketServer.BaseRateLimiter.consume(cli.id);
             } catch (error) {
                 if (error.consumedPoints) {
                     if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, command: command }).update(cli.inccommandcounter(command));
@@ -778,19 +768,7 @@ export class Message {
             }
 
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
-                let mq = await DBHelper.FindExchangeByName(msg.exchangename, rootjwt, parent);
-                // let mq = Auth.getUser(msg.exchangename, "mqe");
-                // if (mq == null) {
-                //     const arr = await Config.db.query(
-                //         {
-                //             query: { "name": msg.exchangename, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1,
-                //             collectionname: "mq", jwt: rootjwt
-                //         }, parent);
-                //     if (arr.length > 0) {
-                //         await Auth.AddUser(arr[0] as any, msg.exchangename, "mqe");
-                //         mq = arr[0] as any;
-                //     }
-                // }
+                let mq = await Logger.DBHelper.FindExchangeByName(msg.exchangename, rootjwt, parent);
                 if (mq != null) {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
@@ -805,7 +783,7 @@ export class Message {
                     const q = new Base(); q._type = "exchange";
                     q.name = msg.exchangename;
                     const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
-                    DBHelper.DeleteKey("exchange" + msg.exchangename);
+                    Logger.DBHelper.DeleteKey("exchange" + msg.exchangename);
                 }
 
             }
@@ -882,8 +860,6 @@ export class Message {
                 }
             }
 
-            // ################################################################################################################
-
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
@@ -897,16 +873,7 @@ export class Message {
                     }
                 }
                 if (!allowed && msg.queuename.length == 24) {
-                    let mq = await DBHelper.FindById(msg.queuename, rootjwt, parent);
-                    // Do i have permission to listen on a queue with this id ?
-                    // let mq = Auth.getUser(msg.queuename, "mq");
-                    // if (mq == null) {
-                    //     const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, parent);
-                    //     if (arr.length > 0) {
-                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                    //         mq = arr[0] as any;
-                    //     }
-                    // }
+                    let mq = await Logger.DBHelper.FindById(msg.queuename, rootjwt, parent);
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
@@ -921,15 +888,7 @@ export class Message {
                     }
                 }
                 if (!allowed) {
-                    let mq = await DBHelper.FindQueueByName(msg.queuename, rootjwt, parent);
-                    // let mq = Auth.getUser(msg.queuename, "mq");
-                    // if (mq == null) {
-                    //     const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, parent);
-                    //     if (arr.length > 0) {
-                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                    //         mq = arr[0] as any;
-                    //     }
-                    // }
+                    let mq = await Logger.DBHelper.FindQueueByName(msg.queuename, rootjwt, parent);
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
@@ -1013,16 +972,7 @@ export class Message {
                     if (isrole.length > 0) allowed = true;
                 }
                 if (!allowed && msg.queuename.length == 24) {
-                    let mq = await DBHelper.FindById(msg.queuename, rootjwt, parent);
-                    // Do i have permission to send to a queue with this id ?
-                    // let mq = Auth.getUser(msg.queuename, "mq");
-                    // if (mq == null) {
-                    //     const arr = await Config.db.query({ query: { _id: msg.queuename }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "users", jwt: rootjwt }, span);
-                    //     if (arr.length > 0) {
-                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                    //         mq = arr[0] as any;
-                    //     }
-                    // }
+                    let mq = await Logger.DBHelper.FindById(msg.queuename, rootjwt, parent);
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
@@ -1037,15 +987,7 @@ export class Message {
                     }
                 }
                 if (!allowed) {
-                    let mq = await DBHelper.FindQueueByName(msg.queuename, rootjwt, parent);
-                    // let mq = Auth.getUser(msg.queuename, "mq");
-                    // if (mq == null) {
-                    //     const arr = await Config.db.query({ query: { "name": msg.queuename, "_type": "queue" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
-                    //     if (arr.length > 0) {
-                    //         await Auth.AddUser(arr[0] as any, msg.queuename, "mq");
-                    //         mq = arr[0] as any;
-                    //     }
-                    // }
+                    let mq = await Logger.DBHelper.FindQueueByName(msg.queuename, rootjwt, parent);
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
@@ -1073,15 +1015,7 @@ export class Message {
                     if (isrole.length > 0) allowed = true;
                 }
                 if (!allowed) {
-                    let mq = await DBHelper.FindExchangeByName(msg.exchange, rootjwt, parent);
-                    // let mq = Auth.getUser(msg.exchange, "mqe");
-                    // if (mq == null) {
-                    //     const arr = await Config.db.query({ query: { "name": msg.exchange, "_type": "exchange" }, projection: { name: 1, _acl: 1 }, top: 1, collectionname: "mq", jwt: rootjwt }, span);
-                    //     if (arr.length > 0) {
-                    //         await Auth.AddUser(arr[0] as any, msg.exchange, "mqe");
-                    //         mq = arr[0] as any;
-                    //     }
-                    // }
+                    let mq = await Logger.DBHelper.FindExchangeByName(msg.exchange, rootjwt, parent);
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
@@ -1641,7 +1575,7 @@ export class Message {
             } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
                 tuser = await Crypt.verityToken(cli.jwt);
                 const impostor: string = tuser.impostor;
-                cli.user = await DBHelper.FindById(cli.user._id, undefined, span);
+                cli.user = await Logger.DBHelper.FindById(cli.user._id, undefined, span);
                 if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 tuser = TokenUser.From(cli.user);
                 tuser.impostor = impostor;
@@ -1664,7 +1598,7 @@ export class Message {
             } else if (tuser != null) {
                 Logger.instanse.info(tuser.username + " successfully signed in");
                 await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                DBHelper.UpdateHeartbeat(cli);
+                Logger.DBHelper.UpdateHeartbeat(cli);
             }
         } catch (error) {
             Logger.instanse.error(error);
@@ -1692,9 +1626,9 @@ export class Message {
                     tuser = await Crypt.verityToken(msg.jwt);
                     if (tuser != null) {
                         if (NoderedUtil.IsNullEmpty(tuser._id)) {
-                            user = await DBHelper.FindByUsername(tuser.username, null, span);
+                            user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
                         } else {
-                            user = await DBHelper.FindById(tuser._id, msg.jwt, span);
+                            user = await Logger.DBHelper.FindById(tuser._id, msg.jwt, span);
                         }
                     }
                     if (tuser == null || user == null) {
@@ -1710,7 +1644,7 @@ export class Message {
                     } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                         if (Config.auto_create_user_from_jwt) {
                             const jwt: string = Crypt.rootToken();
-                            user = await DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
+                            user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
                             if (user != null) tuser = TokenUser.From(user);
                             if (user == null) {
                                 tuser = new TokenUser();
@@ -1780,7 +1714,7 @@ export class Message {
                     if (Config.log_errors) Logger.instanse.error("Disabled user " + tuser.username + " failed logging in using " + type);
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
-                        user = await DBHelper.FindById(impostor, Crypt.rootToken(), span);
+                        user = await Logger.DBHelper.FindById(impostor, Crypt.rootToken(), span);
                         if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                         user.impersonating = undefined;
                         if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
@@ -1830,10 +1764,10 @@ export class Message {
                         tuser.selectedcustomerid = null;
                         const tuserimpostor = tuser;
                         user = User.assign(items[0] as User);
-                        user = await DBHelper.DecorateWithRoles(user, span);
+                        user = await Logger.DBHelper.DecorateWithRoles(user, span);
                         // Check we have update rights
                         try {
-                            await DBHelper.Save(user, originialjwt, span);
+                            await Logger.DBHelper.Save(user, originialjwt, span);
                             if (Config.persist_user_impersonation) {
                                 await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
                             }
@@ -1915,10 +1849,9 @@ export class Message {
                             UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
                         }
                     }
-                    // await DBHelper.Save(user, Crypt.rootToken());
                     await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
-                    DBHelper.memoryCache.del("users" + user._id);
-                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) DBHelper.memoryCache.del("users" + tuser.impostor);
+                    Logger.DBHelper.memoryCache.del("users" + user._id);
+                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) Logger.DBHelper.memoryCache.del("users" + tuser.impostor);
                 }
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -3444,9 +3377,9 @@ export class Message {
                 await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
 
-            const global_customer_admins: Role = await DBHelper.EnsureRole(rootjwt, "customer admins", WellknownIds.customer_admins, span);
+            const global_customer_admins: Role = await Logger.DBHelper.EnsureRole(rootjwt, "customer admins", WellknownIds.customer_admins, span);
 
-            const customeradmins: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
+            const customeradmins: Role = await Logger.DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
             customeradmins.name = msg.customer.name + " admins";
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
@@ -3461,12 +3394,9 @@ export class Message {
                 }
             }
             customeradmins.customerid = msg.customer._id;
-            await DBHelper.Save(customeradmins, rootjwt, span);
+            await Logger.DBHelper.Save(customeradmins, rootjwt, span);
 
-            // customer_admins.AddMember(customeradmins);
-            // await DBHelper.Save(customer_admins, rootjwt, span);
-
-            const customerusers: Role = await DBHelper.EnsureRole(rootjwt, msg.customer.name + " users", msg.customer.users, span);
+            const customerusers: Role = await Logger.DBHelper.EnsureRole(rootjwt, msg.customer.name + " users", msg.customer.users, span);
             customerusers.name = msg.customer.name + " users";
             customerusers.customerid = msg.customer._id;
             Base.addRight(customerusers, customeradmins._id, customeradmins.name, [Rights.full_control]);
@@ -3475,7 +3405,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
                 customerusers.AddMember(cli.user);
             }
-            await DBHelper.Save(customerusers, rootjwt, span);
+            await Logger.DBHelper.Save(customerusers, rootjwt, span);
 
             if (msg.customer.admins != customeradmins._id || msg.customer.users != customerusers._id) {
                 msg.customer.admins = customeradmins._id;
@@ -3487,7 +3417,7 @@ export class Message {
 
             if (msg.customer._id == cli.user.customerid) {
                 cli.user.selectedcustomerid = msg.customer._id;
-                cli.user = await DBHelper.DecorateWithRoles(cli.user, span);
+                cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, span);
                 if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 cli.user.roles.push(new Rolemember(customerusers.name, customerusers._id));
                 cli.user.roles.push(new Rolemember(customeradmins.name, customeradmins._id));
@@ -3535,8 +3465,8 @@ export class Message {
         if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
-        DBHelper.DeleteKey("user" + cli.user._id);
-        cli.user = await DBHelper.DecorateWithRoles(cli.user, parent);
+        Logger.DBHelper.DeleteKey("user" + cli.user._id);
+        cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
         l.jwt = cli.jwt;
@@ -4798,15 +4728,15 @@ export class Message {
             user = User.assign(await Crypt.verityToken(this.jwt));
 
             var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
-            const workitem_queue_admins: Role = await DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
+            const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
             if (!msg.skiprole) {
-                const wiqusers: Role = await DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
+                const wiqusers: Role = await Logger.DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
                 Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
                 // Base.removeRight(wiqusers, user._id, [Rights.delete]);
                 wiqusers.AddMember(user as any);
                 wiqusers.AddMember(workitem_queue_admins);
-                await DBHelper.Save(wiqusers, rootjwt, parent);
+                await Logger.DBHelper.Save(wiqusers, rootjwt, parent);
                 Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
                 wiq.usersrole = wiqusers._id;
             } else {

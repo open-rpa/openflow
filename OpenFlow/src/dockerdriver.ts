@@ -4,7 +4,6 @@ import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/api";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
-import { DBHelper } from "./DBHelper";
 import * as url from "url";
 const Docker = require("dockerode");
 import Dockerode = require("dockerode");
@@ -109,7 +108,7 @@ export class dockerdriver implements i_nodered_driver {
             if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
             if (!api_ws_url.endsWith("/")) api_ws_url += "/";
 
-            const nodereduser = await DBHelper.FindById(_id, jwt, span);
+            const nodereduser = await Logger.DBHelper.FindById(_id, jwt, span);
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
@@ -118,7 +117,7 @@ export class dockerdriver implements i_nodered_driver {
                 saml_federation_metadata = "https://demo.openiap.io/issue/FederationMetadata/2007-06/FederationMetadata.xml"
             }
 
-            await DBHelper.EnsureNoderedRoles(tuser, jwt, true, span);
+            await Logger.DBHelper.EnsureNoderedRoles(tuser, jwt, true, span);
             let saml_baseurl = Config.protocol + "://" + hostname + "/";
             let _samlparsed = url.parse(saml_federation_metadata);
             if (_samlparsed.protocol == "http:" || _samlparsed.protocol == "ws:") {

@@ -3,6 +3,7 @@ import * as winston from "winston";
 import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
 import { dockerdriver } from "./dockerdriver";
+import { DBHelper } from './DBHelper';
 const path = require('path');
 
 const MAX_RETRIES_DEFAULT = 5
@@ -24,6 +25,7 @@ export class Logger {
     public static otel: i_otel;
     public static License: i_license_file;
     public static nodereddriver: i_nodered_driver;
+    public static DBHelper: DBHelper;
     static myFormat = winston.format.printf(info => {
         if (info instanceof Error || info.stack) {
             return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
@@ -60,10 +62,11 @@ export class Logger {
     };
     public static async shutdown() {
         Logger.License.shutdown();
-        await Config.db.shutdown();
+        if (Config.db != null) await Config.db.shutdown();
         await Logger.otel.shutdown();
     }
     static configure(skipotel: boolean, skiplic: boolean): winston.Logger {
+        Logger.DBHelper = new DBHelper();
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {
             file: {

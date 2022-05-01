@@ -11,9 +11,7 @@ import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
 import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { NoderedUtil, User, SaveFileMessage } from '@openiap/openflow-api';
-import { Auth } from '../OpenFlow/src/Auth';
 import { Crypt } from '../OpenFlow/src/Crypt';
-import { DBHelper } from '../OpenFlow/src/DBHelper';
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage } from "@openiap/openflow-api";
 
 @suite class workitemqueue_messages_test {
@@ -28,7 +26,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
         this.rootToken = Crypt.rootToken();
-        this.testUser = await DBHelper.FindByUsername("testuser", this.rootToken, null)
+        this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         assert.ok(!NoderedUtil.IsNullUndefinded(this.testUser), "Test user missing, was user deleted ?");
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
     }

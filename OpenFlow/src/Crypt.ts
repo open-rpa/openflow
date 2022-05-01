@@ -5,9 +5,8 @@ import { Config } from "./Config";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { DBHelper } from "./DBHelper";
 export class Crypt {
-    static encryption_key: string = Config.aes_secret.substr(0, 32); // must be 256 bytes (32 characters)
+    static encryption_key: string = null; // must be 256 bytes (32 characters))
     static iv_length: number = 16; // for AES, this is always 16
     static bcrypt_salt_rounds: number = 12;
     static rootUser(): User {
@@ -48,6 +47,7 @@ export class Crypt {
     }
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
         let cipher: crypto.CipherGCM = crypto.createCipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
         let encrypted: Buffer = cipher.update((text as any));
         encrypted = Buffer.concat([encrypted, cipher.final()]);
@@ -60,14 +60,15 @@ export class Crypt {
         let encryptedText: Buffer = Buffer.from(textParts.shift(), "hex");
         let authTag: Buffer = null;
         if (textParts.length > 0) authTag = Buffer.from(textParts.shift(), "hex");
-        let decrypted: Buffer
+        let decrypted: Buffer;
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
         if (authTag != null) {
             let decipher: crypto.DecipherGCM = crypto.createDecipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
             decipher.setAuthTag(authTag);
             decrypted = decipher.update(encryptedText);
             decrypted = Buffer.concat([decrypted, decipher.final()]);
         } else {
-            let decipher2: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(this.encryption_key), iv);
+            let decipher2: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(Crypt.encryption_key), iv);
             decrypted = decipher2.update(encryptedText);
             decrypted = Buffer.concat([decrypted, decipher2.final()]);
         }
@@ -115,6 +116,7 @@ export class Crypt {
         user.selectedcustomerid = item.selectedcustomerid;
         user.dblocked = item.dblocked;
 
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
         const key = Crypt.encryption_key;
         if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
         if (NoderedUtil.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
@@ -125,6 +127,7 @@ export class Crypt {
         if (NoderedUtil.IsNullEmpty(token)) {
             throw new Error('jwt must be provided');
         }
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
         const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
         let impostor: string = null;
         if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
@@ -134,7 +137,7 @@ export class Crypt {
         }
         if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id) && o.data._id != WellknownIds.root) {
             var id = o.data._id;
-            o.data = await DBHelper.FindById(o.data._id, token, null);
+            o.data = await Logger.DBHelper.FindById(o.data._id, token, null);
             if (NoderedUtil.IsNullUndefinded(o)) {
                 var b = true;
             }
@@ -147,6 +150,7 @@ export class Crypt {
 
     }
     static decryptToken(token: string): any {
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
         return jsonwebtoken.verify(token, Crypt.encryption_key);
     }
 }

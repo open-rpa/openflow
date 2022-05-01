@@ -49,6 +49,7 @@ export class Config {
         Config.log_watches = Config.parseBoolean(Config.getEnv("log_watches", "false"));
         Config.log_watches_notify = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
         Config.log_missing_jwt = Config.parseBoolean(Config.getEnv("log_missing_jwt", "true"));
+        Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
 
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
@@ -228,6 +229,7 @@ export class Config {
     public static log_watches: boolean = Config.parseBoolean(Config.getEnv("log_watches", "false"));
     public static log_watches_notify: boolean = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
     public static log_missing_jwt: boolean = Config.parseBoolean(Config.getEnv("log_missing_jwt", "true"));
+    public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
 
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
