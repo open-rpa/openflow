@@ -30,6 +30,8 @@ export class Config {
         Config.log_watches = false;
         Config.log_watches_notify = false;
         Config.log_missing_jwt = false;
+        Config.log_login_provider = false;
+        Config.log_information = false;
     }
     public static reload(): void {
         Config.getversion();
@@ -50,6 +52,7 @@ export class Config {
         Config.log_watches_notify = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
         Config.log_missing_jwt = Config.parseBoolean(Config.getEnv("log_missing_jwt", "true"));
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
+        Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -232,6 +235,7 @@ export class Config {
     public static log_watches_notify: boolean = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
     public static log_missing_jwt: boolean = Config.parseBoolean(Config.getEnv("log_missing_jwt", "true"));
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
+    public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
 
     public static amqp_allow_replyto_empty_queuename: boolean = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
