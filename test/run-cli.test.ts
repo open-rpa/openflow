@@ -29,10 +29,10 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     @test 'Include cli'() {
         require('../OpenFlow/src/cli');
     }
-    @timeout(5000)
-    @test 'Include nodered cli'() {
-        require('../OpenFlowNodeRED/src/cli');
-    }
+    // @timeout(5000)
+    // @test 'Include nodered cli'() {
+    //     require('../OpenFlowNodeRED/src/cli');
+    // }
 
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/run-cli.test.ts'

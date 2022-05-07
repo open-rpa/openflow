@@ -41,7 +41,7 @@
         ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
           translate lib="web">rpaworkflows</span></a>
 
-      <a href="//grafana.{{menuctrl.WebSocketClientService.domain}}" class="sidebar-link" id="menugrafana" target="_blank"
+      <a href="//{{menuctrl.WebSocketClientService.nodered_domain_schema.replace('$nodered_id$', 'grafana')}}" class="sidebar-link" id="menugrafana" target="_blank"
         ng-show="menuctrl.WebSocketClientService.validlicense"><span
           translate lib="web">grafana</span></a>
 

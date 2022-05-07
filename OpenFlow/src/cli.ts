@@ -43,8 +43,7 @@ try {
                 for (const net of nets[name]) {
                     // skip over non-ipv4 and internal (i.e. 127.0.0.1) addresses
                     if (net.family === 'IPv4' && !net.internal) {
-                        //console.log(name, net);
-                        console.log(name, net.address);
+                        if (Config.log_information) console.log(name, net.address);
                     }
                 }
             }
@@ -104,14 +103,14 @@ function getToken(): Promise<string> {
 async function doit() {
     try {
         if (options.init) {
-            console.log("init");
+            if (Config.log_information) console.log("init");
             const files = fs.readdirSync(path.join(__dirname, ".."))
             for (let i = 0; i < files.length; i++) {
                 let filename = files[i];
                 if (path.extname(filename) == '.env') {
                     const target = path.join(process.cwd(), filename);
                     if (!fs.existsSync(target)) {
-                        console.log("Creating " + filename);
+                        if (Config.log_information) console.log("Creating " + filename);
                         filename = path.join(__dirname, "..", filename);
                         fs.copyFileSync(filename, target);
 
@@ -120,12 +119,12 @@ async function doit() {
                         fs.writeFileSync(target, envfile.stringify(parsedFile));
 
                     } else {
-                        console.log("Skipping " + filename + " already exists.");
+                        if (Config.log_information) console.log("Skipping " + filename + " already exists.");
                     }
                 }
             }
         } else if (options.authenticate == true) {
-            console.log("authenticate");
+            if (Config.log_information) console.log("authenticate");
             if (await pm2exists(servicename)) {
                 await pm2stop(servicename);
                 await pm2delete(servicename);
@@ -152,7 +151,7 @@ async function doit() {
                 logger.error(error);
             }
         } else if (options.install == true) {
-            console.log("install");
+            if (Config.log_information) console.log("install");
             loadenv();
             if (!await pm2exists(servicename)) {
                 await pm2start({
@@ -180,7 +179,7 @@ async function doit() {
             }
             pm2disconnect();
         } else if (options.uninstall == true) {
-            console.log("uninstall");
+            if (Config.log_information) console.log("uninstall");
             if (await pm2exists(servicename)) {
                 await pm2stop(servicename);
                 await pm2delete(servicename);
@@ -190,21 +189,21 @@ async function doit() {
             }
             pm2disconnect();
         } else if (options.start == true) {
-            console.log("start");
+            if (Config.log_information) console.log("start");
             loadenv();
             await pm2restart(servicename);
             pm2disconnect();
         } else if (options.stop == true) {
-            console.log("stop");
+            if (Config.log_information) console.log("stop");
             await pm2stop(servicename);
             pm2disconnect();
         } else if (options.restart == true) {
-            console.log("restart");
+            if (Config.log_information) console.log("restart");
             await pm2restart(servicename);
             pm2disconnect();
         } else if (options.run == true) {
             pm2disconnect();
-            console.log("run");
+            if (Config.log_information) console.log("run");
             loadenv();
             logger.info("Starting as service " + servicename);
             let index = path.join(__dirname, "/index.js");
@@ -214,7 +213,7 @@ async function doit() {
             logger.info("run: " + index);
             require(index);
         } else {
-            console.log("unknown, print usage");
+            if (Config.log_information) console.log("unknown, print usage");
             printusage();
         }
 
@@ -227,27 +226,27 @@ async function doit() {
 
 function printusage() {
     if (!isOpenFlow()) {
-        console.log("openflow-nodered-cli [--init][--install][--uninstall][--config][--start][--stop] name");
-        console.log("   --init - Create sample environment files for running nodered");
-        console.log("   --install - Install openflow as an service that runs at boot");
-        console.log("   --uninstall - Uninstalls service, if openflow has been installed as an service");
-        console.log("   --config - Prompt for credentials and create config");
-        console.log("   --start - Will start the service with the given name");
-        console.log("   --stop - Will stop the service with the given name");
-        console.log("   name - Service and instance name");
-        console.log("Will look for an envoriment file called name.env and copy that to the");
-        console.log("source directory");
+        if (Config.log_information) console.log("openflow-nodered-cli [--init][--install][--uninstall][--config][--start][--stop] name");
+        if (Config.log_information) console.log("   --init - Create sample environment files for running nodered");
+        if (Config.log_information) console.log("   --install - Install openflow as an service that runs at boot");
+        if (Config.log_information) console.log("   --uninstall - Uninstalls service, if openflow has been installed as an service");
+        if (Config.log_information) console.log("   --config - Prompt for credentials and create config");
+        if (Config.log_information) console.log("   --start - Will start the service with the given name");
+        if (Config.log_information) console.log("   --stop - Will stop the service with the given name");
+        if (Config.log_information) console.log("   name - Service and instance name");
+        if (Config.log_information) console.log("Will look for an envoriment file called name.env and copy that to the");
+        if (Config.log_information) console.log("source directory");
         return;
     }
-    console.log("openflow-cli [--init][--install][--uninstall][--start][--stop] name");
-    console.log("   --init - Create a sample environment file for running openflow");
-    console.log("   --install - Install openflow as an service that runs at boot");
-    console.log("   --uninstall - Uninstalls service, if openflow has been installed as an service");
-    console.log("   --start - Will start the service with the given name");
-    console.log("   --stop - Will stop the service with the given name");
-    console.log("   name - Service and instance name");
-    console.log("Will look for an envoriment file called name.env and copy that to the");
-    console.log("source directory");
+    if (Config.log_information) console.log("openflow-cli [--init][--install][--uninstall][--start][--stop] name");
+    if (Config.log_information) console.log("   --init - Create a sample environment file for running openflow");
+    if (Config.log_information) console.log("   --install - Install openflow as an service that runs at boot");
+    if (Config.log_information) console.log("   --uninstall - Uninstalls service, if openflow has been installed as an service");
+    if (Config.log_information) console.log("   --start - Will start the service with the given name");
+    if (Config.log_information) console.log("   --stop - Will stop the service with the given name");
+    if (Config.log_information) console.log("   name - Service and instance name");
+    if (Config.log_information) console.log("Will look for an envoriment file called name.env and copy that to the");
+    if (Config.log_information) console.log("source directory");
 }
 
 doit();

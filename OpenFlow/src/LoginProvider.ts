@@ -1016,7 +1016,7 @@ export class LoginProvider {
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
                 var providers = await Logger.DBHelper.GetProviders(span);
-                if (providers.length === 0) {
+                if (providers.length === 0 || NoderedUtil.IsNullEmpty(providers[0]._id)) {
                     user = await Logger.DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
                         let createUser: boolean = Config.auto_create_users;
@@ -1047,7 +1047,28 @@ export class LoginProvider {
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     await Logger.DBHelper.ClearProviders();
                     const tuser: TokenUser = TokenUser.From(user);
-                    return done(null, tuser);
+                    done(null, tuser);
+                    if (Logger.License.validlicense) {
+                        var model = new Base();
+                        model._type = "oauthclient";
+                        model.name = "grafana";
+                        model._encrypt = ["clientSecret"];
+                        (model as any).clientId = "application";
+                        (model as any).clientSecret = 'secret';
+                        (model as any).grants = ['password', 'refresh_token', 'authorization_code'];
+                        (model as any).redirectUris = [];
+                        (model as any).defaultrole = "Viewer";
+                        (model as any).rolemappings = { "admins": "Admin", "grafana editors": "Editor", "grafana admins": "Admin" };
+
+                        // (model as any).token_endpoint_auth_method = "none";
+                        (model as any).token_endpoint_auth_method = "client_secret_post";
+                        (model as any).response_types = ['code', 'id_token', 'code id_token'];
+                        (model as any).grant_types = ['implicit', 'authorization_code'];
+                        (model as any).post_logout_redirect_uris = [];
+                        await Config.db.InsertOne(model, "config", 0, false, Crypt.rootToken(), span);
+                    }
+
+                    return
                 }
                 user = await Logger.DBHelper.FindByUsername(username, null, span);
                 if (NoderedUtil.IsNullUndefinded(user)) {

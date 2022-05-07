@@ -950,6 +950,12 @@ export class Message {
                 } catch (error) {
                 }
             }
+            if (Config.amqp_allow_replyto_empty_queuename) {
+                if (!NoderedUtil.IsNullEmpty(msg.replyto) && NoderedUtil.IsNullEmpty(msg.queuename)) {
+                    msg.queuename = msg.replyto;
+                    msg.replyto = "";
+                }
+            }
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.exchange) && msg.exchange.toLowerCase() == "openflow") {

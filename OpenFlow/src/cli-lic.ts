@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-import { NoderedUtil } from "@openiap/openflow-api";
 import * as fs from "fs";
-import { i_license_data } from "./commoninterfaces";
+import { Logger } from './Logger';
+Logger.configure(true, true);
 import { Config } from "./Config";
-import { Logger } from "./Logger";
+
+import { NoderedUtil } from "@openiap/openflow-api";
+import { i_license_data } from "./commoninterfaces";
 function printusage() {
     console.log("openflow-cli [--months 3][--email email] domain");
     console.log("   --months - Set number of months, default 3");
