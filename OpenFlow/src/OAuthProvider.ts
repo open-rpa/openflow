@@ -36,14 +36,6 @@ export class OAuthProvider {
                 }
             }
         }
-        // if(!ctx.oidc || !ctx.oidc.provider) return;
-        // var provider = ctx.oidc.provider;
-
-
-
-        // @param ctx - koa request context
-        // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
-        //   the End-User
         ctx.body = `<!DOCTYPE html>
       <head>
       <title>Logout Request</title>
