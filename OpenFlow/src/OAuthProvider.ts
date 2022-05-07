@@ -138,11 +138,11 @@ export class OAuthProvider {
                     AccessToken: 'jwt',
                 },
                 ttl: {
-                    AccessToken: Config.oidc_access_token_ttl,
-                    AuthorizationCode: Config.oidc_authorization_code_ttl,
-                    ClientCredentials: Config.oidc_client_credentials_ttl,
-                    RefreshToken: Config.oidc_refresh_token_ttl,
-                    Session: Config.oidc_session_ttl
+                    AccessToken: (Config.oidc_access_token_ttl * 60),
+                    AuthorizationCode: (Config.oidc_authorization_code_ttl * 60),
+                    ClientCredentials: (Config.oidc_client_credentials_ttl * 60),
+                    RefreshToken: (Config.oidc_refresh_token_ttl * 60),
+                    Session: (Config.oidc_session_ttl * 60)
                 },
                 jwks: jwks,
                 features: {
