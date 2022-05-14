@@ -580,7 +580,7 @@ export class Message {
                     break;
                 case "createworkflowinstance":
                     if (!this.EnsureJWT(cli)) break;
-                    // await this.CreateWorkflowInstance(cli, span);
+                    await this.CreateWorkflowInstance(cli, span);
                     break;
                 case "stripeaddplan":
                     if (!this.EnsureJWT(cli)) {
@@ -2392,12 +2392,19 @@ export class Message {
                 msg.correlationId = NoderedUtil.GetUniqueIdentifier();
             }
 
+            (msg as any).payload = msg.data;
+            delete msg.data;
+
             const _data = Base.assign<Base>(msg as any);
             Base.addRight(_data, msg.targetid, "targetid", [-1]);
             Base.addRight(_data, cli.user._id, cli.user.name, [-1]);
             Base.addRight(_data, tuser._id, tuser.name, [-1]);
             _data._type = "instance";
             _data.name = msg.name;
+            (_data as any).state = "new";
+            if (!msg.initialrun) {
+                (_data as any).form = "unknown";
+            }
 
             const res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt, span);
             msg.newinstanceid = res2._id;
@@ -4271,7 +4278,7 @@ export class Message {
             const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
             if (seconds > 5 && nextrun_seconds >= 0) {
                 Config.db.queuemonitoringlastrun = new Date();
-                Config.db.queuemonitoring()
+                // Config.db.queuemonitoring()
             }
         } catch (error) {
             await handleError(null, error);
@@ -4416,7 +4423,7 @@ export class Message {
             const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
             if (seconds > 5 && isRelevant) {
                 Config.db.queuemonitoringlastrun = new Date();
-                Config.db.queuemonitoring()
+                // Config.db.queuemonitoring()
             }
         } catch (error) {
             await handleError(null, error);
@@ -4585,7 +4592,7 @@ export class Message {
                 const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
                 if (seconds > 5 && nextrun_seconds >= 0) {
                     Config.db.queuemonitoringlastrun = new Date();
-                    Config.db.queuemonitoring()
+                    // Config.db.queuemonitoring()
                 }
             }
 
