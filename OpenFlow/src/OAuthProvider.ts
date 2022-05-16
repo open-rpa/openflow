@@ -30,6 +30,9 @@ export class OAuthProvider {
                     if (cli.openflowsignout && cli.openflowsignout == true) {
                         ctx.req.logout();
                     }
+                    if (cli.signin_url) {
+                        ctx.res.cookie("oidcrefere", cli.signin_url, { maxAge: 900000, httpOnly: true });
+                    }
                 }
             }
         }
@@ -68,6 +71,10 @@ export class OAuthProvider {
         // @param ctx - koa request context
         // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
         //   the End-User
+        var oidcrefere = "";
+        if (!NoderedUtil.IsNullEmpty(ctx.req.cookies.oidcrefere)) {
+            oidcrefere = ctx.req.cookies.oidcrefere;
+        }
         ctx.body = `<!DOCTYPE html>
       <head>
       <title>Logout Request</title>
@@ -75,9 +82,11 @@ export class OAuthProvider {
       </head>
       <body onload="logout()">
       <div>
-        <h1>You have successfully signed out from ${ctx.host}</h1>
-        <a href="${ctx.req.cookies.oidcrefere}">Return to ${ctx.req.cookies.oidcrefere}</a> ?
-      </div>
+        <h1>You have successfully signed out from ${ctx.host}</h1>`;
+        if (!NoderedUtil.IsNullEmpty(oidcrefere)) {
+            ctx.body += `<a href="${ctx.req.cookies.oidcrefere}">Return to ${ctx.req.cookies.oidcrefere}</a> ?`;
+        }
+        ctx.body += `</div>
       </body>
       </html>`;
         if (!NoderedUtil.IsNullEmpty(ctx.req.cookies.oidcrefere)) {
