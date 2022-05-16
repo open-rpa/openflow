@@ -165,7 +165,7 @@ export class OAuthProvider {
                     auth_time: null,
                     iss: null,
                     openid: [
-                        'sub', 'name', 'email', 'email_verified', 'role'
+                        'sub', 'name', 'email', 'email_verified', 'role', 'roles'
                     ],
                     sid: null
                 },
@@ -342,6 +342,14 @@ export class Account {
         }
         if (user.name == user.email) {
             user.name = "user " + user.email;
+        }
+        if (!NoderedUtil.IsNullUndefinded(user.roles) && Array.isArray(user.roles) && user.roles.length > 0) {
+            if (!NoderedUtil.IsNullEmpty(user.roles[0].name)) {
+                user.roles = user.roles.map(x => x.name) as any;
+            }
+
+        } else {
+            user.roles = ["users"] as any;
         }
     }
     claims() {
