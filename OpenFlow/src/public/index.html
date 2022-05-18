@@ -13,7 +13,7 @@
 
 <body ng-controller="MenuCtrl as menuctrl" class="with-custom-webkit-scrollbars with-custom-css-scrollbars "
   data-dm-shortcut-enabled="true" data-set-preferred-mode-onload="true">
-  <div class="page-wrapper with-navbar with-sidebar halfmoon-overrides">
+  <div class="page-wrapper with-navbar halfmoon-overrides" ng-class="{'with-sidebar': menuctrl.signedin}">
     <div class="sidebar" ng-show="menuctrl.signedin">
       <div class="sidebar-menu">
         <div class="sidebar-content">

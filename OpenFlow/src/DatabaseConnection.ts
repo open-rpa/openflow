@@ -342,6 +342,10 @@ export class DatabaseConnection extends events.EventEmitter {
                             await Logger.DBHelper.ClearProviders();
                             await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
                         }
+                        if (collectionname === "config" && _type === "oauthclient") {
+                            setTimeout(() => OAuthProvider.LoadClients(), 1000);
+                        }
+
                     }
                     let doContinue: boolean = false;
                     if (WebSocketServer._clients)
