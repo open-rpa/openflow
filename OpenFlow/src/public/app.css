@@ -453,23 +453,43 @@ textarea{
   background: #d5d8dc;
   color: rgba(0, 0, 0, 0.75); }
 
-@media (min-width: 1201px)
-.container, .container-lg, .container-md, .container-sm, .container-xl {
+@media (min-width: 1201px) {
+  .container,
+  .container-lg,
+  .container-md,
+  .container-sm,
+  .container-xl {
     max-width: 95%;
+  }
 }
 
-@media (min-width: 993px)
-.container, .container-lg, .container-md, .container-sm {
+@media (min-width: 993px) {
+  .container-lg,
+  .container-md,
+  .container-sm {
     max-width: 95%;
+  }
 }
-@media (min-width: 769px)
-.container, .container-md, .container-sm {
+
+@media (min-width: 769px) {
+  .container,
+  .container-md,
+  .container-sm {
     max-width: 95%;
+  }
 }
-@media (min-width: 577px)
-.container, .container-sm {
+
+@media (min-width: 577px) {
+  .container,
+  .container-sm {
     max-width: 95%;
+  }
 }
-.container, .container-lg, .container-md, .container-sm, .container-xl {
-    max-width: 95%;
+
+.container,
+.container-lg,
+.container-md,
+.container-sm,
+.container-xl {
+  max-width: 95%;
 }
