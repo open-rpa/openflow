@@ -4,25 +4,72 @@
     }
     .form-group {
     margin-bottom: 0 !important;
+    margin-top: 2rem !important;
     }
     .card {
         margin: 0 !important;
         padding: 1.5rem !important;
-    }
-    .text-light {
-    padding-left: 1.5rem !important;
-    }
-    .card-header {
-    padding-bottom: 1.5rem !important;
-    padding-top: 0.5rem !important;
-    border-radius: 0.5rem 0.5rem 0 0 !important;
+        border: 0 !important;
     }
     .border {
-    border-radius: 0.5rem !important;
+    border-radius: 0.3rem !important;
     }
     .formio-component-button {
     padding-left: 1rem !important;
-}
+    }
+    .card-header:first-child{
+    border-radius: calc(0.25rem - 1px) calc(0.25rem - 1px) 0 0 !important;
+    }
+    .card-header {
+        padding-top: 0.5rem !important;
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+        background-color: rgba(0, 0, 0, 0.03) !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125) !important;
+        padding-left: 2rem !important;
+    }
+    .nav-tabs {
+        padding-top: 1rem !important;
+    }
+    .nav {
+        display: -ms-flexbox;
+        display: flex;
+        -ms-flex-wrap: wrap;
+        flex-wrap: wrap;
+        padding-left: 0;
+        margin-bottom: 0;
+        list-style: none;
+    }
+    .nav-tabs .nav-item {
+        margin-bottom: -3px;
+    }
+    .nav-tabs .nav-link.active {
+        color: #495057;
+        background-color: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+    .nav-tabs .nav-link {
+        border: 1px solid transparent;
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0.25rem;
+    }
+    .nav-link {
+        display: block;
+        padding: 0.5rem 1rem;
+    }
+    .nav-tabs .nav-link:hover, .nav-tabs .nav-link:focus {
+    border-color: #e9ecef #e9ecef #dee2e6;
+    }
+    .nav-link:hover {
+        color: #1890ff;
+        background-color: #00000000;
+        text-decoration: none;
+    }
+    .card-body {
+        -ms-flex: 1 1 auto;
+        flex: 1 1 auto;
+        min-height: 1px;
+        padding: 1.25rem;
+    }
 </style>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <div ng-show="ctrl.message != ''"" class=" alert alert-primary" role="alert">{{ctrl.message}}</div>
