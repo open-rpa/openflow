@@ -49,13 +49,15 @@ gulp.task("dowatch", function () {
     return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("browserify", "copyfiles1"));
 });
 
-gulp.task('sass', function () {
+
+
+gulp.task('dosass', function () {
     return gulp
         .src('./OpenFlow/src/public/**/*.scss')
         .pipe(sass().on('error', sass.logError))
         .pipe(gulp.dest('./OpenFlow/src/public'));
 });
-
+gulp.task("sass", gulp.series("dosass", "copyfiles1"));
 
 let bfi = null;
 
