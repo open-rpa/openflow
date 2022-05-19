@@ -460,6 +460,7 @@ textarea{
   .container-sm,
   .container-xl {
     max-width: 95%;
+    padding-top: 2%;
   }
 }
 
@@ -468,6 +469,7 @@ textarea{
   .container-md,
   .container-sm {
     max-width: 95%;
+    padding-top: 2%;
   }
 }
 
@@ -476,6 +478,7 @@ textarea{
   .container-md,
   .container-sm {
     max-width: 95%;
+    padding-top: 2%;
   }
 }
 
@@ -483,6 +486,7 @@ textarea{
   .container,
   .container-sm {
     max-width: 95%;
+    padding-top: 2%;
   }
 }
 
@@ -492,4 +496,5 @@ textarea{
 .container-sm,
 .container-xl {
   max-width: 95%;
+  padding-top: 2%;
 }
