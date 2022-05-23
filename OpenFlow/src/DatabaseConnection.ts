@@ -1323,10 +1323,18 @@ export class DatabaseConnection extends events.EventEmitter {
                     delete user2.customerid;
                 }
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                    if (user2._type == "user") {
-                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
-                    }
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span)
+                    if (user2._type == "user") {
+                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                            if (customer != null) {
+                                var isadmin = user.roles.filter(x => x._id == customer.admins);
+                                if (isadmin.length == 0) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                            } else {
+                                throw new Error("Access denied failed locating customerid  " + user2.customerid);
+                            }
+                        }
+                    }
+
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
                     // user2.customerid = user.customerid;
