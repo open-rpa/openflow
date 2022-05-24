@@ -2506,6 +2506,8 @@ export class UserCtrl extends entityCtrl<TokenUser> {
     }
     async submit(): Promise<void> {
         try {
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
             } else {
@@ -2531,8 +2533,10 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                 }
 
             }
+            this.loading = false;
             this.$location.path("/Users");
         } catch (error) {
+            this.loading = false;
             this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
