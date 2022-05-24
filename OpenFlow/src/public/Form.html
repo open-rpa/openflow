@@ -70,6 +70,33 @@
         min-height: 1px;
         padding: 1.25rem;
     }
+    .list-group-item {
+        position: relative;
+        display: block;
+        padding: 0.75rem 1.25rem;
+        background-color: #fff;
+        border: 1px solid rgba(0,0,0,.125);
+    }
+    .tree__node-children {
+        margin: 0;
+    }
+
+    .list-group {
+        display: -ms-flexbox;
+        display: flex;
+        -ms-flex-direction: column;
+        flex-direction: column;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+
+    .list-group-item:last-child {
+        border-bottom-right-radius: inherit;
+        border-bottom-left-radius: inherit;
+    }
+    .tree__level_even {
+        background-color: #f6f6f6;
+    }
 </style>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <div ng-show="ctrl.message != ''"" class=" alert alert-primary" role="alert">{{ctrl.message}}</div>
