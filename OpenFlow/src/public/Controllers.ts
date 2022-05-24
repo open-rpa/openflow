@@ -169,6 +169,9 @@ export class MenuCtrl {
     hasrole(role: string) {
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) return false;
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) return false;
+        if (role == "customer admins" && !NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user.customerid)) {
+            return true;
+        }
         const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
         return (hits.length == 1)
     }

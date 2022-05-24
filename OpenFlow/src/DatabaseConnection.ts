@@ -1315,9 +1315,9 @@ export class DatabaseConnection extends events.EventEmitter {
                             user2.customerid = user.selectedcustomerid;
                         }
                     }
-                    // if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) {
-                    //     user2.customerid = user.customerid;
-                    // }
+                    if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                        user2.customerid = user.customerid;
+                    }
                 }
                 if (this.WellknownIdsArray.indexOf(user2._id) > -1) {
                     delete user2.customerid;
