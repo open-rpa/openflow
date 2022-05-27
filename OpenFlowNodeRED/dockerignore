@@ -1,0 +1,15 @@
+node_modules
+logs
+config
+temp
+letsencrypt
+.cache
+.npmrc
+.openflowapicache
+.scannerwork
+docker-package.json
+.env
+.nyc_output
+sonar-scanner.properties
+sonar-project.properties
+crash.log
