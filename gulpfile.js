@@ -216,35 +216,23 @@ gulp.task("browserify", function () {
 // 'gulp browserify',
 
 gulp.task("compose", shell.task([
-    'echo "Build openiap/openflow"',
-    'docker build -t openiap/openflow:edge .',
-    'docker tag openiap/openflow:edge openiap/openflow:' + version,
-    'docker tag openiap/openflow:edge openiap/openflow:edge1.3',
-    'echo "Push openiap/openflow"',
-    'docker push openiap/openflow:edge',
-    'docker push openiap/openflow:' + version,
+    // docker buildx create --name openiap --use
+    // docker buildx use default
+    // docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 -t openiap/openflow:edge .
+    `echo "docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push ."`,
+    `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push ."'`,
+    `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push -f Dockerfilepuppeteer ."`,
+    `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push -f Dockerfiletagui ."`,
+    // 'echo "Build openiap/openflow"',
+    // 'docker buildx build -t openiap/openflow:edge -t openiap/openflow:' + version + ' --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .',
+    // 'echo "Build openiap/nodered"',
+    // 'cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:' + version + ' --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .',
 
-    'echo "Build openiap/nodered"',
-    'cd OpenFlowNodeRED && docker build -t openiap/nodered:edge .',
-    'docker tag openiap/nodered:edge openiap/nodered:' + version,
-    'echo "Push openiap/nodered"',
-    'docker push openiap/nodered:edge',
-    'docker push openiap/nodered:' + version,
+    // 'echo "Build openiap/nodered"',
+    // 'cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:' + version + ' --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push -f Dockerfilepuppeteer .',
 
-    'echo "Build openiap/nodered-puppeteer"',
-    'cd OpenFlowNodeRED && docker build -t openiap/nodered-puppeteer:edge -f Dockerfilepuppeteer .',
-    'docker tag openiap/nodered-puppeteer:edge openiap/nodered-puppeteer:' + version,
-    'echo "Push openiap/nodered-puppeteer"',
-    'docker push openiap/nodered-puppeteer:edge',
-    'docker push openiap/nodered-puppeteer:' + version,
-
-    'echo "Build openiap/nodered-tagui"',
-    'cd OpenFlowNodeRED && docker build -t openiap/nodered-tagui:edge -f Dockerfiletagui .',
-    'docker tag openiap/nodered-tagui:edge openiap/nodered-tagui:' + version,
-    'echo "Push openiap/nodered-tagui"',
-    'docker push openiap/nodered-tagui:edge',
-    'docker push openiap/nodered-tagui:' + version,
-
+    // 'echo "Build openiap/nodered"',
+    // 'cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:' + version + ' --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push -f Dockerfiletagui .',
 ]));
 
 gulp.task("latest", shell.task([
