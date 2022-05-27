@@ -17,6 +17,7 @@ webpack.config.js
 gulpfile.js
 OpenFlow.code-workspace
 CONTRIBUTING
+Dockerfile
 docker-compose.yml
 docker-compose-toolbox.yml
 docker-compose-traefik.yml
