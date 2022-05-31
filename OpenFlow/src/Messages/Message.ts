@@ -10,7 +10,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -2110,6 +2110,83 @@ export class Message {
         });
     }
 
+    public async _addFile(file: string, filename: string, mimeType: string, metadata: Base, compressed: boolean, jwt: string): Promise<string> {
+        if (NoderedUtil.IsNullEmpty(filename)) throw new Error("Filename is mandatory");
+        if (NoderedUtil.IsNullEmpty(file)) throw new Error("file is mandatory");
+        if (process.platform === "win32") {
+            filename = filename.replace(/\//g, "\\");
+        }
+        else {
+            filename = filename.replace(/\\/g, "/");
+        }
+
+        if (NoderedUtil.IsNullEmpty(mimeType)) {
+            mimeType = mimetype.lookup(filename);
+        }
+
+        if (metadata === null || metadata === undefined) { metadata = new Base(); }
+        metadata.name = path.basename(filename);
+        (metadata as any).filename = filename;
+        (metadata as any).path = path.dirname(filename);
+        if ((metadata as any).path == ".") (metadata as any).path = "";
+
+        const readable = new Readable();
+        if (file && (!compressed)) {
+            // console.debug("base64 data length: " + this.formatBytes(this.data.length));
+
+            const buf: Buffer = Buffer.from(file, 'base64');
+            readable._read = () => { }; // _read is required but you can noop it
+            readable.push(buf);
+            readable.push(null);
+        } else {
+            try {
+                let result: Buffer;
+                try {
+                    var data = Buffer.from(file, 'base64')
+                    result = pako.inflate(data);
+                } catch (error) {
+                    console.error(error);
+                }
+                // console.debug("zlib data length: " + this.formatBytes(this.data.length));
+                readable._read = () => { }; // _read is required but you can noop it
+                readable.push(result);
+                readable.push(null);
+            } catch (error) {
+                console.error(error);
+                throw error;
+            }
+        }
+
+        file = null;
+        if (metadata == null) { metadata = new Base(); }
+        metadata = Base.assign(metadata);
+        if (NoderedUtil.IsNullUndefinded(metadata._acl)) {
+            metadata._acl = [];
+            Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+        }
+        const user: TokenUser = await Crypt.verityToken(jwt);
+        metadata._createdby = user.name;
+        metadata._createdbyid = user._id;
+        metadata._created = new Date(new Date().toISOString());
+        metadata._modifiedby = user.name;
+        metadata._modifiedbyid = user._id;
+        metadata._modified = metadata._created;
+        if (NoderedUtil.IsNullEmpty(metadata.name)) {
+            metadata.name = filename;
+        }
+        let hasUser: any = metadata._acl.find(e => e._id === user._id);
+        if ((hasUser === null || hasUser === undefined)) {
+            Base.addRight(metadata, user._id, user.name, [Rights.full_control]);
+        }
+        hasUser = metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
+        if ((hasUser === null || hasUser === undefined)) {
+            Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+        }
+        metadata = Config.db.ensureResource(metadata, "fs.files");
+        if (!NoderedUtil.hasAuthorization(user, metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
+        var id = await this._SaveFile(readable, filename, mimeType, metadata);
+        return id;
+    }
     public async SaveFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: SaveFileMessage
@@ -2119,78 +2196,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt) && cli) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
-            if (process.platform === "win32") {
-                msg.filename = msg.filename.replace(/\//g, "\\");
-            }
-            else {
-                msg.filename = msg.filename.replace(/\\/g, "/");
-            }
 
-            if (NoderedUtil.IsNullEmpty(msg.mimeType)) {
-                msg.mimeType = mimetype.lookup(msg.filename);
-            }
-
-            if (msg.metadata === null || msg.metadata === undefined) { msg.metadata = new Base(); }
-            msg.metadata.name = path.basename(msg.filename);
-            (msg.metadata as any).filename = msg.filename;
-            (msg.metadata as any).path = path.dirname(msg.filename);
-            if ((msg.metadata as any).path == ".") (msg.metadata as any).path = "";
-
-            const readable = new Readable();
-            if (msg.file && (!(msg as any).compressed)) {
-                // console.debug("base64 data length: " + this.formatBytes(this.data.length));
-
-                const buf: Buffer = Buffer.from(msg.file, 'base64');
-                readable._read = () => { }; // _read is required but you can noop it
-                readable.push(buf);
-                readable.push(null);
-            } else {
-                try {
-                    let result: Buffer;
-                    try {
-                        var data = Buffer.from(msg.file, 'base64')
-                        result = pako.inflate(data);
-                    } catch (error) {
-                        console.error(error);
-                    }
-                    // console.debug("zlib data length: " + this.formatBytes(this.data.length));
-                    readable._read = () => { }; // _read is required but you can noop it
-                    readable.push(result);
-                    readable.push(null);
-                } catch (error) {
-                    console.error(error);
-                    throw error;
-                }
-            }
-
-            msg.file = null;
-            if (msg.metadata == null) { msg.metadata = new Base(); }
-            msg.metadata = Base.assign(msg.metadata);
-            if (NoderedUtil.IsNullUndefinded(msg.metadata._acl)) {
-                msg.metadata._acl = [];
-                Base.addRight(msg.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
-            }
-            const user: TokenUser = await Crypt.verityToken(msg.jwt);
-            msg.metadata._createdby = user.name;
-            msg.metadata._createdbyid = user._id;
-            msg.metadata._created = new Date(new Date().toISOString());
-            msg.metadata._modifiedby = user.name;
-            msg.metadata._modifiedbyid = user._id;
-            msg.metadata._modified = msg.metadata._created;
-            if (NoderedUtil.IsNullEmpty(msg.metadata.name)) {
-                msg.metadata.name = msg.filename;
-            }
-            let hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
-            if ((hasUser === null || hasUser === undefined)) {
-                Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
-            }
-            hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
-            if ((hasUser === null || hasUser === undefined)) {
-                Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            }
-            msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
-            if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
-            msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
+            msg.id = await this._addFile(msg.file, msg.filename, msg.mimeType, msg.metadata, msg.compressed, msg.jwt);
             msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
             if (NoderedUtil.IsNullUndefinded(msg.result)) {
                 await this.sleep(1000);
@@ -4200,6 +4207,10 @@ export class Message {
             wi.priority = msg.priority;
             wi.nextrun = msg.nextrun;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+            wi.failed_wiq = msg.failed_wiq;
+            wi.failed_wiqid = msg.failed_wiqid;
+            wi.success_wiq = msg.success_wiq;
+            wi.success_wiqid = msg.success_wiqid;
 
             wi.state = "new"
             wi.retries = 0;
@@ -4294,6 +4305,51 @@ export class Message {
             await handleError(null, error);
         }
     }
+    async DuplicateWorkitem(originalwi: Workitem, wiq: string, wiqid: string, jwt: string, parent: Span): Promise<void> {
+        var wi: Workitem = null;
+        wi = Object.assign({}, originalwi);
+        delete wi._id;
+        delete wi.errormessage;
+        delete wi.errorsource;
+        delete wi.errortype;
+        delete wi.lastrun;
+        wi.retries = 0;
+        delete wi.userid;
+        delete wi.username;
+        wi.state = "new";
+        var _wiq: WorkitemQueue = null;
+        if (!NoderedUtil.IsNullEmpty(wiqid)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wiqid }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) _wiq = queues[0];
+        }
+        if (_wiq == null && !NoderedUtil.IsNullEmpty(wiq)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) _wiq = queues[0];
+        }
+        if (_wiq == null) throw new Error("Work item queue not found " + wiq + " (" + wiqid + ") not found.");
+        wi.wiq = _wiq.name;
+        wi.wiqid = _wiq._id;
+        wi.nextrun = new Date(new Date().toISOString());
+        wi.nextrun.setSeconds(wi.nextrun.getSeconds() + _wiq.initialdelay);
+        for (var i = 0; i < wi.files.length; i++) {
+            var _f = wi.files[i];
+            var file = await this._GetFile(_f._id, false);
+
+            const metadata = new Base();
+            (metadata as any).wi = wi._id;
+            (metadata as any).wiq = _wiq.name;
+            (metadata as any).wiqid = _wiq._id;
+
+            metadata._acl = _wiq._acl;
+            metadata.name = path.basename(_f.filename);
+            (metadata as any).filename = _f.filename;
+            (metadata as any).path = path.dirname(_f.filename);
+            if ((metadata as any).path == ".") (metadata as any).path = "";
+
+            _f._id = await this._addFile(file, _f.filename, null, metadata, false, jwt);
+        }
+        wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+    }
     async AddWorkitems(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
@@ -4339,6 +4395,11 @@ export class Message {
                 wi.retries = 0;
                 wi.files = [];
                 if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+                if (!NoderedUtil.IsNullEmpty(msg.failed_wiq)) wi.failed_wiq = msg.failed_wiq;
+                if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid)) wi.failed_wiqid = msg.failed_wiqid;
+                if (!NoderedUtil.IsNullEmpty(msg.success_wiq)) wi.success_wiq = msg.success_wiq;
+                if (!NoderedUtil.IsNullEmpty(msg.success_wiqid)) wi.success_wiqid = msg.success_wiqid;
+
                 wi.lastrun = null;
                 if (!wi.nextrun) {
                     wi.nextrun = new Date(new Date().toISOString());
@@ -4474,6 +4535,10 @@ export class Message {
             if (wiq == null) throw new Error("Work item queue not found " + wi.wiq + " (" + wi.wiqid + ") not found.");
 
 
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wi.failed_wiq = msg.failed_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wi.failed_wiqid = msg.failed_wiqid;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wi.success_wiq = msg.success_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wi.success_wiqid = msg.success_wiqid;
 
             wi._acl = wiq._acl;
             wi.wiq = wiq.name;
@@ -4489,6 +4554,8 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
+            var oldstate = wi.state;
+            var newstate = msg.state;
             if (!NoderedUtil.IsNullEmpty(msg.state)) {
                 msg.state = msg.state.toLowerCase() as any;
                 // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
@@ -4595,9 +4662,24 @@ export class Message {
                     // Config.db.queuemonitoring()
                 }
             }
-
             wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
             msg.result = wi;
+            if (oldstate != newstate && (newstate == "successful" || newstate == "failed")) {
+                var success_wiq = wi.success_wiq || wiq.success_wiq;
+                var success_wiqid = wi.success_wiqid || wiq.success_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.success_wiq)) success_wiqid = wi.success_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.success_wiqid)) success_wiq = wi.success_wiq;
+                var failed_wiq = wi.failed_wiq || wiq.failed_wiq;
+                var failed_wiqid = wi.failed_wiqid || wiq.failed_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.failed_wiq)) failed_wiqid = wi.failed_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.failed_wiqid)) failed_wiq = wi.failed_wiq;
+                if (newstate == "successful" && (!NoderedUtil.IsNullEmpty(success_wiq) || !NoderedUtil.IsNullEmpty(success_wiqid))) {
+                    await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
+                }
+                if (newstate == "failed" && (!NoderedUtil.IsNullEmpty(failed_wiq) || !NoderedUtil.IsNullEmpty(failed_wiqid))) {
+                    await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
+                }
+            }
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -4765,6 +4847,10 @@ export class Message {
             wiq.maxretries = msg.maxretries;
             wiq.retrydelay = msg.retrydelay;
             wiq.initialdelay = msg.initialdelay;
+            wiq.failed_wiq = msg.failed_wiq;
+            wiq.failed_wiqid = msg.failed_wiqid;
+            wiq.success_wiq = msg.success_wiq;
+            wiq.success_wiqid = msg.success_wiqid;
 
             msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
 
@@ -4849,6 +4935,10 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
             if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
             if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
 
             if (msg._acl) wiq._acl = msg._acl;
 
