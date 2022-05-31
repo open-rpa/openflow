@@ -1354,10 +1354,15 @@ export class DatabaseConnection extends events.EventEmitter {
                     // throw new Error("Access denied (not admin or customer admin)");
                 }
                 if (customer != null) {
+                    // When restoring deleted items, we need to handle that admins might not exists
                     const custadmins = await this.getbyid<Role>(customer.admins, "users", jwt, true, span);
-                    Base.addRight(item, custadmins._id, custadmins.name, [Rights.full_control]);
+                    if (custadmins != null) {
+                        Base.addRight(item, custadmins._id, custadmins.name, [Rights.full_control]);
+                    } else {
+                        Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                    }
                     if (item._id == customer.admins || item._id == customer.users) {
-                        Base.removeRight(item, custadmins._id, [Rights.delete]);
+                        Base.removeRight(item, customer.admins, [Rights.delete]);
                     }
                     (item as any).company = customer.name;
                     item = this.ensureResource(item, collectionname);
@@ -2125,8 +2130,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
                     if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
                         // TODO: Check user has permission to this customer
-                        const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
-                        if (!custusers.IsMember(q.item._id)) {
+                        let custusers: Role = await this.getbyid<Role>(customer.users, "users", q.jwt, true, span);
+                        if (custusers != null && !custusers.IsMember(q.item._id)) {
+                            custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
                             custusers.AddMember(q.item);
                             await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
                             Logger.DBHelper.DeleteKey("user" + q.item._id);
