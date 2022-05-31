@@ -60,6 +60,8 @@ export class addworkitem {
             const topic = await Util.EvaluateNodeProperty<string>(this, msg, "topic");
             const nextrun = await Util.EvaluateNodeProperty<Date>(this, msg, "nextrun");
             const priority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
+            const success_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "success_wiq");
+            const failed_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "failed_wiq");
             const { wiq, wiqid } = this.workitemqueue_config;
 
             if (!NoderedUtil.IsNullUndefinded(files)) {
@@ -80,7 +82,7 @@ export class addworkitem {
                     }
                 }
             }
-            const result = await NoderedUtil.AddWorkitem({ payload, files, wiqid, wiq, name: topic, nextrun, priority })
+            const result = await NoderedUtil.AddWorkitem({ payload, files, wiqid, wiq, name: topic, nextrun, priority, success_wiq, failed_wiq })
             if (!NoderedUtil.IsNullEmpty(this.config.payload)) {
                 Util.SetMessageProperty(msg, this.config.payload, result);
             }
@@ -129,6 +131,8 @@ export class addworkitems {
             const items = await Util.EvaluateNodeProperty<AddWorkitem[]>(this, msg, "workitems");
             const nextrun = await Util.EvaluateNodeProperty<Date>(this, msg, "nextrun");
             const priority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
+            const success_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "success_wiq");
+            const failed_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "failed_wiq");
             const { wiq, wiqid } = this.workitemqueue_config;
             if (!Array.isArray(items)) throw new Error("workitems must be an array of Workitems")
             items.forEach(item => {
@@ -152,7 +156,7 @@ export class addworkitems {
                 }
 
             });
-            await NoderedUtil.AddWorkitems({ items, wiqid, wiq })
+            await NoderedUtil.AddWorkitems({ items, wiqid, wiq, success_wiq, failed_wiq })
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -198,6 +202,8 @@ export class updateworkitem {
             const state: any = await Util.EvaluateNodeProperty<string>(this, msg, "state");
             const _errormessage = await Util.EvaluateNodeProperty<string>(this, msg, "error");
             const ignoremaxretries = await Util.EvaluateNodeProperty<boolean>(this, msg, "ignoremaxretries");
+            const success_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "success_wiq");
+            const failed_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "failed_wiq");
             var errorsource: string = "";
 
             if (!NoderedUtil.IsNullEmpty(msg.error) && (NoderedUtil.IsNullUndefinded(workitem) || NoderedUtil.IsNullEmpty(workitem._id))) {
@@ -207,7 +213,7 @@ export class updateworkitem {
             let { _id, name, payload, errortype, errormessage } = workitem;
             if (!NoderedUtil.IsNullEmpty(_errormessage) && NoderedUtil.IsNullEmpty(errormessage)) errormessage = _errormessage;
 
-            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource, errortype })
+            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource, errortype, success_wiq, failed_wiq })
             if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                 Util.SetMessageProperty(msg, this.config.workitem, result);
             }
