@@ -20,6 +20,7 @@ export class Config {
         Config.log_login_provider = false;
         Config.log_websocket = false;
         Config.log_oauth = false;
+        Config.unittesting = true;
     }
     public static reload(): void {
         Config.getversion();
@@ -188,6 +189,7 @@ export class Config {
     
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
+    public static unittesting: boolean = false;
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key", "");
     public static version: string = Config.getversion();

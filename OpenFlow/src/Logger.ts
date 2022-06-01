@@ -36,7 +36,6 @@ export class Logger {
     public static DBHelper: DBHelper;
     public static log_with_trace: boolean = false;
     public static enabled: any = {}
-    public static unittesting: boolean = false;
     public static usecolors: boolean = true;
 
     public prefix(lvl: level, cls: string, func: string, message: string | unknown): string {
@@ -66,7 +65,7 @@ export class Logger {
         return prefix + color + message + Console.Reset;
     }
     public error(cls: string, func: string, message: string | Error | unknown) {
-        if (Logger.unittesting) return;
+        if (Config.unittesting) return;
         if (Logger.enabled[cls]) {
             if (Logger.enabled[cls] < level.Error) return;
         }
@@ -78,35 +77,35 @@ export class Logger {
         console.error(this.prefix(level.Error, cls, func, message));
     }
     public info(cls: string, func: string, message: string) {
-        if (Logger.unittesting) return;
+        if (Config.unittesting) return;
         if (!Logger.enabled[cls]) return;
         if (Logger.enabled[cls] < level.Information) return;
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Information, cls, func, message));
         console.info(this.prefix(level.Information, cls, func, message));
     }
     public warn(cls: string, func: string, message: string) {
-        if (Logger.unittesting) return;
+        if (Config.unittesting) return;
         // if (!Logger.enabled[cls]) return;
         // if (Logger.enabled[cls] < level.Warning) return;
         // if (Logger.log_with_trace) return console.trace(this.prefix(cls, func, message));
         console.warn(this.prefix(level.Warning, cls, func, message));
     }
     public debug(cls: string, func: string, message: string) {
-        if (Logger.unittesting) return;
+        if (Config.unittesting) return;
         if (!Logger.enabled[cls]) return;
         if (Logger.enabled[cls] < level.Debug) return;
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Debug, cls, func, message));
         console.debug(this.prefix(level.Debug, cls, func, message));
     }
     public verbose(cls: string, func: string, message: string) {
-        if (Logger.unittesting) return;
+        if (Config.unittesting) return;
         if (!Logger.enabled[cls]) return;
         if (Logger.enabled[cls] < level.Verbose) return;
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Verbose, cls, func, message));
         console.debug(this.prefix(level.Verbose, cls, func, message));
     }
     public silly(cls: string, func: string, message: string) {
-        if (Logger.unittesting) return;
+        if (Config.unittesting) return;
         if (!Logger.enabled[cls]) return;
         if (Logger.enabled[cls] < level.Silly) return;
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Silly, cls, func, message));
