@@ -23,13 +23,13 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
     WebServer.BaseRateLimiter
         .consume(WebServer.remoteip(req))
         .then((e) => {
-            // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            Logger.instanse.verbose("WebServer", "rateLimiter", "consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
             // if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, route: route }).update(e.consumedPoints);
-            console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            Logger.instanse.warn("WebServer", "rateLimiter", "API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
@@ -46,9 +46,9 @@ export class WebServer {
     }
     public static app: express.Express;
     public static BaseRateLimiter: any;
+    public static server: http.Server = null;
     static async configure(baseurl: string, parent: Span): Promise<http.Server> {
         const span: Span = Logger.otel.startSubSpan("WebServer.configure", parent);
-
         WebServer.BaseRateLimiter = new RateLimiterMemory({
             points: Config.api_rate_limit_points,
             duration: Config.api_rate_limit_duration,
@@ -64,7 +64,7 @@ export class WebServer {
             this.app.disable("x-powered-by");
             const loggerstream = {
                 write: function (message, encoding) {
-                    Logger.instanse.silly(message);
+                    Logger.instanse.silly("WebServer", "configure", message);
                 }
             };
             this.app.use("/", express.static(path.join(__dirname, "/public")));
@@ -109,7 +109,7 @@ export class WebServer {
             await LoginProvider.configure(this.app, baseurl);
             span?.addEvent("Configure SamlProvider");
             await SamlProvider.configure(this.app, baseurl);
-            let server: http.Server = null;
+            WebServer.server = null;
             if (Config.tls_crt != '' && Config.tls_key != '') {
                 let options: any = {
                     cert: Config.tls_crt,
@@ -131,26 +131,28 @@ export class WebServer {
                 if (Config.tls_passphrase !== "") {
                     options.passphrase = Config.tls_passphrase;
                 }
-                server = https.createServer(options, this.app);
+                WebServer.server = https.createServer(options, this.app);
             } else {
-                server = http.createServer(this.app);
+                WebServer.server = http.createServer(this.app);
             }
             await Config.db.connect(span);
-            const port = Config.port;
-            server.listen(port).on('error', function (error) {
-                Logger.instanse.error(error);
-                if (Config.NODE_ENV == "production") {
-                    server.close();
-                    process.exit(404);
-                }
-            });
-            return server;
+            return WebServer.server;
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("WebServer", "configure", error);
             return null;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public static Listen() {
+        WebServer.server.listen(Config.port).on('error', function (error) {
+            Logger.instanse.error("WebServer", "Listen", error);
+            if (Config.NODE_ENV == "production") {
+                WebServer.server.close();
+                process.exit(404);
+            }
+        });
+        Logger.instanse.info("WebServer", "Listen", "on " + Config.baseurl());
     }
 }

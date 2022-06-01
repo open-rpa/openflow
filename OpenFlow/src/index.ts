@@ -6,7 +6,7 @@ import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { amqpwrapper } from "./amqpwrapper";
-import { WellknownIds, Role, Rights, User, Base } from "@openiap/openflow-api";
+import { WellknownIds, Role, Rights, User, Base, NoderedUtil } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
@@ -25,7 +25,7 @@ async function initamqp(parent: Span) {
         await amqp.connect(span);
     } catch (error) {
         span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error("index", "initamqp", error);
         return false;
     } finally {
         Logger.otel.endSpan(span);
@@ -36,12 +36,12 @@ async function ValidateValidateUserForm(parent: Span) {
     try {
         var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
         if (forms.length == 0) {
-            Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Logger.instanse.info("index", "ValidateValidateUserForm", "validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
         }
     } catch (error) {
         span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error("index", "ValidateValidateUserForm", error);
         return false;
     } finally {
         Logger.otel.endSpan(span);
@@ -58,7 +58,7 @@ function doHouseKeeping() {
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
     var h = dt.getHours();
     var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-    msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error));
+    msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
 
     // var dt = new Date(new Date().toISOString());
     // var msg = new Message(); msg.jwt = Crypt.rootToken();
@@ -85,7 +85,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
         Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
+            Logger.instanse.silly("index", "initDatabase", "[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
@@ -114,7 +114,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
+            Logger.instanse.silly("index", "initDatabase", "[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
@@ -131,7 +131,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
+            Logger.instanse.silly("index", "initDatabase", "[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
@@ -143,7 +143,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
+            Logger.instanse.silly("index", "initDatabase", "[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
@@ -166,7 +166,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
                 await Logger.DBHelper.Save(customer_admins, jwt, span);
             } catch (error) {
-                console.error(error);
+                Logger.instanse.error("index", "initDatabase", error);
             }
         }
 
@@ -182,7 +182,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
+            Logger.instanse.silly("index", "initDatabase", "[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
@@ -200,7 +200,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
+            Logger.instanse.silly("index", "initDatabase", "[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
             Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
         }
         await Logger.DBHelper.Save(filestore_admins, jwt, span);
@@ -212,7 +212,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(filestore_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
+            Logger.instanse.silly("index", "initDatabase", "[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
@@ -245,7 +245,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
             const crypto = require('crypto');
             const randomNum = crypto.randomInt(1, 100);
             // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
-            Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds");
+            Logger.instanse.verbose("index", "initDatabase", "Housekeeping every 15 minutes plus " + randomNum + " seconds");
             housekeeping = setInterval(async () => {
                 if (Config.enable_openflow_amqp) {
                     if (!Message.ReadyForHousekeeping()) {
@@ -256,7 +256,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     if (Message.ReadyForHousekeeping()) {
                         doHouseKeeping();
                     } else {
-                        Logger.instanse.verbose("SKIP housekeeping");
+                        Logger.instanse.verbose("index", "initDatabase", "SKIP housekeeping");
                     }
                 } else {
                     doHouseKeeping();
@@ -264,7 +264,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
             }, (15 * 60 * 1000) + (randomNum * 1000));
             // If I'm first and noone else has run it, lets trigger it now
             const randomNum2 = crypto.randomInt(1, 10);
-            Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
+            Logger.instanse.info("index", "initDatabase", "Trigger first Housekeeping in " + randomNum2 + " seconds");
             setTimeout(async () => {
                 if (Config.enable_openflow_amqp) {
                     if (!Message.ReadyForHousekeeping()) {
@@ -275,7 +275,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     if (Message.ReadyForHousekeeping()) {
                         doHouseKeeping();
                     } else {
-                        Logger.instanse.verbose("SKIP housekeeping");
+                        Logger.instanse.verbose("index", "initDatabase", "SKIP housekeeping");
                     }
                 }
             }, randomNum2 * 1000);
@@ -283,7 +283,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         return true;
     } catch (error) {
         span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error("index", "initDatabase", error);
         return false;
     } finally {
         Logger.otel.endSpan(span);
@@ -292,37 +292,37 @@ async function initDatabase(parent: Span): Promise<boolean> {
 
 
 process.on('beforeExit', (code) => {
-    console.error('Process beforeExit event with code: ', code);
+    Logger.instanse.error("index", "beforeExit", code as any);
 });
 process.on('exit', (code) => {
-    console.error('Process exit event with code: ', code);
-});
-process.on('multipleResolves', (type, promise, reason) => {
-    // console.error(type, promise, reason);
-    // setImmediate(() => process.exit(1));
+    Logger.instanse.error("index", "exit", code as any);
 });
 const unhandledRejections = new Map();
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at: Promise', promise, 'reason:', reason);
+    Logger.instanse.error("index", "unhandledRejection", reason as any);
+    // ('Unhandled Rejection at: Promise', promise, 'reason:', reason);
     unhandledRejections.set(promise, reason);
 });
 process.on('rejectionHandled', (promise) => {
     unhandledRejections.delete(promise);
 });
 process.on('uncaughtException', (err, origin) => {
-    console.error(`Caught exception: ${err}\n` +
-        `Exception origin: ${origin}`
-    );
+    Logger.instanse.error("index", "uncaughtException", err);
+    // (`Caught exception: ${err}\n` +
+    //     `Exception origin: ${origin}`
+    // );
 });
 process.on('uncaughtExceptionMonitor', (err, origin) => {
-    console.error(`Caught exception Monitor: ${err}\n` +
-        `Exception origin: ${origin}`
-    );
+    Logger.instanse.error("index", "uncaughtExceptionMonitor", err);
+    // (`Caught exception Monitor: ${err}\n` +
+    //     `Exception origin: ${origin}`
+    // );
 });
 process.on('warning', (warning) => {
     try {
-        console.warn(warning.name + ": " + warning.message);
-        console.warn(warning.stack);
+        Logger.instanse.warn("index", "uncaughtExceptionMonitor", warning.name + ": " + warning.message);
+        // (warning.name + ": " + warning.message);
+        // (warning.stack);
     } catch (error) {
     }
 });
@@ -335,7 +335,7 @@ var signals = {
 };
 var housekeeping = null;
 function handle(signal, value) {
-    console.trace(`process received a ${signal} signal with value ${value}`);
+    Logger.instanse.info("index", "handle", `process received a ${signal} signal with value ${value}`);
     try {
         Config.db.shutdown();
         Logger.otel.shutdown();
@@ -351,13 +351,13 @@ function handle(signal, value) {
             process.exit(128 + value);
         }, 1000);
         server.close((err) => {
-            console.log(`server stopped by ${signal} with value ${value}`);
-            console.error(err);
+            Logger.instanse.info("index", "handle", `server stopped by ${signal} with value ${value}`);
+            Logger.instanse.error("index", "handle", err);
             process.exit(128 + value);
         })
     } catch (error) {
-        console.error(error);
-        console.log(`server stopped by ${signal} with value ${value}`);
+        Logger.instanse.error("index", "handle", error);
+        Logger.instanse.info("index", "handle", `server stopped by ${signal} with value ${value}`);
         process.exit(128 + value);
     }
 }
@@ -385,7 +385,14 @@ var server: http.Server = null;
     const span: Span = Logger.otel.startSpan("openflow.startup");
     try {
         await initamqp(span);
-        Logger.instanse.info("VERSION: " + Config.version);
+        Logger.instanse.info("index", "configure", "VERSION: " + Config.version);
+        if (Logger.License.validlicense) {
+            if (NoderedUtil.IsNullEmpty(Logger.License.data.domain)) {
+                Logger.instanse.info("index", "configure", "License valid to " + Logger.License.data.expirationDate);
+            } else {
+                Logger.instanse.info("index", "configure", "License valid for " + Logger.License.data.domain + " until the " + Logger.License.data.expirationDate);
+            }
+        }
         server = await WebServer.configure(Config.baseurl(), span);
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
@@ -393,15 +400,15 @@ var server: http.Server = null;
         OAuthProvider.configure(WebServer.app, span);
         WebSocketServer.configure(server, span);
         await QueueClient.configure(span);
-        Logger.instanse.info("listening on " + Config.baseurl());
-        Logger.instanse.info("namespace: " + Config.namespace);
         await ValidateValidateUserForm(span);
         if (!await initDatabase(span)) {
             process.exit(404);
         }
+        WebServer.Listen();
+
     } catch (error) {
         span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error("index", "configure", error);
         process.exit(404);
     } finally {
         Logger.otel.endSpan(span);

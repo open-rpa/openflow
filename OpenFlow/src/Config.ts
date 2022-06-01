@@ -16,43 +16,19 @@ export class Config {
     }
     public static disablelogging(): void {
         Config.log_cache = false;
-        Config.log_error_stack = false;
-        Config.log_errors = false;
-        Config.log_queries = false;
-        Config.log_aggregates = false;
-        Config.log_inserts = false;
-        Config.log_updates = false;
-        Config.log_deletes = false;
-        Config.log_otel_times = false;
-        Config.log_openflow_amqp = false;
         Config.log_amqp = false;
-        Config.log_index_mngt = false;
-        Config.log_watches = false;
-        Config.log_watches_notify = false;
-        Config.log_missing_jwt = false;
         Config.log_login_provider = false;
-        Config.log_information = false;
+        Config.log_websocket = false;
+        Config.log_oauth = false;
     }
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "true"));
-        Config.log_error_stack = Config.parseBoolean(Config.getEnv("log_error_stack", "false"));
-        Config.log_errors = Config.parseBoolean(Config.getEnv("log_errors", "true"));
-        Config.log_queries = Config.parseBoolean(Config.getEnv("log_queries", "false"));
-        Config.log_aggregates = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
-        Config.log_inserts = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
-        Config.log_updates = Config.parseBoolean(Config.getEnv("log_updates", "false"));
-        Config.log_deletes = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
-        Config.log_otel_times = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
-        Config.log_openflow_amqp = Config.parseBoolean(Config.getEnv("log_openflow_amqp", "false"));
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
-        Config.log_index_mngt = Config.parseBoolean(Config.getEnv("log_index_mngt", "true"));
-        Config.log_watches = Config.parseBoolean(Config.getEnv("log_watches", "false"));
-        Config.log_watches_notify = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
-        Config.log_missing_jwt = Config.parseBoolean(Config.getEnv("log_missing_jwt", "true"));
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
-        Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
+        Config.log_websocket = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
+        Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -217,22 +193,11 @@ export class Config {
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
-    public static log_error_stack: boolean = Config.parseBoolean(Config.getEnv("log_error_stack", "false"));
-    public static log_errors: boolean = Config.parseBoolean(Config.getEnv("log_errors", "true"));
-    public static log_queries: boolean = Config.parseBoolean(Config.getEnv("log_queries", "false"));
-    public static log_aggregates: boolean = Config.parseBoolean(Config.getEnv("log_aggregates", "false"));
-    public static log_inserts: boolean = Config.parseBoolean(Config.getEnv("log_inserts", "false"));
-    public static log_updates: boolean = Config.parseBoolean(Config.getEnv("log_updates", "false"));
-    public static log_deletes: boolean = Config.parseBoolean(Config.getEnv("log_deletes", "false"));
-    public static log_otel_times: boolean = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
-    public static log_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("log_openflow_amqp", "false"));
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
-    public static log_index_mngt: boolean = Config.parseBoolean(Config.getEnv("log_index_mngt", "true"));
-    public static log_watches: boolean = Config.parseBoolean(Config.getEnv("log_watches", "false"));
-    public static log_watches_notify: boolean = Config.parseBoolean(Config.getEnv("log_watches_notify", "false"));
-    public static log_missing_jwt: boolean = Config.parseBoolean(Config.getEnv("log_missing_jwt", "true"));
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
-    public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
+    public static log_with_trace: boolean = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
+    public static log_websocket: boolean = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
+    public static log_oauth: boolean = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
 
     public static amqp_allow_replyto_empty_queuename: boolean = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 

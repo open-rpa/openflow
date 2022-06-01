@@ -1,5 +1,4 @@
 import { NoderedUtil } from "@openiap/openflow-api";
-import * as winston from "winston";
 import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
 import { dockerdriver } from "./dockerdriver";
@@ -20,53 +19,122 @@ export async function promiseRetry<T>(
             return promiseRetry(fn, retries - 1, retryIntervalMillis, error)
         })
 }
+export enum level {
+    Error = 1,
+    Warning = 2,
+    Information = 3,
+    Debug = 4,
+    Verbose = 5,
+    Silly = 6
+}
 
 export class Logger {
+
     public static otel: i_otel;
     public static License: i_license_file;
     public static nodereddriver: i_nodered_driver;
     public static DBHelper: DBHelper;
-    static myFormat = winston.format.printf(info => {
-        if (info instanceof Error || info.stack) {
-            return `${info.timestamp} [${info.level}] ${info.message} \n ${info.stack}`;
+    public static log_with_trace: boolean = false;
+    public static enabled: any = {}
+    public static unittesting: boolean = false;
+    public static usecolors: boolean = true;
+
+    public prefix(lvl: level, cls: string, func: string, message: string | unknown): string {
+        let White = Console.Reset + Console.Bright + Console.FgWhite;
+        let Grey = Console.Reset + Console.Dim + Console.FgWhite;
+        let Red = Console.Reset + Console.Bright + Console.FgRed;
+        let Yellow = Console.Reset + Console.Bright + Console.FgYellow;
+        let darkYellow = Console.Reset + Console.Dim + Console.FgYellow;
+        let Blue = Console.Reset + Console.Bright + Console.FgBlue;
+        let dt = new Date();
+        if (cls == "cli" || cls == "cli-lic" || cls == "cliutil") cls = "";
+        let prefix = "";
+        let color = Blue;
+        if (lvl == level.Debug || lvl == level.Verbose || lvl == level.Silly) color = Grey;
+        if (lvl == level.Error) color = Red;
+        if (lvl == level.Warning) color = darkYellow;
+        if (cls != "") {
+            let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
+            if (Logger.usecolors) {
+                prefix = Grey +
+                    (dts.padEnd(13, " ") + White + "[" + Grey + cls + White + "][" + darkYellow + func + White + "] ").padEnd(120, " ");
+
+            } else {
+                prefix = (dts.padEnd(13, " ") + "[" + cls + "][" + func + "] ").padEnd(60, " ");
+            }
         }
-        if (Config.NODE_ENV == "development") {
-            return `${info.timestamp} [${Logger.getLabel()}][${info.level}] ${info.message}`;
+        return prefix + color + message + Console.Reset;
+    }
+    public error(cls: string, func: string, message: string | Error | unknown) {
+        if (Logger.unittesting) return;
+        if (Logger.enabled[cls]) {
+            if (Logger.enabled[cls] < level.Error) return;
         }
-        return `${info.timestamp} [${info.level}] ${info.message}`;
-    });
-    static getLabel = function () {
-        let e = new Error();
-        let frame = "";
-        let lineNumber = "";
-        let functionName = "";
-        let filename = "";
-        let arr = [];
-        try {
-            arr = e.stack.split("\n");
-            frame = arr[0];
-            arr = arr.filter(x => x.indexOf("node_modules") === -1)
-            arr = arr.filter(x => x.indexOf("dist") !== -1)
-            arr = arr.filter(x => x.indexOf("Logger.js") === -1)
-            arr = arr.filter(x => x.indexOf("otel.js") === -1)
-            if (arr.length > 0) frame = arr[0];
-            lineNumber = frame.split(":").reverse()[1];
-            functionName = frame.split(" ")[5];
-            filename = frame.substr(frame.indexOf("("));
-            filename = filename.replace("(", "").replace(")", "");
-            filename = path.basename(filename)
-            return functionName + " " + filename;
-        } catch (error) {
-            return "n/a";
+        if (message instanceof Error) {
+            console.error(message);
+            return;
         }
-    };
+        if (Logger.log_with_trace) return console.trace(this.prefix(level.Error, cls, func, message));
+        console.error(this.prefix(level.Error, cls, func, message));
+    }
+    public info(cls: string, func: string, message: string) {
+        if (Logger.unittesting) return;
+        if (!Logger.enabled[cls]) return;
+        if (Logger.enabled[cls] < level.Information) return;
+        if (Logger.log_with_trace) return console.trace(this.prefix(level.Information, cls, func, message));
+        console.info(this.prefix(level.Information, cls, func, message));
+    }
+    public warn(cls: string, func: string, message: string) {
+        if (Logger.unittesting) return;
+        // if (!Logger.enabled[cls]) return;
+        // if (Logger.enabled[cls] < level.Warning) return;
+        // if (Logger.log_with_trace) return console.trace(this.prefix(cls, func, message));
+        console.warn(this.prefix(level.Warning, cls, func, message));
+    }
+    public debug(cls: string, func: string, message: string) {
+        if (Logger.unittesting) return;
+        if (!Logger.enabled[cls]) return;
+        if (Logger.enabled[cls] < level.Debug) return;
+        if (Logger.log_with_trace) return console.trace(this.prefix(level.Debug, cls, func, message));
+        console.debug(this.prefix(level.Debug, cls, func, message));
+    }
+    public verbose(cls: string, func: string, message: string) {
+        if (Logger.unittesting) return;
+        if (!Logger.enabled[cls]) return;
+        if (Logger.enabled[cls] < level.Verbose) return;
+        if (Logger.log_with_trace) return console.trace(this.prefix(level.Verbose, cls, func, message));
+        console.debug(this.prefix(level.Verbose, cls, func, message));
+    }
+    public silly(cls: string, func: string, message: string) {
+        if (Logger.unittesting) return;
+        if (!Logger.enabled[cls]) return;
+        if (Logger.enabled[cls] < level.Silly) return;
+        if (Logger.log_with_trace) return console.trace(this.prefix(level.Silly, cls, func, message));
+        console.debug(this.prefix(level.Silly, cls, func, message));
+    }
+
+
     public static async shutdown() {
         Logger.License.shutdown();
         if (Config.db != null) await Config.db.shutdown();
         await Logger.otel.shutdown();
     }
-    static configure(skipotel: boolean, skiplic: boolean): winston.Logger {
+    static configure(skipotel: boolean, skiplic: boolean): void {
         Logger.DBHelper = new DBHelper();
+        Logger.log_with_trace = Config.log_with_trace;
+        // if (Config.NODE_ENV == "development") Logger.log_with_trace = true;
+        if (Config.log_cache) Logger.enabled["DBHelper"] = level.Verbose;
+        if (Config.log_amqp) Logger.enabled["amqpwrapper"] = level.Verbose;
+        if (Config.log_login_provider) Logger.enabled["LoginProvider"] = level.Verbose;
+        if (Config.log_websocket) Logger.enabled["WebSocketServer"] = level.Verbose;
+        if (Config.log_websocket) Logger.enabled["WebSocketServerClient"] = level.Verbose;
+        if (Config.log_oauth) Logger.enabled["OAuthProvider"] = level.Verbose;
+
+
+        if (Config.otel_debug_log) Logger.enabled["WebSocketServerClient"] = level.Verbose;
+        if (Config.otel_warn_log) Logger.enabled["WebSocketServerClient"] = level.Warning;
+        if (Config.otel_err_log) Logger.enabled["WebSocketServerClient"] = level.Error;
+
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {
             file: {
@@ -85,31 +153,7 @@ export class Logger {
                 colorize: true
             },
         };
-        options.console.format = winston.format.combine(
-            winston.format.errors({ stack: true }),
-            winston.format.timestamp({ format: 'HH:mm:ss.sss' }),
-            winston.format.colorize(),
-            winston.format.json(),
-            Logger.myFormat
-        );
-        const logger: winston.Logger = winston.createLogger({
-            level: "debug",
-            //format: winston.format.json(),
-            format: winston.format.combine(
-                winston.format.errors({ stack: true }),
-                winston.format.timestamp({ format: 'HH:mm:ss.sss' }),
-                winston.format.json(),
-                Logger.myFormat
-            ),
-            transports: [
-                new winston.transports.File(options.file),
-                new winston.transports.Console(options.console)
-            ]
-        });
-        Logger.instanse = logger;
-
-
-
+        Logger.instanse = new Logger();
         let _lic_require: any = null;
         try {
             if (!skiplic) _lic_require = require("./ee/license-file");
@@ -133,7 +177,7 @@ export class Logger {
                     }
                 } catch (error) {
                     this.nodereddriver = null;
-                    Logger.instanse.error(error);
+                    Logger.instanse.error("Logger", "configure", error);
                 }
             }
         }
@@ -152,7 +196,7 @@ export class Logger {
                 }
             } catch (error) {
                 this.nodereddriver = null;
-                Logger.instanse.error(error);
+                Logger.instanse.error("Logger", "configure", error);
             }
         }
 
@@ -195,11 +239,8 @@ export class Logger {
                     }
                 } as any;
         }
-
-
-        return logger;
     }
-    static instanse: winston.Logger = null;
+    static instanse: Logger = null;
     private static _ofid = null;
     static ofid() {
         if (!NoderedUtil.IsNullEmpty(Logger._ofid)) return Logger._ofid;
@@ -235,4 +276,31 @@ export class Logger {
         }
     }
 
+}
+export enum Console {
+    Reset = "\x1b[0m",
+    Bright = "\x1b[1m",
+    Dim = "\x1b[2m",
+    Underscore = "\x1b[4m",
+    Blink = "\x1b[5m",
+    Reverse = "\x1b[7m",
+    Hidden = "\x1b[8m",
+
+    FgBlack = "\x1b[30m",
+    FgRed = "\x1b[31m",
+    FgGreen = "\x1b[32m",
+    FgYellow = "\x1b[33m",
+    FgBlue = "\x1b[34m",
+    FgMagenta = "\x1b[35m",
+    FgCyan = "\x1b[36m",
+    FgWhite = "\x1b[37m",
+
+    BgBlack = "\x1b[40m",
+    BgRed = "\x1b[41m",
+    BgGreen = "\x1b[42m",
+    BgYellow = "\x1b[43m",
+    BgBlue = "\x1b[44m",
+    BgMagenta = "\x1b[45m",
+    BgCyan = "\x1b[46m",
+    BgWhite = "\x1b[47m",
 }

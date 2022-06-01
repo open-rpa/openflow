@@ -4,6 +4,8 @@
 import * as fs from "fs";
 import { Logger } from './Logger';
 Logger.configure(true, true);
+Logger.enabled["cli"] = 7
+Logger.enabled["cliutil"] = 7
 import { Config } from "./Config";
 import { logger, loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
 import { WebSocketClient, NoderedUtil } from "@openiap/openflow-api";
@@ -43,7 +45,7 @@ try {
                 for (const net of nets[name]) {
                     // skip over non-ipv4 and internal (i.e. 127.0.0.1) addresses
                     if (net.family === 'IPv4' && !net.internal) {
-                        if (Config.log_information) console.log(name, net.address);
+                        Logger.instanse.info("cli", "", name + " " + net.address);
                     }
                 }
             }
@@ -59,20 +61,20 @@ try {
         if (!isOpenFlow()) {
             let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
             if (parsedFile.jwt == null || parsedFile.jwt == "") {
-                if (options.authenticate != true) logger.warn(envfilename + " is missing a jwt, switching to --authenticate")
+                if (options.authenticate != true) Logger.instanse.warn("cli", "", envfilename + " is missing a jwt, switching to --authenticate")
                 options.authenticate = true;
             }
         }
     }
 } catch (error) {
-    console.error(error.message ? error.message : error);
+    Logger.instanse.error("cli", "", error.message ? error.message : error);
     printusage();
     process.exit();
 }
 
 function getToken(): Promise<string> {
     return new Promise<string>(async (resolve, reject) => {
-        logger.info("wsurl " + Config.api_ws_url);
+        Logger.instanse.info("cli", "", "wsurl " + Config.api_ws_url);
         let socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         socket.agent = "nodered-cli";
         socket.version = Config.version;
@@ -82,7 +84,7 @@ function getToken(): Promise<string> {
                 const password: string = readlineSync.question('password? ', { hideEchoBack: true });
 
                 const result = await NoderedUtil.SigninWithUsername({ username, password, longtoken: true });
-                logger.info("signed in as " + result.user.name + " with id " + result.user._id);
+                Logger.instanse.info("cli", "", "signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
                 socket.close(1000, "Close by user");
@@ -90,7 +92,7 @@ function getToken(): Promise<string> {
                 socket = null;
             } catch (error) {
                 let closemsg: any = (error.message ? error.message : error);
-                logger.error(error);
+                Logger.instanse.error("cli", "", error);
                 socket.close(1000, closemsg);
                 reject(closemsg);
                 socket = null;
@@ -103,14 +105,14 @@ function getToken(): Promise<string> {
 async function doit() {
     try {
         if (options.init) {
-            if (Config.log_information) console.log("init");
+            Logger.instanse.info("cli", "", "init");
             const files = fs.readdirSync(path.join(__dirname, ".."))
             for (let i = 0; i < files.length; i++) {
                 let filename = files[i];
                 if (path.extname(filename) == '.env') {
                     const target = path.join(process.cwd(), filename);
                     if (!fs.existsSync(target)) {
-                        if (Config.log_information) console.log("Creating " + filename);
+                        Logger.instanse.info("cli", "", "Creating " + filename);
                         filename = path.join(__dirname, "..", filename);
                         fs.copyFileSync(filename, target);
 
@@ -119,18 +121,18 @@ async function doit() {
                         fs.writeFileSync(target, envfile.stringify(parsedFile));
 
                     } else {
-                        if (Config.log_information) console.log("Skipping " + filename + " already exists.");
+                        Logger.instanse.info("cli", "", "Skipping " + filename + " already exists.");
                     }
                 }
             }
         } else if (options.authenticate == true) {
-            if (Config.log_information) console.log("authenticate");
+            Logger.instanse.info("cli", "", "authenticate");
             if (await pm2exists(servicename)) {
                 await pm2stop(servicename);
                 await pm2delete(servicename);
             }
             try {
-                logger.info("isOpenFlow: " + isOpenFlow());
+                Logger.instanse.info("cli", "", "isOpenFlow: " + isOpenFlow());
                 if (!isOpenFlow()) {
                     loadenv();
                     let jwt = await getToken();
@@ -145,13 +147,13 @@ async function doit() {
                     script: __filename,
                     args: [servicename, "--run", "--config", envfilepathname]
                 });
-                logger.info("Quit");
+                Logger.instanse.info("cli", "", "Quit");
                 pm2disconnect();
             } catch (error) {
-                logger.error(error);
+                Logger.instanse.error("cli", "", error);
             }
         } else if (options.install == true) {
-            if (Config.log_information) console.log("install");
+            Logger.instanse.info("cli", "", "install");
             loadenv();
             if (!await pm2exists(servicename)) {
                 await pm2start({
@@ -163,14 +165,14 @@ async function doit() {
                     try {
                         await pm2startup("systemd");
                     } catch (error) {
-                        console.error(error.message ? error.message : error);
+                        Logger.instanse.error("cli", "", error);
                     }
                 }
                 else if (process.platform != "win32") {
                     try {
                         await pm2startup(process.platform as any);
                     } catch (error) {
-                        console.error(error.message ? error.message : error);
+                        Logger.instanse.error("cli", "", error);
                     }
                 }
                 await pm2dump();
@@ -179,46 +181,46 @@ async function doit() {
             }
             pm2disconnect();
         } else if (options.uninstall == true) {
-            if (Config.log_information) console.log("uninstall");
+            Logger.instanse.info("cli", "", "uninstall");
             if (await pm2exists(servicename)) {
                 await pm2stop(servicename);
                 await pm2delete(servicename);
                 await pm2dump();
             } else {
-                console.error(servicename + " not found")
+                Logger.instanse.error("cli", "", servicename + " not found");
             }
             pm2disconnect();
         } else if (options.start == true) {
-            if (Config.log_information) console.log("start");
+            Logger.instanse.info("cli", "", "start");
             loadenv();
             await pm2restart(servicename);
             pm2disconnect();
         } else if (options.stop == true) {
-            if (Config.log_information) console.log("stop");
+            Logger.instanse.info("cli", "", "stop");
             await pm2stop(servicename);
             pm2disconnect();
         } else if (options.restart == true) {
-            if (Config.log_information) console.log("restart");
+            Logger.instanse.info("cli", "", "restart");
             await pm2restart(servicename);
             pm2disconnect();
         } else if (options.run == true) {
             pm2disconnect();
-            if (Config.log_information) console.log("run");
+            Logger.instanse.info("cli", "", "run");
             loadenv();
-            logger.info("Starting as service " + servicename);
+            Logger.instanse.info("cli", "", "Starting as service " + servicename);
             let index = path.join(__dirname, "/index.js");
             if (!fs.existsSync(index)) {
                 index = path.join(__dirname, "dist", "/index.js");
             }
-            logger.info("run: " + index);
+            Logger.instanse.info("cli", "", "run: " + index);
             require(index);
         } else {
-            if (Config.log_information) console.log("unknown, print usage");
+            Logger.instanse.info("cli", "", "unknown, print usage");
             printusage();
         }
 
     } catch (error) {
-        console.error(error.message ? error.message : error);
+        Logger.instanse.error("cli", "", error);
         process.exit();
     }
 }
@@ -226,27 +228,27 @@ async function doit() {
 
 function printusage() {
     if (!isOpenFlow()) {
-        if (Config.log_information) console.log("openflow-nodered-cli [--init][--install][--uninstall][--config][--start][--stop] name");
-        if (Config.log_information) console.log("   --init - Create sample environment files for running nodered");
-        if (Config.log_information) console.log("   --install - Install openflow as an service that runs at boot");
-        if (Config.log_information) console.log("   --uninstall - Uninstalls service, if openflow has been installed as an service");
-        if (Config.log_information) console.log("   --config - Prompt for credentials and create config");
-        if (Config.log_information) console.log("   --start - Will start the service with the given name");
-        if (Config.log_information) console.log("   --stop - Will stop the service with the given name");
-        if (Config.log_information) console.log("   name - Service and instance name");
-        if (Config.log_information) console.log("Will look for an envoriment file called name.env and copy that to the");
-        if (Config.log_information) console.log("source directory");
+        Logger.instanse.info("cli", "", "openflow-nodered-cli [--init][--install][--uninstall][--config][--start][--stop] name");
+        Logger.instanse.info("cli", "", "   --init - Create sample environment files for running nodered");
+        Logger.instanse.info("cli", "", "   --install - Install openflow as an service that runs at boot");
+        Logger.instanse.info("cli", "", "   --uninstall - Uninstalls service, if openflow has been installed as an service");
+        Logger.instanse.info("cli", "", "   --config - Prompt for credentials and create config");
+        Logger.instanse.info("cli", "", "   --start - Will start the service with the given name");
+        Logger.instanse.info("cli", "", "   --stop - Will stop the service with the given name");
+        Logger.instanse.info("cli", "", "   name - Service and instance name");
+        Logger.instanse.info("cli", "", "Will look for an envoriment file called name.env and copy that to the");
+        Logger.instanse.info("cli", "", "source directory");
         return;
     }
-    if (Config.log_information) console.log("openflow-cli [--init][--install][--uninstall][--start][--stop] name");
-    if (Config.log_information) console.log("   --init - Create a sample environment file for running openflow");
-    if (Config.log_information) console.log("   --install - Install openflow as an service that runs at boot");
-    if (Config.log_information) console.log("   --uninstall - Uninstalls service, if openflow has been installed as an service");
-    if (Config.log_information) console.log("   --start - Will start the service with the given name");
-    if (Config.log_information) console.log("   --stop - Will stop the service with the given name");
-    if (Config.log_information) console.log("   name - Service and instance name");
-    if (Config.log_information) console.log("Will look for an envoriment file called name.env and copy that to the");
-    if (Config.log_information) console.log("source directory");
+    Logger.instanse.info("cli", "", "openflow-cli [--init][--install][--uninstall][--start][--stop] name");
+    Logger.instanse.info("cli", "", "   --init - Create a sample environment file for running openflow");
+    Logger.instanse.info("cli", "", "   --install - Install openflow as an service that runs at boot");
+    Logger.instanse.info("cli", "", "   --uninstall - Uninstalls service, if openflow has been installed as an service");
+    Logger.instanse.info("cli", "", "   --start - Will start the service with the given name");
+    Logger.instanse.info("cli", "", "   --stop - Will stop the service with the given name");
+    Logger.instanse.info("cli", "", "   name - Service and instance name");
+    Logger.instanse.info("cli", "", "Will look for an envoriment file called name.env and copy that to the");
+    Logger.instanse.info("cli", "", "source directory");
 }
 
 doit();

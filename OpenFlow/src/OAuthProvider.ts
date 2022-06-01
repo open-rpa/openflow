@@ -26,7 +26,6 @@ export class OAuthProvider {
                 var cli = this.instance.clients[i];
                 var auth = ctx.oidc.session.authorizations[cli.id];
                 if (auth) {
-                    // console.log(auth);
                     if (cli.openflowsignout && cli.openflowsignout == true) {
                         ctx.req.logout();
                     }
@@ -233,6 +232,11 @@ export class OAuthProvider {
 
             instance.app.use('/oidclogin', async (req, res, next) => {
                 if (req && (req as any).user) {
+                    if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && (req as any).user.validated != true) {
+                        res.cookie("originalUrl", "/oidclogin", { maxAge: 900000, httpOnly: true });
+                        res.redirect("/login");
+                        return next();
+                    }
                     res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
                     res.redirect("/oidccb");
                 } else {
@@ -301,7 +305,7 @@ export class OAuthProvider {
             });
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("OAuthProvider", "LoadClients", error);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -318,15 +322,13 @@ export class OAuthProvider {
                 instance.app = app;
                 this.LoadClients();
             } catch (error) {
-                console.error(error);
-                const json = JSON.stringify(error, null, 3);
-                console.error(json);
+                Logger.instanse.error("OAuthProvider", "configure", error);
                 throw error;
             }
             return instance;
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("OAuthProvider", "configure", error);
             return OAuthProvider.instance;
         } finally {
             Logger.otel.endSpan(span);
@@ -376,10 +378,10 @@ export class Account {
         try {
             let role = client.defaultrole;
             const keys: string[] = Object.keys(client.rolemappings);
-            Logger.instanse.info("[OAuth][" + tuser.username + "] Lookup roles for " + tuser.username);
+            Logger.instanse.info("OAuthProvider", "AddAccount", "[" + tuser.username + "] Lookup roles for " + tuser.username);
             for (let i = 0; i < keys.length; i++) {
                 if (tuser.HasRoleName(keys[i])) {
-                    Logger.instanse.info("[OAuth][" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
+                    Logger.instanse.info("OAuthProvider", "AddAccount", "[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
                     role = client.rolemappings[keys[i]];
                 }
             }
@@ -389,7 +391,7 @@ export class Account {
             var res = new Account(tuser._id, tuser);
             return res;
         } catch (error) {
-            console.error(error);
+            Logger.instanse.error("OAuthProvider", "AddAccount", error);
         }
         return undefined;
     }

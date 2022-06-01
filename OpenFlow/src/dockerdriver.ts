@@ -14,13 +14,13 @@ export class dockerdriver implements i_nodered_driver {
             await docker.listContainers();
             return true;
         } catch (error) {
-            Logger.instanse.info(error.message ? error.message : error);
+            Logger.instanse.info("dockerdriver", "FindRoleByName", error);
         }
         return false;
     }
     public async EnsureNoderedInstance(jwt: string, tuser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
-        Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance");
+        Logger.instanse.debug("dockerdriver", "EnsureNoderedInstance", "[" + tuser.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = tuser._id;
 
         const users = await Config.db.query<NoderedUser>({ query: { _id: _id }, top: 1, collectionname: "users", jwt: jwt }, span);
@@ -212,16 +212,16 @@ export class dockerdriver implements i_nodered_driver {
                 // if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
                 //     try {
                 //         if (billed != "true" && diffhours > 24) {
-                //             Logger.instanse.debug("[" + tokenUser.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
+                //             Logger.instanse.debug("dockerdriver", "GetNoderedInstance", "[" + tokenUser.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
                 //             await this.DeleteNoderedInstance(jwt, tokenUser, _id, name, true, span);
                 //         }
                 //     } catch (error) {
                 //     }
                 // } else if (image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) {
                 //     if (billed != "true" && diffhours > 24) {
-                //         console.debug("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
+                //         console . debug("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
                 //     } else {
-                //         console.debug("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
+                //         console . debug("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
                 //     }
                 // }
 
@@ -290,13 +290,15 @@ export class dockerdriver implements i_nodered_driver {
                 docker.modem.followProgress(stream, onFinished, onProgress);
 
                 function onFinished(err2, output) {
-                    console.debug(output);
-                    if (err2) return reject(err2);
-
+                    Logger.instanse.debug("dockerdriver", "_pullImage", output);
+                    if (err2) {
+                        Logger.instanse.error("dockerdriver", "_pullImage", err2);
+                        return reject(err2);
+                    }
                     return resolve();
                 }
                 function onProgress(event) {
-                    console.debug(event);
+                    Logger.instanse.debug("dockerdriver", "_pullImage", event);
                 }
             });
         })
@@ -346,7 +348,7 @@ export class dockerdriver implements i_nodered_driver {
     public async DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.dockerDeleteNoderedPod", parent);
         try {
-            Logger.instanse.debug("[" + user.username + "] dockerDeleteNoderedPod");
+            Logger.instanse.debug("dockerdriver", "DeleteNoderedPod", "[" + user.username + "] dockerDeleteNoderedPod");
 
             if (NoderedUtil.IsNullEmpty(podname)) podname = name;
 

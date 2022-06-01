@@ -67,7 +67,7 @@ export class rabbitmq {
                 return hasConsumers;
             }, 10, 1000);
         } catch (error) {
-            Logger.instanse.debug(error.message ? error.message : error);
+            Logger.instanse.error("rabbitmq", "checkQueueConsumerCount", error);
         }
         if (result == true) {
             return result;

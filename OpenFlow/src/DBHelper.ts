@@ -48,7 +48,7 @@ export class DBHelper {
             // listen for redis connection error event
             var redisClient = this.memoryCache.store.getClient();
             redisClient.on('error', (error) => {
-                console.log(error);
+                Logger.instanse.error("DBHelper", "init", error);
             });
 
             this.ensureotel();
@@ -75,11 +75,11 @@ export class DBHelper {
                 this.memoryCache.del(keys[i]);
             }
         }
-        if (Config.log_cache) Logger.instanse.debug("clearCache called with reason: " + reason);
+        Logger.instanse.debug("DBHelper", "clearCache", "clearCache called with reason: " + reason);
     }
     public async DeleteKey(key) {
         this.init();
-        if (Config.log_cache) Logger.instanse.debug("Remove from cache : " + key);
+        Logger.instanse.debug("DBHelper", "DeleteKey", "Remove from cache : " + key);
         this.memoryCache.del(key);
     }
     public item_cache: BaseObserver = null;
@@ -112,7 +112,7 @@ export class DBHelper {
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("users" + _id, () => {
-                if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + _id);
+                Logger.instanse.debug("DBHelper", "FindById", "Add user to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
             });
             this.ensureotel();
@@ -211,7 +211,7 @@ export class DBHelper {
             const token = authorization.split(" ")[1];
             let item: User = await this.memoryCache.wrap(token, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add authentication header to cache");
+                Logger.instanse.debug("DBHelper", "FindByAuthorization", "Add authentication header to cache");
                 return LoginProvider.validateToken(token, parent);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -223,7 +223,7 @@ export class DBHelper {
         if (!NoderedUtil.IsNullEmpty(login) && !NoderedUtil.IsNullEmpty(password)) {
             let item: User = await this.memoryCache.wrap(b64auth, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add basicauth header to cache");
+                Logger.instanse.debug("DBHelper", "FindByAuthorization", "Add basicauth header to cache");
                 return Auth.ValidateByPassword(login, password, parent);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -237,7 +237,7 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("mq" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + _id);
+                Logger.instanse.debug("DBHelper", "FindQueueById", "Add queue to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -256,7 +256,7 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(name)) return null;
             let item = await this.memoryCache.wrap("queuename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add queue to cache : " + name);
+                Logger.instanse.debug("DBHelper", "FindQueueByName", "Add queue to cache : " + name);
                 return Config.db.getbyname<User>(name, "mq", jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -275,7 +275,7 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("mq" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + _id);
+                Logger.instanse.debug("DBHelper", "FindExchangeById", "Add exchange to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -294,7 +294,7 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(name)) return null;
             let item = await this.memoryCache.wrap("exchangename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add exchange to cache : " + name);
+                Logger.instanse.debug("DBHelper", "FindExchangeByName", "Add exchange to cache : " + name);
                 return Config.db.getbyname<User>(name, "mq", jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -313,7 +313,7 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
             let item = await this.memoryCache.wrap("users" + _id, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add role to cache : " + _id);
+                Logger.instanse.debug("DBHelper", "FindRoleById", "Add role to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "users", jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -332,7 +332,7 @@ export class DBHelper {
             if (NoderedUtil.IsNullEmpty(username)) return null;
             let item = await this.memoryCache.wrap("username_" + username, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                if (Config.log_cache) Logger.instanse.debug("Add user to cache : " + username);
+                Logger.instanse.debug("DBHelper", "FindByUsername", "Add user to cache : " + username);
                 return Config.db.getbyusername<User>(username, jwt, true, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
@@ -370,7 +370,7 @@ export class DBHelper {
             if (!Config.decorate_roles_fetching_all_roles) {
                 if (!user.roles) user.roles = [];
                 const results = await this.memoryCache.wrap("userroles_" + user._id, () => {
-                    if (Config.log_cache) Logger.instanse.debug("Add userroles to cache : " + user.name);
+                    Logger.instanse.debug("DBHelper", "DecorateWithRoles", "Add userroles to cache : " + user.name);
                     const pipe: any = [{ "$match": { "_id": user._id } },
                     {
                         "$graphLookup": {
@@ -429,17 +429,11 @@ export class DBHelper {
                 });
 
                 if (results.length > 0) {
-                    // console.log(user.name + " : " + results[0].roles.length + "/" + results[0].roles2.length);
-                    // let res = { roles: results[0].roles, roles2: (results[0] as any).roles2 }
-                    // res.roles = res.roles.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
-                    // res.roles2 = res.roles2.map(x => ({ "_id": x._id, "name": x.name, "d": (x as any).depth }));
                     user.roles = results[0].roles;
                     results[0].roles2.forEach(r => {
                         const exists = user.roles.filter(x => x._id == r._id);
                         if (exists.length == 0) user.roles.push(r);
                     });
-                } else {
-                    // console.log(user.name + " : " + results.length);
                 }
                 let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
                 if (hasusers.length == 0) {
@@ -448,7 +442,7 @@ export class DBHelper {
                 return user;
             }
             let cached_roles = await this.memoryCache.wrap("allroles", () => {
-                if (Config.log_cache) Logger.instanse.debug("Add all roles");
+                Logger.instanse.debug("DBHelper", "DecorateWithRoles", "Add all roles");
                 return Config.db.query<Role>({ query: { _type: "role" }, projection: { "name": 1, "members": 1 }, top: Config.expected_max_roles, collectionname: "users", jwt: Crypt.rootToken() }, span);
             });
             if (cached_roles.length === 0 && user.username !== "root") {
@@ -499,7 +493,7 @@ export class DBHelper {
             let item = await this.memoryCache.wrap("rolename_" + name, async () => {
                 const items: Role[] = await Config.db.query<Role>({ query: { name: name, "_type": "role" }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, parent);
                 if (items === null || items === undefined || items.length === 0) { return null; }
-                if (Config.log_cache) Logger.instanse.debug("Add role to cache : " + name);
+                Logger.instanse.debug("DBHelper", "FindRoleByName", "Add role to cache : " + name);
                 return items[0];
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
