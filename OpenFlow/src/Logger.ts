@@ -45,11 +45,13 @@ export class Logger {
         let Yellow = Console.Reset + Console.Bright + Console.FgYellow;
         let darkYellow = Console.Reset + Console.Dim + Console.FgYellow;
         let Blue = Console.Reset + Console.Bright + Console.FgBlue;
+        let Cyan = Console.Reset + Console.Bright + Console.FgCyan;
         let dt = new Date();
         if (cls == "cli" || cls == "cli-lic" || cls == "cliutil") cls = "";
         let prefix = "";
-        let color = Blue;
-        if (lvl == level.Debug || lvl == level.Verbose || lvl == level.Silly) color = Grey;
+        let color = Cyan;
+        if (lvl == level.Debug) color = Blue;
+        if (lvl == level.Verbose || lvl == level.Silly) color = Grey;
         if (lvl == level.Error) color = Red;
         if (lvl == level.Warning) color = darkYellow;
         if (cls != "") {
@@ -128,6 +130,9 @@ export class Logger {
         if (Config.log_websocket) Logger.enabled["WebSocketServer"] = level.Verbose;
         if (Config.log_websocket) Logger.enabled["WebSocketServerClient"] = level.Verbose;
         if (Config.log_oauth) Logger.enabled["OAuthProvider"] = level.Verbose;
+        if (Config.log_webserver) Logger.enabled["WebServer"] = level.Verbose;
+        if (Config.log_database) Logger.enabled["DatabaseConnection"] = level.Verbose;
+
 
 
         if (Config.otel_debug_log) Logger.enabled["WebSocketServerClient"] = level.Verbose;

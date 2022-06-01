@@ -138,7 +138,7 @@ export class LoginProvider {
             done(null, user._id);
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
-            Logger.instanse.info("LoginProvider", "deserializeUser", "userid " + userid);
+            Logger.instanse.silly("LoginProvider", "deserializeUser", "userid " + userid);
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             if (typeof userid !== 'string') userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
@@ -147,7 +147,7 @@ export class LoginProvider {
                 Logger.instanse.error("LoginProvider", "deserializeUser", "Failed locating user " + userid);
                 done(null, null);
             } else {
-                Logger.instanse.info("LoginProvider", "deserializeUser", "found user " + userid + " " + _user.name);
+                Logger.instanse.verbose("LoginProvider", "deserializeUser", "found user " + userid + " " + _user.name);
                 done(null, _user);
             }
             // const _user = await Auth.getUser(userid, "passport");
@@ -164,25 +164,6 @@ export class LoginProvider {
             // } else {
             //     done(null, _user);
             // }
-        });
-
-        app.use(function (req, res, next) {
-            const origin: string = (req.headers.origin as any);
-            if (NoderedUtil.IsNullEmpty(origin)) {
-                res.header('Access-Control-Allow-Origin', '*');
-            } else {
-                res.header('Access-Control-Allow-Origin', origin);
-            }
-            res.header("Access-Control-Allow-Methods", "DELETE, POST, PUT, GET, OPTIONS");
-            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization");
-            res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-            res.header('Expires', '-1');
-            res.header('Pragma', 'no-cache');
-            if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
-                res.send("ok");
-            } else {
-                next();
-            }
         });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
             const span: Span = (Config.otel_trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
@@ -278,7 +259,7 @@ export class LoginProvider {
                     const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
                     res.end(JSON.stringify(user));
                 } else {
-                    Logger.instanse.error("LoginProvider", "/user", "return nothing, not signed in");
+                    Logger.instanse.info("LoginProvider", "/user", "return nothing, not signed in");
                     res.end(JSON.stringify({}));
                 }
                 res.end();

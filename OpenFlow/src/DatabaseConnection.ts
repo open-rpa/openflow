@@ -1099,7 +1099,7 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
             DatabaseConnection.traversejsondecode(items);
             Logger.instanse.debug("DatabaseConnection", "aggregate", "[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
-            Logger.instanse.debug("DatabaseConnection", "aggregate", aggregatesjson);
+            Logger.instanse.silly("DatabaseConnection", "aggregate", aggregatesjson);
             return items;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "aggregate", error);
@@ -1404,6 +1404,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
+                Logger.DBHelper.clearCache("check for dublicates");
                 const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
                 if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
             }
@@ -1411,6 +1412,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const r: Role = (item as any);
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
+                Logger.DBHelper.clearCache("check for dublicates");
                 const exists2 = await Logger.DBHelper.FindRoleByName(r.name, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }

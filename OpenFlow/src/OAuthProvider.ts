@@ -42,7 +42,7 @@ export class OAuthProvider {
       </head>
       <body onload="logout()">
       <div>
-        <h1>Do you want to sign-out from ${ctx.host}?</h1>
+        <h1>Do you want to sign-out from ${ctx.hostname}?</h1>
         <script>
           function logout() {
             var form = document.getElementById('op.logoutForm');
@@ -81,7 +81,7 @@ export class OAuthProvider {
       </head>
       <body onload="logout()">
       <div>
-        <h1>You have successfully signed out from ${ctx.host}</h1>`;
+        <h1>You have successfully signed out from ${ctx.hostname}</h1>`;
         if (!NoderedUtil.IsNullEmpty(oidcrefere)) {
             ctx.body += `<a href="${ctx.req.cookies.oidcrefere}">Return to ${ctx.req.cookies.oidcrefere}</a> ?`;
         }
@@ -228,6 +228,8 @@ export class OAuthProvider {
                     }
                 }
                 instance.oidc.callback(req, res);
+                // return next();
+                // if (req.originalUrl.indexOf('/oidc') > -1) return next();
             });
 
             instance.app.use('/oidclogin', async (req, res, next) => {

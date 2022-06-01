@@ -1,5 +1,0 @@
-{
-  "dependencies": {
-    "@openiap/openflow-api": "file:../../openflow-api"
-  }
-}

@@ -30,6 +30,8 @@ export class Config {
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
         Config.log_websocket = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
         Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
+        Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
+        Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -200,6 +202,9 @@ export class Config {
     public static log_with_trace: boolean = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
     public static log_websocket: boolean = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
     public static log_oauth: boolean = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
+    public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
+    public static log_database: boolean = Config.parseBoolean(Config.getEnv("log_database", "false"));
+
 
     public static amqp_allow_replyto_empty_queuename: boolean = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
