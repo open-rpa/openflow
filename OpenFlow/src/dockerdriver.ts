@@ -14,7 +14,7 @@ export class dockerdriver implements i_nodered_driver {
             await docker.listContainers();
             return true;
         } catch (error) {
-            Logger.instanse.info("dockerdriver", "FindRoleByName", error);
+            Logger.instanse.error("dockerdriver", "detect", error);
         }
         return false;
     }

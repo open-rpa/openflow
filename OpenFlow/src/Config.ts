@@ -32,6 +32,12 @@ export class Config {
         Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
         Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
+        Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+        Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
+        Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
+        Config.log_verbose = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
+        Config.log_silly = Config.parseBoolean(Config.getEnv("log_silly", "false"));
+
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -74,6 +80,7 @@ export class Config {
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
         Config.auto_create_personal_noderedapi_group = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
         Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
+        Config.validate_emails = Config.parseBoolean(Config.getEnv("validate_emails", "false"));
 
         Config.tls_crt = Config.getEnv("tls_crt", "");
         Config.tls_key = Config.getEnv("tls_key", "");
@@ -204,7 +211,11 @@ export class Config {
     public static log_oauth: boolean = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
     public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
     public static log_database: boolean = Config.parseBoolean(Config.getEnv("log_database", "false"));
-
+    public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+    public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
+    public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
+    public static log_verbose: boolean = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
+    public static log_silly: boolean = Config.parseBoolean(Config.getEnv("log_silly", "false"));
 
     public static amqp_allow_replyto_empty_queuename: boolean = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -249,6 +260,7 @@ export class Config {
     public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
     public static auto_create_personal_noderedapi_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
     public static force_add_admins: boolean = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
+    public static validate_emails: boolean = Config.parseBoolean(Config.getEnv("validate_emails", "false"));
 
     public static tls_crt: string = Config.getEnv("tls_crt", "");
     public static tls_key: string = Config.getEnv("tls_key", "");

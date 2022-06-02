@@ -46,6 +46,7 @@ export class Logger {
         let darkYellow = Console.Reset + Console.Dim + Console.FgYellow;
         let Blue = Console.Reset + Console.Bright + Console.FgBlue;
         let Cyan = Console.Reset + Console.Bright + Console.FgCyan;
+        let Green = Console.Reset + Console.Bright + Console.FgGreen;
         let dt = new Date();
         if (cls == "cli" || cls == "cli-lic" || cls == "cliutil") cls = "";
         let prefix = "";
@@ -55,13 +56,19 @@ export class Logger {
         if (lvl == level.Error) color = Red;
         if (lvl == level.Warning) color = darkYellow;
         if (cls != "") {
+            // DatabaseConnection
+            // WebSocketServerClient
             let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
             if (Logger.usecolors) {
-                prefix = Grey +
-                    (dts.padEnd(13, " ") + White + "[" + Grey + cls + White + "][" + darkYellow + func + White + "] ").padEnd(120, " ");
+                prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "] ");
+                let spaces = 0;
+                if (prefix.length < 60) spaces = 60 - prefix.length;
+                prefix = Green +
+                    dts.padEnd(13, " ") + White + "[" + darkYellow + cls.padEnd(21) + White + "][" + darkYellow + func + White + "] ";
+                if (spaces > 0) prefix += "".padEnd(spaces, " ");
 
             } else {
-                prefix = (dts.padEnd(13, " ") + "[" + cls + "][" + func + "] ").padEnd(60, " ");
+                prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "] ").padEnd(60, " ");
             }
         }
         return prefix + color + message + Console.Reset;
@@ -80,8 +87,10 @@ export class Logger {
     }
     public info(cls: string, func: string, message: string) {
         if (Config.unittesting) return;
-        if (!Logger.enabled[cls]) return;
-        if (Logger.enabled[cls] < level.Information) return;
+        if (!Config.log_information) {
+            if (!Logger.enabled[cls]) return;
+            if (Logger.enabled[cls] < level.Information) return;
+        }
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Information, cls, func, message));
         console.info(this.prefix(level.Information, cls, func, message));
     }
@@ -94,22 +103,28 @@ export class Logger {
     }
     public debug(cls: string, func: string, message: string) {
         if (Config.unittesting) return;
-        if (!Logger.enabled[cls]) return;
-        if (Logger.enabled[cls] < level.Debug) return;
+        if (!Config.log_debug) {
+            if (!Logger.enabled[cls]) return;
+            if (Logger.enabled[cls] < level.Debug) return;
+        }
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Debug, cls, func, message));
         console.debug(this.prefix(level.Debug, cls, func, message));
     }
     public verbose(cls: string, func: string, message: string) {
         if (Config.unittesting) return;
-        if (!Logger.enabled[cls]) return;
-        if (Logger.enabled[cls] < level.Verbose) return;
+        if (!Config.log_verbose) {
+            if (!Logger.enabled[cls]) return;
+            if (Logger.enabled[cls] < level.Verbose) return;
+        }
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Verbose, cls, func, message));
         console.debug(this.prefix(level.Verbose, cls, func, message));
     }
     public silly(cls: string, func: string, message: string) {
         if (Config.unittesting) return;
-        if (!Logger.enabled[cls]) return;
-        if (Logger.enabled[cls] < level.Silly) return;
+        if (!Config.log_silly) {
+            if (!Logger.enabled[cls]) return;
+            if (Logger.enabled[cls] < level.Silly) return;
+        }
         if (Logger.log_with_trace) return console.trace(this.prefix(level.Silly, cls, func, message));
         console.debug(this.prefix(level.Silly, cls, func, message));
     }
@@ -132,6 +147,8 @@ export class Logger {
         if (Config.log_oauth) Logger.enabled["OAuthProvider"] = level.Verbose;
         if (Config.log_webserver) Logger.enabled["WebServer"] = level.Verbose;
         if (Config.log_database) Logger.enabled["DatabaseConnection"] = level.Verbose;
+        if (Config.log_grafana) Logger.enabled["grafana-proxy"] = level.Verbose;
+
 
 
 

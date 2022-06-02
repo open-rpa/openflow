@@ -128,7 +128,7 @@ export class WebSocketServerClient {
             q.queuename = this._queues[i].queue;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.info("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for queue " + q.queuename);
+            Logger.instanse.debug("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for queue " + q.queuename);
         }
         for (var i = 0; i < this._exchanges.length; i++) {
             let msg: SocketMessage = SocketMessage.fromcommand("exchangeclosed");
@@ -136,7 +136,7 @@ export class WebSocketServerClient {
             q.queuename = this._exchanges[i].queue.queue; q.exchangename = this._exchanges[i].exchange;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.info("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for exchange " + q.exchangename);
+            Logger.instanse.debug("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for exchange " + q.exchangename);
         }
         this._exchanges = [];
         this.CloseConsumers(null);

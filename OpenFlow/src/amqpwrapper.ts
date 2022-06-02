@@ -248,7 +248,7 @@ export class amqpwrapper extends events.EventEmitter {
                         } else {
                             msg.command = "timeout";
                         }
-                        Logger.instanse.info("amqpwrapper", "AddReplyQueue", "[" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey)
+                        Logger.instanse.debug("amqpwrapper", "AddReplyQueue", "[" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey)
                         await amqpwrapper.Instance().send("", replyTo, msg, 20000, correlationId, "");
                     }
                 } catch (error) {
@@ -271,7 +271,7 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
-                Logger.instanse.info("amqpwrapper", "AddReplyQueue", "[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                Logger.instanse.debug("amqpwrapper", "AddReplyQueue", "[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
@@ -318,7 +318,7 @@ export class amqpwrapper extends events.EventEmitter {
                     this.OnMessage(q, msg, q.callback);
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
-                Logger.instanse.info("amqpwrapper", "AddQueueConsumer", "[" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag);
+                Logger.instanse.debug("amqpwrapper", "AddQueueConsumer", "[" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag);
             } else {
                 throw new Error("Failed asserting Queue " + queue);
             }
@@ -349,7 +349,7 @@ export class amqpwrapper extends events.EventEmitter {
                 q.queue = await this.AddQueueConsumer(user, "", AssertQueueOptions, jwt, q.callback, span);
                 if (q.queue) {
                     this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-                    Logger.instanse.info("amqpwrapper", "AddExchangeConsumer", "[" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+                    Logger.instanse.debug("amqpwrapper", "AddExchangeConsumer", "[" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
                 }
             }
             this.exchanges.push(q);
@@ -496,7 +496,7 @@ export class amqpwrapper extends events.EventEmitter {
                     // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
                     await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
                 } else {
-                    Logger.instanse.info("amqpwrapper", "Adddlx", "[" + options.exchange + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
+                    Logger.instanse.debug("amqpwrapper", "Adddlx", "[" + options.exchange + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
                 }
             } catch (error) {
                 Logger.instanse.error("amqpwrapper", "Adddlx", "Failed sending deadletter message to " + options.replyTo);
@@ -524,7 +524,7 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
             if (typeof msg !== "string") {
-                Logger.instanse.info("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] Received command " + msg.command);
+                Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] Received command " + msg.command);
                 switch (msg.command) {
                     case "clearcache":
                         Logger.DBHelper.clearCache("amqp broadcast");
@@ -532,7 +532,7 @@ export class amqpwrapper extends events.EventEmitter {
                     case "housekeeping":
                         // if (this.IsMyconsumerTag(options.consumerTag)) break;
                         if (msg.lastrun) {
-                            Logger.instanse.info("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] " + msg.lastrun)
+                            Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] " + msg.lastrun)
                             Message.lastHouseKeeping = new Date(msg.lastrun);
                         } else {
                             if (Message.lastHouseKeeping != null) {

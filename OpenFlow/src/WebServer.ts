@@ -90,12 +90,13 @@ export class WebServer {
 
             // Add headers
             this.app.use(function (req, res, next) {
+
                 // Grafana hack
                 if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
                     return res.send("ok");
                 }
                 if (req.originalUrl.indexOf('/oidc') > -1) return next();
-                Logger.instanse.verbose('WebServer', 'AllowOrigin', "add for " + req.originalUrl);
+                Logger.instanse.verbose('WebServer', 'setCORSHeaders', "add for " + req.originalUrl);
                 // const origin: string = (req.headers.origin as any);
                 // if (NoderedUtil.IsNullEmpty(origin)) {
                 //     res.header('Access-Control-Allow-Origin', '*');
@@ -171,6 +172,6 @@ export class WebServer {
                 process.exit(404);
             }
         });
-        Logger.instanse.info("WebServer", "Listen", "on " + Config.baseurl());
+        Logger.instanse.info("WebServer", "Listen", "Listening on " + Config.baseurl());
     }
 }

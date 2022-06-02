@@ -847,10 +847,10 @@ export class Message {
                             msg.queuename = name + msg.queuename;
                             if (msg.queuename.length == 24) { msg.queuename += "1"; }
                         } else {
-                            Logger.instanse.info("Message", "RegisterQueue", "[SKIP] skipped force prefix for " + msg.queuename);
+                            Logger.instanse.debug("Message", "RegisterQueue", "skipped force prefix for " + msg.queuename);
                         }
                     } else {
-                        Logger.instanse.info("Message", "RegisterQueue", "[SKIP] skipped force prefix for " + msg.queuename);
+                        Logger.instanse.debug("Message", "RegisterQueue", "[SKIP] skipped force prefix for " + msg.queuename);
                     }
                 } else {
                     let name = tuser.username.split("@").join("").split(".").join("");

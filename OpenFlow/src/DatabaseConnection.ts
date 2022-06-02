@@ -176,7 +176,7 @@ export class DatabaseConnection extends events.EventEmitter {
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "connect", error);
         }
-        Logger.instanse.info("DatabaseConnection", "connect", "supports_watch: " + Config.supports_watch);
+        Logger.instanse.debug("DatabaseConnection", "connect", "supports_watch: " + Config.supports_watch);
         if (Config.supports_watch) {
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -272,7 +272,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // if (collectionname == "users") return;
             if (collectionname == "dbusage") return;
             if (collectionname == "audit") return;
-            Logger.instanse.info("DatabaseConnection", "registerGlobalWatch", "register global watch for " + collectionname + " collection");
+            Logger.instanse.verbose("DatabaseConnection", "registerGlobalWatch", "register global watch for " + collectionname + " collection");
             var stream = new clsstream();
             stream.collectionname = collectionname;
             stream.stream = this.db.collection(collectionname).watch([], { fullDocument: 'updateLookup' });
@@ -680,7 +680,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1 && !((item as any).hidemembers == true)) {
                         // when multi tenant don't allow members of common user groups to see each other
-                        Logger.instanse.info("DatabaseConnection", "Cleanmembers", "Running in multi tenant mode, skip removing permissions for " + item.name);
+                        Logger.instanse.verbose("DatabaseConnection", "Cleanmembers", "Running in multi tenant mode, skip removing permissions for " + item.name);
                     } else if (arr[0]._type === "user") {
                         let u: User = User.assign(arr[0]);
                         if (Base.hasRight(u, item._id, Rights.read)) {

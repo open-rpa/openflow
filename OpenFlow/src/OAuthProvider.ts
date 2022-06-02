@@ -380,10 +380,10 @@ export class Account {
         try {
             let role = client.defaultrole;
             const keys: string[] = Object.keys(client.rolemappings);
-            Logger.instanse.info("OAuthProvider", "AddAccount", "[" + tuser.username + "] Lookup roles for " + tuser.username);
+            Logger.instanse.debug("OAuthProvider", "AddAccount", "[" + tuser.username + "] Lookup roles for " + tuser.username);
             for (let i = 0; i < keys.length; i++) {
                 if (tuser.HasRoleName(keys[i])) {
-                    Logger.instanse.info("OAuthProvider", "AddAccount", "[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
+                    Logger.instanse.debug("OAuthProvider", "AddAccount", "[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
                     role = client.rolemappings[keys[i]];
                 }
             }

@@ -91,7 +91,7 @@ export class LoginProvider {
                 const options = {
                     publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
                 }
-                Logger.instanse.info("LoginProvider", "validateToken", "saml.validate");
+                Logger.instanse.verbose("LoginProvider", "validateToken", "saml.validate");
                 saml.validate(rawAssertion, options, async (err, profile) => {
                     try {
                         if (err) {
@@ -104,10 +104,10 @@ export class LoginProvider {
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
-                        Logger.instanse.info("LoginProvider", "validateToken", "lookup " + username);
+                        Logger.instanse.verbose("LoginProvider", "validateToken", "lookup " + username);
                         const user = await Logger.DBHelper.FindByUsername(username, null, span);
                         if (user) {
-                            Logger.instanse.info("LoginProvider", "validateToken", "succesfull");
+                            Logger.instanse.debug("LoginProvider", "validateToken", "succesfull");
                             resolve(user);
                         } else {
                             Logger.instanse.error("LoginProvider", "validateToken", new Error("Unknown user"));
@@ -170,13 +170,13 @@ export class LoginProvider {
             try {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 if (req.user) {
-                    Logger.instanse.info("LoginProvider", "/dashboardauth", "User is signed in");
+                    Logger.instanse.verbose("LoginProvider", "/dashboardauth", "User is signed in");
                     const user: TokenUser = TokenUser.From(req.user);
                     span?.setAttribute("username", user.username);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            Logger.instanse.info("LoginProvider", "/dashboardauth", "Authorized " + user.username + " for " + req.url);
+                            Logger.instanse.verbose("LoginProvider", "/dashboardauth", "Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
@@ -198,12 +198,12 @@ export class LoginProvider {
                     return;
                 }
 
-                Logger.instanse.info("LoginProvider", "/dashboardauth", "Lookup user by authentication header");
+                Logger.instanse.verbose("LoginProvider", "/dashboardauth", "Lookup user by authentication header");
                 var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
                 if (user != null) {
                     const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                     if (allowed.length > 0) {
-                        Logger.instanse.info("LoginProvider", "/dashboardauth", "User is authorized to see dashboard");
+                        Logger.instanse.debug("LoginProvider", "/dashboardauth", "User is authorized to see dashboard");
                         return res.send({
                             status: "success",
                             display_status: "Success",
@@ -228,11 +228,11 @@ export class LoginProvider {
             req.logout();
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                Logger.instanse.info("LoginProvider", "/Signout", "Redirect user to " + originalUrl);
+                Logger.instanse.debug("LoginProvider", "/Signout", "Redirect user to " + originalUrl);
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
-                Logger.instanse.info("LoginProvider", "/Signout", "Redirect user to /");
+                Logger.instanse.debug("LoginProvider", "/Signout", "Redirect user to /");
                 res.redirect("/");
             }
         });
@@ -240,11 +240,11 @@ export class LoginProvider {
             req.logout();
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                Logger.instanse.info("LoginProvider", "/PassiveSignout", "Redirect user to " + originalUrl);
+                Logger.instanse.debug("LoginProvider", "/PassiveSignout", "Redirect user to " + originalUrl);
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
-                Logger.instanse.info("LoginProvider", "/PassiveSignout", "Redirect user to /");
+                Logger.instanse.debug("LoginProvider", "/PassiveSignout", "Redirect user to /");
                 res.redirect("/Login");
             }
         });
@@ -255,11 +255,11 @@ export class LoginProvider {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
-                    Logger.instanse.info("LoginProvider", "/user", "return user " + req.user._id);
+                    Logger.instanse.debug("LoginProvider", "/user", "return user " + req.user._id);
                     const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
                     res.end(JSON.stringify(user));
                 } else {
-                    Logger.instanse.info("LoginProvider", "/user", "return nothing, not signed in");
+                    Logger.instanse.debug("LoginProvider", "/user", "return nothing, not signed in");
                     res.end(JSON.stringify({}));
                 }
                 res.end();
@@ -278,7 +278,7 @@ export class LoginProvider {
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
                     span?.setAttribute("username", user.username);
-                    Logger.instanse.info("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
+                    Logger.instanse.debug("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
                     res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
                 } else {
                     Logger.instanse.error("LoginProvider", "/jwt", "return nothing, not signed in");
@@ -305,7 +305,7 @@ export class LoginProvider {
                         Logger.instanse.error("LoginProvider", "/jwtlong", "return nothing, user is not validated yet");
                         res.end(JSON.stringify({ jwt: "" }));
                     } else {
-                        Logger.instanse.info("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
+                        Logger.instanse.debug("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
                         res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
                     }
                 } else {
@@ -331,7 +331,7 @@ export class LoginProvider {
                 const tuser: TokenUser = TokenUser.From(user);
                 span?.setAttribute("username", user.username);
                 res.setHeader("Content-Type", "application/json");
-                Logger.instanse.info("LoginProvider", "/jwt", "Recreating jwt token");
+                Logger.instanse.debug("LoginProvider", "/jwt", "Recreating jwt token");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
                 span?.recordException(error);
@@ -382,7 +382,7 @@ export class LoginProvider {
                     ping_clients_interval: Config.ping_clients_interval,
                     validlicense: Logger.License.validlicense
                 }
-                Logger.instanse.info("LoginProvider", "/config", "Return configuration settings");
+                Logger.instanse.debug("LoginProvider", "/config", "Return configuration settings");
                 res.end(JSON.stringify(res2));
             } catch (error) {
                 Logger.instanse.error("LoginProvider", "/config", error);
@@ -402,7 +402,7 @@ export class LoginProvider {
                     return res.status(500).send({ message: "Illegal key" });
                 }
                 await Logger.DBHelper.AdddRequestTokenID(key, {}, span);
-                Logger.instanse.info("LoginProvider", "/AddTokenRequest", key);
+                Logger.instanse.debug("LoginProvider", "/AddTokenRequest", key);
                 res.status(200).send({ message: "ok" });
             } catch (error) {
                 span?.recordException(error);
@@ -431,22 +431,22 @@ export class LoginProvider {
                             var user = await Logger.DBHelper.FindById(tuser._id, exists.jwt, span);
                             if (user.validated == true) {
                                 await Logger.DBHelper.RemoveRequestTokenID(key, span);
-                                Logger.instanse.info("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
+                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
                                 res.status(200).send(Object.assign(exists, { message: "ok" }));
                             } else {
-                                Logger.instanse.info("LoginProvider", "/GetTokenRequest", "USer not validated yet, for " + key);
+                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "USer not validated yet, for " + key);
                                 res.status(200).send({ message: "ok" });
                             }
                         } catch (error) {
                             Logger.instanse.error("LoginProvider", "/GetTokenRequest", error);
                         }
                     } else {
-                        Logger.instanse.info("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
+                        Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
                         res.status(200).send(Object.assign(exists, { message: "ok" }));
                         await Logger.DBHelper.RemoveRequestTokenID(key, span);
                     }
                 } else {
-                    Logger.instanse.info("LoginProvider", "/GetTokenRequest", "No jwt for " + key);
+                    Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "No jwt for " + key);
                     res.status(200).send(Object.assign(exists, { message: "ok" }));
                 }
             } catch (error) {
@@ -476,7 +476,7 @@ export class LoginProvider {
                         const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
                         var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                         if (!NoderedUtil.IsNullUndefinded(exists)) {
-                            Logger.instanse.info("LoginProvider", "/login", "adding jwt for request token " + key);
+                            Logger.instanse.debug("LoginProvider", "/login", "adding jwt for request token " + key);
                             await Logger.DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
                             res.cookie("requesttoken", "", { expires: new Date(0) });
                         }
@@ -487,18 +487,18 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(req.query.key)) {
                     if (req.user) {
                         res.cookie("originalUrl", "", { expires: new Date(0) });
-                        Logger.instanse.info("LoginProvider", "/login", "User signed in, with key " + key);
+                        Logger.instanse.debug("LoginProvider", "/login", "User signed in, with key " + key);
                         this.redirect(res, "/");
                     } else {
                         res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
-                        Logger.instanse.info("LoginProvider", "/login", "User not signed in, redirect to /login");
+                        Logger.instanse.debug("LoginProvider", "/login", "User not signed in, redirect to /login");
                         this.redirect(res, "/login");
                     }
                 }
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
-                    Logger.instanse.info("LoginProvider", "/login", "Save originalUrl as " + originalUrl);
+                    Logger.instanse.debug("LoginProvider", "/login", "Save originalUrl as " + originalUrl);
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
@@ -513,7 +513,7 @@ export class LoginProvider {
                         } else {
                             res.cookie("validateurl", "", { expires: new Date(0) });
                             res.cookie("originalUrl", "", { expires: new Date(0) });
-                            Logger.instanse.info("LoginProvider", "/login", "redirect to validateurl /#" + validateurl);
+                            Logger.instanse.debug("LoginProvider", "/login", "redirect to validateurl /#" + validateurl);
                             this.redirect(res, "/#" + validateurl);
                             return;
                         }
@@ -521,16 +521,16 @@ export class LoginProvider {
                 }
                 if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl)) {
                     if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
-                        Logger.instanse.info("LoginProvider", "/login", "user validated, redirect to " + originalUrl);
+                        Logger.instanse.debug("LoginProvider", "/login", "user validated, redirect to " + originalUrl);
                         this.redirect(res, originalUrl);
                         return;
                     } else if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
-                        Logger.instanse.info("LoginProvider", "/login", "user signed in, redirect to " + originalUrl);
+                        Logger.instanse.debug("LoginProvider", "/login", "user signed in, redirect to " + originalUrl);
                         this.redirect(res, originalUrl);
                         return;
                     }
                 }
-                Logger.instanse.info("LoginProvider", "/login", "return PassiveLogin.html");
+                Logger.instanse.debug("LoginProvider", "/login", "return PassiveLogin.html");
                 const file = path.join(__dirname, 'public', 'PassiveLogin.html');
                 res.sendFile(file);
             } catch (error) {
@@ -549,7 +549,7 @@ export class LoginProvider {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
-                    Logger.instanse.info("LoginProvider", "/validateuserform", "No validate user form set, return nothing");
+                    Logger.instanse.debug("LoginProvider", "/validateuserform", "No validate user form set, return nothing");
                     res.end(JSON.stringify({}));
                     res.end();
                     Logger.otel.endSpan(span);
@@ -557,7 +557,7 @@ export class LoginProvider {
                 }
                 var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, span);
                 if (forms.length == 1) {
-                    Logger.instanse.info("LoginProvider", "/validateuserform", "Return form " + Config.validate_user_form);
+                    Logger.instanse.debug("LoginProvider", "/validateuserform", "Return form " + Config.validate_user_form);
                     res.end(JSON.stringify(forms[0]));
                     res.end();
                     Logger.otel.endSpan(span);
@@ -605,19 +605,15 @@ export class LoginProvider {
                                 UpdateDoc.$set[key] = req.body.data[key];
                             }
                         });
-                        Logger.instanse.info("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
+                        Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
                         const user: TokenUser = Object.assign(tuser, req.body.data);
                         Logger.DBHelper.DeleteKey("user" + user._id);
-                        // req.session.passport.user.validated = true;
-                        // wewfefwewe
-
-
                         if (!(user.validated == true) && Config.validate_user_form != "") {
-                            Logger.instanse.info("LoginProvider", "/validateuserform", "User not validated, return no token for user " + user.name);
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "User not validated, return no token for user " + user.name);
                             res.end(JSON.stringify({ jwt: "" }));
                         } else {
-                            Logger.instanse.info("LoginProvider", "/validateuserform", "Return new jwt for user " + user.name);
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Return new jwt for user " + user.name);
                             res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
                         }
                     }
@@ -920,7 +916,7 @@ export class LoginProvider {
                 let key = keys[i];
                 var exists = providers.filter(x => x.id == key || (key == 'local' && x.provider == 'local'));
                 if (exists.length == 0) {
-                    Logger.instanse.info("LoginProvider", "RegisterProviders", "[loginprovider] Removing passport strategy " + key);
+                    Logger.instanse.debug("LoginProvider", "RegisterProviders", "[loginprovider] Removing passport strategy " + key);
                     passport.unuse(key);
                 }
             }
@@ -932,7 +928,7 @@ export class LoginProvider {
         }
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
-        Logger.instanse.info("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
+        Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
         const options: googleauthstrategyoptions = new googleauthstrategyoptions();
         options.clientID = consumerKey;
         options.clientSecret = consumerSecret;
@@ -961,7 +957,7 @@ export class LoginProvider {
 
     // tslint:disable-next-line: max-line-length
     static CreateSAMLStrategy(app: express.Express, key: string, cert: string, singin_url: string, issuer: string, baseurl: string): passport.Strategy {
-        Logger.instanse.info("LoginProvider", "CreateSAMLStrategy", "Adding new SAML strategy " + key);
+        Logger.instanse.debug("LoginProvider", "CreateSAMLStrategy", "Adding new SAML strategy " + key);
         const options: samlauthstrategyoptions = new samlauthstrategyoptions();
         (options as any).passReqToCallback = true;
         options.entryPoint = singin_url;
@@ -1049,7 +1045,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy({ passReqToCallback: true }, async (req: any, username: string, password: string, done: any): Promise<void> => {
-            Logger.instanse.info("LoginProvider", "CreateLocalStrategy", "Adding new local strategy");
+            Logger.instanse.debug("LoginProvider", "CreateLocalStrategy", "Adding new local strategy");
             const span: Span = Logger.otel.startSpan("LoginProvider.LocalLogin");
             try {
                 let remoteip: string = "";
@@ -1156,7 +1152,7 @@ export class LoginProvider {
                     if (!err && user) {
                         req.logIn(user, function (err: any) {
                             if (err) {
-                                Logger.instanse.info("LoginProvider", "/local", "req.logIn failed");
+                                Logger.instanse.debug("LoginProvider", "/local", "req.logIn failed");
                                 Logger.instanse.error("LoginProvider", "/local", err);
                                 return next(err);
                             }
