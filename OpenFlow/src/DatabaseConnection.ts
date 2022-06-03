@@ -145,11 +145,13 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
         this.streams = [];
         span?.addEvent("connecting to mongodb");
+        Logger.instanse.info("DatabaseConnection", "connect", "Connecting to mongodb");
         const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, autoReconnect: false, useNewUrlParser: true, useUnifiedTopology: true };
         this.cli = await MongoClient.connect(this.mongodburl, options);
+        Logger.instanse.info("DatabaseConnection", "connect", "Connected to mongodb");
         span?.addEvent("Connected to mongodb");
 
-        Logger.instanse.silly("DatabaseConnection", "connect", `Really connected to mongodb`);
+        Logger.instanse.silly("DatabaseConnection", "connect", "Really connected to mongodb");
         const errEvent = (error) => {
             this.isConnected = false;
             Logger.instanse.error("DatabaseConnection", "connect", error);
@@ -157,7 +159,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         const closeEvent = () => {
             this.isConnected = false;
-            Logger.instanse.silly("DatabaseConnection", "connect", `Disconnected from mongodb`);
+            Logger.instanse.silly("DatabaseConnection", "connect", "Disconnected from mongodb");
             this.emit("disconnected");
         }
         this.cli
@@ -189,10 +191,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
         }
-        if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
-            this.queuemonitoringpaused = false;
-            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-        }
+        // if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
+        //     this.queuemonitoringpaused = false;
+        //     this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        // }
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
@@ -949,6 +951,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (decrypt && !NoderedUtil.IsNullUndefinded(result)) result = this.decryptentity(result);
             return result;
         } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "GetDocumentVersion", error);
             span?.recordException(error);
             throw error;
         } finally {
@@ -1004,13 +1007,18 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is making the query, to limit results based on permissions
      * @returns Promise<T>
      */
-    async getbyusername<T extends Base>(username: string, jwt: string, decrypt: boolean, parent: Span): Promise<T> {
+    async getbyusername<T extends Base>(username: string, issuer: string, jwt: string, decrypt: boolean, parent: Span): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.getbyid", parent);
         try {
             if (username === null || username === undefined || username === "") { throw Error("Name cannot be null"); }
-            const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
-            const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
-            const query = { $or: [byuser, byid] };
+            // const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
+            // const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
+            const byuser = { username: username };
+            const byid = { $or: [{ "federationids.id": username, "federationids.issuer": issuer }, { "federationids": username }] };
+            let query: any = { $or: [byuser, byid] };
+            if (NoderedUtil.IsNullEmpty(issuer)) {
+                query = byuser;
+            }
             const arr: T[] = await this.query<T>({ query: query, top: 1, collectionname: "users", jwt, decrypt }, span);
             if (arr === null || arr.length === 0) { return null; }
             return arr[0];
@@ -1224,6 +1232,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 return [];
             }
         } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "MapReduce", error);
             throw error;
         }
     }
@@ -1485,6 +1494,7 @@ export class DatabaseConnection extends events.EventEmitter {
             DatabaseConnection.traversejsondecode(item);
             Logger.instanse.debug("DatabaseConnection", "InsertOne", "[" + user.username + "][" + collectionname + "] inserted " + item.name);
         } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "InsertOne", error);
             span?.recordException(error);
             throw error;
         }
@@ -1672,6 +1682,7 @@ export class DatabaseConnection extends events.EventEmitter {
             result = items;
             Logger.instanse.verbose("DatabaseConnection", "InsertMany", "[" + user.username + "][" + collectionname + "] inserted " + counter + " items in database");
         } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "InsertMany", error);
             span?.recordException(error);
             throw error;
         }
@@ -2116,14 +2127,15 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
                         // TODO: Check user has permission to this customer
                         let custusers: Role = await this.getbyid<Role>(customer.users, "users", q.jwt, true, span);
+                        if (custusers != null) custusers = Role.assign(custusers);
                         if (custusers != null && !custusers.IsMember(q.item._id)) {
                             custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
                             custusers.AddMember(q.item);
                             await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
-                            Logger.DBHelper.DeleteKey("user" + q.item._id);
+                            await Logger.DBHelper.DeleteKey("user" + q.item._id);
                         }
                     } else {
-                        Logger.DBHelper.DeleteKey("user" + q.item._id);
+                        await Logger.DBHelper.DeleteKey("user" + q.item._id);
                     }
                     await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
@@ -2135,6 +2147,7 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
             return q;
         } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "UpdateOne", error);
             span?.recordException(error);
             throw error;
         } finally {
@@ -2197,7 +2210,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             let _query: Object = {};
             if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
-                if (!user.HasRoleId("admins")) throw new Error("Access denied, no authorization to UpdateMany");
+                if (!user.HasRoleId(WellknownIds.admins)) throw new Error("Access denied, no authorization to UpdateMany");
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(q.collectionname)) {
@@ -3242,6 +3255,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
             if (!Config.ensure_indexes) return;
+            Logger.instanse.info("DatabaseConnection", "ensureindexes", "Begin validating index, this might take a while");
             span?.addEvent("Get collections");
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -3426,6 +3440,7 @@ export class DatabaseConnection extends events.EventEmitter {
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
             if (Config.supports_watch) {
+                Logger.instanse.info("DatabaseConnection", "ensureindexes", "Register global watches for each collection");
                 for (var c = 0; c < collections.length; c++) {
                     if (collections[c].type != "collection") continue;
                     if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
@@ -3452,6 +3467,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
+            Logger.instanse.info("DatabaseConnection", "ensureindexes", "completed");
         } catch (error) {
             span?.recordException(error);
         } finally {

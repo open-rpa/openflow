@@ -117,7 +117,9 @@ export class amqpwrapper extends events.EventEmitter {
             }
             if (this.conn == null) {
                 span?.addEvent("connect");
+                Logger.instanse.info("amqpwrapper", "connect", "Connecting to rabbitmq");
                 this.conn = await amqplib.connect(this.connectionstring);
+                Logger.instanse.info("amqpwrapper", "connect", "Connected to rabbitmq");
                 this.conn.on('error', (error) => {
                     if (error.code != 404) {
                         Logger.instanse.error("amqpwrapper", "connect", error);

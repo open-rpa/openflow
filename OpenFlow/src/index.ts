@@ -31,17 +31,17 @@ async function initamqp(parent: Span) {
         Logger.otel.endSpan(span);
     }
 }
-async function ValidateValidateUserForm(parent: Span) {
-    const span: Span = Logger.otel.startSubSpan("ValidateValidateUserForm", parent);
+async function ValidateUserForm(parent: Span) {
+    const span: Span = Logger.otel.startSubSpan("ValidateUserForm", parent);
     try {
         var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
         if (forms.length == 0) {
-            Logger.instanse.info("index", "ValidateValidateUserForm", "validate_user_form " + Config.validate_user_form + " does not exists!");
+            Logger.instanse.info("index", "ValidateUserForm", "validate_user_form " + Config.validate_user_form + " does not exists!");
             Config.validate_user_form = "";
         }
     } catch (error) {
         span?.recordException(error);
-        Logger.instanse.error("index", "ValidateValidateUserForm", error);
+        Logger.instanse.error("index", "ValidateUserForm", error);
         return false;
     } finally {
         Logger.otel.endSpan(span);
@@ -69,6 +69,7 @@ function doHouseKeeping() {
 async function initDatabase(parent: Span): Promise<boolean> {
     const span: Span = Logger.otel.startSubSpan("initDatabase", parent);
     try {
+        Logger.instanse.info("index", "initDatabase", "Begin validating builtin roles");
         const jwt: string = Crypt.rootToken();
         const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
@@ -400,11 +401,12 @@ var server: http.Server = null;
         OAuthProvider.configure(WebServer.app, span);
         WebSocketServer.configure(server, span);
         await QueueClient.configure(span);
-        await ValidateValidateUserForm(span);
+        await ValidateUserForm(span);
         if (!await initDatabase(span)) {
             process.exit(404);
         }
         WebServer.Listen();
+        Config.db.queuemonitoring();
 
     } catch (error) {
         span?.recordException(error);

@@ -2497,7 +2497,12 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         if ((this.model as any).federationids === null || (this.model as any).federationids === undefined) {
             (this.model as any).federationids = [];
         }
-        (this.model as any).federationids.push(this.newid);
+        var v = this.newid;
+        try {
+            v = JSON.parse(v);
+        } catch (error) {
+        }
+        (this.model as any).federationids.push(v);
     }
     removedmembers: Role[] = [];
     RemoveMember(model: Role) {

@@ -40,7 +40,7 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
         if (error.consumedPoints) {
             let username: string = "Unknown";
             if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
-            Logger.instanse.debug("Message", "handleError", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+            Logger.instanse.warn("Message", "handleError", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
             cli.devnull = true;
             cli.Close();
         }
@@ -779,7 +779,7 @@ export class Message {
                     const q = new Base(); q._type = "exchange";
                     q.name = msg.exchangename;
                     const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
-                    Logger.DBHelper.DeleteKey("exchange" + msg.exchangename);
+                    await Logger.DBHelper.DeleteKey("exchange" + msg.exchangename);
                 }
 
             }
@@ -1177,7 +1177,7 @@ export class Message {
                 msg.result = result;
             }
             const _tuser = await Crypt.verityToken(this.jwt);
-            if (Config.enable_entity_restriction && !_tuser.HasRoleId("admins")) {
+            if (Config.enable_entity_restriction && !_tuser.HasRoleId(WellknownIds.admins)) {
                 await Config.db.loadEntityRestrictions(span);
                 if (Config.db.EntityRestrictions.length > 1) {
                     const tuser = await Crypt.verityToken(this.jwt);
@@ -1603,7 +1603,14 @@ export class Message {
             span?.setAttribute("type", type);
             span?.setAttribute("clientid", cli.id);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) {
-                if (!(cli.user.validated == true) && Config.validate_user_form != "") {
+                var validated = true;
+                if (Config.validate_user_form != "") {
+                    if (!cli.user.formvalidated) validated = false;
+                }
+                if (Config.validate_emails) {
+                    if (!cli.user.emailvalidated) validated = false;
+                }
+                if (!validated) {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
                         Logger.instanse.error("Message", "DoSign", new Error(tuser.username + " failed logging in, not validated"));
                         await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
@@ -1878,7 +1885,14 @@ export class Message {
                 await handleError(cli, error);
             }
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
-                if (!(msg.user.validated == true) && Config.validate_user_form != "") {
+                var validated = true;
+                if (Config.validate_user_form != "") {
+                    if (!msg.user.formvalidated) validated = false;
+                }
+                if (Config.validate_emails) {
+                    if (!msg.user.emailvalidated) validated = false;
+                }
+                if (!validated) {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                         Logger.instanse.error("Message", "Signin", new Error(msg.user.username + " not validated"));
@@ -3976,9 +3990,7 @@ export class Message {
                     Logger.instanse.debug("Message", "_Housekeeping", c.name + " using " + this.formatBytes(dbusage));
                 }
                 var sleep = (ms) => {
-                    return new Promise(resolve => {
-                        setTimeout(resolve, ms)
-                    })
+                    return new Promise(resolve => { setTimeout(resolve, ms) })
                 }
                 await sleep(2000);
 

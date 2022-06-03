@@ -33,11 +33,11 @@ export class Config {
         Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
         Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+        Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
         Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
         Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
         Config.log_verbose = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
         Config.log_silly = Config.parseBoolean(Config.getEnv("log_silly", "false"));
-
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -81,6 +81,13 @@ export class Config {
         Config.auto_create_personal_noderedapi_group = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
         Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
         Config.validate_emails = Config.parseBoolean(Config.getEnv("validate_emails", "false"));
+        Config.smtp_service = Config.getEnv("smtp_service", "");
+        Config.smtp_from = Config.getEnv("smtp_from", "");
+        Config.smtp_user = Config.getEnv("smtp_user", "");
+        Config.smtp_pass = Config.getEnv("smtp_service", "");
+        Config.smtp_url = Config.getEnv("smtp_url", "");
+        Config.debounce_lookup = Config.parseBoolean(Config.getEnv("debounce_lookup", "false"));
+
 
         Config.tls_crt = Config.getEnv("tls_crt", "");
         Config.tls_key = Config.getEnv("tls_key", "");
@@ -212,6 +219,7 @@ export class Config {
     public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
     public static log_database: boolean = Config.parseBoolean(Config.getEnv("log_database", "false"));
     public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+    public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel", "false"));
     public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
     public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
     public static log_verbose: boolean = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
@@ -261,6 +269,12 @@ export class Config {
     public static auto_create_personal_noderedapi_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
     public static force_add_admins: boolean = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
     public static validate_emails: boolean = Config.parseBoolean(Config.getEnv("validate_emails", "false"));
+    public static smtp_service: string = Config.getEnv("smtp_service", "");
+    public static smtp_from: string = Config.getEnv("smtp_from", "");
+    public static smtp_user: string = Config.getEnv("smtp_user", "");
+    public static smtp_pass: string = Config.getEnv("smtp_pass", "");
+    public static smtp_url: string = Config.getEnv("smtp_url", "");
+    public static debounce_lookup: boolean = Config.parseBoolean(Config.getEnv("debounce_lookup", "false"));
 
     public static tls_crt: string = Config.getEnv("tls_crt", "");
     public static tls_key: string = Config.getEnv("tls_key", "");
