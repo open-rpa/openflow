@@ -620,7 +620,7 @@ export class LoginProvider {
                 } catch (error) {
                 }
                 const agent = req.headers['user-agent'];
-                const UpdateDoc: any = { "$set": { "_modified": dt }, "$push": { "opened": { dt, ip, domain, agent } } };
+                const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } } };
                 var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
             } catch (error) {
                 Logger.instanse.error("LoginProvider", "/read", error);
@@ -712,7 +712,7 @@ export class LoginProvider {
                                     } else {
                                         const code = NoderedUtil.GetUniqueIdentifier();
                                         UpdateDoc.$set["_mailcode"] = code;
-                                        this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                        this.sendEmail("validate", tuser._id, email, 'Validate email in OpenIAP flow',
                                             `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`);
                                     }
                                 } else {
@@ -743,7 +743,7 @@ export class LoginProvider {
                                 let email: string = u.username;
                                 if (u.email.indexOf("@") > -1) email = u.email;
                                 (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
-                                this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                this.sendEmail("validate", u._id, email, 'Validate email in OpenIAP flow',
                                     `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`);
 
 
@@ -802,7 +802,7 @@ export class LoginProvider {
                     const email: string = req.body.email;
                     let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
                     if (user == null) {
-                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied unknown email " + email);
+                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Received unknown email " + email);
                         return res.end(JSON.stringify({ id }));
                     }
                     const code = NoderedUtil.GetUniqueIdentifier();
@@ -815,7 +815,8 @@ export class LoginProvider {
                         Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong mail for id " + id);
                         return res.end(JSON.stringify({ id }));
                     }
-                    // this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please use the below code to reset your password\n' + code);
+                    this.sendEmail("validate", user._id, email, 'Reset password request',
+                        `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`);
 
                     return res.end(JSON.stringify({ id }));
                 }
@@ -1608,7 +1609,7 @@ export class LoginProvider {
         });
     }
 
-    static sendEmail(type: string, to: string, subject: string, text: string): Promise<string> {
+    static sendEmail(type: string, userid: string, to: string, subject: string, text: string): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             var transporter = null;
             if (!NoderedUtil.IsNullEmpty(Config.smtp_url)) {
@@ -1646,8 +1647,10 @@ export class LoginProvider {
                     item.to = to;
                     item.text = text;
                     item.name = to + " " + subject;
+                    item.userid = userid;
                     item.opened = [];
                     item.response = info.response;
+                    item.read = false;
                     Config.db.InsertOne(item, "mailhist", 1, true, Crypt.rootToken(), null);
                     resolve(info.response);
                 }

@@ -267,6 +267,10 @@
     }
     loadScript("formio.full.min.js", () => {
       this.stage = 0;
+      if (window.location.href.indexOf("forgot") != -1)
+      {
+        this.stage = 1;
+      }
       getJSON("/config", this.config.bind(this));
     });
 
@@ -332,7 +336,8 @@
             if (!$scope.$$phase) { $scope.$apply(); }
             return;
           }
-          location.reload();
+          // location.reload();
+          document.location.href="/login";
         });
     }
   }
@@ -389,10 +394,11 @@
             </form>
             <div  ng-show="ctrl.stage == 1">
               <div class="form-label-group">
-                <input type="email" name="email" id="email" ng-model="ctrl.email" class="form-control" placeholder="email"
+                <input type="text" name="email" id="email" ng-model="ctrl.email" class="form-control" placeholder="email"
                   required autofocus autocomplete='off'>
                 <label for="email" translate lib="web">email</label>
               </div>
+              If a user with this email exists, we will send an email with a code to this email.<br>
 
               <div class="form-label-group">
                 <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit"  ng-click="ctrl.ForgotPasswordSendEmail()"
@@ -406,6 +412,7 @@
               <div class="form-label-group">
                 Validation Code: <input class="form-control" ng-model="ctrl.code" type="text"><br>
               </div>
+              If a user with this email exists, you should now have received an email, please also check your smap folder<br>
 
               <div class="form-label-group">
                 <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit"  ng-click="ctrl.ForgotPasswordValidate()"

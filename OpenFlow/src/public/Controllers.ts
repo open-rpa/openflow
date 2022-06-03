@@ -1932,6 +1932,7 @@ export class LoginCtrl {
     public message: string = "";
     public domain: string = "";
     public allow_user_registration: boolean = false;
+    public forgot_pass_emails: boolean = false;
     public static $inject = [
         "$scope",
         "$location",
@@ -1949,6 +1950,7 @@ export class LoginCtrl {
         console.debug("LoginCtrl::constructor");
         this.domain = window.location.hostname;
         WebSocketClientService.getJSON("/loginproviders", async (error: any, data: any) => {
+            this.forgot_pass_emails = WebSocketClientService.forgot_pass_emails;
             this.providers = data;
             this.allow_user_registration = WebSocketClientService.allow_user_registration;
             for (let i: number = this.providers.length - 1; i >= 0; i--) {
@@ -2077,6 +2079,9 @@ export class LoginCtrl {
             console.error(error);
 
         }
+    }
+    BeginForgotPassword() {
+        document.location.href = "/login?forgot=true";
     }
     async submit(): Promise<void> {
         this.message = "";
