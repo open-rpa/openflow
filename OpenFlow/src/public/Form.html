@@ -9,7 +9,6 @@
     .card {
         margin: 0 !important;
         padding: 0 !important;
-        border: 0 !important;
     }
     .border {
     border-radius: 0.3rem !important;
@@ -96,28 +95,28 @@
     .tree__level_even {
         background-color: #f6f6f6;
     }
-    .dark-mode .bg-light {
+    .dark-mode.bg-light {
     background-color: #333 !important;
     }
     
-    .darkmode .choices__input {
+    .darkmode.choices__input {
         background-color: rgb(0 0 0 / 40%) !important;
         color: #fff !important;
     }
-    .darkmode .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    .darkmode.choices__list--dropdown .choices__item--selectable.is-highlighted {
         background-color: #232323 !important;
     }
 
-    .darkmode .choices__list--dropdown {
+    .darkmode.choices__list--dropdown {
         background-color: #333 !important;
         border: 1px solid rgb(255 255 255 / 20%) !important;
     }
 
-    .darkmode .choices[data-type*=select-one] .choices__input {
+    .darkmode.choices[data-type*=select-one] .choices__input {
         border-bottom: 1px solid #777 !important;
         background-color: #333 !important;
     }
-    .darkmode .choices__inner {
+    .darkmode.choices__inner {
         background-color: rgb(0 0 0 / 20%) !important;
         border: 1px solid rgb(255 255 255 / 20%) !important;
     }
@@ -139,6 +138,9 @@
     }
     .table th, .table td {
         padding: 0.5rem 1rem !important;
+    }
+    th {
+    font-size: 1.3rem;
     }
 </style>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
