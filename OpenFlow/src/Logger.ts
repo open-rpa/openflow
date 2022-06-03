@@ -138,6 +138,7 @@ export class Logger {
     static configure(skipotel: boolean, skiplic: boolean): void {
         Logger.DBHelper = new DBHelper();
         Logger.log_with_trace = Config.log_with_trace;
+        Logger.usecolors = Config.log_with_colors;
         // if (Config.NODE_ENV == "development") Logger.log_with_trace = true;
         if (Config.log_cache) Logger.enabled["DBHelper"] = level.Verbose;
         if (Config.log_amqp) Logger.enabled["amqpwrapper"] = level.Verbose;

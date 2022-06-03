@@ -542,7 +542,7 @@ export class LoginProvider {
                         }
                     }
                 }
-                if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl)) {
+                if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl) && tuser.validated) {
                     if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
                         Logger.instanse.debug("LoginProvider", "/login", "user validated, redirect to " + originalUrl);
                         this.redirect(res, originalUrl);
@@ -710,8 +710,10 @@ export class LoginProvider {
                                         UpdateDoc.$set["validated"] = true;
                                         tuser.validated = true;
                                     } else {
-                                        UpdateDoc.$set["_mailcode"] = NoderedUtil.GetUniqueIdentifier();
-                                        this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please use the below code to validate your email\n' + UpdateDoc.$set["_mailcode"]);
+                                        const code = NoderedUtil.GetUniqueIdentifier();
+                                        UpdateDoc.$set["_mailcode"] = code;
+                                        this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                            `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`);
                                     }
                                 } else {
                                     Logger.instanse.error("LoginProvider", "/validateuserform", tuser.name + " email is mandatory)");
@@ -741,7 +743,9 @@ export class LoginProvider {
                                 let email: string = u.username;
                                 if (u.email.indexOf("@") > -1) email = u.email;
                                 (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
-                                this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please below code to validate your email\n' + (u as any)._mailcode);
+                                this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                    `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`);
+
 
                                 const UpdateDoc: any = { "$set": {} };
                                 UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;

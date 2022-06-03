@@ -25,6 +25,7 @@ export class Config {
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
+        Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "true"));
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
@@ -211,6 +212,7 @@ export class Config {
     public static license_key: string = Config.getEnv("license_key", "");
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
+    public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
