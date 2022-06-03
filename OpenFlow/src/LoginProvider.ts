@@ -13,11 +13,14 @@ const multer = require('multer');
 // const GridFsStorage = require('multer-gridfs-storage');
 import { GridFsStorage } from "multer-gridfs-storage";
 import { GridFSBucket, ObjectID, Binary } from "mongodb";
-import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
+import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage, FederationId } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { TokenRequest } from "./TokenRequest";
+var nodemailer = require('nodemailer');
+var dns = require('dns');
+const got = require("got");
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -281,7 +284,7 @@ export class LoginProvider {
                     Logger.instanse.debug("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
                     res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
                 } else {
-                    Logger.instanse.error("LoginProvider", "/jwt", "return nothing, not signed in");
+                    Logger.instanse.verbose("LoginProvider", "/jwt", "return nothing, not signed in");
                     res.end(JSON.stringify({ jwt: "" }));
                 }
                 res.end();
@@ -301,6 +304,7 @@ export class LoginProvider {
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
                     span?.setAttribute("username", user.username);
+
                     if (!(user.validated == true) && Config.validate_user_form != "") {
                         Logger.instanse.error("LoginProvider", "/jwtlong", "return nothing, user is not validated yet");
                         res.end(JSON.stringify({ jwt: "" }));
@@ -371,6 +375,7 @@ export class LoginProvider {
                     stripe_api_key: Config.stripe_api_key,
                     getting_started_url: Config.getting_started_url,
                     validate_user_form: Config.validate_user_form,
+                    validate_emails: Config.validate_emails,
                     supports_watch: Config.supports_watch,
                     nodered_images: Config.nodered_images,
                     amqp_enabled_exchange: Config.amqp_enabled_exchange,
@@ -495,6 +500,12 @@ export class LoginProvider {
                         this.redirect(res, "/login");
                     }
                 }
+                let user: User;
+                let tuser: TokenUser;
+                if (req.user) {
+                    user = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                    tuser = TokenUser.From(user);
+                }
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
@@ -502,13 +513,10 @@ export class LoginProvider {
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    if (req.user) {
-                        const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
-                        const tuser: TokenUser = TokenUser.From(user);
+                    if (tuser != null) {
                         if (tuser.validated) {
-                            Logger.DBHelper.DeleteKey("user" + tuser._id);
+                            await Logger.DBHelper.DeleteKey("user" + tuser._id);
                         }
-                        // req.session.passport.user.validated = tuser.validated;
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
                         } else {
                             res.cookie("validateurl", "", { expires: new Date(0) });
@@ -530,9 +538,14 @@ export class LoginProvider {
                         return;
                     }
                 }
-                Logger.instanse.debug("LoginProvider", "/login", "return PassiveLogin.html");
-                const file = path.join(__dirname, 'public', 'PassiveLogin.html');
-                res.sendFile(file);
+                if (tuser != null && tuser.validated) {
+                    Logger.instanse.debug("LoginProvider", "/login", "redirect to /");
+                    this.redirect(res, "/");
+                } else {
+                    Logger.instanse.debug("LoginProvider", "/login", "return PassiveLogin.html");
+                    const file = path.join(__dirname, 'public', 'PassiveLogin.html');
+                    res.sendFile(file);
+                }
             } catch (error) {
                 span?.recordException(error);
                 Logger.instanse.error("LoginProvider", "/login", error);
@@ -576,46 +589,178 @@ export class LoginProvider {
             }
             return;
         });
+        app.get("/read/:id", async (req: any, res) => {
+            if (NoderedUtil.IsNullEmpty(req.params.id)) return res.end(JSON.stringify({ "message": "notok" }));
+            const buffer = Buffer.alloc(43)
+            buffer.write('R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=', 'base64')
+            res.writeHead(200, { 'Content-Type': 'image/gif' })
+            res.end(buffer, 'binary')
+            try {
+                const id = req.params.id;
+                const dt = new Date(new Date().toISOString());
+                const ip = LoginProvider.remoteip(req);
+                let domain = "";
+                try {
+                    domain = await LoginProvider.reverseLookup(ip);
+                } catch (error) {
+                }
+                const agent = req.headers['user-agent'];
+                const UpdateDoc: any = { "$set": { "_modified": dt }, "$push": { "opened": { dt, ip, domain, agent } } };
+                var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
+            } catch (error) {
+                Logger.instanse.error("LoginProvider", "/read", error);
+            }
+        });
         app.post("/validateuserform", async (req: any, res) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
             res.setHeader("Content-Type", "application/json");
             try {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 if (req.user) {
+                    const tuser: TokenUser = TokenUser.From(req.user);
                     if (req.body && req.body.data) {
-                        const tuser: TokenUser = TokenUser.From(req.user);
-                        delete req.body.data._id;
-                        delete req.body.data.username;
-                        delete req.body.data.disabled;
-                        delete req.body.data.type;
-                        delete req.body.data.roles;
-                        delete req.body.data.submit;
-                        req.body.data.validated = true;
-                        delete req.body.data.federationids;
-                        delete req.body.data.nodered;
-                        delete req.body.data.billing;
-                        delete req.body.data.clientagent;
-                        delete req.body.data.clientversion;
-                        const UpdateDoc: any = { "$set": {} };
-                        const keys = Object.keys(req.body.data);
-                        keys.forEach(key => {
-                            if (key.startsWith("_")) {
-                            } else if (key.indexOf("$") > -1) {
-                            } else {
-                                UpdateDoc.$set[key] = req.body.data[key];
+                        if (!tuser.formvalidated || tuser.formvalidated) {
+                            delete req.body.data._id;
+                            delete req.body.data.username;
+                            delete req.body.data.disabled;
+                            delete req.body.data.type;
+                            delete req.body.data.roles;
+                            delete req.body.data.submit;
+                            delete req.body.data.federationids;
+                            delete req.body.data.nodered;
+                            delete req.body.data.billing;
+                            delete req.body.data.clientagent;
+                            delete req.body.data.clientversion;
+                            const UpdateDoc: any = { "$set": {} };
+                            const keys = Object.keys(req.body.data);
+                            keys.forEach(key => {
+                                if (key.startsWith("_")) {
+                                } else if (key.indexOf("$") > -1) {
+                                } else {
+                                    UpdateDoc.$set[key] = req.body.data[key];
+                                }
+                            });
+                            UpdateDoc.$set["formvalidated"] = true;
+
+                            if (Config.validate_emails) {
+                                if (Config.smtp_service == "gmail") {
+                                    if (NoderedUtil.IsNullEmpty(Config.smtp_user) || NoderedUtil.IsNullEmpty(Config.smtp_pass)) {
+                                        Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing login information fot gmail");
+                                        Config.validate_emails = false;
+                                    }
+                                } else if (NoderedUtil.IsNullEmpty(Config.smtp_url)) {
+                                    Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing smtp_url");
+                                    Config.validate_emails = false;
+                                } else if (NoderedUtil.IsNullEmpty(Config.smtp_from)) {
+                                    Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing smtp_from");
+                                    Config.validate_emails = false;
+                                }
                             }
-                        });
-                        Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
-                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
-                        const user: TokenUser = Object.assign(tuser, req.body.data);
-                        Logger.DBHelper.DeleteKey("user" + user._id);
-                        if (!(user.validated == true) && Config.validate_user_form != "") {
-                            Logger.instanse.debug("LoginProvider", "/validateuserform", "User not validated, return no token for user " + user.name);
+
+                            Config.smtp_service = Config.getEnv("smtp_service", "");
+                            Config.smtp_from = Config.getEnv("smtp_from", "");
+                            Config.smtp_user = Config.getEnv("smtp_user", "");
+                            Config.smtp_pass = Config.getEnv("smtp_service", "");
+
+                            if (Config.validate_emails) {
+                                let email: string = tuser.username;
+                                if (tuser.email && tuser.email.indexOf("@") > -1) email = tuser.email;
+                                if (req.body.data.email) email = req.body.data.email;
+
+                                if (email.indexOf("@") > -1) {
+                                    if (Config.debounce_lookup) {
+                                        const response = await got.get("https://disposable.debounce.io/?email=" + email);
+                                        const body = JSON.parse(response.body);
+                                        if (body.disposable == true) {
+                                            throw new Error("Please use a valid and non temporary email address");
+                                        }
+                                    }
+                                }
+
+                                if (email.indexOf("@") > -1) {
+
+                                    // https://disposable.debounce.io/?email=info@example.com
+                                    email = email.toLowerCase();
+                                    var exists = await Config.db.query<User>({ query: { "_id": { "$ne": tuser._id }, "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                                    if (exists.length > 0) {
+                                        Logger.instanse.error("LoginProvider", "/validateuserform", tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")")
+                                        email = "";
+                                        delete UpdateDoc.$set["email"];
+                                        UpdateDoc.$set["formvalidated"] = false;
+                                        throw new Error("email already in use");
+                                    }
+                                }
+                                if (email.indexOf("@") > -1) {
+                                    if (tuser.emailvalidated == true) {
+                                        UpdateDoc.$set["validated"] = true;
+                                        tuser.validated = true;
+                                    } else {
+                                        UpdateDoc.$set["_mailcode"] = NoderedUtil.GetUniqueIdentifier();
+                                        this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please use the below code to validate your email\n' + UpdateDoc.$set["_mailcode"]);
+                                    }
+                                } else {
+                                    Logger.instanse.error("LoginProvider", "/validateuserform", tuser.name + " email is mandatory)");
+                                    throw new Error("email is mandatory.");
+                                }
+                            } else {
+                                UpdateDoc.$set["validated"] = true;
+                                tuser.validated = true;
+                            }
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
+                            var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                            await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                            // await new Promise(resolve => { setTimeout(resolve, 1000) })
+                        }
+                        if (!(tuser.validated == true) && Config.validate_user_form != "") {
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "User not validated, return no token for user " + tuser.name);
                             res.end(JSON.stringify({ jwt: "" }));
                         } else {
-                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Return new jwt for user " + user.name);
-                            res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Return new jwt for user " + tuser.name);
+                            res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
                         }
+                    } else if (req.body) {
+                        if (req.body.resend) {
+                            var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                            if (exists.length > 0) {
+                                var u: User = exists[0];
+                                let email: string = u.username;
+                                if (u.email.indexOf("@") > -1) email = u.email;
+                                (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
+                                this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please below code to validate your email\n' + (u as any)._mailcode);
+
+                                const UpdateDoc: any = { "$set": {} };
+                                UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
+                                var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                                await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                                // await new Promise(resolve => { setTimeout(resolve, 1000) })
+
+                                res.end(JSON.stringify({ jwt: "" }));
+                            } else {
+                                res.end(JSON.stringify({ jwt: "" }));
+                            }
+                        } else if (req.body.code) {
+                            var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                            if (exists.length > 0) {
+                                var u: User = exists[0];
+                                if ((u as any)._mailcode == req.body.code) {
+                                    const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                                    UpdateDoc.$unset["_mailcode"] = "";
+                                    UpdateDoc.$set["validated"] = true;
+                                    UpdateDoc.$set["emailvalidated"] = true;
+                                    var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                                    await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                                    // await new Promise(resolve => { setTimeout(resolve, 1000) })
+                                    res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
+                                    return;
+                                } else {
+                                    throw new Error("Wrong validation code for " + tuser.name)
+                                }
+                            }
+                            res.end(JSON.stringify({ jwt: "" }));
+                        } else {
+                            res.end(JSON.stringify({ jwt: "" }));
+                        }
+
                     }
                 } else {
                     Logger.instanse.error("LoginProvider", "/validateuserform", "User no longer signed in");
@@ -1205,11 +1350,12 @@ export class LoginProvider {
     static async samlverify(req: any, profile: any, done: IVerifyFunction): Promise<void> {
         const span: Span = Logger.otel.startSpan("LoginProvider.samlverify");
         try {
+            const issuer = req.baseUrl.replace("/", "");
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
             Logger.instanse.debug("LoginProvider", "samlverify", username);
-            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, span);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             let remoteip: string = "";
             if (!NoderedUtil.IsNullUndefinded(req)) {
                 remoteip = LoginProvider.remoteip(req);
@@ -1233,16 +1379,24 @@ export class LoginProvider {
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     const jwt: string = Crypt.rootToken();
+                    _user.federationids = [];
+                    _user.federationids.push(new FederationId(username, issuer));
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             } else {
-                if (!NoderedUtil.IsNullUndefinded(_user)) {
-                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
-                        (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
-                    }
-                    const jwt: string = Crypt.rootToken();
-                    await Logger.DBHelper.Save(_user, jwt, span);
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
+                var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
+                if (exists.length == 0) {
+                    _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
+                    _user.federationids.push(new FederationId(username, issuer));
+                }
+                _user.emailvalidated = true;
+                if (_user.formvalidated) _user.validated = true;
+                const jwt: string = Crypt.rootToken();
+                await Logger.DBHelper.Save(_user, jwt, span);
+                await Logger.DBHelper.DeleteKey("user" + _user._id);
             }
 
             if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -1292,11 +1446,12 @@ export class LoginProvider {
                 remoteip = LoginProvider.remoteip(req);
             }
             span?.setAttribute("remoteip", remoteip);
+            const issuer = req.baseUrl.replace("/", "");
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
             Logger.instanse.debug("LoginProvider", "googleverify", username);
-            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, span);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
                 if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
@@ -1307,7 +1462,21 @@ export class LoginProvider {
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                    _user.federationids = [];
+                    _user.federationids.push(new FederationId(username, issuer));
+                    _user.emailvalidated = true;
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
+                }
+            } else {
+                var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
+                if (exists.length == 0) {
+                    _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
+                    _user.federationids.push(new FederationId(username, issuer));
+                    _user.emailvalidated = true;
+                    if (_user.formvalidated) _user.validated = true;
+                    const jwt: string = Crypt.rootToken();
+                    await Logger.DBHelper.Save(_user, jwt, span);
+                    await Logger.DBHelper.DeleteKey("user" + _user._id);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1328,6 +1497,65 @@ export class LoginProvider {
         }
         Logger.otel.endSpan(span);
     }
+    static reverseLookup(ip) {
+        return new Promise<string>((resolve, reject) => {
+            dns.reverse(ip, function (err, domains) {
+                if (err != null) return reject(err);
+                domains.forEach(function (domain) {
+                    dns.lookup(domain, function (err, address, family) {
+                        if (err != null) return reject(err);
+                        resolve(domain);
+                    });
+                });
+            });
+        });
+    }
 
+    static sendEmail(type: string, to: string, subject: string, text: string): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            var transporter = null;
+            if (!NoderedUtil.IsNullEmpty(Config.smtp_url)) {
+                transporter = nodemailer.createTransport(Config.smtp_url);
+            } else {
+                transporter = nodemailer.createTransport({
+                    service: Config.smtp_service,
+                    auth: {
+                        user: Config.smtp_user,
+                        pass: Config.smtp_pass
+                    }
+                });
+            }
+            let id = NoderedUtil.GetUniqueIdentifier();
+            let imgurl = Config.baseurl() + "read/" + id;
+            text = text.split('\n').join('<br/>\n');
+            let html = text + `<img src="${imgurl}" border="0" width="1" height="1">`
+            let from = Config.smtp_from;
 
+            transporter.sendMail({
+                from,
+                to,
+                subject,
+                html
+            }, function (error, info) {
+                if (error) {
+                    Logger.instanse.info("LoginProvider", "sendEmail", error);
+                    reject(error);
+                } else {
+                    Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
+                    var item: any = new Base();
+                    item._type = type;
+                    item.id = id;
+                    item.from = from;
+                    item.to = to;
+                    item.text = text;
+                    item.name = to + " " + subject;
+                    item.opened = [];
+                    item.response = info.response;
+                    Config.db.InsertOne(item, "mailhist", 1, true, Crypt.rootToken(), null);
+                    resolve(info.response);
+                }
+            });
+
+        });
+    }
 }

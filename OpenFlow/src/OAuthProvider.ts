@@ -234,7 +234,15 @@ export class OAuthProvider {
 
             instance.app.use('/oidclogin', async (req, res, next) => {
                 if (req && (req as any).user) {
-                    if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && (req as any).user.validated != true) {
+
+                    var validated = true;
+                    if (Config.validate_user_form != "") {
+                        if (!(req as any).user.formvalidated) validated = false;
+                    }
+                    if (Config.validate_emails) {
+                        if (!(req as any).user.emailvalidated) validated = false;
+                    }
+                    if (!validated) {
                         res.cookie("originalUrl", "/oidclogin", { maxAge: 900000, httpOnly: true });
                         res.redirect("/login");
                         return next();
