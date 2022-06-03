@@ -108,7 +108,7 @@
     "formBuilder": "^3.7.2",
     "gulp": "^4.0.2",
     "gulp-replace": "^1.1.3",
-    "gulp-sass": "^5.0.0",
+    "gulp-sass": "^5.1.0",
     "gulp-shell": "^0.8.0",
     "gulp-typescript": "^6.0.0-alpha.1",
     "merge-stream": "^2.0.0",
