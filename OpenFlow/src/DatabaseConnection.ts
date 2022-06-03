@@ -1013,12 +1013,14 @@ export class DatabaseConnection extends events.EventEmitter {
             if (username === null || username === undefined || username === "") { throw Error("Name cannot be null"); }
             // const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
             // const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
+            const byemail = { email: username };
             const byuser = { username: username };
             const byid = { $or: [{ "federationids.id": username, "federationids.issuer": issuer }, { "federationids": username }] };
-            let query: any = { $or: [byuser, byid] };
+            let query: any = { $or: [byuser, byid, byemail] };
             if (NoderedUtil.IsNullEmpty(issuer)) {
-                query = byuser;
+                query = { $or: [byuser, byemail] };
             }
+            query._type = "user";
             const arr: T[] = await this.query<T>({ query: query, top: 1, collectionname: "users", jwt, decrypt }, span);
             if (arr === null || arr.length === 0) { return null; }
             return arr[0];

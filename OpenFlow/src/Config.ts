@@ -81,6 +81,7 @@ export class Config {
         Config.auto_create_personal_noderedapi_group = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
         Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
         Config.validate_emails = Config.parseBoolean(Config.getEnv("validate_emails", "false"));
+        Config.forgot_pass_emails = Config.parseBoolean(Config.getEnv("forgot_pass_emails", "false"));
         Config.smtp_service = Config.getEnv("smtp_service", "");
         Config.smtp_from = Config.getEnv("smtp_from", "");
         Config.smtp_user = Config.getEnv("smtp_user", "");
@@ -269,6 +270,7 @@ export class Config {
     public static auto_create_personal_noderedapi_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
     public static force_add_admins: boolean = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
     public static validate_emails: boolean = Config.parseBoolean(Config.getEnv("validate_emails", "false"));
+    public static forgot_pass_emails: boolean = Config.parseBoolean(Config.getEnv("forgot_pass_emails", "false"));
     public static smtp_service: string = Config.getEnv("smtp_service", "");
     public static smtp_from: string = Config.getEnv("smtp_from", "");
     public static smtp_user: string = Config.getEnv("smtp_user", "");

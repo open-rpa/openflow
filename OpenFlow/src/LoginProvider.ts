@@ -260,6 +260,13 @@ export class LoginProvider {
                 if (req.user) {
                     Logger.instanse.debug("LoginProvider", "/user", "return user " + req.user._id);
                     const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                    user.validated = true;
+                    if (Config.validate_user_form != "") {
+                        if (!user.formvalidated) user.validated = false;
+                    }
+                    if (Config.validate_emails) {
+                        if (!user.emailvalidated) user.validated = false;
+                    }
                     res.end(JSON.stringify(user));
                 } else {
                     Logger.instanse.debug("LoginProvider", "/user", "return nothing, not signed in");
@@ -376,6 +383,7 @@ export class LoginProvider {
                     getting_started_url: Config.getting_started_url,
                     validate_user_form: Config.validate_user_form,
                     validate_emails: Config.validate_emails,
+                    forgot_pass_emails: Config.forgot_pass_emails,
                     supports_watch: Config.supports_watch,
                     nodered_images: Config.nodered_images,
                     amqp_enabled_exchange: Config.amqp_enabled_exchange,
@@ -504,6 +512,13 @@ export class LoginProvider {
                 let tuser: TokenUser;
                 if (req.user) {
                     user = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                    user.validated = true;
+                    if (Config.validate_user_form != "") {
+                        if (!user.formvalidated) user.validated = false;
+                    }
+                    if (Config.validate_emails) {
+                        if (!user.emailvalidated) user.validated = false;
+                    }
                     tuser = TokenUser.From(user);
                 }
                 const originalUrl: any = req.cookies.originalUrl;
@@ -687,7 +702,7 @@ export class LoginProvider {
                                         email = "";
                                         delete UpdateDoc.$set["email"];
                                         UpdateDoc.$set["formvalidated"] = false;
-                                        throw new Error("email already in use");
+                                        throw new Error("email already in use by another user");
                                     }
                                 }
                                 if (email.indexOf("@") > -1) {
@@ -774,7 +789,85 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
             res.end();
         });
+        app.post("/forgotpassword", async (req: any, res) => {
+            const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
+            res.setHeader("Content-Type", "application/json");
+            try {
+                if (req.body && req.body.email) {
+                    const id = NoderedUtil.GetUniqueIdentifier();
+                    const email: string = req.body.email;
+                    let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
+                    if (user == null) {
+                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied unknown email " + email);
+                        return res.end(JSON.stringify({ id }));
+                    }
+                    const code = NoderedUtil.GetUniqueIdentifier();
 
+                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                        Logger.instanse.info("LoginProvider", "/forgotpassword", `Add forgotpass if ${id} with code ${code} for ${email}`);
+                        return { id, email, code };
+                    });
+                    if (item.id != id || item.email != email || item.code != code) {
+                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong mail for id " + id);
+                        return res.end(JSON.stringify({ id }));
+                    }
+                    // this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please use the below code to reset your password\n' + code);
+
+                    return res.end(JSON.stringify({ id }));
+                }
+                else if (req.body && req.body.code && req.body.id && !req.body.password) {
+                    const code: string = req.body.code.trim();
+                    const id: string = req.body.id;
+
+                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                        return null;
+                    });
+                    if (item == null || item.id != id || item.code != code) {
+                        if (item == null) {
+                            Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied unknown id " + id);
+                        } else {
+                            Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong code for id " + id);
+                        }
+                        throw new Error("Recevied wrong code for id " + id);
+                    }
+                    return res.end(JSON.stringify({ id }));
+                }
+                else if (req.body && req.body.code && req.body.id && req.body.password) {
+                    const code: string = req.body.code.trim();
+                    const id: string = req.body.id;
+                    const password: string = req.body.password;
+
+                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                        Logger.instanse.debug("DBHelper", "FindById", "Add forgotpass : " + id);
+                        return null;
+                    });
+                    if (item == null || item.id != id || item.code != code) {
+                        Logger.instanse.error("LoginProvider", "forgotpassword", "Recevied wrong code for id " + id);
+                        throw new Error("Recevied wrong code for id " + id);
+                    }
+                    let user = await Config.db.getbyusername<User>(item.email, null, Crypt.rootToken(), true, span);
+                    (user as any).newpassword = password;
+                    user.emailvalidated = true;
+                    user.validated = true;
+                    if (Config.validate_user_form != "") {
+                        if (!user.formvalidated) user.validated = false;
+                    }
+                    if (Config.validate_emails) {
+                        if (!user.emailvalidated) user.validated = false;
+                    }
+                    await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
+                    await Logger.DBHelper.DeleteKey("forgotpass" + id);
+                    return res.end(JSON.stringify({ id }));
+                }
+                res.end(JSON.stringify({}));
+            } catch (error) {
+                span?.recordException(error);
+                Logger.instanse.error("LoginProvider", "/validateuserform", error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            }
+            Logger.otel.endSpan(span);
+            res.end();
+        });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
             try {
