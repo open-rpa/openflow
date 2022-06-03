@@ -2497,7 +2497,12 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         if ((this.model as any).federationids === null || (this.model as any).federationids === undefined) {
             (this.model as any).federationids = [];
         }
-        (this.model as any).federationids.push(this.newid);
+        var v = this.newid;
+        try {
+            v = JSON.parse(v);
+        } catch (error) {
+        }
+        (this.model as any).federationids.push(v);
     }
     removedmembers: Role[] = [];
     RemoveMember(model: Role) {
@@ -7112,6 +7117,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
     public workflows: Base[] = [];
     public users: Base[] = [];
     public amqpqueues: Base[] = [];
+    public workitemqueues: Base[] = [];
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7136,6 +7142,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     this.model.maxretries = 3;
                     this.model.retrydelay = 0;
                     this.model.initialdelay = 0;
+                    this.processdata();
                 }
             } catch (error) {
                 console.error(error);
@@ -7153,13 +7160,17 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         console.log("queryas", queryas)
         this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, top: 500, queryas });
         this.workflows.forEach((e: any) => { e.display = e.projectandname });
-        this.workflows.unshift({ "_id": "", "name": "", "display": "(no workflow)" } as any);
+        this.workflows.unshift({ "_id": "", "name": "", "projectandname": "", "display": "(no workflow)" } as any);
         this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, projection: { "name": 1 }, top: 500 });
         this.users.forEach((e: any) => { e.display = e.name });
         this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
         this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, projection: { "name": 1 }, top: 500 });
         this.amqpqueues.forEach((e: any) => { e.display = e.name });
         this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
+        this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 }, top: 500 });
+        this.workitemqueues = this.workitemqueues.filter(x => x._id != this.id);
+        this.workitemqueues.forEach((e: any) => { e.display = e.name });
+        this.workitemqueues.unshift({ "_id": "", "name": "", "display": "(no workitem queue)" } as any);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async processdata() {
@@ -7168,6 +7179,8 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         if (NoderedUtil.IsNullEmpty(this.model.workflowid)) this.model.workflowid = "";
         if (NoderedUtil.IsNullEmpty(this.model.robotqueue)) this.model.robotqueue = "";
         if (NoderedUtil.IsNullEmpty(this.model.amqpqueue)) this.model.amqpqueue = "";
+        if (NoderedUtil.IsNullEmpty(this.model.success_wiqid)) this.model.success_wiqid = "";
+        if (NoderedUtil.IsNullEmpty(this.model.failed_wiqid)) this.model.failed_wiqid = "";
         await this.loadselects();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -7188,6 +7201,10 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.maxretries = model.maxretries;
                     q.retrydelay = model.retrydelay;
                     q.initialdelay = model.initialdelay;
+                    q.success_wiq = model.success_wiq;
+                    q.success_wiqid = model.success_wiqid;
+                    q.failed_wiq = model.failed_wiq;
+                    q.failed_wiqid = model.failed_wiqid;
                     _msg.command = 'addworkitemqueue';
                     _msg.data = JSON.stringify(q);
                     const result: AddWorkitemQueueMessage = await WebSocketClient.instance.Send<AddWorkitemQueueMessage>(_msg, 1);
@@ -7203,6 +7220,10 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.maxretries = model.maxretries;
                     q.retrydelay = model.retrydelay;
                     q.initialdelay = model.initialdelay;
+                    q.success_wiq = model.success_wiq;
+                    q.success_wiqid = model.success_wiqid;
+                    q.failed_wiq = model.failed_wiq;
+                    q.failed_wiqid = model.failed_wiqid;
                     _msg.command = 'updateworkitemqueue';
                     _msg.data = JSON.stringify(q);
                     const result: UpdateWorkitemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkitemQueueMessage>(_msg, 1);

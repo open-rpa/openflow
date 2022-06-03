@@ -5,7 +5,7 @@ import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import events = require("events");
+import * as events from "events";
 import { Message } from "./Messages/Message";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
@@ -117,14 +117,16 @@ export class amqpwrapper extends events.EventEmitter {
             }
             if (this.conn == null) {
                 span?.addEvent("connect");
+                Logger.instanse.info("amqpwrapper", "connect", "Connecting to rabbitmq");
                 this.conn = await amqplib.connect(this.connectionstring);
+                Logger.instanse.info("amqpwrapper", "connect", "Connected to rabbitmq");
                 this.conn.on('error', (error) => {
                     if (error.code != 404) {
-                        Logger.instanse.error(error);
+                        Logger.instanse.error("amqpwrapper", "connect", error);
                     }
                 });
                 this.conn.on("close", () => {
-                    if (Config.log_amqp) Logger.instanse.info("[AMQP] reconnecting");
+                    Logger.instanse.info("amqpwrapper", "connect", "econnecting");
                     this.conn = null;
                     if (this.timeout != null) {
                         clearTimeout(this.timeout);
@@ -139,13 +141,13 @@ export class amqpwrapper extends events.EventEmitter {
                 await this.AddReplyQueue(span);
                 this.channel.on('error', (error) => {
                     if (error.code != 404) {
-                        Logger.instanse.error(error);
+                        Logger.instanse.error("amqpwrapper", "connect", error);
                     }
                 });
             } catch (error) {
-                Logger.instanse.error(error);
+                Logger.instanse.error("amqpwrapper", "connect", error);
                 if (Config.NODE_ENV == "production") {
-                    Logger.instanse.error("Exit, when we cannot create reply queue");
+                    Logger.instanse.error("amqpwrapper", "connect", "Exit, when we cannot create reply queue");
                     process.exit(405);
                 }
             }
@@ -153,9 +155,9 @@ export class amqpwrapper extends events.EventEmitter {
                 await this.Adddlx(span);
                 await this.AddOFExchange(span);
             } catch (error) {
-                Logger.instanse.error(error);
+                Logger.instanse.error("amqpwrapper", "connect", error);
                 if (Config.NODE_ENV == "production") {
-                    Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange");
+                    Logger.instanse.error("amqpwrapper", "connect", "Exit, when we cannot create dead letter exchange and/or Openflow exchange");
                     process.exit(406);
                 }
             }
@@ -164,7 +166,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.connected = true;
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("amqpwrapper", "connect", error);
             if (this.timeout != null) {
                 clearTimeout(this.timeout);
                 this.timeout = null;
@@ -172,7 +174,7 @@ export class amqpwrapper extends events.EventEmitter {
             if (error.message.startsWith("Expected amqp: or amqps:")) {
                 throw error;
             }
-            console.error(error);
+            Logger.instanse.error("amqpwrapper", "connect", error);
             this.timeout = setTimeout(this.connect.bind(this), 1000);
         } finally {
             Logger.otel.endSpan(span);
@@ -216,7 +218,7 @@ export class amqpwrapper extends events.EventEmitter {
                         }
                     }
                 } catch (error) {
-                    console.error(error);
+                    Logger.instanse.error("amqpwrapper", "AddReplyQueue", error);
                 }
                 done();
             }, undefined);
@@ -248,30 +250,19 @@ export class amqpwrapper extends events.EventEmitter {
                         } else {
                             msg.command = "timeout";
                         }
-                        if (Config.log_amqp) Logger.instanse.info("[AMQP][" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey)
+                        Logger.instanse.debug("amqpwrapper", "AddReplyQueue", "[" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey)
                         await amqpwrapper.Instance().send("", replyTo, msg, 20000, correlationId, "");
                     }
                 } catch (error) {
                 }
             })
             this.channel.on('close', async () => {
-                Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange");
+                Logger.instanse.error("amqpwrapper", "AddReplyQueue", "Exit, when we cannot create dead letter exchange and/or Openflow exchange");
                 process.exit(406);
-                // this.connected = false;
-                // try {
-                //     if (this.conn != null) await this.conn.close();
-                // } catch (error) {
-                // }
-                // this.channel = null;
-                // if (this.timeout != null) {
-                //     clearTimeout(this.timeout);
-                //     this.timeout = null;
-                // }
-                // this.timeout = setTimeout(this.connect.bind(this), 1000);
             });
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("amqpwrapper", "AddReplyQueue", error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -282,13 +273,13 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
-                if (Config.log_amqp) Logger.instanse.info("[AMQP][" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                Logger.instanse.debug("amqpwrapper", "AddReplyQueue", "[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
                         await this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
                     } catch (error) {
-                        Logger.instanse.error(error);
+                        Logger.instanse.error("amqpwrapper", "AddReplyQueue", error);
                     }
                     if (this.channel != null) {
                         if (exc[0].queue) await this.channel.cancel(exc[0].queue.consumerTag);
@@ -329,7 +320,7 @@ export class amqpwrapper extends events.EventEmitter {
                     this.OnMessage(q, msg, q.callback);
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
-                if (Config.log_amqp) Logger.instanse.info("[AMQP][" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag);
+                Logger.instanse.debug("amqpwrapper", "AddQueueConsumer", "[" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag);
             } else {
                 throw new Error("Failed asserting Queue " + queue);
             }
@@ -360,7 +351,7 @@ export class amqpwrapper extends events.EventEmitter {
                 q.queue = await this.AddQueueConsumer(user, "", AssertQueueOptions, jwt, q.callback, span);
                 if (q.queue) {
                     this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-                    if (Config.log_amqp) Logger.instanse.info("[AMQP][" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+                    Logger.instanse.debug("amqpwrapper", "AddExchangeConsumer", "[" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
                 }
             }
             this.exchanges.push(q);
@@ -404,12 +395,12 @@ export class amqpwrapper extends events.EventEmitter {
                     }
                     this.channel.ack(msg);
                 } catch (error) {
-                    console.error(error);
+                    Logger.instanse.error("amqpwrapper", "OnMessage", error);
                 }
             }, (result) => {
             });
         } catch (error) {
-            console.error(error);
+            Logger.instanse.error("amqpwrapper", "OnMessage", error);
         }
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<string> {
@@ -429,7 +420,7 @@ export class amqpwrapper extends events.EventEmitter {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-        if (Config.log_amqp) Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
+        Logger.instanse.silly("amqpwrapper", "sendWithReplyTo", "send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
@@ -463,7 +454,7 @@ export class amqpwrapper extends events.EventEmitter {
             data = JSON.stringify(data);
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
-        if (Config.log_amqp) Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange);
+        Logger.instanse.silly("amqpwrapper", "send", "send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
@@ -503,15 +494,15 @@ export class amqpwrapper extends events.EventEmitter {
                 }
                 if (ismine) {
                     // Resend message, this time to the reply queue for the correct node (replyTo)
-                    if (Config.log_amqp) Logger.instanse.warn("[DLX][" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
+                    Logger.instanse.warn("amqpwrapper", "Adddlx", "[" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
                     // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
                     await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
                 } else {
-                    if (Config.log_amqp) Logger.instanse.info("[DLX][" + options.exchange + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
+                    Logger.instanse.debug("amqpwrapper", "Adddlx", "[" + options.exchange + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
                 }
             } catch (error) {
-                console.error("Failed sending deadletter message to " + options.replyTo);
-                console.error(error);
+                Logger.instanse.error("amqpwrapper", "Adddlx", "Failed sending deadletter message to " + options.replyTo);
+                Logger.instanse.error("amqpwrapper", "Adddlx", error);
             }
             done();
         }, parent);
@@ -535,7 +526,7 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
             if (typeof msg !== "string") {
-                if (Config.log_amqp) Logger.instanse.info("[OF][" + options.exchange + "] Received command " + msg.command);
+                Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] Received command " + msg.command);
                 switch (msg.command) {
                     case "clearcache":
                         Logger.DBHelper.clearCache("amqp broadcast");
@@ -543,7 +534,7 @@ export class amqpwrapper extends events.EventEmitter {
                     case "housekeeping":
                         // if (this.IsMyconsumerTag(options.consumerTag)) break;
                         if (msg.lastrun) {
-                            Logger.instanse.info("[OF][" + options.exchange + "] " + msg.lastrun)
+                            Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] " + msg.lastrun)
                             Message.lastHouseKeeping = new Date(msg.lastrun);
                         } else {
                             if (Message.lastHouseKeeping != null) {
@@ -558,17 +549,17 @@ export class amqpwrapper extends events.EventEmitter {
                             await Logger.License.shutdown()
                             // await Auth.shutdown();
                         } catch (error) {
-                            console.error(error);
+                            Logger.instanse.error("amqpwrapper", "AddOFExchange", error);
                         }
                         process.exit(404);
                         // process.kill(process.pid, "SIGINT");
                         break;
                     default:
-                        console.error("[OF] Received unknown command: " + msg.command);
+                        Logger.instanse.error("amqpwrapper", "AddOFExchange", new Error("[OF] Received unknown command: " + msg.command));
                         break;
                 }
             } else {
-                if (Config.log_amqp) Logger.instanse.verbose("[OF] Received string message: " + JSON.stringify(msg));
+                Logger.instanse.verbose("amqpwrapper", "AddOFExchange", "Received string message: " + JSON.stringify(msg));
             }
             done();
         }, parent);

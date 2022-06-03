@@ -2,16 +2,17 @@
 import * as fs from "fs";
 import { Logger } from './Logger';
 Logger.configure(true, true);
+Logger.enabled["cli-lic"] = 7
 import { Config } from "./Config";
 
 import { NoderedUtil } from "@openiap/openflow-api";
 import { i_license_data } from "./commoninterfaces";
 function printusage() {
-    console.log("openflow-cli [--months 3][--email email] domain");
-    console.log("   --months - Set number of months, default 3");
-    console.log("   --email - email to use in license");
-    console.log("   domain - Generate ofid and create v2 license");
-    console.log("Requires private key to be in ./config/private_key.pem");
+    Logger.instanse.info("cli-lic", "", "openflow-cli [--months 3][--email email] domain");
+    Logger.instanse.info("cli-lic", "", "   --months - Set number of months, default 3");
+    Logger.instanse.info("cli-lic", "", "   --email - email to use in license");
+    Logger.instanse.info("cli-lic", "", "   domain - Generate ofid and create v2 license");
+    Logger.instanse.info("cli-lic", "", "Requires private key to be in ./config/private_key.pem");
 }
 const optionDefinitions = [
     { name: 'email', type: String },
@@ -50,11 +51,11 @@ try {
         months = parseInt(options.months);
     }
     if (options._unknown) {
-        console.log("Unknown param " + options._unknown)
+        Logger.instanse.info("cli-lic", "", "Unknown param " + options._unknown)
         process.exit();
     }
     if (!fs.existsSync('config/private_key.pem')) {
-        console.log("no such file or directory, open config/private_key.pem");
+        Logger.instanse.info("cli-lic", "", "no such file or directory, open config/private_key.pem");
         process.exit();
     }
     const data: i_license_data = {} as any;
@@ -74,12 +75,10 @@ try {
         template,
         data: data
     });
-    console.log(Buffer.from(licenseFileContent).toString('base64'));
-    // console.log("---------------------------------------------------");
-    // console.log(licenseFileContent);
+    Logger.instanse.info("cli-lic", "", Buffer.from(licenseFileContent).toString('base64'));
     process.exit();
 } catch (error) {
-    console.error(error.message ? error.message : error);
+    Logger.instanse.error("cli-lic", "", error.message ? error.message : error);
     printusage();
     process.exit();
 }

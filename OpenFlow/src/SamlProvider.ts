@@ -85,7 +85,7 @@ export class SamlProvider {
                     const remoteip = SamlProvider.remoteip(req);
                     span?.setAttribute("remoteip", remoteip);
                     Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "samlverify", "unknown", span).catch((e) => {
-                        Logger.instanse.error(e);
+                        Logger.instanse.error("SamlProvider", "getUserFromRequest", e);
                     });
                 } catch (error) {
                     span?.recordException(error);
@@ -110,7 +110,7 @@ export class SamlProvider {
                     } catch (error) {
                         res.body(error.message ? error.message : error);
                         res.end();
-                        console.error(error.message ? error.message : error);
+                        Logger.instanse.error("SamlProvider", "/issue", error);
                     }
                 } else {
                     // continue with issuing token using samlp

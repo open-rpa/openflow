@@ -37,7 +37,12 @@ RED.nodes.registerType('iworkitemqueue-config', {
   <input type="text" id="node-input-config">
 </div>
 <div class="form-row">
-  <label><i class="fa fa-tag"></i> Workitems Payload</label>
+  <label><i class="fa fa-tag"></i> Item Name</label>
+  <input type="hidden" id="node-input-topictype">
+  <input style="width:70%" type="text" id="node-input-topic" placeholder="Workitem name">
+</div>
+<div class="form-row">
+  <label><i class="fa fa-tag"></i> Payload</label>
   <input type="hidden" id="node-input-payloadtype">
   <input style="width:70%" type="text" id="node-input-payload" placeholder="Workitem payload">
 </div>
@@ -57,9 +62,14 @@ RED.nodes.registerType('iworkitemqueue-config', {
   <input style="width:70%" type="text" id="node-input-files" placeholder="List of files to add to the worktiem">
 </div>
 <div class="form-row">
-  <label><i class="fa fa-tag"></i> Workitem Name</label>
-  <input type="hidden" id="node-input-topictype">
-  <input style="width:70%" type="text" id="node-input-topic" placeholder="Workitem name">
+  <label>Success Queue</label>
+  <input type="hidden" id="node-input-success_wiqtype">
+  <input style="width:70%" type="text" id="node-input-success_wiq" placeholder="On success add to this queue">
+</div>
+<div class="form-row">
+  <label>Failed Queue</label>
+  <input type="hidden" id="node-input-failed_wiqtype">
+  <input style="width:70%" type="text" id="node-input-failed_wiq" placeholder="On failure add to this queue">
 </div>
 <div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
@@ -85,7 +95,11 @@ RED.nodes.registerType('workitem addworkitem', {
     priority: { value: "3", validate: validate("prioritytype") },
     prioritytype: { value: "" },
     files: { value: "files", validate: validate("filestype") },
-    filestype: { value: "msg" }
+    filestype: { value: "msg" },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiqtype: { value: "" },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiqtype: { value: "" },
   },
   inputs: 1,
   outputs: 1,
@@ -127,6 +141,18 @@ RED.nodes.registerType('workitem addworkitem', {
       typeField: $("#node-input-filestype"),
       types: ['msg', 'flow', 'global']
     });
+    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
+    $("#node-input-success_wiq").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-success_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
+    $("#node-input-failed_wiq").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-failed_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
   }
 });
 </script>
@@ -152,6 +178,16 @@ RED.nodes.registerType('workitem addworkitem', {
   <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
 </div>
 <div class="form-row">
+  <label>Success Queue</label>
+  <input type="hidden" id="node-input-success_wiqtype">
+  <input style="width:70%" type="text" id="node-input-success_wiq" placeholder="On success add to this queue">
+</div>
+<div class="form-row">
+  <label>Failed Queue</label>
+  <input type="hidden" id="node-input-failed_wiqtype">
+  <input style="width:70%" type="text" id="node-input-failed_wiq" placeholder="On failure add to this queue">
+</div>
+<div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
   <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -171,7 +207,11 @@ RED.nodes.registerType('workitem addworkitems', {
     nextrun: { value: "nextrun", validate: validate("nextruntype") },
     nextruntype: { value: "" },
     priority: { value: "3", validate: validate("prioritytype") },
-    prioritytype: { value: "" }
+    prioritytype: { value: "" },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiqtype: { value: "" },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiqtype: { value: "" },
   },
   inputs: 1,
   outputs: 1,
@@ -200,6 +240,18 @@ RED.nodes.registerType('workitem addworkitems', {
       default: 'msg',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
+    });
+    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
+    $("#node-input-success_wiq").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-success_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
+    $("#node-input-failed_wiq").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-failed_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
     });
   }
 });
@@ -243,6 +295,16 @@ RED.nodes.registerType('workitem addworkitems', {
   <input style="width:70%" type="text" id="node-input-error" placeholder="Set this to, to add an error description when retrying or failing">
 </div>
 <div class="form-row">
+  <label>Success Queue</label>
+  <input type="hidden" id="node-input-success_wiqtype">
+  <input style="width:70%" type="text" id="node-input-success_wiq" placeholder="On success add to this queue">
+</div>
+<div class="form-row">
+  <label>Failed Queue</label>
+  <input type="hidden" id="node-input-failed_wiqtype">
+  <input style="width:70%" type="text" id="node-input-failed_wiq" placeholder="On failure add to this queue">
+</div>
+<div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
   <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -264,7 +326,11 @@ RED.nodes.registerType('workitem updateworkitem', {
     filestype: { value: "msg" },
     error: { value: "error", validate: validate("errortype") },
     errortype: { value: "msg" },
-    state: { value: "successful", required: true }
+    state: { value: "successful", required: true },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiqtype: { value: "" },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiqtype: { value: "" },
   },
   inputs: 1,
   outputs: 1,
@@ -299,6 +365,18 @@ RED.nodes.registerType('workitem updateworkitem', {
       default: 'msg',
       typeField: $("#node-input-errortype"),
       types: ['msg', 'flow', 'global']
+    });
+    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
+    $("#node-input-success_wiq").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-success_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
+    $("#node-input-failed_wiq").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-failed_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
     });
   }
 });

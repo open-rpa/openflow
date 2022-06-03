@@ -13,11 +13,14 @@ const multer = require('multer');
 // const GridFsStorage = require('multer-gridfs-storage');
 import { GridFsStorage } from "multer-gridfs-storage";
 import { GridFSBucket, ObjectID, Binary } from "mongodb";
-import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
+import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage, FederationId } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { TokenRequest } from "./TokenRequest";
+var nodemailer = require('nodemailer');
+var dns = require('dns');
+const got = require("got");
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
@@ -91,18 +94,26 @@ export class LoginProvider {
                 const options = {
                     publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
                 }
+                Logger.instanse.verbose("LoginProvider", "validateToken", "saml.validate");
                 saml.validate(rawAssertion, options, async (err, profile) => {
                     try {
-                        if (err) { span?.recordException(err); return reject(err); }
+                        if (err) {
+                            span?.recordException(err);
+                            Logger.instanse.error("LoginProvider", "validateToken", err);
+                            return reject(err);
+                        }
                         const claims = profile.claims; // Array of user attributes;
                         const username = claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
+                        Logger.instanse.verbose("LoginProvider", "validateToken", "lookup " + username);
                         const user = await Logger.DBHelper.FindByUsername(username, null, span);
                         if (user) {
+                            Logger.instanse.debug("LoginProvider", "validateToken", "succesfull");
                             resolve(user);
                         } else {
+                            Logger.instanse.error("LoginProvider", "validateToken", new Error("Unknown user"));
                             span?.recordException("Unknown user");
                             reject("Unknown user");
                         }
@@ -130,13 +141,16 @@ export class LoginProvider {
             done(null, user._id);
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
+            Logger.instanse.silly("LoginProvider", "deserializeUser", "userid " + userid);
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             if (typeof userid !== 'string') userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             const _user = await Logger.DBHelper.FindById(userid, null, null);
             if (_user == null) {
+                Logger.instanse.error("LoginProvider", "deserializeUser", "Failed locating user " + userid);
                 done(null, null);
             } else {
+                Logger.instanse.verbose("LoginProvider", "deserializeUser", "found user " + userid + " " + _user.name);
                 done(null, _user);
             }
             // const _user = await Auth.getUser(userid, "passport");
@@ -154,44 +168,28 @@ export class LoginProvider {
             //     done(null, _user);
             // }
         });
-
-        app.use(function (req, res, next) {
-            const origin: string = (req.headers.origin as any);
-            if (NoderedUtil.IsNullEmpty(origin)) {
-                res.header('Access-Control-Allow-Origin', '*');
-            } else {
-                res.header('Access-Control-Allow-Origin', origin);
-            }
-            res.header("Access-Control-Allow-Methods", "DELETE, POST, PUT, GET, OPTIONS");
-            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization");
-            res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-            res.header('Expires', '-1');
-            res.header('Pragma', 'no-cache');
-            if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
-                res.send("ok");
-            } else {
-                next();
-            }
-        });
         app.get("/dashboardauth", async (req: any, res: any, next: any) => {
             const span: Span = (Config.otel_trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
             try {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 if (req.user) {
+                    Logger.instanse.verbose("LoginProvider", "/dashboardauth", "User is signed in");
                     const user: TokenUser = TokenUser.From(req.user);
                     span?.setAttribute("username", user.username);
                     if (user != null) {
                         const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                         if (allowed.length > 0) {
-                            if (Config.log_login_provider) Logger.instanse.info("dashboardauth: Authorized " + user.username + " for " + req.url);
+                            Logger.instanse.verbose("LoginProvider", "/dashboardauth", "Authorized " + user.username + " for " + req.url);
                             return res.send({
                                 status: "success",
                                 display_status: "Success",
                                 message: "Connection OK"
                             });
                         } else {
-                            console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                            Logger.instanse.warn("LoginProvider", "/dashboardauth", (user.username + " is not member of 'dashboardusers' for " + req.url));
                         }
+                    } else {
+                        Logger.instanse.error("LoginProvider", "/dashboardauth", "Failed casting user");
                     }
                 }
                 const authorization: string = req.headers.authorization;
@@ -203,17 +201,19 @@ export class LoginProvider {
                     return;
                 }
 
+                Logger.instanse.verbose("LoginProvider", "/dashboardauth", "Lookup user by authentication header");
                 var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
                 if (user != null) {
                     const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                     if (allowed.length > 0) {
+                        Logger.instanse.debug("LoginProvider", "/dashboardauth", "User is authorized to see dashboard");
                         return res.send({
                             status: "success",
                             display_status: "Success",
                             message: "Connection OK"
                         });
                     } else {
-                        console.warn("dashboardauth: " + user.username + " is not member of 'dashboardusers' for " + req.url);
+                        Logger.instanse.warn("LoginProvider", "/dashboardauth", user.username + " is not member of 'dashboardusers' for " + req.url);
                     }
                 }
                 res.statusCode = 401;
@@ -231,9 +231,11 @@ export class LoginProvider {
             req.logout();
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                Logger.instanse.debug("LoginProvider", "/Signout", "Redirect user to " + originalUrl);
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
+                Logger.instanse.debug("LoginProvider", "/Signout", "Redirect user to /");
                 res.redirect("/");
             }
         });
@@ -241,9 +243,11 @@ export class LoginProvider {
             req.logout();
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                Logger.instanse.debug("LoginProvider", "/PassiveSignout", "Redirect user to " + originalUrl);
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
+                Logger.instanse.debug("LoginProvider", "/PassiveSignout", "Redirect user to /");
                 res.redirect("/Login");
             }
         });
@@ -254,9 +258,18 @@ export class LoginProvider {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
+                    Logger.instanse.debug("LoginProvider", "/user", "return user " + req.user._id);
                     const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                    user.validated = true;
+                    if (Config.validate_user_form != "") {
+                        if (!user.formvalidated) user.validated = false;
+                    }
+                    if (Config.validate_emails) {
+                        if (!user.emailvalidated) user.validated = false;
+                    }
                     res.end(JSON.stringify(user));
                 } else {
+                    Logger.instanse.debug("LoginProvider", "/user", "return nothing, not signed in");
                     res.end(JSON.stringify({}));
                 }
                 res.end();
@@ -275,14 +288,16 @@ export class LoginProvider {
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
                     span?.setAttribute("username", user.username);
+                    Logger.instanse.debug("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
                     res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
                 } else {
+                    Logger.instanse.verbose("LoginProvider", "/jwt", "return nothing, not signed in");
                     res.end(JSON.stringify({ jwt: "" }));
                 }
                 res.end();
             } catch (error) {
                 span?.recordException(error);
-                console.error(error.message ? error.message : error);
+                Logger.instanse.error("LoginProvider", "/jwt", error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
@@ -296,18 +311,22 @@ export class LoginProvider {
                 if (req.user) {
                     const user: TokenUser = TokenUser.From(req.user);
                     span?.setAttribute("username", user.username);
+
                     if (!(user.validated == true) && Config.validate_user_form != "") {
+                        Logger.instanse.error("LoginProvider", "/jwtlong", "return nothing, user is not validated yet");
                         res.end(JSON.stringify({ jwt: "" }));
                     } else {
+                        Logger.instanse.debug("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
                         res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
                     }
                 } else {
+                    Logger.instanse.error("LoginProvider", "/jwtlong", "return nothing, not signed in");
                     res.end(JSON.stringify({ jwt: "" }));
                 }
                 res.end();
             } catch (error) {
                 span?.recordException(error);
-                console.error(error.message ? error.message : error);
+                Logger.instanse.error("LoginProvider", "/jwtlong", error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
@@ -323,10 +342,11 @@ export class LoginProvider {
                 const tuser: TokenUser = TokenUser.From(user);
                 span?.setAttribute("username", user.username);
                 res.setHeader("Content-Type", "application/json");
+                Logger.instanse.debug("LoginProvider", "/jwt", "Recreating jwt token");
                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
             } catch (error) {
                 span?.recordException(error);
-                console.error(error.message ? error.message : error);
+                Logger.instanse.error("LoginProvider", "/jwt", error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
@@ -362,6 +382,8 @@ export class LoginProvider {
                     stripe_api_key: Config.stripe_api_key,
                     getting_started_url: Config.getting_started_url,
                     validate_user_form: Config.validate_user_form,
+                    validate_emails: Config.validate_emails,
+                    forgot_pass_emails: Config.forgot_pass_emails,
                     supports_watch: Config.supports_watch,
                     nodered_images: Config.nodered_images,
                     amqp_enabled_exchange: Config.amqp_enabled_exchange,
@@ -373,8 +395,10 @@ export class LoginProvider {
                     ping_clients_interval: Config.ping_clients_interval,
                     validlicense: Logger.License.validlicense
                 }
+                Logger.instanse.debug("LoginProvider", "/config", "Return configuration settings");
                 res.end(JSON.stringify(res2));
             } catch (error) {
+                Logger.instanse.error("LoginProvider", "/config", error);
                 span?.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
@@ -386,11 +410,16 @@ export class LoginProvider {
             try {
                 const key = req.body.key;
                 let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
-                if (!NoderedUtil.IsNullUndefinded(exists)) return res.status(500).send({ message: "Illegal key" });
+                if (!NoderedUtil.IsNullUndefinded(exists)) {
+                    Logger.instanse.error("LoginProvider", "/AddTokenRequest", "Key has already been used! " + key);
+                    return res.status(500).send({ message: "Illegal key" });
+                }
                 await Logger.DBHelper.AdddRequestTokenID(key, {}, span);
+                Logger.instanse.debug("LoginProvider", "/AddTokenRequest", key);
                 res.status(200).send({ message: "ok" });
             } catch (error) {
                 span?.recordException(error);
+                Logger.instanse.error("LoginProvider", "/AddTokenRequest", error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
                 Logger.otel.endSpan(span);
@@ -403,6 +432,7 @@ export class LoginProvider {
                 let exists: TokenRequest = null;
                 exists = await Logger.DBHelper.FindRequestTokenID(key, span);
                 if (NoderedUtil.IsNullUndefinded(exists)) {
+                    Logger.instanse.error("LoginProvider", "/GetTokenRequest", "Unknown key " + key);
                     res.status(200).send({ message: "Illegal key" });
                     return;
                 }
@@ -414,23 +444,26 @@ export class LoginProvider {
                             var user = await Logger.DBHelper.FindById(tuser._id, exists.jwt, span);
                             if (user.validated == true) {
                                 await Logger.DBHelper.RemoveRequestTokenID(key, span);
+                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
                                 res.status(200).send(Object.assign(exists, { message: "ok" }));
-
                             } else {
+                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "USer not validated yet, for " + key);
                                 res.status(200).send({ message: "ok" });
                             }
                         } catch (error) {
-                            Logger.instanse.error(error.message ? error.message : error);
+                            Logger.instanse.error("LoginProvider", "/GetTokenRequest", error);
                         }
                     } else {
+                        Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
                         res.status(200).send(Object.assign(exists, { message: "ok" }));
                         await Logger.DBHelper.RemoveRequestTokenID(key, span);
                     }
                 } else {
+                    Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "No jwt for " + key);
                     res.status(200).send(Object.assign(exists, { message: "ok" }));
                 }
             } catch (error) {
-                Logger.instanse.error(error.message ? error.message : error);
+                Logger.instanse.error("LoginProvider", "/GetTokenRequest", error);
                 span?.recordException(error);
                 try {
                     res.status(500).send({ message: error.message ? error.message : error });
@@ -456,6 +489,7 @@ export class LoginProvider {
                         const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
                         var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                         if (!NoderedUtil.IsNullUndefinded(exists)) {
+                            Logger.instanse.debug("LoginProvider", "/login", "adding jwt for request token " + key);
                             await Logger.DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
                             res.cookie("requesttoken", "", { expires: new Date(0) });
                         }
@@ -466,39 +500,70 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(req.query.key)) {
                     if (req.user) {
                         res.cookie("originalUrl", "", { expires: new Date(0) });
+                        Logger.instanse.debug("LoginProvider", "/login", "User signed in, with key " + key);
                         this.redirect(res, "/");
                     } else {
                         res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                        Logger.instanse.debug("LoginProvider", "/login", "User not signed in, redirect to /login");
                         this.redirect(res, "/login");
                     }
+                }
+                let user: User;
+                let tuser: TokenUser;
+                if (req.user) {
+                    user = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                    user.validated = true;
+                    if (Config.validate_user_form != "") {
+                        if (!user.formvalidated) user.validated = false;
+                    }
+                    if (Config.validate_emails) {
+                        if (!user.emailvalidated) user.validated = false;
+                    }
+                    tuser = TokenUser.From(user);
                 }
                 const originalUrl: any = req.cookies.originalUrl;
                 const validateurl: any = req.cookies.validateurl;
                 if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
+                    Logger.instanse.debug("LoginProvider", "/login", "Save originalUrl as " + originalUrl);
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 }
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    if (req.user) {
-                        const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
-                        const tuser: TokenUser = TokenUser.From(user);
+                    if (tuser != null) {
                         if (tuser.validated) {
-                            Logger.DBHelper.DeleteKey("user" + tuser._id);
+                            await Logger.DBHelper.DeleteKey("user" + tuser._id);
                         }
-                        // req.session.passport.user.validated = tuser.validated;
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
                         } else {
                             res.cookie("validateurl", "", { expires: new Date(0) });
                             res.cookie("originalUrl", "", { expires: new Date(0) });
+                            Logger.instanse.debug("LoginProvider", "/login", "redirect to validateurl /#" + validateurl);
                             this.redirect(res, "/#" + validateurl);
                             return;
                         }
                     }
                 }
-                const file = path.join(__dirname, 'public', 'PassiveLogin.html');
-                res.sendFile(file);
+                if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl) && tuser.validated) {
+                    if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
+                        Logger.instanse.debug("LoginProvider", "/login", "user validated, redirect to " + originalUrl);
+                        this.redirect(res, originalUrl);
+                        return;
+                    } else if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                        Logger.instanse.debug("LoginProvider", "/login", "user signed in, redirect to " + originalUrl);
+                        this.redirect(res, originalUrl);
+                        return;
+                    }
+                }
+                if (tuser != null && tuser.validated) {
+                    Logger.instanse.debug("LoginProvider", "/login", "redirect to /");
+                    this.redirect(res, "/");
+                } else {
+                    Logger.instanse.debug("LoginProvider", "/login", "return PassiveLogin.html");
+                    const file = path.join(__dirname, 'public', 'PassiveLogin.html');
+                    res.sendFile(file);
+                }
             } catch (error) {
                 span?.recordException(error);
-                console.error(error.message ? error.message : error);
+                Logger.instanse.error("LoginProvider", "/login", error);
                 try {
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } catch (error) {
@@ -512,6 +577,7 @@ export class LoginProvider {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 res.setHeader("Content-Type", "application/json");
                 if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                    Logger.instanse.debug("LoginProvider", "/validateuserform", "No validate user form set, return nothing");
                     res.end(JSON.stringify({}));
                     res.end();
                     Logger.otel.endSpan(span);
@@ -519,16 +585,18 @@ export class LoginProvider {
                 }
                 var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, span);
                 if (forms.length == 1) {
+                    Logger.instanse.debug("LoginProvider", "/validateuserform", "Return form " + Config.validate_user_form);
                     res.end(JSON.stringify(forms[0]));
                     res.end();
                     Logger.otel.endSpan(span);
                     return;
                 }
-                if (Config.log_login_provider) Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
+                Logger.instanse.error("LoginProvider", "/validateuserform", "validate_user_form " + Config.validate_user_form + " does not exists!");
                 Config.validate_user_form = "";
                 res.end(JSON.stringify({}));
                 res.end();
             } catch (error) {
+                Logger.instanse.error("LoginProvider", "/validateuserform", error);
                 span?.recordException(error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
@@ -536,61 +604,274 @@ export class LoginProvider {
             }
             return;
         });
+        app.get("/read/:id", async (req: any, res) => {
+            if (NoderedUtil.IsNullEmpty(req.params.id)) return res.end(JSON.stringify({ "message": "notok" }));
+            const buffer = Buffer.alloc(43)
+            buffer.write('R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=', 'base64')
+            res.writeHead(200, { 'Content-Type': 'image/gif' })
+            res.end(buffer, 'binary')
+            try {
+                const id = req.params.id;
+                const dt = new Date(new Date().toISOString());
+                const ip = LoginProvider.remoteip(req);
+                let domain = "";
+                try {
+                    domain = await LoginProvider.reverseLookup(ip);
+                } catch (error) {
+                }
+                const agent = req.headers['user-agent'];
+                const UpdateDoc: any = { "$set": { "_modified": dt }, "$push": { "opened": { dt, ip, domain, agent } } };
+                var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
+            } catch (error) {
+                Logger.instanse.error("LoginProvider", "/read", error);
+            }
+        });
         app.post("/validateuserform", async (req: any, res) => {
             const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
-            // logger.debug("/validateuserform " + !(req.user == null));
             res.setHeader("Content-Type", "application/json");
             try {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 if (req.user) {
+                    const tuser: TokenUser = TokenUser.From(req.user);
                     if (req.body && req.body.data) {
-                        const tuser: TokenUser = TokenUser.From(req.user);
-                        delete req.body.data._id;
-                        delete req.body.data.username;
-                        delete req.body.data.disabled;
-                        delete req.body.data.type;
-                        delete req.body.data.roles;
-                        delete req.body.data.submit;
-                        req.body.data.validated = true;
-                        delete req.body.data.federationids;
-                        delete req.body.data.nodered;
-                        delete req.body.data.billing;
-                        delete req.body.data.clientagent;
-                        delete req.body.data.clientversion;
-                        const UpdateDoc: any = { "$set": {} };
-                        const keys = Object.keys(req.body.data);
-                        keys.forEach(key => {
-                            if (key.startsWith("_")) {
-                            } else if (key.indexOf("$") > -1) {
-                            } else {
-                                UpdateDoc.$set[key] = req.body.data[key];
+                        if (!tuser.formvalidated || tuser.formvalidated) {
+                            delete req.body.data._id;
+                            delete req.body.data.username;
+                            delete req.body.data.disabled;
+                            delete req.body.data.type;
+                            delete req.body.data.roles;
+                            delete req.body.data.submit;
+                            delete req.body.data.federationids;
+                            delete req.body.data.nodered;
+                            delete req.body.data.billing;
+                            delete req.body.data.clientagent;
+                            delete req.body.data.clientversion;
+                            const UpdateDoc: any = { "$set": {} };
+                            const keys = Object.keys(req.body.data);
+                            keys.forEach(key => {
+                                if (key.startsWith("_")) {
+                                } else if (key.indexOf("$") > -1) {
+                                } else {
+                                    UpdateDoc.$set[key] = req.body.data[key];
+                                }
+                            });
+                            UpdateDoc.$set["formvalidated"] = true;
+
+                            if (Config.validate_emails) {
+                                if (Config.smtp_service == "gmail") {
+                                    if (NoderedUtil.IsNullEmpty(Config.smtp_user) || NoderedUtil.IsNullEmpty(Config.smtp_pass)) {
+                                        Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing login information fot gmail");
+                                        Config.validate_emails = false;
+                                    }
+                                } else if (NoderedUtil.IsNullEmpty(Config.smtp_url)) {
+                                    Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing smtp_url");
+                                    Config.validate_emails = false;
+                                } else if (NoderedUtil.IsNullEmpty(Config.smtp_from)) {
+                                    Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing smtp_from");
+                                    Config.validate_emails = false;
+                                }
                             }
-                        });
-                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span);
-                        const user: TokenUser = Object.assign(tuser, req.body.data);
-                        Logger.DBHelper.DeleteKey("user" + user._id);
-                        // req.session.passport.user.validated = true;
-                        // wewfefwewe
 
+                            Config.smtp_service = Config.getEnv("smtp_service", "");
+                            Config.smtp_from = Config.getEnv("smtp_from", "");
+                            Config.smtp_user = Config.getEnv("smtp_user", "");
+                            Config.smtp_pass = Config.getEnv("smtp_service", "");
 
-                        if (!(user.validated == true) && Config.validate_user_form != "") {
+                            if (Config.validate_emails) {
+                                let email: string = tuser.username;
+                                if (tuser.email && tuser.email.indexOf("@") > -1) email = tuser.email;
+                                if (req.body.data.email) email = req.body.data.email;
+
+                                if (email.indexOf("@") > -1) {
+                                    if (Config.debounce_lookup) {
+                                        const response = await got.get("https://disposable.debounce.io/?email=" + email);
+                                        const body = JSON.parse(response.body);
+                                        if (body.disposable == true) {
+                                            throw new Error("Please use a valid and non temporary email address");
+                                        }
+                                    }
+                                }
+
+                                if (email.indexOf("@") > -1) {
+
+                                    // https://disposable.debounce.io/?email=info@example.com
+                                    email = email.toLowerCase();
+                                    var exists = await Config.db.query<User>({ query: { "_id": { "$ne": tuser._id }, "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                                    if (exists.length > 0) {
+                                        Logger.instanse.error("LoginProvider", "/validateuserform", tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")")
+                                        email = "";
+                                        delete UpdateDoc.$set["email"];
+                                        UpdateDoc.$set["formvalidated"] = false;
+                                        throw new Error("email already in use by another user");
+                                    }
+                                }
+                                if (email.indexOf("@") > -1) {
+                                    if (tuser.emailvalidated == true) {
+                                        UpdateDoc.$set["validated"] = true;
+                                        tuser.validated = true;
+                                    } else {
+                                        const code = NoderedUtil.GetUniqueIdentifier();
+                                        UpdateDoc.$set["_mailcode"] = code;
+                                        this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                            `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`);
+                                    }
+                                } else {
+                                    Logger.instanse.error("LoginProvider", "/validateuserform", tuser.name + " email is mandatory)");
+                                    throw new Error("email is mandatory.");
+                                }
+                            } else {
+                                UpdateDoc.$set["validated"] = true;
+                                tuser.validated = true;
+                            }
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
+                            var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                            await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                            // await new Promise(resolve => { setTimeout(resolve, 1000) })
+                        }
+                        if (!(tuser.validated == true) && Config.validate_user_form != "") {
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "User not validated, return no token for user " + tuser.name);
                             res.end(JSON.stringify({ jwt: "" }));
                         } else {
-                            res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Return new jwt for user " + tuser.name);
+                            res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
                         }
+                    } else if (req.body) {
+                        if (req.body.resend) {
+                            var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                            if (exists.length > 0) {
+                                var u: User = exists[0];
+                                let email: string = u.username;
+                                if (u.email.indexOf("@") > -1) email = u.email;
+                                (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
+                                this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                    `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`);
+
+
+                                const UpdateDoc: any = { "$set": {} };
+                                UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
+                                var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                                await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                                // await new Promise(resolve => { setTimeout(resolve, 1000) })
+
+                                res.end(JSON.stringify({ jwt: "" }));
+                            } else {
+                                res.end(JSON.stringify({ jwt: "" }));
+                            }
+                        } else if (req.body.code) {
+                            var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                            if (exists.length > 0) {
+                                var u: User = exists[0];
+                                if ((u as any)._mailcode == req.body.code) {
+                                    const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                                    UpdateDoc.$unset["_mailcode"] = "";
+                                    UpdateDoc.$set["validated"] = true;
+                                    UpdateDoc.$set["emailvalidated"] = true;
+                                    var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                                    await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                                    // await new Promise(resolve => { setTimeout(resolve, 1000) })
+                                    res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
+                                    return;
+                                } else {
+                                    throw new Error("Wrong validation code for " + tuser.name)
+                                }
+                            }
+                            res.end(JSON.stringify({ jwt: "" }));
+                        } else {
+                            res.end(JSON.stringify({ jwt: "" }));
+                        }
+
                     }
                 } else {
+                    Logger.instanse.error("LoginProvider", "/validateuserform", "User no longer signed in");
                     res.end(JSON.stringify({ jwt: "" }));
                 }
             } catch (error) {
                 span?.recordException(error);
-                console.error(error);
+                Logger.instanse.error("LoginProvider", "/validateuserform", error);
                 return res.status(500).send({ message: error.message ? error.message : error });
             }
             Logger.otel.endSpan(span);
             res.end();
         });
+        app.post("/forgotpassword", async (req: any, res) => {
+            const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
+            res.setHeader("Content-Type", "application/json");
+            try {
+                if (req.body && req.body.email) {
+                    const id = NoderedUtil.GetUniqueIdentifier();
+                    const email: string = req.body.email;
+                    let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
+                    if (user == null) {
+                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied unknown email " + email);
+                        return res.end(JSON.stringify({ id }));
+                    }
+                    const code = NoderedUtil.GetUniqueIdentifier();
 
+                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                        Logger.instanse.info("LoginProvider", "/forgotpassword", `Add forgotpass if ${id} with code ${code} for ${email}`);
+                        return { id, email, code };
+                    });
+                    if (item.id != id || item.email != email || item.code != code) {
+                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong mail for id " + id);
+                        return res.end(JSON.stringify({ id }));
+                    }
+                    // this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please use the below code to reset your password\n' + code);
+
+                    return res.end(JSON.stringify({ id }));
+                }
+                else if (req.body && req.body.code && req.body.id && !req.body.password) {
+                    const code: string = req.body.code.trim();
+                    const id: string = req.body.id;
+
+                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                        return null;
+                    });
+                    if (item == null || item.id != id || item.code != code) {
+                        if (item == null) {
+                            Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied unknown id " + id);
+                        } else {
+                            Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong code for id " + id);
+                        }
+                        throw new Error("Recevied wrong code for id " + id);
+                    }
+                    return res.end(JSON.stringify({ id }));
+                }
+                else if (req.body && req.body.code && req.body.id && req.body.password) {
+                    const code: string = req.body.code.trim();
+                    const id: string = req.body.id;
+                    const password: string = req.body.password;
+
+                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                        Logger.instanse.debug("DBHelper", "FindById", "Add forgotpass : " + id);
+                        return null;
+                    });
+                    if (item == null || item.id != id || item.code != code) {
+                        Logger.instanse.error("LoginProvider", "forgotpassword", "Recevied wrong code for id " + id);
+                        throw new Error("Recevied wrong code for id " + id);
+                    }
+                    let user = await Config.db.getbyusername<User>(item.email, null, Crypt.rootToken(), true, span);
+                    (user as any).newpassword = password;
+                    user.emailvalidated = true;
+                    user.validated = true;
+                    if (Config.validate_user_form != "") {
+                        if (!user.formvalidated) user.validated = false;
+                    }
+                    if (Config.validate_emails) {
+                        if (!user.emailvalidated) user.validated = false;
+                    }
+                    await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
+                    await Logger.DBHelper.DeleteKey("forgotpass" + id);
+                    return res.end(JSON.stringify({ id }));
+                }
+                res.end(JSON.stringify({}));
+            } catch (error) {
+                span?.recordException(error);
+                Logger.instanse.error("LoginProvider", "/validateuserform", error);
+                return res.status(500).send({ message: error.message ? error.message : error });
+            }
+            Logger.otel.endSpan(span);
+            res.end();
+        });
         app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
             try {
@@ -601,7 +882,7 @@ export class LoginProvider {
                 res.end();
             } catch (error) {
                 span?.recordException(error);
-                console.error(error.message ? error.message : error);
+                Logger.instanse.error("LoginProvider", "/loginproviders", error);
                 Logger.otel.endSpan(span);
                 return res.status(500).send({ message: error.message ? error.message : error });
             } finally {
@@ -663,8 +944,8 @@ export class LoginProvider {
                                 filename: filename,
                                 metadata: new Base()
                             };
-                            let user: TokenUser = null;
-                            let jwt: string = null;
+                            let user: TokenUser | undefined;
+                            let jwt: string;
                             const authHeader = req.headers.authorization;
                             if (authHeader) {
                                 user = await Crypt.verityToken(authHeader);
@@ -675,6 +956,7 @@ export class LoginProvider {
                                 jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
                             }
                             const { query, headers } = req;
+                            if (user === undefined) throw new Error("Access denied, unknown user");
 
                             fileInfo.metadata.name = filename;
                             (fileInfo.metadata as any).filename = filename;
@@ -753,7 +1035,7 @@ export class LoginProvider {
                     });
                 } catch (error) {
                     span?.recordException(error);
-                    console.error(error);
+                    Logger.instanse.error("LoginProvider", "/upload", error);
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -837,7 +1119,7 @@ export class LoginProvider {
                 });
             });
         } catch (error) {
-            console.error(error.message ? error.message : error);
+            Logger.instanse.error("LoginProvider", "configure", error);
         }
 
     }
@@ -863,7 +1145,7 @@ export class LoginProvider {
                     }
                     if (provider.provider === "local") { hasLocal = true; }
                 } catch (error) {
-                    console.error(error.message ? error.message : error);
+                    Logger.instanse.error("LoginProvider", "RegisterProviders", error);
                 }
             });
             if (hasLocal === true) {
@@ -876,7 +1158,7 @@ export class LoginProvider {
                 let key = keys[i];
                 var exists = providers.filter(x => x.id == key || (key == 'local' && x.provider == 'local'));
                 if (exists.length == 0) {
-                    if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Removing passport strategy " + key);
+                    Logger.instanse.debug("LoginProvider", "RegisterProviders", "[loginprovider] Removing passport strategy " + key);
                     passport.unuse(key);
                 }
             }
@@ -888,7 +1170,7 @@ export class LoginProvider {
         }
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
-        if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Adding new google strategy " + key);
+        Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
         const options: googleauthstrategyoptions = new googleauthstrategyoptions();
         options.clientID = consumerKey;
         options.clientSecret = consumerSecret;
@@ -917,7 +1199,7 @@ export class LoginProvider {
 
     // tslint:disable-next-line: max-line-length
     static CreateSAMLStrategy(app: express.Express, key: string, cert: string, singin_url: string, issuer: string, baseurl: string): passport.Strategy {
-        if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Adding new SAML strategy " + key);
+        Logger.instanse.debug("LoginProvider", "CreateSAMLStrategy", "Adding new SAML strategy " + key);
         const options: samlauthstrategyoptions = new samlauthstrategyoptions();
         (options as any).passReqToCallback = true;
         options.entryPoint = singin_url;
@@ -1005,7 +1287,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy({ passReqToCallback: true }, async (req: any, username: string, password: string, done: any): Promise<void> => {
-            if (Config.log_login_provider) Logger.instanse.info("[loginprovider] Adding new local strategy");
+            Logger.instanse.debug("LoginProvider", "CreateLocalStrategy", "Adding new local strategy");
             const span: Span = Logger.otel.startSpan("LoginProvider.LocalLogin");
             try {
                 let remoteip: string = "";
@@ -1096,7 +1378,7 @@ export class LoginProvider {
             } catch (error) {
                 span?.recordException(error);
                 Logger.otel.endSpan(span);
-                console.error(error.message ? error.message : error);
+                Logger.instanse.error("LoginProvider", "CreateLocalStrategy", error);
                 done(error.message ? error.message : error);
             }
         });
@@ -1107,23 +1389,26 @@ export class LoginProvider {
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
                     if (err) {
-                        Logger.instanse.error(err);
+                        Logger.instanse.error("LoginProvider", "/local", err);
                     }
                     if (!err && user) {
                         req.logIn(user, function (err: any) {
                             if (err) {
-                                if (Config.log_login_provider) Logger.instanse.info("req.logIn failed");
-                                Logger.instanse.error(err);
+                                Logger.instanse.debug("LoginProvider", "/local", "req.logIn failed");
+                                Logger.instanse.error("LoginProvider", "/local", err);
                                 return next(err);
                             }
-                            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                            if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                                res.redirect("/login");
+                                return next();
+                            } else if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
                                     LoginProvider.redirect(res, originalUrl);
-                                    if (Config.log_login_provider) Logger.instanse.debug("redirect: " + originalUrl);
+                                    Logger.instanse.debug("LoginProvider", "/local", "redirect: " + originalUrl);
                                     return;
                                 } catch (error) {
-                                    console.error(error.message ? error.message : error);
+                                    Logger.instanse.error("LoginProvider", "CreateLocalStrategy", error);
                                 }
                             } else {
                                 res.redirect("/");
@@ -1140,17 +1425,17 @@ export class LoginProvider {
                         }
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
-                            if (Config.log_login_provider) Logger.instanse.debug("redirect: " + originalUrl);
+                            Logger.instanse.debug("LoginProvider", "/local", "redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
-                            console.error(error.message ? error.message : error);
+                            Logger.instanse.error("LoginProvider", "CreateLocalStrategy", error);
                         }
                     } else {
                         try {
                             res.redirect("/");
                             return next();
                         } catch (error) {
-                            console.error(error.message ? error.message : error);
+                            Logger.instanse.error("LoginProvider", "/local", error);
                         }
                     }
                 })(req, res, next);
@@ -1162,11 +1447,12 @@ export class LoginProvider {
     static async samlverify(req: any, profile: any, done: IVerifyFunction): Promise<void> {
         const span: Span = Logger.otel.startSpan("LoginProvider.samlverify");
         try {
+            const issuer = req.baseUrl.replace("/", "");
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            if (Config.log_login_provider) Logger.instanse.debug("verify: " + username);
-            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, span);
+            Logger.instanse.debug("LoginProvider", "samlverify", username);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             let remoteip: string = "";
             if (!NoderedUtil.IsNullUndefinded(req)) {
                 remoteip = LoginProvider.remoteip(req);
@@ -1190,16 +1476,24 @@ export class LoginProvider {
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     const jwt: string = Crypt.rootToken();
+                    _user.federationids = [];
+                    _user.federationids.push(new FederationId(username, issuer));
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
                 }
             } else {
-                if (!NoderedUtil.IsNullUndefinded(_user)) {
-                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
-                        (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
-                    }
-                    const jwt: string = Crypt.rootToken();
-                    await Logger.DBHelper.Save(_user, jwt, span);
+                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                    (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
+                var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
+                if (exists.length == 0) {
+                    _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
+                    _user.federationids.push(new FederationId(username, issuer));
+                }
+                _user.emailvalidated = true;
+                if (_user.formvalidated) _user.validated = true;
+                const jwt: string = Crypt.rootToken();
+                await Logger.DBHelper.Save(_user, jwt, span);
+                await Logger.DBHelper.DeleteKey("user" + _user._id);
             }
 
             if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -1249,11 +1543,12 @@ export class LoginProvider {
                 remoteip = LoginProvider.remoteip(req);
             }
             span?.setAttribute("remoteip", remoteip);
+            const issuer = req.baseUrl.replace("/", "");
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            if (Config.log_login_provider) Logger.instanse.debug("verify: " + username);
-            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, span);
+            Logger.instanse.debug("LoginProvider", "googleverify", username);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
                 if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
@@ -1264,7 +1559,21 @@ export class LoginProvider {
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                    _user.federationids = [];
+                    _user.federationids.push(new FederationId(username, issuer));
+                    _user.emailvalidated = true;
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
+                }
+            } else {
+                var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
+                if (exists.length == 0) {
+                    _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
+                    _user.federationids.push(new FederationId(username, issuer));
+                    _user.emailvalidated = true;
+                    if (_user.formvalidated) _user.validated = true;
+                    const jwt: string = Crypt.rootToken();
+                    await Logger.DBHelper.Save(_user, jwt, span);
+                    await Logger.DBHelper.DeleteKey("user" + _user._id);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1280,10 +1589,70 @@ export class LoginProvider {
             await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
             done(null, tuser);
         } catch (error) {
+            Logger.instanse.error("LoginProvider", "googleverify", error);
             span?.recordException(error);
         }
         Logger.otel.endSpan(span);
     }
+    static reverseLookup(ip) {
+        return new Promise<string>((resolve, reject) => {
+            dns.reverse(ip, function (err, domains) {
+                if (err != null) return reject(err);
+                domains.forEach(function (domain) {
+                    dns.lookup(domain, function (err, address, family) {
+                        if (err != null) return reject(err);
+                        resolve(domain);
+                    });
+                });
+            });
+        });
+    }
 
+    static sendEmail(type: string, to: string, subject: string, text: string): Promise<string> {
+        return new Promise<string>((resolve, reject) => {
+            var transporter = null;
+            if (!NoderedUtil.IsNullEmpty(Config.smtp_url)) {
+                transporter = nodemailer.createTransport(Config.smtp_url);
+            } else {
+                transporter = nodemailer.createTransport({
+                    service: Config.smtp_service,
+                    auth: {
+                        user: Config.smtp_user,
+                        pass: Config.smtp_pass
+                    }
+                });
+            }
+            let id = NoderedUtil.GetUniqueIdentifier();
+            let imgurl = Config.baseurl() + "read/" + id;
+            text = text.split('\n').join('<br/>\n');
+            let html = text + `<img src="${imgurl}" border="0" width="1" height="1">`
+            let from = Config.smtp_from;
 
+            transporter.sendMail({
+                from,
+                to,
+                subject,
+                html
+            }, function (error, info) {
+                if (error) {
+                    Logger.instanse.info("LoginProvider", "sendEmail", error);
+                    reject(error);
+                } else {
+                    Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
+                    var item: any = new Base();
+                    item._type = type;
+                    item.id = id;
+                    item.from = from;
+                    item.to = to;
+                    item.text = text;
+                    item.name = to + " " + subject;
+                    item.opened = [];
+                    item.response = info.response;
+                    Config.db.InsertOne(item, "mailhist", 1, true, Crypt.rootToken(), null);
+                    resolve(info.response);
+                }
+            });
+
+        });
+    }
 }

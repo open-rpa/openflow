@@ -60,7 +60,7 @@ export class WebSocketServer {
                 this._clients.push(new WebSocketServerClient(socketObject, req));
             });
             this._socketserver.on("error", (error: Error): void => {
-                Logger.instanse.error(error);
+                Logger.instanse.error("WebSocketServer", "configure", error);
             });
             if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createUpDownSumObserver("openflow_websocket_online_clients", {
@@ -93,7 +93,7 @@ export class WebSocketServer {
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("WebSocketServer", "configure", error);
             return;
         } finally {
             Logger.otel.endSpan(span);
@@ -112,7 +112,7 @@ export class WebSocketServer {
                         const payload = Crypt.decryptToken(cli.jwt);
                         const clockTimestamp = Math.floor(Date.now() / 1000);
                         if ((payload.exp - clockTimestamp) < 60) {
-                            Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                            Logger.instanse.debug("WebSocketServer", "pingClients", "Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
                             const tuser: TokenUser = await Message.DoSignin(cli, null);
                             if (tuser != null) {
                                 span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
@@ -130,7 +130,7 @@ export class WebSocketServer {
                     }
                 } catch (error) {
                     span?.recordException(error);
-                    console.error(error);
+                    Logger.instanse.error("WebSocketServer", "pingClients", error);
                     cli.Close();
                 }
                 const now = new Date();
@@ -139,20 +139,20 @@ export class WebSocketServer {
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
                         span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.info("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.info("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
                     } else {
                         span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.info("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.info("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
                     }
                     cli.Close();
                 }
                 cli.ping(span);
                 if (!cli.connected() && cli.queuecount() == 0) { // && cli.streamcount() == 0
                     if (cli.user != null) {
-                        Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                        Logger.instanse.info("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                     } else {
-                        Logger.instanse.info("removing disconnected client " + cli.id + "/" + cli.clientagent);
+                        Logger.instanse.info("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.clientagent);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
                     }
                     try {
@@ -160,12 +160,12 @@ export class WebSocketServer {
                         WebSocketServer._clients.splice(i, 1);
                     } catch (error) {
                         span?.recordException(error);
-                        console.error(error);
+                        Logger.instanse.error("WebSocketServer", "pingClients", error);
                     }
                 }
             }
             if (count !== WebSocketServer._clients.length) {
-                Logger.instanse.info("new client count: " + WebSocketServer._clients.length);
+                Logger.instanse.info("WebSocketServer", "pingClients", "new client count: " + WebSocketServer._clients.length);
                 span?.setAttribute("clientcount", WebSocketServer._clients.length)
             }
             const p_all = {};
@@ -192,7 +192,7 @@ export class WebSocketServer {
                     }
                 } catch (error) {
                     span?.recordException(error);
-                    console.error(error);
+                    Logger.instanse.error("WebSocketServer", "pingClients", error);
                 }
             }
 
@@ -212,7 +212,7 @@ export class WebSocketServer {
             }
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("WebSocketServer", "pingClients", error);
         } finally {
             Logger.otel.endSpan(span);
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);

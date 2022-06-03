@@ -10,7 +10,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -28,27 +28,19 @@ var _hostname = "";
 async function handleError(cli: WebSocketServerClient, error: Error) {
     try {
         if (cli == null) {
-            if (Config.log_errors && Config.log_error_stack) {
-                Logger.instanse.error(error);
-            } else if (Config.log_errors) {
-                Logger.instanse.error(error.message ? error.message : error);
-            }
+            Logger.instanse.error("Message", "handleError", error);
             return;
         }
         if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
         errorcounter++;
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
-        if (Config.log_errors && Config.log_error_stack) {
-            Logger.instanse.error(error);
-        } else if (Config.log_errors) {
-            Logger.instanse.error(error.message ? error.message : error);
-        }
+        Logger.instanse.error("Message", "handleError", error.message ? error.message : error);
     } catch (error) {
         if (error.consumedPoints) {
             let username: string = "Unknown";
             if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
-            Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+            Logger.instanse.warn("Message", "handleError", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
             cli.devnull = true;
             cli.Close();
         }
@@ -143,7 +135,7 @@ export class Message {
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error("Message", "QueueProcess", error);
             span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -221,9 +213,9 @@ export class Message {
             } catch (error) {
                 if (error.consumedPoints) {
                     if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, command: command }).update(cli.inccommandcounter(command));
-                    if ((error.consumedPoints % 100) == 0) Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                    if ((error.consumedPoints % 100) == 0) Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
-                        Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                        Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                         cli.devnull = true;
                         cli.Close();
                     }
@@ -269,7 +261,7 @@ export class Message {
             switch (command) {
                 case "listcollections":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -281,7 +273,7 @@ export class Message {
                     break;
                 case "dropcollection":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -293,7 +285,7 @@ export class Message {
                     break;
                 case "query":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -305,7 +297,7 @@ export class Message {
                     break;
                 case "getdocumentversion":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -317,7 +309,7 @@ export class Message {
                     break;
                 case "aggregate":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -329,21 +321,21 @@ export class Message {
                     break;
                 case "watch":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.Watch(cli);
                     break;
                 case "unwatch":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.UnWatch(cli);
                     break;
                 case "insertone":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -355,7 +347,7 @@ export class Message {
                     break;
                 case "insertmany":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -367,7 +359,7 @@ export class Message {
                     break;
                 case "updateone":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -379,7 +371,7 @@ export class Message {
                     break;
                 case "updatemany":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -391,7 +383,7 @@ export class Message {
                     break;
                 case "insertorupdateone":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -403,7 +395,7 @@ export class Message {
                     break;
                 case "deleteone":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -415,7 +407,7 @@ export class Message {
                     break;
                 case "deletemany":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -430,7 +422,7 @@ export class Message {
                     break;
                 case "mapreduce":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.MapReduce(cli);
@@ -442,35 +434,35 @@ export class Message {
                     break;
                 case "registerqueue":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.RegisterQueue(cli, span);
                     break;
                 case "registerexchange":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.RegisterExchange(cli, span);
                     break;
                 case "queuemessage":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.QueueMessage(cli, span);
                     break;
                 case "closequeue":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.CloseQueue(cli, span);
                     break;
                 case "ensurenoderedinstance":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -483,7 +475,7 @@ export class Message {
                     break;
                 case "deletenoderedinstance":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -495,7 +487,7 @@ export class Message {
                     break;
                 case "restartnoderedinstance":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -507,14 +499,14 @@ export class Message {
                     break;
                 case "getkubenodelabels":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.GetKubeNodeLabels(cli, span);
                     break;
                 case "getnoderedinstance":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -526,28 +518,28 @@ export class Message {
                     break;
                 case "getnoderedinstancelog":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.GetNoderedInstanceLog(cli, span);
                     break;
                 case "startnoderedinstance":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.StartNoderedInstance(cli, span);
                     break;
                 case "stopnoderedinstance":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.StopNoderedInstance(cli, span);
                     break;
                 case "deletenoderedpod":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -559,21 +551,21 @@ export class Message {
                     break;
                 case "savefile":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.SaveFile(cli);
                     break;
                 case "getfile":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.GetFile(cli, span);
                     break;
                 case "updatefile":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.UpdateFile(cli);
@@ -584,28 +576,28 @@ export class Message {
                     break;
                 case "stripeaddplan":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.StripeAddPlan(cli, span);
                     break;
                 case "getnextinvoice":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.GetNextInvoice(cli, span);
                     break;
                 case "stripecancelplan":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.StripeCancelPlan(cli, span);
                     break;
                 case "ensurestripecustomer":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     this.Reply();
@@ -630,7 +622,7 @@ export class Message {
                     break;
                 case "selectcustomer":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     var user = await this.SelectCustomer(span);
@@ -640,7 +632,7 @@ export class Message {
                     break;
                 case "housekeeping":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -652,7 +644,7 @@ export class Message {
                     break;
                 case "addworkitemqueue":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.AddWorkitemQueue(cli, span);
@@ -660,7 +652,7 @@ export class Message {
                     break;
                 case "getworkitemqueue":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.GetWorkitemQueue(span);
@@ -669,7 +661,7 @@ export class Message {
 
                 case "updateworkitemqueue":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -681,7 +673,7 @@ export class Message {
                     break;
                 case "deleteworkitemqueue":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     if (Config.enable_openflow_amqp) {
@@ -693,7 +685,7 @@ export class Message {
                     break;
                 case "addworkitem":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.AddWorkitem(span);
@@ -701,7 +693,7 @@ export class Message {
                     break;
                 case "addworkitems":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.AddWorkitems(span);
@@ -709,7 +701,7 @@ export class Message {
                     break;
                 case "popworkitem":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.PopWorkitem(span);
@@ -717,7 +709,7 @@ export class Message {
                     break;
                 case "updateworkitem":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.UpdateWorkitem(span);
@@ -725,7 +717,7 @@ export class Message {
                     break;
                 case "deleteworkitem":
                     if (!this.EnsureJWT(cli)) {
-                        if (Config.log_missing_jwt) Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
                     }
                     await this.DeleteWorkitem(span);
@@ -743,7 +735,7 @@ export class Message {
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error("Message", "Process", error);
             span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -772,24 +764,30 @@ export class Message {
                 if (mq != null) {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                            throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on exchange object " + msg.exchangename);
+                            let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on exchange object " + msg.exchangename);
+                            Logger.instanse.error("Message", "RegisterExchange", error);
+                            throw error;
                         }
                     } else if (Config.amqp_force_sender_has_invoke) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                            throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on exchange object " + msg.exchangename);
+                            let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on exchange object " + msg.exchangename);
+                            Logger.instanse.error("Message", "RegisterExchange", error);
+                            throw error;
                         }
                     }
                 } else {
                     const q = new Base(); q._type = "exchange";
                     q.name = msg.exchangename;
                     const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
-                    Logger.DBHelper.DeleteKey("exchange" + msg.exchangename);
+                    await Logger.DBHelper.DeleteKey("exchange" + msg.exchangename);
                 }
 
             }
             if (NoderedUtil.IsNullUndefinded(msg.algorithm)) throw new Error("algorithm is mandatory, as either direct, fanout, topic or header");
             if (msg.algorithm != "direct" && msg.algorithm != "fanout" && msg.algorithm != "topic" && msg.algorithm != "header") {
-                throw new Error("invalid algorithm must be either direct, fanout, topic or header");
+                let error = new Error("invalid algorithm must be either direct, fanout, topic or header");
+                Logger.instanse.error("Message", "RegisterExchange", error);
+                throw error;
             }
             if (NoderedUtil.IsNullUndefinded(msg.routingkey)) msg.routingkey = "";
             var addqueue: boolean = (msg.addqueue as any);
@@ -819,7 +817,9 @@ export class Message {
             const jwt: string = msg.jwt || this.jwt;
             const rootjwt = Crypt.rootToken();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
-                throw new Error("Access denied");
+                let error = new Error("Access denied");
+                Logger.instanse.error("Message", "RegisterQueue", error);
+                throw error;
             }
 
             // ################################################################################################################
@@ -847,10 +847,10 @@ export class Message {
                             msg.queuename = name + msg.queuename;
                             if (msg.queuename.length == 24) { msg.queuename += "1"; }
                         } else {
-                            if (Config.log_amqp) Logger.instanse.info("[SKIP] skipped force prefix for " + msg.queuename);
+                            Logger.instanse.debug("Message", "RegisterQueue", "skipped force prefix for " + msg.queuename);
                         }
                     } else {
-                        if (Config.log_amqp) Logger.instanse.info("[SKIP] skipped force prefix for " + msg.queuename);
+                        Logger.instanse.debug("Message", "RegisterQueue", "[SKIP] skipped force prefix for " + msg.queuename);
                     }
                 } else {
                     let name = tuser.username.split("@").join("").split(".").join("");
@@ -877,11 +877,15 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on users object " + mq.name + " " + mq._id);
+                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
+                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                throw error;
                             }
                         }
                         allowed = true;
@@ -892,11 +896,15 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on queue object " + msg.queuename);
+                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on queue object " + msg.queuename);
+                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
+                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
+                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                throw error;
                             }
                         }
                         allowed = true;
@@ -941,7 +949,9 @@ export class Message {
                 }
             }
             if (!NoderedUtil.IsNullEmpty(msg.exchange) && !Config.amqp_enabled_exchange) {
-                throw new Error("AMQP exchange is not enabled on this OpenFlow");
+                let error = new Error("AMQP exchange is not enabled on this OpenFlow");
+                Logger.instanse.error("Message", "QueueMessage", error);
+                throw error;
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_default_expiration);
             if (typeof msg.data === 'string' || msg.data instanceof String) {
@@ -957,12 +967,16 @@ export class Message {
                 }
             }
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
+                Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.exchange) && msg.exchange.toLowerCase() == "openflow") {
+                Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto.toLowerCase() == "openflow") {
+                Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchange)) {
+                Logger.instanse.error("Message", "QueueMessage", new Error("queuename or exchange must be given"));
                 throw new Error("queuename or exchange must be given");
             }
 
@@ -1106,12 +1120,12 @@ export class Message {
     }
     private UnknownCommand(): void {
         if (NoderedUtil.IsNullEmpty(this.command)) {
-            Logger.instanse.error(new Error("Received message with no command"));
+            Logger.instanse.error("Message", "UnknownCommand", new Error("Received message with no command"));
             return;
         }
         this.Reply("error");
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
-        Logger.instanse.error(new Error(this.data));
+        Logger.instanse.error("Message", "UnknownCommand", new Error(this.data));
     }
     private Ping(cli: WebSocketServerClient): void {
         this.Reply("pong");
@@ -1163,7 +1177,7 @@ export class Message {
                 msg.result = result;
             }
             const _tuser = await Crypt.verityToken(this.jwt);
-            if (Config.enable_entity_restriction && !_tuser.HasRoleId("admins")) {
+            if (Config.enable_entity_restriction && !_tuser.HasRoleId(WellknownIds.admins)) {
                 await Config.db.loadEntityRestrictions(span);
                 if (Config.db.EntityRestrictions.length > 1) {
                     const tuser = await Crypt.verityToken(this.jwt);
@@ -1589,25 +1603,32 @@ export class Message {
             span?.setAttribute("type", type);
             span?.setAttribute("clientid", cli.id);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) {
-                if (!(cli.user.validated == true) && Config.validate_user_form != "") {
+                var validated = true;
+                if (Config.validate_user_form != "") {
+                    if (!cli.user.formvalidated) validated = false;
+                }
+                if (Config.validate_emails) {
+                    if (!cli.user.emailvalidated) validated = false;
+                }
+                if (!validated) {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
-                        Logger.instanse.error(tuser.username + " failed logging in, not validated");
+                        Logger.instanse.error("Message", "DoSign", new Error(tuser.username + " failed logging in, not validated"));
                         await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                         tuser = null;
                     }
                 }
             }
             if (tuser != null && cli.user != null && cli.user.disabled) {
-                Logger.instanse.error(tuser.username + " failed logging in, user is disabled");
+                Logger.instanse.error("Message", "DoSign", new Error(tuser.username + " failed logging in, user is disabled"));
                 await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
             } else if (tuser != null) {
-                Logger.instanse.info(tuser.username + " successfully signed in");
+                Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in");
                 await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 Logger.DBHelper.UpdateHeartbeat(cli);
             }
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error("Message", "DoSign", error);
             span?.recordException(error);
         }
         return tuser;
@@ -1686,7 +1707,7 @@ export class Message {
                             }
                         }
                     } catch (error) {
-                        console.error(error);
+                        Logger.instanse.error("Message", "Signin", error);
                     }
                     if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         user = User.user;
@@ -1713,11 +1734,11 @@ export class Message {
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    if (Config.log_errors) Logger.instanse.error(tuser.username + " failed logging in using " + type);
+                    Logger.instanse.error("Message", "Signin", new Error(tuser.username + " failed logging in using " + type));
                 } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    if (Config.log_errors) Logger.instanse.error("Disabled user " + tuser.username + " failed logging in using " + type);
+                    Logger.instanse.error("Message", "Signin", new Error("Disabled user " + tuser.username + " failed logging in using " + type));
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
                         user = await Logger.DBHelper.FindById(impostor, Crypt.rootToken(), span);
@@ -1732,7 +1753,7 @@ export class Message {
                         msg.impersonate = undefined;
                         impostor = undefined;
                     }
-                    if (Config.log_errors) Logger.instanse.info(tuser.username + " successfully signed in");
+                    Logger.instanse.info("Message", "Signin", tuser.username + " successfully signed in");
                     await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     const userid: string = user._id;
                     if (msg.longtoken) {
@@ -1762,7 +1783,7 @@ export class Message {
                             if (impostors.length == 1) {
                                 imp = TokenUser.From(impostors[0]);
                             }
-                            if (Config.log_errors) Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
+                            Logger.instanse.error("Message", "Signin", new Error(tuser.name + " failed to impersonate " + msg.impersonate));
                             await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
@@ -1786,7 +1807,7 @@ export class Message {
                             }
 
                             await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
-                            if (Config.log_errors) Logger.instanse.error(tuser.name + " failed to impersonate " + msg.impersonate);
+                            Logger.instanse.error("Message", "Signin", new Error(tuser.name + " failed to impersonate " + msg.impersonate));
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                         }
                         tuser.impostor = tuserimpostor._id;
@@ -1800,7 +1821,7 @@ export class Message {
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
-                        if (Config.log_errors) Logger.instanse.info(tuser.username + " successfully impersonated");
+                        Logger.instanse.info("Message", "Signin", tuser.username + " successfully impersonated");
                         await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
@@ -1820,13 +1841,12 @@ export class Message {
                         user.device = msg.device;
                     }
                     if (msg.validate_only !== true) {
-                        if (Config.log_errors) Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
-                        if (Config.log_errors) Logger.instanse.info(tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
+                        Logger.instanse.info("Message", "Signin", tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
                         if (cli) cli.jwt = msg.jwt;
                         if (cli) cli.user = user;
                         if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                     } else {
-                        if (Config.log_errors) Logger.instanse.debug(tuser.username + " was validated in using " + type);
+                        Logger.instanse.debug("Message", "Signin", tuser.username + " was validated in using " + type);
                     }
                     if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                         user.lastseen = new Date(new Date().toISOString());
@@ -1865,10 +1885,17 @@ export class Message {
                 await handleError(cli, error);
             }
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
-                if (!(msg.user.validated == true) && Config.validate_user_form != "") {
+                var validated = true;
+                if (Config.validate_user_form != "") {
+                    if (!msg.user.formvalidated) validated = false;
+                }
+                if (Config.validate_emails) {
+                    if (!msg.user.emailvalidated) validated = false;
+                }
+                if (!validated) {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        if (Config.log_errors) Logger.instanse.error(msg.user.username + " not validated");
+                        Logger.instanse.error("Message", "Signin", new Error(msg.user.username + " not validated"));
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
@@ -2110,6 +2137,80 @@ export class Message {
         });
     }
 
+    public async _addFile(file: string, filename: string, mimeType: string, metadata: Base, compressed: boolean, jwt: string): Promise<string> {
+        if (NoderedUtil.IsNullEmpty(filename)) throw new Error("Filename is mandatory");
+        if (NoderedUtil.IsNullEmpty(file)) throw new Error("file is mandatory");
+        if (process.platform === "win32") {
+            filename = filename.replace(/\//g, "\\");
+        }
+        else {
+            filename = filename.replace(/\\/g, "/");
+        }
+
+        if (NoderedUtil.IsNullEmpty(mimeType)) {
+            mimeType = mimetype.lookup(filename);
+        }
+
+        if (metadata === null || metadata === undefined) { metadata = new Base(); }
+        metadata.name = path.basename(filename);
+        (metadata as any).filename = filename;
+        (metadata as any).path = path.dirname(filename);
+        if ((metadata as any).path == ".") (metadata as any).path = "";
+
+        const readable = new Readable();
+        if (file && (!compressed)) {
+            const buf: Buffer = Buffer.from(file, 'base64');
+            readable._read = () => { }; // _read is required but you can noop it
+            readable.push(buf);
+            readable.push(null);
+        } else {
+            try {
+                let result: Buffer;
+                try {
+                    var data = Buffer.from(file, 'base64')
+                    result = pako.inflate(data);
+                } catch (error) {
+                    Logger.instanse.error("Message", "_addFile", error);
+                }
+                readable._read = () => { }; // _read is required but you can noop it
+                readable.push(result);
+                readable.push(null);
+            } catch (error) {
+                Logger.instanse.error("Message", "_addFile", error);
+                throw error;
+            }
+        }
+
+        file = null;
+        if (metadata == null) { metadata = new Base(); }
+        metadata = Base.assign(metadata);
+        if (NoderedUtil.IsNullUndefinded(metadata._acl)) {
+            metadata._acl = [];
+            Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+        }
+        const user: TokenUser = await Crypt.verityToken(jwt);
+        metadata._createdby = user.name;
+        metadata._createdbyid = user._id;
+        metadata._created = new Date(new Date().toISOString());
+        metadata._modifiedby = user.name;
+        metadata._modifiedbyid = user._id;
+        metadata._modified = metadata._created;
+        if (NoderedUtil.IsNullEmpty(metadata.name)) {
+            metadata.name = filename;
+        }
+        let hasUser: any = metadata._acl.find(e => e._id === user._id);
+        if ((hasUser === null || hasUser === undefined)) {
+            Base.addRight(metadata, user._id, user.name, [Rights.full_control]);
+        }
+        hasUser = metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
+        if ((hasUser === null || hasUser === undefined)) {
+            Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+        }
+        metadata = Config.db.ensureResource(metadata, "fs.files");
+        if (!NoderedUtil.hasAuthorization(user, metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
+        var id = await this._SaveFile(readable, filename, mimeType, metadata);
+        return id;
+    }
     public async SaveFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: SaveFileMessage
@@ -2119,78 +2220,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt) && cli) { msg.jwt = cli.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
-            if (process.platform === "win32") {
-                msg.filename = msg.filename.replace(/\//g, "\\");
-            }
-            else {
-                msg.filename = msg.filename.replace(/\\/g, "/");
-            }
 
-            if (NoderedUtil.IsNullEmpty(msg.mimeType)) {
-                msg.mimeType = mimetype.lookup(msg.filename);
-            }
-
-            if (msg.metadata === null || msg.metadata === undefined) { msg.metadata = new Base(); }
-            msg.metadata.name = path.basename(msg.filename);
-            (msg.metadata as any).filename = msg.filename;
-            (msg.metadata as any).path = path.dirname(msg.filename);
-            if ((msg.metadata as any).path == ".") (msg.metadata as any).path = "";
-
-            const readable = new Readable();
-            if (msg.file && (!(msg as any).compressed)) {
-                // console.debug("base64 data length: " + this.formatBytes(this.data.length));
-
-                const buf: Buffer = Buffer.from(msg.file, 'base64');
-                readable._read = () => { }; // _read is required but you can noop it
-                readable.push(buf);
-                readable.push(null);
-            } else {
-                try {
-                    let result: Buffer;
-                    try {
-                        var data = Buffer.from(msg.file, 'base64')
-                        result = pako.inflate(data);
-                    } catch (error) {
-                        console.error(error);
-                    }
-                    // console.debug("zlib data length: " + this.formatBytes(this.data.length));
-                    readable._read = () => { }; // _read is required but you can noop it
-                    readable.push(result);
-                    readable.push(null);
-                } catch (error) {
-                    console.error(error);
-                    throw error;
-                }
-            }
-
-            msg.file = null;
-            if (msg.metadata == null) { msg.metadata = new Base(); }
-            msg.metadata = Base.assign(msg.metadata);
-            if (NoderedUtil.IsNullUndefinded(msg.metadata._acl)) {
-                msg.metadata._acl = [];
-                Base.addRight(msg.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
-            }
-            const user: TokenUser = await Crypt.verityToken(msg.jwt);
-            msg.metadata._createdby = user.name;
-            msg.metadata._createdbyid = user._id;
-            msg.metadata._created = new Date(new Date().toISOString());
-            msg.metadata._modifiedby = user.name;
-            msg.metadata._modifiedbyid = user._id;
-            msg.metadata._modified = msg.metadata._created;
-            if (NoderedUtil.IsNullEmpty(msg.metadata.name)) {
-                msg.metadata.name = msg.filename;
-            }
-            let hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
-            if ((hasUser === null || hasUser === undefined)) {
-                Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
-            }
-            hasUser = msg.metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
-            if ((hasUser === null || hasUser === undefined)) {
-                Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            }
-            msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
-            if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
-            msg.id = await this._SaveFile(readable, msg.filename, msg.mimeType, msg.metadata);
+            msg.id = await this._addFile(msg.file, msg.filename, msg.mimeType, msg.metadata, msg.compressed, msg.jwt);
             msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
             if (NoderedUtil.IsNullUndefinded(msg.result)) {
                 await this.sleep(1000);
@@ -2744,7 +2775,7 @@ export class Message {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
-                    console.error(msg.error);
+                    Logger.instanse.error("Message", "GetNextInvoice", msg.error);
                 }
             }
         }
@@ -3497,7 +3528,7 @@ export class Message {
         const a: number = (date as any) - (Message.lastHouseKeeping as any);
         const diffminutes = a / (1000 * 60);
         // const diffhours = a / (1000 * 60 * 60);
-        Logger.instanse.silly(diffminutes + " minutes since laste house keeping");
+        Logger.instanse.silly("Message", "ReadyForHousekeeping", diffminutes + " minutes since laste house keeping");
         if (diffminutes < 60) return false;
         return true;
     }
@@ -3536,7 +3567,7 @@ export class Message {
             const date = new Date();
             const a: number = (date as any) - (Message.lastHouseKeeping as any);
             const diffminutes = a / (1000 * 60);
-            Logger.instanse.debug("[housekeeping] Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)");
+            Logger.instanse.debug("Message", "_Housekeeping", "Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)");
             return;
         }
         Message.lastHouseKeeping = new Date();
@@ -3544,9 +3575,9 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             if (!skipNodered) {
-                Logger.instanse.debug("[housekeeping] Get running Nodered Instances");
+                Logger.instanse.debug("Message", "_Housekeeping", "Get running Nodered Instances");
                 await this.GetNoderedInstance(span);
-                Logger.instanse.debug("[housekeeping] Get users with autocreate");
+                Logger.instanse.debug("Message", "_Housekeeping", "Get users with autocreate");
                 const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
                 // TODO: we should get instances and compare, running ensure for each user will not scale well
                 for (let i = 0; i < users.length; i++) {
@@ -3563,7 +3594,7 @@ export class Message {
                         doensure = true;
                     }
                     if (doensure) {
-                        Logger.instanse.debug("[housekeeping] EnsureNoderedInstance not " + user.name);
+                        Logger.instanse.debug("Message", "_Housekeeping", "EnsureNoderedInstance not " + user.name);
                         var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
                         ensuremsg._id = user._id;
                         var msg: Message = new Message(); msg.jwt = jwt;
@@ -3571,7 +3602,7 @@ export class Message {
                         await msg.EnsureNoderedInstance(span);
                     }
                 }
-                Logger.instanse.debug("[housekeeping] Done processing autocreate");
+                Logger.instanse.debug("Message", "_Housekeeping", "Done processing autocreate");
             }
         } catch (error) {
         }
@@ -3593,7 +3624,7 @@ export class Message {
                 if (DatabaseConnection.usemetadata(collectionname)) {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("[housekeeping][" + collectionname + "] Start creating metadata._searchnames for collection " + collectionname);
+                        Logger.instanse.info("Message", "_Housekeeping", "Start creating metadata._searchnames for collection " + collectionname);
                         await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
                             [
                                 {
@@ -3653,12 +3684,12 @@ export class Message {
                                 { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("[housekeeping][" + collectionname + "] Done creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Message", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
                     }
                 } else {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("[housekeeping][" + collectionname + "] Start creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Message", "_Housekeeping", "Start creating _searchnames for collection " + collectionname);
                         await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
                             [
                                 {
@@ -3718,7 +3749,7 @@ export class Message {
                                 { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("[housekeeping][" + collectionname + "] Done creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Message", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
                     }
                 }
             }
@@ -3737,7 +3768,7 @@ export class Message {
                 for (let col of collections) {
                     if (col.name == "fs.chunks") continue;
                     if (skip_collections.indexOf(col.name) > -1) {
-                        Logger.instanse.debug("[housekeeping][" + col.name + "] skipped due to housekeeping_skip_collections setting");
+                        Logger.instanse.debug("Message", "_Housekeeping", "skipped " + col.name + " due to housekeeping_skip_collections setting");
                         continue;
                     }
 
@@ -3842,7 +3873,7 @@ export class Message {
                                     bulkInsert.insert(item);
                                 }
                             } catch (error) {
-                                Logger.instanse.error(error);
+                                Logger.instanse.error("Message", "_Housekeeping", error);
                                 span?.recordException(error);
                             }
 
@@ -3852,19 +3883,19 @@ export class Message {
                             if (col.name != "cvr") {
                                 await bulkInsert.execute();
                             }
-                            if (items.length > 0) Logger.instanse.debug("[housekeeping][" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
+                            if (items.length > 0) Logger.instanse.debug("Message", "_Housekeeping", "[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
 
                         } catch (error) {
-                            Logger.instanse.error(error);
+                            Logger.instanse.error("Message", "_Housekeeping", error);
                             span?.recordException(error);
                         }
                     }
                 }
-                Logger.instanse.debug("[housekeeping] Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
+                Logger.instanse.debug("Message", "_Housekeeping", "Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
             }
 
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error("Message", "_Housekeeping", error);
             span?.recordException(error);
         }
         try {
@@ -3873,7 +3904,7 @@ export class Message {
                 let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": yesterday } } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("[housekeeping] Begin updating all users (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Message", "_Housekeeping", "Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
                 const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
                 for await (const u of cursor) {
@@ -3892,22 +3923,22 @@ export class Message {
                     ]// "items": { "$push": "$$ROOT" }
                     const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
                     if (items.length > 0) {
-                        Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
+                        Logger.instanse.debug("Message", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
                         await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
                     }
-                    if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
+                    if (index % 100 == 0) Logger.instanse.debug("Message", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
                 }
-                Logger.instanse.debug("[housekeeping] Completed updating all users dbusage field");
+                Logger.instanse.debug("Message", "_Housekeeping", "Completed updating all users dbusage field");
             }
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error("Message", "_Housekeeping", error);
             span?.recordException(error);
         }
         if (Config.multi_tenant) {
             try {
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Message", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
                 }
                 const pipe = [
                     { "$match": { "_type": "customer" } },
@@ -3956,17 +3987,15 @@ export class Message {
                     let dbusage: number = 0;
                     for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
                     await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
-                    Logger.instanse.debug("[housekeeping] " + c.name + " using " + this.formatBytes(dbusage));
+                    Logger.instanse.debug("Message", "_Housekeeping", c.name + " using " + this.formatBytes(dbusage));
                 }
                 var sleep = (ms) => {
-                    return new Promise(resolve => {
-                        setTimeout(resolve, ms)
-                    })
+                    return new Promise(resolve => { setTimeout(resolve, ms) })
                 }
                 await sleep(2000);
 
             } catch (error) {
-                Logger.instanse.error(error);
+                Logger.instanse.error("Message", "_Housekeeping", error);
                 span?.recordException(error);
             }
         }
@@ -3975,7 +4004,7 @@ export class Message {
                 let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("[housekeeping] Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Message", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
                 }
 
                 const pipe = [
@@ -4043,13 +4072,13 @@ export class Message {
                             if (c.dbusage > resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    Logger.instanse.debug("Message", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    Logger.instanse.debug("Message", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
                                 }
                             }
@@ -4058,13 +4087,13 @@ export class Message {
                             if (c.dbusage > quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    Logger.instanse.debug("Message", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    Logger.instanse.debug("Message", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
                                 }
                             }
@@ -4073,7 +4102,7 @@ export class Message {
                             if (billabledbusage > 0) {
                                 const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);
 
-                                Logger.instanse.debug("[housekeeping] Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
+                                Logger.instanse.debug("Message", "_Housekeeping", "Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
                                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                                 const payload: any = { "quantity": billablecount, "timestamp": dt };
                                 if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
@@ -4086,9 +4115,9 @@ export class Message {
                             }
                         }
                         // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
-                        if (index % 100 == 0) Logger.instanse.debug("[housekeeping][" + index + "/" + usercount[0].userCount + "] Processing");
+                        if (index % 100 == 0) Logger.instanse.debug("Message", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
                     }
-                    Logger.instanse.debug("[housekeeping] Completed updating all customers dbusage field");
+                    Logger.instanse.debug("Message", "_Housekeeping", "Completed updating all customers dbusage field");
 
 
                     const pipe2 = [
@@ -4099,24 +4128,24 @@ export class Message {
                         if (Config.db.WellknownIdsArray.indexOf(c._id) > -1) continue;
                         if (c.dbusage == null) c.dbusage = 0;
                         if (c.dbusage > resource.defaultmetadata.dbusage) {
-                            Logger.instanse.debug("[housekeeping] dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                            Logger.instanse.debug("Message", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                             await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                         } else {
                             if (c.dblocked) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                Logger.instanse.debug("[housekeeping] unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                Logger.instanse.debug("Message", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                             }
 
                         }
                     }
-                    Logger.instanse.debug("[housekeeping] Completed updating all users without a customer dbusage field");
+                    Logger.instanse.debug("Message", "_Housekeeping", "Completed updating all users without a customer dbusage field");
                 }
             } catch (error) {
                 if (error.response && error.response.body) {
-                    Logger.instanse.error(error.response.body);
+                    Logger.instanse.error("Message", "_Housekeeping", error.response.body);
                     span?.recordException(error.response.body);
                 } else {
-                    Logger.instanse.error(error);
+                    Logger.instanse.error("Message", "_Housekeeping", error);
                     span?.recordException(error);
                 }
             }
@@ -4200,6 +4229,10 @@ export class Message {
             wi.priority = msg.priority;
             wi.nextrun = msg.nextrun;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+            wi.failed_wiq = msg.failed_wiq;
+            wi.failed_wiqid = msg.failed_wiqid;
+            wi.success_wiq = msg.success_wiq;
+            wi.success_wiqid = msg.success_wiqid;
 
             wi.state = "new"
             wi.retries = 0;
@@ -4219,8 +4252,6 @@ export class Message {
                         const readable = new Readable();
                         readable._read = () => { }; // _read is required but you can noop it
                         if (file.file && (!file.compressed)) {
-                            // console.debug("base64 data length: " + this.formatBytes(file.file.length));
-
                             const buf: Buffer = Buffer.from(file.file, 'base64');
                             readable.push(buf);
                             readable.push(null);
@@ -4232,13 +4263,12 @@ export class Message {
                                     var data = Buffer.from(file.file, 'base64')
                                     result = pako.inflate(data);
                                 } catch (error) {
-                                    console.error(error);
+                                    Logger.instanse.error("Message", "AddWorkitem", msg.error);
                                 }
-                                // console.debug("zlib data length: " + this.formatBytes(file.file.length));
                                 readable.push(result);
                                 readable.push(null);
                             } catch (error) {
-                                console.error(error);
+                                Logger.instanse.error("Message", "AddWorkitem", msg.error);
                                 throw error;
                             }
                         }
@@ -4265,7 +4295,7 @@ export class Message {
                         wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                     } catch (err) {
-                        console.error(err);
+                        Logger.instanse.error("Message", "AddWorkitem", msg.error);
                     }
                 }
             }
@@ -4293,6 +4323,51 @@ export class Message {
             this.data = "";
             await handleError(null, error);
         }
+    }
+    async DuplicateWorkitem(originalwi: Workitem, wiq: string, wiqid: string, jwt: string, parent: Span): Promise<void> {
+        var wi: Workitem = null;
+        wi = Object.assign({}, originalwi);
+        delete wi._id;
+        delete wi.errormessage;
+        delete wi.errorsource;
+        delete wi.errortype;
+        delete wi.lastrun;
+        wi.retries = 0;
+        delete wi.userid;
+        delete wi.username;
+        wi.state = "new";
+        var _wiq: WorkitemQueue = null;
+        if (!NoderedUtil.IsNullEmpty(wiqid)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wiqid }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) _wiq = queues[0];
+        }
+        if (_wiq == null && !NoderedUtil.IsNullEmpty(wiq)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) _wiq = queues[0];
+        }
+        if (_wiq == null) throw new Error("Work item queue not found " + wiq + " (" + wiqid + ") not found.");
+        wi.wiq = _wiq.name;
+        wi.wiqid = _wiq._id;
+        wi.nextrun = new Date(new Date().toISOString());
+        wi.nextrun.setSeconds(wi.nextrun.getSeconds() + _wiq.initialdelay);
+        for (var i = 0; i < wi.files.length; i++) {
+            var _f = wi.files[i];
+            var file = await this._GetFile(_f._id, false);
+
+            const metadata = new Base();
+            (metadata as any).wi = wi._id;
+            (metadata as any).wiq = _wiq.name;
+            (metadata as any).wiqid = _wiq._id;
+
+            metadata._acl = _wiq._acl;
+            metadata.name = path.basename(_f.filename);
+            (metadata as any).filename = _f.filename;
+            (metadata as any).path = path.dirname(_f.filename);
+            if ((metadata as any).path == ".") (metadata as any).path = "";
+
+            _f._id = await this._addFile(file, _f.filename, null, metadata, false, jwt);
+        }
+        wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
     }
     async AddWorkitems(parent: Span): Promise<void> {
         let user: TokenUser = null;
@@ -4339,6 +4414,11 @@ export class Message {
                 wi.retries = 0;
                 wi.files = [];
                 if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+                if (!NoderedUtil.IsNullEmpty(msg.failed_wiq)) wi.failed_wiq = msg.failed_wiq;
+                if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid)) wi.failed_wiqid = msg.failed_wiqid;
+                if (!NoderedUtil.IsNullEmpty(msg.success_wiq)) wi.success_wiq = msg.success_wiq;
+                if (!NoderedUtil.IsNullEmpty(msg.success_wiqid)) wi.success_wiqid = msg.success_wiqid;
+
                 wi.lastrun = null;
                 if (!wi.nextrun) {
                     wi.nextrun = new Date(new Date().toISOString());
@@ -4359,8 +4439,6 @@ export class Message {
                             const readable = new Readable();
                             readable._read = () => { }; // _read is required but you can noop it
                             if (file.file && (!file.compressed)) {
-                                // console.debug("base64 data length: " + this.formatBytes(file.file.length));
-
                                 const buf: Buffer = Buffer.from(file.file, 'base64');
                                 readable.push(buf);
                                 readable.push(null);
@@ -4372,13 +4450,12 @@ export class Message {
                                         var data = Buffer.from(file.file, 'base64')
                                         result = pako.inflate(data);
                                     } catch (error) {
-                                        console.error(error);
+                                        Logger.instanse.error("Message", "AddWorkitems", msg.error);
                                     }
-                                    // console.debug("zlib data length: " + this.formatBytes(file.file.length));
                                     readable.push(result);
                                     readable.push(null);
                                 } catch (error) {
-                                    console.error(error);
+                                    Logger.instanse.error("Message", "AddWorkitems", msg.error);
                                     throw error;
                                 }
                             }
@@ -4405,7 +4482,7 @@ export class Message {
                             wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                         } catch (err) {
-                            console.error(err);
+                            Logger.instanse.error("Message", "AddWorkitems", msg.error);
                         }
                     }
                 }
@@ -4474,6 +4551,10 @@ export class Message {
             if (wiq == null) throw new Error("Work item queue not found " + wi.wiq + " (" + wi.wiqid + ") not found.");
 
 
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wi.failed_wiq = msg.failed_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wi.failed_wiqid = msg.failed_wiqid;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wi.success_wiq = msg.success_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wi.success_wiqid = msg.success_wiqid;
 
             wi._acl = wiq._acl;
             wi.wiq = wiq.name;
@@ -4489,6 +4570,8 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
+            var oldstate = wi.state;
+            var newstate = msg.state;
             if (!NoderedUtil.IsNullEmpty(msg.state)) {
                 msg.state = msg.state.toLowerCase() as any;
                 // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
@@ -4525,7 +4608,7 @@ export class Message {
                         try {
                             await Config.db.DeleteOne(exists[0]._id, "fs.files", jwt, parent);
                         } catch (error) {
-                            console.error("UpdateWorkItem.delete file id " + error.message);
+                            Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
                         }
                         wi.files = wi.files.filter(x => x.name != file.filename);
                     }
@@ -4533,7 +4616,6 @@ export class Message {
                         const readable = new Readable();
                         readable._read = () => { }; // _read is required but you can noop it
                         if (file.file && (!file.compressed)) {
-                            // console.debug("base64 data length: " + this.formatBytes(file.file.length));
                             const buf: Buffer = Buffer.from(file.file, 'base64');
                             readable.push(buf);
                             readable.push(null);
@@ -4544,13 +4626,12 @@ export class Message {
                                     var data = Buffer.from(file.file, 'base64')
                                     result = pako.inflate(data);
                                 } catch (error) {
-                                    console.error(error);
+                                    Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
                                 }
-                                // console.debug("zlib data length: " + this.formatBytes(file.file.length));
                                 readable.push(result);
                                 readable.push(null);
                             } catch (error) {
-                                console.error(error);
+                                Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
                                 throw error;
                             }
                         }
@@ -4576,7 +4657,7 @@ export class Message {
                         wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                     } catch (err) {
-                        console.error(err);
+                        Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
                     }
                 }
             }
@@ -4595,9 +4676,24 @@ export class Message {
                     // Config.db.queuemonitoring()
                 }
             }
-
             wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
             msg.result = wi;
+            if (oldstate != newstate && (newstate == "successful" || newstate == "failed")) {
+                var success_wiq = wi.success_wiq || wiq.success_wiq;
+                var success_wiqid = wi.success_wiqid || wiq.success_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.success_wiq)) success_wiqid = wi.success_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.success_wiqid)) success_wiq = wi.success_wiq;
+                var failed_wiq = wi.failed_wiq || wiq.failed_wiq;
+                var failed_wiqid = wi.failed_wiqid || wiq.failed_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.failed_wiq)) failed_wiqid = wi.failed_wiqid;
+                if (!NoderedUtil.IsNullEmpty(wi.failed_wiqid)) failed_wiq = wi.failed_wiq;
+                if (newstate == "successful" && (!NoderedUtil.IsNullEmpty(success_wiq) || !NoderedUtil.IsNullEmpty(success_wiqid))) {
+                    await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
+                }
+                if (newstate == "failed" && (!NoderedUtil.IsNullEmpty(failed_wiq) || !NoderedUtil.IsNullEmpty(failed_wiqid))) {
+                    await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
+                }
+            }
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -4765,6 +4861,10 @@ export class Message {
             wiq.maxretries = msg.maxretries;
             wiq.retrydelay = msg.retrydelay;
             wiq.initialdelay = msg.initialdelay;
+            wiq.failed_wiq = msg.failed_wiq;
+            wiq.failed_wiqid = msg.failed_wiqid;
+            wiq.success_wiq = msg.success_wiq;
+            wiq.success_wiqid = msg.success_wiqid;
 
             msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
 
@@ -4849,6 +4949,10 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
             if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
             if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
 
             if (msg._acl) wiq._acl = msg._acl;
 

@@ -20,16 +20,18 @@ var _hostname = "";
 
 
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    if (req.originalUrl.indexOf('/oidc') > -1) return next();
+    Logger.instanse.verbose('WebServer', 'rateLimiter', "Validate for " + req.originalUrl);
     WebServer.BaseRateLimiter
         .consume(WebServer.remoteip(req))
         .then((e) => {
-            // console.info("API_O_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            Logger.instanse.verbose("WebServer", "rateLimiter", "consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
             // if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, route: route }).update(e.consumedPoints);
-            console.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            Logger.instanse.warn("WebServer", "rateLimiter", "API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
@@ -46,9 +48,9 @@ export class WebServer {
     }
     public static app: express.Express;
     public static BaseRateLimiter: any;
+    public static server: http.Server = null;
     static async configure(baseurl: string, parent: Span): Promise<http.Server> {
         const span: Span = Logger.otel.startSubSpan("WebServer.configure", parent);
-
         WebServer.BaseRateLimiter = new RateLimiterMemory({
             points: Config.api_rate_limit_points,
             duration: Config.api_rate_limit_duration,
@@ -64,7 +66,7 @@ export class WebServer {
             this.app.disable("x-powered-by");
             const loggerstream = {
                 write: function (message, encoding) {
-                    Logger.instanse.silly(message);
+                    Logger.instanse.silly("WebServer", "configure", message);
                 }
             };
             this.app.use("/", express.static(path.join(__dirname, "/public")));
@@ -89,6 +91,18 @@ export class WebServer {
             // Add headers
             this.app.use(function (req, res, next) {
 
+                // Grafana hack
+                if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
+                    return res.send("ok");
+                }
+                if (req.originalUrl.indexOf('/oidc') > -1) return next();
+                Logger.instanse.verbose('WebServer', 'setCORSHeaders', "add for " + req.originalUrl);
+                // const origin: string = (req.headers.origin as any);
+                // if (NoderedUtil.IsNullEmpty(origin)) {
+                //     res.header('Access-Control-Allow-Origin', '*');
+                // } else {
+                //     res.header('Access-Control-Allow-Origin', origin);
+                // }
                 // Website you wish to allow to connect
                 res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -96,11 +110,16 @@ export class WebServer {
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
                 // Request headers you wish to allow
-                res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+                res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization");
 
                 // Set to true if you need the website to include cookies in the requests sent
                 // to the API (e.g. in case you use sessions)
                 res.setHeader('Access-Control-Allow-Credentials', "true");
+
+                // Disable Caching
+                res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+                res.header('Expires', '-1');
+                res.header('Pragma', 'no-cache');
 
                 // Pass to next layer of middleware
                 next();
@@ -109,7 +128,7 @@ export class WebServer {
             await LoginProvider.configure(this.app, baseurl);
             span?.addEvent("Configure SamlProvider");
             await SamlProvider.configure(this.app, baseurl);
-            let server: http.Server = null;
+            WebServer.server = null;
             if (Config.tls_crt != '' && Config.tls_key != '') {
                 let options: any = {
                     cert: Config.tls_crt,
@@ -131,26 +150,28 @@ export class WebServer {
                 if (Config.tls_passphrase !== "") {
                     options.passphrase = Config.tls_passphrase;
                 }
-                server = https.createServer(options, this.app);
+                WebServer.server = https.createServer(options, this.app);
             } else {
-                server = http.createServer(this.app);
+                WebServer.server = http.createServer(this.app);
             }
             await Config.db.connect(span);
-            const port = Config.port;
-            server.listen(port).on('error', function (error) {
-                Logger.instanse.error(error);
-                if (Config.NODE_ENV == "production") {
-                    server.close();
-                    process.exit(404);
-                }
-            });
-            return server;
+            return WebServer.server;
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error("WebServer", "configure", error);
             return null;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public static Listen() {
+        WebServer.server.listen(Config.port).on('error', function (error) {
+            Logger.instanse.error("WebServer", "Listen", error);
+            if (Config.NODE_ENV == "production") {
+                WebServer.server.close();
+                process.exit(404);
+            }
+        });
+        Logger.instanse.info("WebServer", "Listen", "Listening on " + Config.baseurl());
     }
 }

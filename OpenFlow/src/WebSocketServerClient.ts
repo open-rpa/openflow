@@ -97,7 +97,7 @@ export class WebSocketServerClient {
         if (!NoderedUtil.IsNullUndefinded(req)) {
             this.remoteip = WebSocketServerClient.remoteip(req);
         }
-        Logger.instanse.info("new client " + this.id + " from " + this.remoteip);
+        Logger.instanse.info("WebSocketServerClient", "constructor", "new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", this.open.bind(this));
         socketObject.on("message", this.message.bind(this)); // e: MessageEvent
         socketObject.on("error", this.error.bind(this));
@@ -128,7 +128,7 @@ export class WebSocketServerClient {
             q.queuename = this._queues[i].queue;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.info("Send queue closed message to " + this.id + " for queue " + q.queuename);
+            Logger.instanse.debug("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for queue " + q.queuename);
         }
         for (var i = 0; i < this._exchanges.length; i++) {
             let msg: SocketMessage = SocketMessage.fromcommand("exchangeclosed");
@@ -136,22 +136,22 @@ export class WebSocketServerClient {
             q.queuename = this._exchanges[i].queue.queue; q.exchangename = this._exchanges[i].exchange;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.info("Send queue closed message to " + this.id + " for exchange " + q.exchangename);
+            Logger.instanse.debug("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for exchange " + q.exchangename);
         }
         this._exchanges = [];
         this.CloseConsumers(null);
     }
     private open(e: Event): void {
-        Logger.instanse.info("WebSocket connection opened " + e + " " + this.id);
+        Logger.instanse.info("WebSocketServerClient", "open", "Connection opened " + e + " " + this.id);
     }
     private close(e: CloseEvent): void {
-        Logger.instanse.info("WebSocket connection closed " + e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.info("WebSocketServerClient", "close", "Connection closed " + e + " " + this.id + "/" + this.clientagent);
         this.Close();
         Config.db.removeListener("disconnected", this._dbdisconnected);
         Config.db.removeListener("connected", this._dbconnected);
     }
     private error(e: Event): void {
-        Logger.instanse.error("WebSocket error encountered " + e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.error("WebSocketServerClient", "error", e + " " + this.id + "/" + this.clientagent);
     }
     public queuecount(): number {
         if (this._queues == null) return 0;
@@ -187,13 +187,13 @@ export class WebSocketServerClient {
                 return;
             }
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error("WebSocketServerClient", "ping", error);
             span?.recordException(error);
             this._receiveQueue = [];
             this._sendQueue = [];
             if (this._socketObject != null) {
                 this.Close().catch((err) => {
-                    console.error(err);
+                    Logger.instanse.error("WebSocketServerClient", "ping", error);
                 });
             }
         } finally {
@@ -201,9 +201,9 @@ export class WebSocketServerClient {
         }
     }
     private _message(message: string): void {
-        Logger.instanse.silly("WebSocket message received " + message);
+        Logger.instanse.silly("WebSocketServerClient", "_message", "WebSocket message received " + message);
         let msg: SocketMessage = SocketMessage.fromjson(message);
-        Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
+        Logger.instanse.silly("WebSocketServerClient", "_message", "WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
         this._receiveQueue.push(msg);
         if ((msg.index + 1) >= msg.count) this.ProcessQueue();
     }
@@ -213,7 +213,7 @@ export class WebSocketServerClient {
             if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
             this._message(message);
         } catch (error) {
-            Logger.instanse.error("[" + username + "/" + this.clientagent + "/" + this.id + "] WebSocket error encountered " + (error.message ? error.message : error));
+            Logger.instanse.error("WebSocketServerClient", "message", "[" + username + "/" + this.clientagent + "/" + this.id + "] " + (error.message ? error.message : error));
             const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
             this._socketObject.send(JSON.stringify(errormessage));
         }
@@ -228,7 +228,7 @@ export class WebSocketServerClient {
                 this._queuescurrent--;
                 this._queuescurrentstr = this._queuescurrent.toString();
             } catch (error) {
-                Logger.instanse.error("WebSocketclient::closeconsumers " + error);
+                Logger.instanse.error("WebSocketServerClient", "CloseConsumers", "WebSocketclient::closeconsumers " + error);
             }
         }
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
@@ -243,18 +243,18 @@ export class WebSocketServerClient {
                 try {
                     this._socketObject.removeAllListeners();
                 } catch (error) {
-                    Logger.instanse.error("WebSocketclient::Close::removeListener " + error);
+                    Logger.instanse.error("WebSocketServerClient", "Close", error);
                 }
                 try {
                     this._socketObject.close();
                 } catch (error) {
-                    Logger.instanse.error("WebSocketclient::Close-socketObject " + error);
+                    Logger.instanse.error("WebSocketServerClient", "Close", error);
                 }
             }
             try {
                 amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
             } catch (error) {
-                Logger.instanse.error("WebSocketclient::Close-disconnected " + error);
+                Logger.instanse.error("WebSocketServerClient", "Close", error);
             }
             var keys = Object.keys(this.watches);
             for (var i = 0; i < keys.length; i++) {
@@ -278,14 +278,14 @@ export class WebSocketServerClient {
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
                         amqpwrapper.Instance().RemoveQueueConsumer(user, this._queues[i], span).catch((err) => {
-                            Logger.instanse.error("WebSocketclient::CloseConsumer::RemoveQueueConsumer " + err);
+                            Logger.instanse.error("WebSocketServerClient", "CloseConsumer", err);
                         });
                         this._queues.splice(i, 1);
                         this._queuescurrent--;
                         this._queuescurrentstr = this._queuescurrent.toString();
                         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                     } catch (error) {
-                        Logger.instanse.error("WebSocketclient::CloseConsumer " + error);
+                        Logger.instanse.error("WebSocketServerClient", "CloseConsumer", error);
                     }
                 }
             }
@@ -328,7 +328,8 @@ export class WebSocketServerClient {
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            console.error(exchange + " failed message queue message, nack and re queue message: ", (error.message ? error.message : error));
+                            Logger.instanse.error("WebSocketServerClient", "RegisterExchange", exchange + " failed message queue message, nack and re queue message: ");
+                            Logger.instanse.error("WebSocketServerClient", "RegisterExchange", error);
                         }, Config.amqp_requeue_time);
                     }
                 }, span);
@@ -345,7 +346,7 @@ export class WebSocketServerClient {
                     this._queuescurrentstr = this._queuescurrent.toString();
                 }
             } catch (error) {
-                Logger.instanse.error("WebSocketclient::CreateConsumer " + error);
+                Logger.instanse.error("WebSocketServerClient", "RegisterExchange", error);
             }
             if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
@@ -385,7 +386,7 @@ export class WebSocketServerClient {
                 }
                 var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
                 if (exists.length > 0) {
-                    Logger.instanse.warn("CreateConsumer: " + qname + " already exists, removing before re-creating");
+                    Logger.instanse.warn("WebSocketServerClient", "CreateConsumer", qname + " already exists, removing before re-creating");
                     for (let i = 0; i < exists.length; i++) {
                         await amqpwrapper.Instance().RemoveQueueConsumer(this.user, exists[i], span);
                     }
@@ -394,16 +395,16 @@ export class WebSocketServerClient {
                     // const _data = msg;
                     var _data = msg;
                     try {
-                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
+                        Logger.instanse.verbose("WebSocketServerClient", "CreateConsumer", "[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                         _data = await this.Queue(msg, qname, options);;
                         ack();
                         // const result = await this.Queue(msg, qname, options);
                         // done(result);
-                        Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
+                        Logger.instanse.debug("WebSocketServerClient", "CreateConsumer", "[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                            Logger.instanse.warn("WebSocketServerClient", "CreateConsumer", "[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
                         }, Config.amqp_requeue_time);
                     } finally {
                         try {
@@ -460,10 +461,10 @@ export class WebSocketServerClient {
             const msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
             if (this._receiveQueue.length > Config.websocket_max_package_count) {
                 if (Config.websocket_disconnect_out_of_sync) {
-                    Logger.instanse.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting");
+                    Logger.instanse.error("WebSocketServerClient", "ProcessQueue", "[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting");
                     this.Close();
                 } else {
-                    Logger.instanse.error("[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
+                    Logger.instanse.error("WebSocketServerClient", "ProcessQueue", "[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                 }
             }
@@ -492,7 +493,7 @@ export class WebSocketServerClient {
             try {
                 if (this._socketObject != null) this._socketObject.send(JSON.stringify(msg));
             } catch (error) {
-                Logger.instanse.error("WebSocket error encountered " + error);
+                Logger.instanse.error("WebSocketServerClient", "ProcessQueue", error);
             }
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });
@@ -527,7 +528,7 @@ export class WebSocketServerClient {
         }
         this.ProcessQueue();
     }
-    public chunkString(str: string, length: number): string[] {
+    public chunkString(str: string, length: number): string[] | null {
         if (NoderedUtil.IsNullEmpty(str)) { return null; }
         // tslint:disable-next-line: quotemark
         return str.match(new RegExp('.{1,' + length + '}', 'g'));
