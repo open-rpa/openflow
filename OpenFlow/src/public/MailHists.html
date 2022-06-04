@@ -25,9 +25,9 @@
         <timesince ng-model="model._modified" />
       </td>
       <td>{{model.readcount}}</td>
-      <td>
-        <a ng-href="#/MailHist/{{model._id}}"><em class="fas fa-eye"></em></a>        
-        <a ng-href="#/Entity/users/{{model.userid}}"><em class="fas fa-edit"></em></a>
+      <td class="btn-cell">
+        <a ng-href="#/MailHist/{{model._id}}" class="btn"><em class="fas fa-eye"></em></a>        
+        <a ng-href="#/Entity/users/{{model.userid}}" class="btn"><em class="fas fa-edit"></em></a>
       </td>
     </tr>
   </tbody>
