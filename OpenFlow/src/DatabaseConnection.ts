@@ -1412,6 +1412,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (collectionname === "users" && item._type === "user") {
                 const u: TokenUser = (item as any);
+                u.validated = false;
+                u.formvalidated = false;
+                u.emailvalidated = false;
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
@@ -1614,6 +1617,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (collectionname === "users" && item._type === "user") {
                     const u: TokenUser = (item as any);
+                    u.validated = false;
+                    u.formvalidated = false;
+                    u.emailvalidated = false;
                     if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                     if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
@@ -1885,6 +1891,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item = this.ensureResource(q.item, q.collectionname);
                     }
                     if (q.collectionname === "users" && q.item._type === "user") {
+                        let u: User = q.item as User;
+                        if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
+                        if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                        if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
                         Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
                         q.item = this.ensureResource(q.item, q.collectionname);
                     }
