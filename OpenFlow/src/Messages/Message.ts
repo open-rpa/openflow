@@ -10,7 +10,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectID, Cursor } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -97,6 +97,9 @@ export class Message {
                     break;
                 case "insertorupdateone":
                     await this.InsertOrUpdateOne(span);
+                    break;
+                case "Insertorupdatemany":
+                    await this.InsertOrUpdateMany(span);
                     break;
                 case "deleteone":
                     await this.DeleteOne(span);
@@ -390,6 +393,18 @@ export class Message {
                         cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                     } else {
                         await this.InsertOrUpdateOne(span);
+                        cli.Send(this);
+                    }
+                    break;
+                case "insertorupdatemany":
+                    if (!this.EnsureJWT(cli)) {
+                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        break;
+                    }
+                    if (Config.enable_openflow_amqp) {
+                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                    } else {
+                        await this.InsertOrUpdateMany(span);
                         cli.Send(this);
                     }
                     break;
@@ -1503,6 +1518,36 @@ export class Message {
             this.data = "";
             await handleError(null, error);
         }
+    }
+    private async InsertOrUpdateMany(parent: Span): Promise<void> {
+        this.Reply();
+        const span: Span = Logger.otel.startSubSpan("message.InsertOrUpdateMany", parent);
+        let msg: InsertOrUpdateManyMessage
+        try {
+            msg = InsertOrUpdateManyMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                throw new Error("jwt is null and client is not authenticated");
+            }
+            msg.results = await Config.db.InsertOrUpdateMany(msg.items, msg.collectionname, msg.uniqeness, msg.skipresults, msg.w, msg.j, msg.jwt, span);
+            if (msg.skipresults) msg.results = [];
+            delete msg.items;
+        } catch (error) {
+            span?.recordException(error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+            await handleError(null, error);
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            span?.recordException(error);
+            this.data = "";
+            await handleError(null, error);
+        }
+        Logger.otel.endSpan(span);
     }
     private async DeleteOne(parent: Span): Promise<void> {
         this.Reply();

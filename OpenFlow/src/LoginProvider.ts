@@ -690,6 +690,12 @@ export class LoginProvider {
                                             throw new Error("Please use a valid and non temporary email address");
                                         }
                                     }
+                                    if (Config.validate_emails_disposable) {
+                                        var domain = Logger.DBHelper.GetDisposableDomain(email, span);
+                                        if (domain != null) {
+                                            throw new Error("Please use a valid and non temporary email address");
+                                        }
+                                    }
                                 }
 
                                 if (email.indexOf("@") > -1) {
