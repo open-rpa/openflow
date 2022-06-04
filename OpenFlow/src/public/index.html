@@ -104,8 +104,7 @@
       <a class="sidebar-link" ng-class="{active: menuctrl.PathIs(['/hdrobots'])}" href="#/hdrobots"><span translate
           lib="web">hdrobots</span></a>
 
-
-      <a class="sidebar-link" href="#/Customers"
+          <a class="sidebar-link" href="#/Customers"
         ng-class="{active: menuctrl.PathIs(['/Customers', '/Customer', '/Customer/'])}"
         ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('resellers')">
         <span translate lib="web">customers</span></a>
@@ -113,6 +112,10 @@
         ng-class="{active: menuctrl.PathIs(['/Resources', '/Resource', '/Resource/'])}"
         ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('admins')">
         <span translate lib="web">Resources</span></a>
+      <a class="sidebar-link" href="#/MailHists"
+        ng-class="{active: menuctrl.PathIs(['/MailHists', '/MailHist', '/MailHist/'])}"
+        ng-show="menuctrl.hasrole('admins') && (menuctrl.WebSocketClientService.validate_emails || menuctrl.WebSocketClientService.forgot_pass_emails)">
+        <span translate lib="web">Mail History</span></a>
 
 
     </div>

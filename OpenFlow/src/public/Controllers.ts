@@ -7249,3 +7249,94 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
 }
 
 
+export class MailHistsCtrl extends entitiesCtrl<Role> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("MailHistsCtrl");
+        this.basequery = {};
+        this.collection = "mailhist";
+        this.postloadData = this.processdata;
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, read: 1, readcount: 1, userid: 1 };
+        if (this.userdata.data.MailHistsCtrl) {
+            this.basequery = this.userdata.data.MailHistsCtrl.basequery;
+            this.collection = this.userdata.data.MailHistsCtrl.collection;
+            this.baseprojection = this.userdata.data.MailHistsCtrl.baseprojection;
+            this.orderby = this.userdata.data.MailHistsCtrl.orderby;
+            this.searchstring = this.userdata.data.MailHistsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.MailHistsCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.MailHistsCtrl.skipcustomerfilter;
+        }
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    processdata() {
+        if (!this.userdata.data.MailHistsCtrl) this.userdata.data.MailHistsCtrl = {};
+        this.userdata.data.MailHistsCtrl.basequery = this.basequery;
+        this.userdata.data.MailHistsCtrl.collection = this.collection;
+        this.userdata.data.MailHistsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.MailHistsCtrl.orderby = this.orderby;
+        this.userdata.data.MailHistsCtrl.searchstring = this.searchstring;
+        this.userdata.data.MailHistsCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.MailHistsCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+
+
+export class MailHistCtrl extends entityCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("MailHist");
+        this.collection = "mailhist";
+        this.postloadData = this.processData;
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.model = new Role();
+            }
+        });
+    }
+    async processData(): Promise<void> {
+        if (this.model) {
+            (this.model as any).opened = (this.model as any).opened.reverse();
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+    async submit(): Promise<void> {
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+            } else {
+                this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+            }
+            this.$location.path("/MailHists");
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}

@@ -620,7 +620,7 @@ export class LoginProvider {
                 } catch (error) {
                 }
                 const agent = req.headers['user-agent'];
-                const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } } };
+                const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } }, "$inc": { "readcount": 1 } };
                 var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
             } catch (error) {
                 Logger.instanse.error("LoginProvider", "/read", error);
@@ -815,7 +815,7 @@ export class LoginProvider {
                         Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong mail for id " + id);
                         return res.end(JSON.stringify({ id }));
                     }
-                    this.sendEmail("validate", user._id, email, 'Reset password request',
+                    this.sendEmail("pwreset", user._id, email, 'Reset password request',
                         `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`);
 
                     return res.end(JSON.stringify({ id }));
@@ -1641,6 +1641,7 @@ export class LoginProvider {
                 } else {
                     Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
                     var item: any = new Base();
+                    item.readcount = 0;
                     item._type = type;
                     item.id = id;
                     item.from = from;
