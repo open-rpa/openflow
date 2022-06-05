@@ -98,7 +98,7 @@ export class Message {
                 case "insertorupdateone":
                     await this.InsertOrUpdateOne(span);
                     break;
-                case "Insertorupdatemany":
+                case "insertorupdatemany":
                     await this.InsertOrUpdateMany(span);
                     break;
                 case "deleteone":
