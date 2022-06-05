@@ -1773,7 +1773,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 let name = q.item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-                original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, false, span);
+                if (NoderedUtil.IsNullUndefinded((q as any).original)) {
+                    original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, false, span);
+                } else {
+                    original = (q as any).original;
+                }
                 if (!original) {
                     throw Error("item not found or Access Denied");
                 }
@@ -2178,7 +2182,7 @@ export class DatabaseConnection extends events.EventEmitter {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async UpdateMany<T extends Base>(q: UpdateManyMessage, parent: Span): Promise<UpdateManyMessage> {
+    async UpdateDocument<T extends Base>(q: UpdateManyMessage, parent: Span): Promise<UpdateManyMessage> {
         const span: Span = Logger.otel.startSubSpan("db.UpdateMany", parent);
         try {
             if (q === null || q === undefined) { throw Error("UpdateManyMessage cannot be null"); }
@@ -2303,8 +2307,17 @@ export class DatabaseConnection extends events.EventEmitter {
     * @returns Promise<T>
     */
     async _InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
+        if (NoderedUtil.IsNullUndefinded(q)) return;
         const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
+        let user: TokenUser = (q as any).user;
         try {
+            user = (q as any).user;
+            if (NoderedUtil.IsNullUndefinded(user)) {
+                user = await Crypt.verityToken(q.jwt);
+            } else {
+                delete (q as any).user;
+            }
+            Logger.instanse.verbose("DatabaseConnection", "InsertOrUpdateOne", "[" + user?.username + "][" + q.collectionname + "] begin");
             await DatabaseConnection.InsertOrUpdateOneSemaphore.down();
             let query: any = null;
             if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
@@ -2321,12 +2334,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     query = { _id: q.item._id };
                 }
             }
-            let user: TokenUser = (q as any).user;
-            if (NoderedUtil.IsNullUndefinded(user)) {
-                user = await Crypt.verityToken(q.jwt);
-            } else {
-                delete (q as any).user;
-            }
 
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             let exists: Base[] = [];
@@ -2338,6 +2345,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 q.item._id = exists[0]._id;
             }
             else if (exists.length > 1) {
+                Logger.instanse.verbose("DatabaseConnection", "InsertOrUpdateOne", "[" + user.username + "][" + q.collectionname + "] query for existing");
                 throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
             }
             if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) {
@@ -2348,10 +2356,10 @@ export class DatabaseConnection extends events.EventEmitter {
 
 
             if (exists.length === 1) {
-                Logger.instanse.debug("DatabaseConnection", "InsertOrUpdateOne", "[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Updating found one in database");
                 const uq = new UpdateOneMessage();
                 // uq.query = query; 
                 uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j = q.j; uq.jwt = q.jwt;
+                (uq as any).original = exists[0];
                 const keys = Object.keys(exists[0]);
                 for (let i = 0; i < keys.length; i++) {
                     let key = keys[i];
@@ -2359,6 +2367,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
                     }
                 }
+                Logger.instanse.debug("DatabaseConnection", "InsertOrUpdateOne", "[" + user.username + "][" + q.collectionname + "] update entity " + uq.item._id + " " + uq.item.name);
                 const uqres = await this.UpdateOne(uq, span);
                 q.opresult = uqres.opresult;
                 q.result = uqres.result;
@@ -2366,12 +2375,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     q.result = uqres.item;
                 }
             } else {
-                Logger.instanse.debug("DatabaseConnection", "InsertOrUpdateOne", "[" + user.username + "][" + q.collectionname + "] InsertOrUpdateOne, Inserting as new in database");
                 if (q.collectionname === "openrpa_instances" && q.item._type === "workflowinstance") {
                     // Normally we need to remove _id to avoid unique constrains, but in this case we WANT to preserve the id
                 } else {
                     delete q.item._id;
                 }
+                Logger.instanse.debug("DatabaseConnection", "InsertOrUpdateOne", "[" + user.username + "][" + q.collectionname + "] insert new entity " + q.item.name);
                 q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
             }
             if (q.collectionname === "users" && q.item._type === "role") {
@@ -2383,6 +2392,7 @@ export class DatabaseConnection extends events.EventEmitter {
             throw error;
         } finally {
             DatabaseConnection.InsertOrUpdateOneSemaphore.up();
+            Logger.instanse.verbose("DatabaseConnection", "InsertOrUpdateOne", "[" + user?.username + "][" + q.collectionname + "] completed");
             Logger.otel.endSpan(span);
         }
     }
@@ -2399,28 +2409,123 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            let inserted = 0;
-            let updated = 0;
-            for (var i = 0; i < items.length; i++) {
-                const item = items[i];
-                var q = new InsertOrUpdateOneMessage();
-                (q as any).user = user;
-                q.collectionname = collectionname; q.item = item; q.j = j;
-                q.w = w; q.jwt = jwt; q.uniqeness = uniqeness;
-                var res = await this._InsertOrUpdateOne(q, span);
-                if (res && res.opresult) {
-                    if (res.opresult.modifiedCount == 1) {
-                        updated++;
-                    } else {
-                        inserted++;
-                    }
-                } else {
-                    if (item._id != res.result._id) inserted++;
-                    if (item._id == res.result._id) updated++;
+            Logger.instanse.verbose("DatabaseConnection", "InsertOrUpdateMany", "[" + user.username + "][" + collectionname + "] received " + items.length + " items with uniqeness " + uniqeness);
+
+
+            let insert: T[] = [];
+            let update: T[] = [];
+            if (uniqeness !== null && uniqeness !== undefined && uniqeness !== "") {
+                const arr = uniqeness.split(",");
+                var ors = [];
+                for (var i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    let _query: any = null;
+                    _query = {};
+                    arr.forEach(field => {
+                        if (field.trim() !== "") {
+                            _query[field.trim()] = item[field.trim()];
+                        }
+                    });
+                    ors.push(_query);
                 }
-                if (!skipresults) result.push(res.result);
+                let query = { "$or": ors }
+                let exists = await this.query({ query, collectionname, top: ors.length, jwt }, span);
+                let Promises: Promise<any>[] = [];
+                for (var i = 0; i < items.length; i++) {
+                    let item: any = items[i];
+                    let original: any = null;
+                    for (var x = 0; x < exists.length; x++) {
+                        let comp: any = exists[x];
+                        let match: boolean = true;
+                        for (let y = 0; y < arr.length; y++) {
+                            const field = arr[y];
+                            if (item[field] != comp[field]) { match = false; break; }
+                        }
+                        if (match) {
+                            original = comp;
+                            break;
+                        }
+                    }
+
+                    if (original != null) {
+                        var um = new UpdateOneMessage();
+                        um.collectionname = collectionname;
+                        um.jwt = jwt; um.j = j; um.w = w; um.item = item;
+                        um.item._id = original._id;
+                        (um as any).user = user;
+                        (um as any).original = original;
+                        Promises.push(this.UpdateOne(um, span));
+                    } else {
+                        insert.push(item);
+                    }
+                }
+
+                if (Promises.length > 0) {
+                    const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                    const errors = tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
+                    if (errors.length > 0) throw errors[0];
+                    update = update.concat(tempresults.map(x => x.result));
+                    result = result.concat(tempresults.map(x => x.result));
+                }
+            } else {
+                let ids = items.filter(x => !NoderedUtil.IsNullEmpty(x._id)).map(x => x._id);
+                if (ids.length > 0) {
+                    let query: any = { "_id": { "$in": ids } };
+                    let exists = await this.query({ query, collectionname, top: ids.length, projection: { "_id": 1 }, jwt }, span);
+                    ids = exists.map(x => x._id);
+                    insert = insert.concat(items.filter(x => ids.indexOf(x._id) == -1));
+                    update = update.concat(items.filter(x => ids.indexOf(x._id) > -1) as any);
+                } else {
+                    insert = insert.concat(items);
+                }
+                if (update.length > 0) {
+                    let Promises: Promise<any>[] = [];
+                    for (let i = 0; i < update.length; i++) {
+                        var um = new UpdateOneMessage();
+                        um.collectionname = collectionname;
+                        um.jwt = jwt; um.j = j; um.w = w; um.item = update[i];
+                        (um as any).user = user;
+                        Promises.push(this.UpdateOne(um, span));
+                    }
+                    const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                    const errors = tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
+                    if (errors.length > 0) throw errors[0];
+                    result = result.concat(tempresults.map(x => x.result));
+                }
             }
-            Logger.instanse.info("DatabaseConnection", "InsertOrUpdateMany", "[" + user.username + "][" + collectionname + "] inserted " + inserted + " items and updated " + updated + " items in database");
+
+            if (insert.length > 0) {
+                let res = await this.InsertMany<T>(insert, collectionname, w, j, jwt, span);
+                result = result.concat(res);
+            }
+
+            // let inserted = 0;
+            // let updated = 0;
+            // for (var i = 0; i < items.length; i++) {
+            //     const item = items[i];
+            //     if (NoderedUtil.IsNullUndefinded(item)) {
+            //         Logger.instanse.warn("DatabaseConnection", "InsertOrUpdateMany", "[" + user.username + "][" + collectionname + "] item at " + i + " is null");
+            //         continue;
+            //     }
+            //     let q = new InsertOrUpdateOneMessage();
+            //     (q as any).user = user;
+            //     q.collectionname = collectionname; q.item = item; q.j = j;
+            //     q.w = w; q.jwt = jwt; q.uniqeness = uniqeness;
+            //     Logger.instanse.verbose("DatabaseConnection", "InsertOrUpdateMany", "[" + user.username + "][" + collectionname + "] procesing " + q.item.name);
+            //     var res = await this._InsertOrUpdateOne(q, span);
+            //     if (res && res.opresult) {
+            //         if (res.opresult.modifiedCount == 1) {
+            //             updated++;
+            //         } else {
+            //             inserted++;
+            //         }
+            //     } else {
+            //         if (item._id != res.result._id) inserted++;
+            //         if (item._id == res.result._id) updated++;
+            //     }
+            //     if (!skipresults) result.push(res.result);
+            // }
+            Logger.instanse.info("DatabaseConnection", "InsertOrUpdateMany", "[" + user.username + "][" + collectionname + "] inserted " + insert.length + " items and updated " + update.length + " items in database");
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "InsertOrUpdateMany", error);
             span?.recordException(error);

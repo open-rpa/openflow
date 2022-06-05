@@ -521,13 +521,14 @@ export interface Iapi_addorupdate {
     entitytype: string;
     collection: string;
     entities: string;
+    entitiestype: string;
     uniqeness: string;
     writeconcern: number;
     journal: boolean;
     name: string;
     // backward compatibility
     inputfield: string;
-    resultfield: string;
+    // resultfield: string;
 }
 export class api_addorupdate {
     public node: Red = null;
@@ -574,33 +575,54 @@ export class api_addorupdate {
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             let Promises: Promise<any>[] = [];
             let results: any[] = [];
+            // for (let y: number = 0; y < data.length; y += 50) {
+            //     for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+            //         const element: any = data[i];
+            //         if (!NoderedUtil.IsNullEmpty(entitytype)) {
+            //             element._type = entitytype;
+            //         }
+            //         Promises.push(NoderedUtil.InsertOrUpdateOne({ collectionname, item: element, uniqeness, w: writeconcern, j: journal, jwt: msg.jwt, priority }));
+            //     }
+            //     this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
+            //     const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+            //     results = results.concat(tempresults);
+            //     Promises = [];
+            // }
+            // data = results;
+            let skipresults: boolean = false;
+            if (NoderedUtil.IsNullEmpty(this.config.entities) && this.config.entitiestype == "msg") {
+                skipresults = true;
+            }
+
             for (let y: number = 0; y < data.length; y += 50) {
+                let items = [];
                 for (let i: number = y; i < (y + 50) && i < data.length; i++) {
                     const element: any = data[i];
                     if (!NoderedUtil.IsNullEmpty(entitytype)) {
                         element._type = entitytype;
                     }
-                    Promises.push(NoderedUtil.InsertOrUpdateOne({ collectionname, item: element, uniqeness, w: writeconcern, j: journal, jwt: msg.jwt, priority }));
+                    items.push(element);
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
-                const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                var tempresults = await NoderedUtil.InsertOrUpdateMany({ collectionname, uniqeness, items, skipresults, j: journal, w: writeconcern, jwt: msg.jwt, priority })
                 results = results.concat(tempresults);
-                Promises = [];
             }
-            data = results;
+            if (!skipresults) {
+                Util.SetMessageProperty(msg, this.config.entities, results);
+            }
 
-            const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
-            if (errors.length > 0) {
-                for (let i: number = 0; i < errors.length; i++) {
-                    NoderedUtil.HandleError(this, errors[i], msg);
-                }
-            }
-            data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
-            if (this.config.entities == null && this.config.resultfield != null) {
-                Util.SetMessageProperty(msg, this.config.resultfield, data);
-            } else {
-                Util.SetMessageProperty(msg, this.config.entities, data);
-            }
+            // const errors = data.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
+            // if (errors.length > 0) {
+            //     for (let i: number = 0; i < errors.length; i++) {
+            //         NoderedUtil.HandleError(this, errors[i], msg);
+            //     }
+            // }
+            // data = data.filter(result => !NoderedUtil.IsString(result) && !(result instanceof Error));
+            // if (this.config.entities == null && this.config.resultfield != null) {
+            //     Util.SetMessageProperty(msg, this.config.resultfield, data);
+            // } else {
+            //     Util.SetMessageProperty(msg, this.config.entities, data);
+            // }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
