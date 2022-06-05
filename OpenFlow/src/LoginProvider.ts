@@ -691,7 +691,7 @@ export class LoginProvider {
                                         }
                                     }
                                     if (Config.validate_emails_disposable) {
-                                        var domain = Logger.DBHelper.GetDisposableDomain(email, span);
+                                        var domain = await Logger.DBHelper.GetDisposableDomain(email, span);
                                         if (domain != null) {
                                             throw new Error("Please use a valid and non temporary email address");
                                         }
