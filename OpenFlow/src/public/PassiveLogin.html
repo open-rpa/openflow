@@ -374,6 +374,7 @@
               </div>
               <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
                 translate lib="web">signin</button>
+                <hr class="my-4" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails">
                 <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-click="ctrl.BeginForgotPassword()" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails"
                 translate lib="web">forgot password</button>
 

@@ -24,6 +24,7 @@
             </div>
             <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
               translate lib="web" ng-click="ctrl.loading = true">signin</button>
+              <hr class="my-4"  ng-show="ctrl.localenabled && ctrl.forgot_pass_emails">
               <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails"
               ng-click="ctrl.BeginForgotPassword()" 
               translate lib="web" ng-click="ctrl.loading = true">forgot password</button>
