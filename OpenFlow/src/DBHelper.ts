@@ -257,7 +257,7 @@ export class DBHelper {
             let item = await this.memoryCache.wrap("queuename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 Logger.instanse.debug("DBHelper", "FindQueueByName", "Add queue to cache : " + name);
-                return Config.db.getbyname<User>(name, "mq", jwt, true, span);
+                return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
@@ -295,7 +295,7 @@ export class DBHelper {
             let item = await this.memoryCache.wrap("exchangename_" + name, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 Logger.instanse.debug("DBHelper", "FindExchangeByName", "Add exchange to cache : " + name);
-                return Config.db.getbyname<User>(name, "mq", jwt, true, span);
+                return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
@@ -337,6 +337,29 @@ export class DBHelper {
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async GetDisposableDomain(domain: string, parent: Span): Promise<Base> {
+        await this.init();
+        if (domain.indexOf("@") > -1) {
+            domain = domain.substr(domain.indexOf("@") + 1);
+        }
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
+        try {
+            if (NoderedUtil.IsNullEmpty(domain)) return null;
+            let item = await this.memoryCache.wrap("disposable_" + domain, () => {
+                const jwt = Crypt.rootToken();
+                Logger.instanse.debug("DBHelper", "IsDisposableDomain", "Add to cache : " + domain);
+                const query = { name: domain, "_type": "disposable" };
+                return Config.db.GetOne<Base>({ query, collectionname: "domains", jwt }, span);
+            });
+            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            return item;
         } catch (error) {
             span?.recordException(error);
             throw error;

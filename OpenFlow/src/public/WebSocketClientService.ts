@@ -34,6 +34,8 @@ export class WebSocketClientService {
                 this.websocket_package_size = data.websocket_package_size;
                 this.stripe_api_key = data.stripe_api_key;
                 this.validate_user_form = data.validate_user_form;
+                this.validate_emails = data.validate_emails;
+                this.forgot_pass_emails = data.forgot_pass_emails;
                 this.multi_tenant = data.multi_tenant;
 
                 this.nodered_images = data.nodered_images;
@@ -179,6 +181,8 @@ export class WebSocketClientService {
     public websocket_package_size: number = 4096;
     public stripe_api_key: string = "";
     public validate_user_form: string = "";
+    public validate_emails: boolean = false;
+    public forgot_pass_emails: boolean = false;
     public nodered_images: nodered_image[];
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;

@@ -89,6 +89,8 @@ export class Config {
         Config.smtp_pass = Config.getEnv("smtp_service", "");
         Config.smtp_url = Config.getEnv("smtp_url", "");
         Config.debounce_lookup = Config.parseBoolean(Config.getEnv("debounce_lookup", "false"));
+        Config.validate_emails_disposable = Config.parseBoolean(Config.getEnv("validate_emails_disposable", "false"));
+
 
 
         Config.tls_crt = Config.getEnv("tls_crt", "");
@@ -279,6 +281,7 @@ export class Config {
     public static smtp_pass: string = Config.getEnv("smtp_pass", "");
     public static smtp_url: string = Config.getEnv("smtp_url", "");
     public static debounce_lookup: boolean = Config.parseBoolean(Config.getEnv("debounce_lookup", "false"));
+    public static validate_emails_disposable: boolean = Config.parseBoolean(Config.getEnv("validate_emails_disposable", "false"));
 
     public static tls_crt: string = Config.getEnv("tls_crt", "");
     public static tls_key: string = Config.getEnv("tls_key", "");

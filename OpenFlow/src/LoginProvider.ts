@@ -620,7 +620,7 @@ export class LoginProvider {
                 } catch (error) {
                 }
                 const agent = req.headers['user-agent'];
-                const UpdateDoc: any = { "$set": { "_modified": dt }, "$push": { "opened": { dt, ip, domain, agent } } };
+                const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } }, "$inc": { "readcount": 1 } };
                 var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
             } catch (error) {
                 Logger.instanse.error("LoginProvider", "/read", error);
@@ -690,6 +690,12 @@ export class LoginProvider {
                                             throw new Error("Please use a valid and non temporary email address");
                                         }
                                     }
+                                    if (Config.validate_emails_disposable) {
+                                        var domain = await Logger.DBHelper.GetDisposableDomain(email, span);
+                                        if (domain != null) {
+                                            throw new Error("Please use a valid and non temporary email address");
+                                        }
+                                    }
                                 }
 
                                 if (email.indexOf("@") > -1) {
@@ -712,7 +718,7 @@ export class LoginProvider {
                                     } else {
                                         const code = NoderedUtil.GetUniqueIdentifier();
                                         UpdateDoc.$set["_mailcode"] = code;
-                                        this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                        this.sendEmail("validate", tuser._id, email, 'Validate email in OpenIAP flow',
                                             `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`);
                                     }
                                 } else {
@@ -743,7 +749,7 @@ export class LoginProvider {
                                 let email: string = u.username;
                                 if (u.email.indexOf("@") > -1) email = u.email;
                                 (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
-                                this.sendEmail("validate", email, 'Validate email in OpenIAP flow',
+                                this.sendEmail("validate", u._id, email, 'Validate email in OpenIAP flow',
                                     `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`);
 
 
@@ -802,7 +808,7 @@ export class LoginProvider {
                     const email: string = req.body.email;
                     let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
                     if (user == null) {
-                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied unknown email " + email);
+                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Received unknown email " + email);
                         return res.end(JSON.stringify({ id }));
                     }
                     const code = NoderedUtil.GetUniqueIdentifier();
@@ -815,7 +821,8 @@ export class LoginProvider {
                         Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong mail for id " + id);
                         return res.end(JSON.stringify({ id }));
                     }
-                    // this.sendEmail("validate", email, 'Validate email in OpenIAP flow', 'Please use the below code to reset your password\n' + code);
+                    this.sendEmail("pwreset", user._id, email, 'Reset password request',
+                        `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`);
 
                     return res.end(JSON.stringify({ id }));
                 }
@@ -860,6 +867,7 @@ export class LoginProvider {
                         if (!user.emailvalidated) user.validated = false;
                     }
                     await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
+                    await Logger.DBHelper.DeleteKey("user" + user._id);
                     await Logger.DBHelper.DeleteKey("forgotpass" + id);
                     return res.end(JSON.stringify({ id }));
                 }
@@ -1566,7 +1574,7 @@ export class LoginProvider {
                 }
             } else {
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
-                if (exists.length == 0) {
+                if (exists.length == 0 || _user.emailvalidated == false) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
                     _user.federationids.push(new FederationId(username, issuer));
                     _user.emailvalidated = true;
@@ -1608,7 +1616,7 @@ export class LoginProvider {
         });
     }
 
-    static sendEmail(type: string, to: string, subject: string, text: string): Promise<string> {
+    static sendEmail(type: string, userid: string, to: string, subject: string, text: string): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             var transporter = null;
             if (!NoderedUtil.IsNullEmpty(Config.smtp_url)) {
@@ -1628,31 +1636,37 @@ export class LoginProvider {
             let html = text + `<img src="${imgurl}" border="0" width="1" height="1">`
             let from = Config.smtp_from;
 
-            transporter.sendMail({
-                from,
-                to,
-                subject,
-                html
-            }, function (error, info) {
-                if (error) {
-                    Logger.instanse.info("LoginProvider", "sendEmail", error);
-                    reject(error);
-                } else {
-                    Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
-                    var item: any = new Base();
-                    item._type = type;
-                    item.id = id;
-                    item.from = from;
-                    item.to = to;
-                    item.text = text;
-                    item.name = to + " " + subject;
-                    item.opened = [];
-                    item.response = info.response;
-                    Config.db.InsertOne(item, "mailhist", 1, true, Crypt.rootToken(), null);
-                    resolve(info.response);
-                }
-            });
-
+            if (Config.NODE_ENV != "production") {
+                resolve("email not sent");
+            } else {
+                transporter.sendMail({
+                    from,
+                    to,
+                    subject,
+                    html
+                }, function (error, info) {
+                    if (error) {
+                        Logger.instanse.info("LoginProvider", "sendEmail", error);
+                        reject(error);
+                    } else {
+                        Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
+                        var item: any = new Base();
+                        item.readcount = 0;
+                        item._type = type;
+                        item.id = id;
+                        item.from = from;
+                        item.to = to;
+                        item.text = text;
+                        item.name = to + " " + subject;
+                        item.userid = userid;
+                        item.opened = [];
+                        item.response = info.response;
+                        item.read = false;
+                        Config.db.InsertOne(item, "mailhist", 1, true, Crypt.rootToken(), null);
+                        resolve(info.response);
+                    }
+                });
+            }
         });
     }
 }

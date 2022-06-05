@@ -24,11 +24,15 @@
             </div>
             <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
               translate lib="web" ng-click="ctrl.loading = true">signin</button>
+              <hr class="my-4"  ng-show="ctrl.localenabled && ctrl.forgot_pass_emails">
+              <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails"
+              ng-click="ctrl.BeginForgotPassword()" 
+              translate lib="web" ng-click="ctrl.loading = true">forgot password</button>
             <hr class="my-4" ng-show="ctrl.localenabled">
 
             <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers" class="btn btn-lg btn-block text-uppercase"
               ng-click="ctrl.loading = true">
-              <em class="fab {{model.logo}} mr-2"></em><span translate lib="web">{{model.name}}</span>
+              <em style="padding-right: 5px;" class="fab {{model.logo}} mr-2"></em><span translate lib="web">{{model.name}}</span>
             </a>
 
             <a href ng-click="ctrl.Scan()" ng-show="ctrl.qrcodescan" class="btn btn-lg btn-block text-uppercase">
