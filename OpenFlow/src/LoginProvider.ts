@@ -867,6 +867,7 @@ export class LoginProvider {
                         if (!user.emailvalidated) user.validated = false;
                     }
                     await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
+                    await Logger.DBHelper.DeleteKey("user" + user._id);
                     await Logger.DBHelper.DeleteKey("forgotpass" + id);
                     return res.end(JSON.stringify({ id }));
                 }
@@ -1573,7 +1574,7 @@ export class LoginProvider {
                 }
             } else {
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
-                if (exists.length == 0) {
+                if (exists.length == 0 && _user.emailvalidated == false) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
                     _user.federationids.push(new FederationId(username, issuer));
                     _user.emailvalidated = true;
