@@ -32,7 +32,7 @@
 
             <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers" class="btn btn-lg btn-block text-uppercase"
               ng-click="ctrl.loading = true">
-              <em class="fab {{model.logo}} mr-2"></em><span translate lib="web">{{model.name}}</span>
+              <em style="padding-right: 5px;" class="fab {{model.logo}} mr-2"></em><span translate lib="web">{{model.name}}</span>
             </a>
 
             <a href ng-click="ctrl.Scan()" ng-show="ctrl.qrcodescan" class="btn btn-lg btn-block text-uppercase">

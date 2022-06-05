@@ -383,7 +383,7 @@
 
               <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers track by $index"
                 class="btn btn-lg btn-block text-uppercase">
-                <em class="fab {{model.logo}}"></em><span translate lib="web">{{model.name}}</span>
+                <em style="padding-right: 5px;" class="fab {{model.logo}}"></em><span translate lib="web">{{model.name}}</span>
               </a>
 
               <div class="card-body" ng-show="ctrl.allow_user_registration==true">
