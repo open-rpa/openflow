@@ -1574,7 +1574,7 @@ export class LoginProvider {
                 }
             } else {
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
-                if (exists.length == 0 && _user.emailvalidated == false) {
+                if (exists.length == 0 || _user.emailvalidated == false) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
                     _user.federationids.push(new FederationId(username, issuer));
                     _user.emailvalidated = true;
@@ -1636,34 +1636,37 @@ export class LoginProvider {
             let html = text + `<img src="${imgurl}" border="0" width="1" height="1">`
             let from = Config.smtp_from;
 
-            transporter.sendMail({
-                from,
-                to,
-                subject,
-                html
-            }, function (error, info) {
-                if (error) {
-                    Logger.instanse.info("LoginProvider", "sendEmail", error);
-                    reject(error);
-                } else {
-                    Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
-                    var item: any = new Base();
-                    item.readcount = 0;
-                    item._type = type;
-                    item.id = id;
-                    item.from = from;
-                    item.to = to;
-                    item.text = text;
-                    item.name = to + " " + subject;
-                    item.userid = userid;
-                    item.opened = [];
-                    item.response = info.response;
-                    item.read = false;
-                    Config.db.InsertOne(item, "mailhist", 1, true, Crypt.rootToken(), null);
-                    resolve(info.response);
-                }
-            });
-
+            if (Config.NODE_ENV != "production") {
+                resolve("email not sent");
+            } else {
+                transporter.sendMail({
+                    from,
+                    to,
+                    subject,
+                    html
+                }, function (error, info) {
+                    if (error) {
+                        Logger.instanse.info("LoginProvider", "sendEmail", error);
+                        reject(error);
+                    } else {
+                        Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
+                        var item: any = new Base();
+                        item.readcount = 0;
+                        item._type = type;
+                        item.id = id;
+                        item.from = from;
+                        item.to = to;
+                        item.text = text;
+                        item.name = to + " " + subject;
+                        item.userid = userid;
+                        item.opened = [];
+                        item.response = info.response;
+                        item.read = false;
+                        Config.db.InsertOne(item, "mailhist", 1, true, Crypt.rootToken(), null);
+                        resolve(info.response);
+                    }
+                });
+            }
         });
     }
 }
