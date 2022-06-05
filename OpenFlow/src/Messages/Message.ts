@@ -4626,7 +4626,7 @@ export class Message {
                 } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
                     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
                 }
-                if (msg.errortype == "business") msg.state == "failed";
+                if (msg.errortype == "business") msg.state = "failed";
                 if (msg.state == "retry") {
                     if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
                     if (wi.retries < wiq.maxretries || msg.ignoremaxretries) {
