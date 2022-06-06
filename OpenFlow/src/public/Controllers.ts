@@ -2125,17 +2125,21 @@ export class LoginCtrl {
     usernameblur() {
         if (!NoderedUtil.IsNullEmpty(this.username) && this.username.indexOf("@") > -1) {
             var domain = this.username.substr(this.username.indexOf("@") + 1);
-            if (this.WebSocketClientService.forceddomains.indexOf(domain) > - 1) {
-                console.log("domain found in forceddomains");
-                document.getElementById("password").style.display = "none";
-                document.getElementById("localbuttons").style.display = "none";
-                this.message = "Please use provider button to login with this domain";
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            } else {
-                console.log("domain is not forced");
-                document.getElementById("password").style.display = "block";
-                document.getElementById("localbuttons").style.display = "block";
+            if (this.WebSocketClientService.forceddomains && Array.isArray(this.WebSocketClientService.forceddomains)) {
+                for (let d = 0; d < this.WebSocketClientService.forceddomains.length; d++) {
+                    let forceddomain = new RegExp(this.WebSocketClientService.forceddomains[d], "i");
+                    if (forceddomain.test(domain)) {
+                        console.log("domain found in forceddomains");
+                        document.getElementById("password").style.display = "none";
+                        document.getElementById("localbuttons").style.display = "none";
+                        this.message = "Please use provider button to login with this domain";
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        return;
+                    }
+                }
             }
+            document.getElementById("password").style.display = "block";
+            document.getElementById("localbuttons").style.display = "block";
         }
     }
 }

@@ -348,17 +348,20 @@
       if(val && val.indexOf("@") > -1) {
         var domain = val.substr(val.indexOf("@") + 1);
         console.log("domain", domain);
-        if(this.forceddomains.indexOf(domain) > - 1) {
-          console.log("domain found in forceddomains");
-          document.getElementById("password").style.display = "none";
-          document.getElementById("localbuttons").style.display = "none";
-          this.errormessage = "Please use provider button to login with this domain";
-          if (!$scope.$$phase) { $scope.$apply(); }
-        } else {
-          console.log("domain is not forced");
-          document.getElementById("password").style.display = "block";
-          document.getElementById("localbuttons").style.display = "block";
+        for (let d = 0; d < this.forceddomains.length; d++) {
+          let forceddomain = new RegExp(this.forceddomains[d], "i");
+          if(forceddomain.test(domain)) {
+            console.log("domain found in forceddomains");
+            document.getElementById("password").style.display = "none";
+            document.getElementById("localbuttons").style.display = "none";
+            this.errormessage = "Please use provider button to login with this domain";
+            if (!$scope.$$phase) { $scope.$apply(); }
+            return;
+          }
         }
+        console.log("domain is not forced");
+        document.getElementById("password").style.display = "block";
+        document.getElementById("localbuttons").style.display = "block";
       }
     }
   }

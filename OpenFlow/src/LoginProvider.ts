@@ -1406,13 +1406,17 @@ export class LoginProvider {
                 const username = req.body?.username;
                 if (!NoderedUtil.IsNullEmpty(username) && username.indexOf("@") > -1) {
                     const domain = username.substr(username.indexOf("@") + 1)
+
                     var providers = await Logger.DBHelper.GetProviders(null);
                     for (let i = 0; i < providers.length; i++) {
                         var provider: any = providers[i];
                         if (provider.forceddomains && Array.isArray(provider.forceddomains)) {
-                            if (provider.forceddomains.indexOf(domain) > -1) {
-                                res.redirect("/" + providers[i].id);
-                                return next();
+                            for (let d = 0; d < provider.forceddomains.length; d++) {
+                                let forceddomain = new RegExp(provider.forceddomains[d], "i");
+                                if (forceddomain.test(domain)) {
+                                    res.redirect("/" + providers[i].id);
+                                    return next();
+                                }
                             }
                         }
                     }
