@@ -36,7 +36,7 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/History/{{model._id}}">{{model.name}}</a></td>
+      <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/History/{{ctrl.collection}}/{{model._id}}">{{model.name}}</a></td>
       <td><span translate lib="web">{{model.type || model._type}}</span></td>
       <td>{{model._createdby}}</td>
       <td>
