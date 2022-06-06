@@ -128,5 +128,7 @@
     "queue": "Kø",
     "lastrun": "Sidste kørt",
     "nextrun": "Næste Kørsel",
-    "autocreate": "Auto operet"
+    "autocreate": "Auto operet",
+    "forceddomains": "Tvangs domæner",
+    "addforceddomains": "Tilføj tvungen domæne"
 }

@@ -128,5 +128,6 @@
     "queue": "Queue",
     "lastrun": "Last run",
     "nextrun": "Next run",
-    "autocreate": "Auto Create"
+    "forceddomains": "Forced domains",
+    "addforceddomains": "Add forced domain"
 }

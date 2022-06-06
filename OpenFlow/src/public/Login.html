@@ -11,23 +11,25 @@
           <form class="form-signin" ngNoForm method='post' action='/local'>
             <div class="form-label-group" ng-show="ctrl.localenabled">
               <input type="text" name="username" ng-model="ctrl.username" class="form-control" placeholder="email"
-                required autofocus autocomplete='off'>
+                required autofocus autocomplete='off' ng-blur="ctrl.usernameblur()">
               <label for="username" translate lib="web">email</label>
             </div>
-            <div class="form-label-group" ng-show="ctrl.localenabled">
+            <div class="form-label-group" ng-show="ctrl.localenabled" id="password">
               <input type="password" name="password" ng-model="ctrl.password" class="form-control"
                 placeholder="Password" required>
               <label for="password" translate lib="web">password</label>
             </div>
             <div class="mb-3">
-              <label class="text-danger" translate lib="web" ng-model="ctrl.message"></label>
+              <label class="text-danger" translate lib="web" ng-model="ctrl.message">{{ctrl.message}}</label>
             </div>
-            <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
+            <div id="localbuttons">
+              <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
               translate lib="web" ng-click="ctrl.loading = true">signin</button>
               <hr class="my-4"  ng-show="ctrl.localenabled && ctrl.forgot_pass_emails">
               <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails"
               ng-click="ctrl.BeginForgotPassword()" 
               translate lib="web" ng-click="ctrl.loading = true">forgot password</button>
+            </div>
             <hr class="my-4" ng-show="ctrl.localenabled">
 
             <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers" class="btn btn-lg btn-block text-uppercase"

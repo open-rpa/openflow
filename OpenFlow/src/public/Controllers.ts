@@ -2122,7 +2122,22 @@ export class LoginCtrl {
         }
         return "";
     }
-
+    usernameblur() {
+        if (!NoderedUtil.IsNullEmpty(this.username) && this.username.indexOf("@") > -1) {
+            var domain = this.username.substr(this.username.indexOf("@") + 1);
+            if (this.WebSocketClientService.forceddomains.indexOf(domain) > - 1) {
+                console.log("domain found in forceddomains");
+                document.getElementById("password").style.display = "none";
+                document.getElementById("localbuttons").style.display = "none";
+                this.message = "Please use provider button to login with this domain";
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            } else {
+                console.log("domain is not forced");
+                document.getElementById("password").style.display = "block";
+                document.getElementById("localbuttons").style.display = "block";
+            }
+        }
+    }
 }
 export class ProvidersCtrl extends entitiesCtrl<Provider> {
     constructor(
@@ -2145,6 +2160,7 @@ export class ProvidersCtrl extends entitiesCtrl<Provider> {
     }
 }
 export class ProviderCtrl extends entityCtrl<Provider> {
+    public newforceddomain: string = "";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -2185,6 +2201,23 @@ export class ProviderCtrl extends entityCtrl<Provider> {
             this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    deleteforceddomains(id) {
+        if ((this.model as any).forceddomains === null || (this.model as any).forceddomains === undefined) {
+            (this.model as any).forceddomains = [];
+        }
+        (this.model as any).forceddomains = (this.model as any).forceddomains.filter(function (m: any): boolean { return m !== id; });
+    }
+    addforceddomains() {
+        if ((this.model as any).forceddomains === null || (this.model as any).forceddomains === undefined) {
+            (this.model as any).forceddomains = [];
+        }
+        var v = this.newforceddomain;
+        try {
+            v = JSON.parse(v);
+        } catch (error) {
+        }
+        (this.model as any).forceddomains.push(v);
     }
 }
 export class UsersCtrl extends entitiesCtrl<TokenUser> {

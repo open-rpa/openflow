@@ -779,13 +779,13 @@ export class Message {
                 if (mq != null) {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                            let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on exchange object " + msg.exchangename);
+                            let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing update permission on exchange object`);
                             Logger.instanse.error("Message", "RegisterExchange", error);
                             throw error;
                         }
                     } else if (Config.amqp_force_sender_has_invoke) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                            let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on exchange object " + msg.exchangename);
+                            let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
                             Logger.instanse.error("Message", "RegisterExchange", error);
                             throw error;
                         }
@@ -892,13 +892,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing update permission on users object {mq._id}`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object {mq._id}`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
@@ -911,13 +911,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing update permission on queue object`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
@@ -1011,11 +1011,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object ${mq._id}`);
+                                throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing read permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing read permission on users object ${mq._id}`);
+                                throw error;
                             }
                         }
                         allowed = true;
@@ -1026,11 +1028,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
+                                throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing read permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing read permission on queue object`);
+                                throw error;
                             }
 
                         }
@@ -1054,11 +1058,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown exchange or access denied, missing invoke permission on exchange object " + tuser.name);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing invoke permission on exchange object`);
+                                throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("Unknown exchange or access denied, missing read permission on exchange object " + tuser.name);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing read permission on exchange object`);
+                                throw error;
                             }
 
                         }
@@ -1716,7 +1722,13 @@ export class Message {
                     } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                         if (Config.auto_create_user_from_jwt) {
                             const jwt: string = Crypt.rootToken();
-                            user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
+                            let extraoptions = {
+                                federationids: [],
+                                emailvalidated: true,
+                                formvalidated: true,
+                                validated: true
+                            }
+                            user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, extraoptions, span);
                             if (user != null) tuser = TokenUser.From(user);
                             if (user == null) {
                                 tuser = new TokenUser();
@@ -1994,6 +2006,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         let msg: EnsureNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2018,6 +2031,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedInstance", parent);
         let msg: DeleteNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = DeleteNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2042,6 +2056,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedPod", parent);
         let msg: DeleteNoderedPodMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = DeleteNoderedPodMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2066,6 +2081,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.RestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2090,6 +2106,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetKubeNodeLabels", parent);
         let msg: GetKubeNodeLabelsMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetKubeNodeLabelsMessage.assign(this.data);
             msg.result = await Logger.nodereddriver.NodeLabels(span);
         } catch (error) {
@@ -2113,6 +2130,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         let msg: GetNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2137,6 +2155,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
         let msg: GetNoderedInstanceLogMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetNoderedInstanceLogMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);

@@ -1414,9 +1414,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (collectionname === "users" && item._type === "user") {
                 const u: TokenUser = (item as any);
-                u.validated = false;
-                u.formvalidated = false;
-                u.emailvalidated = false;
+                if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
+                if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
@@ -1429,7 +1429,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
                 Logger.DBHelper.clearCache("check for dublicates");
-                const exists2 = await Logger.DBHelper.FindRoleByName(r.name, span);
+                const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
@@ -1449,7 +1449,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                 span?.addEvent("FindRoleByName users");
-                const users: Role = await Logger.DBHelper.FindRoleByName("users", span);
+                const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
                 users.AddMember(item);
                 span?.addEvent("Save Users");
                 await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
@@ -1619,9 +1619,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (collectionname === "users" && item._type === "user") {
                     const u: TokenUser = (item as any);
-                    u.validated = false;
-                    u.formvalidated = false;
-                    u.emailvalidated = false;
+                    if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
+                    if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                    if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
                     if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                     if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
@@ -1632,7 +1632,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const r: Role = (item as any);
                     if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
-                    const exists2 = await Logger.DBHelper.FindRoleByName(r.name, span);
+                    const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                     if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                 }
 
@@ -1662,7 +1662,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span?.addEvent("FindRoleByName");
-                    const users: Role = await Logger.DBHelper.FindRoleByName("users", span);
+                    const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
                     users.AddMember(item);
                     span?.addEvent("CleanACL");
                     item = await this.CleanACL(item, user, collectionname, span);
