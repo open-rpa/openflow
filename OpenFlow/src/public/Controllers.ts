@@ -2138,9 +2138,9 @@ export class LoginCtrl {
                     }
                 }
             }
-            document.getElementById("password").style.display = "block";
-            document.getElementById("localbuttons").style.display = "block";
         }
+        document.getElementById("password").style.display = "block";
+        document.getElementById("localbuttons").style.display = "block";
     }
 }
 export class ProvidersCtrl extends entitiesCtrl<Provider> {
