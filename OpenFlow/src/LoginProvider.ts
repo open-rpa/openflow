@@ -1667,6 +1667,8 @@ export class LoginProvider {
             let from = Config.smtp_from;
 
             if (Config.NODE_ENV != "production") {
+                Logger.instanse.warn("LoginProvider", "sendEmail", "Skip sending email to " + to);
+                Logger.instanse.info("LoginProvider", "sendEmail", text);
                 resolve("email not sent");
             } else {
                 transporter.sendMail({
