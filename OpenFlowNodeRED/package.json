@@ -45,7 +45,7 @@
     "pako": "^2.0.4",
     "passport-saml": "^3.2.0",
     "passport-saml-metadata": "^2.5.0",
-    "pm2": "^4.5.6",
+    "pm2": "^5.2.0",
     "readline-sync": "^1.4.10",
     "request": "^2.88.2",
     "smtp-server": "^3.9.0",

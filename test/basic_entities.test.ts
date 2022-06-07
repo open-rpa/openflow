@@ -18,8 +18,13 @@ import { Logger } from '../OpenFlow/src/Logger';
         if (!this.socket) this.socket = new WebSocketClient(null, "wss://pc.openiap.io", true);
         // if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true, true);
         this.socket.agent = "test-cli";
-        await this.socket.Connect();
-        await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser" });
+        try {
+            await this.socket.Connect();
+            await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser" });
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
     @timeout(5000)
     async after() {
