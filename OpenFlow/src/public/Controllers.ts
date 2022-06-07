@@ -2139,6 +2139,8 @@ export class LoginCtrl {
                 }
             }
         }
+        this.message = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
         document.getElementById("password").style.display = "block";
         document.getElementById("localbuttons").style.display = "block";
     }

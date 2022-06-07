@@ -361,6 +361,8 @@
         }
       }
       console.log("domain is not forced");
+      this.errormessage = "";
+      if (!$scope.$$phase) { $scope.$apply(); }
       document.getElementById("password").style.display = "block";
       document.getElementById("localbuttons").style.display = "block";
     }
