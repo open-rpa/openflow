@@ -386,7 +386,7 @@
             <form class="form-signin" ngNoForm method='post' action='/local' ng-show="ctrl.stage == 0">
               <div class="form-label-group" ng-show="ctrl.localenabled">
                 <input type="text" name="username" id="username" ng-model="ctrl.username" class="form-control" placeholder="email"
-                  required autofocus autocomplete='off' ng-blur="ctrl.usernameblur()">
+                  required autofocus autocomplete='off' ng-change="ctrl.usernameblur()" ng-blur="ctrl.usernameblur()">
                 <label for="username" translate lib="web">email</label>
               </div>
               <div class="form-label-group" ng-show="ctrl.localenabled" id="password">
