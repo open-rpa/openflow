@@ -10,7 +10,6 @@ import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 import * as saml from "saml20";
 const multer = require('multer');
-// const GridFsStorage = require('multer-gridfs-storage');
 import { GridFsStorage } from "multer-gridfs-storage";
 import { GridFSBucket, ObjectID, Binary } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage, FederationId } from "@openiap/openflow-api";
@@ -947,8 +946,10 @@ export class LoginProvider {
             }
         });
         try {
+            // Some times db is not connect yet, at this point, so wait til it is
+            await Config.db.connect();
             const storage = new GridFsStorage({
-                db: Config.db,
+                db: Config.db.db,
                 file: (req, file) => {
                     return new Promise((resolve, reject) => {
                         crypto.randomBytes(16, async (err, buf) => {
