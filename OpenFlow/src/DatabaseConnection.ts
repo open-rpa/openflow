@@ -3679,15 +3679,20 @@ export class EntityRestriction extends Base {
         }
         for (let path of this.paths) {
             if (!NoderedUtil.IsNullEmpty(path)) {
+                var json = { a: object };
+                Logger.instanse.verbose("DatabaseConnection", "IsMatch", path);
+                Logger.instanse.silly("DatabaseConnection", "IsMatch", JSON.stringify(json, null, 2));
                 try {
-                    const result = JSONPath({ path, json: { a: object } });
-                    if (result && result.length > 0) return true;
+                    const result = JSONPath({ path, json });
+                    if (result && result.length > 0) {
+                        Logger.instanse.verbose("DatabaseConnection", "IsMatch", "true");
+                        return true;
+                    }
                 } catch (error) {
                 }
-            } else {
-                var b = true;
             }
         }
+        Logger.instanse.verbose("DatabaseConnection", "IsMatch", "false");
         return false;
     }
     public IsAuthorized(user: TokenUser | User): boolean {
