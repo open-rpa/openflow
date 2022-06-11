@@ -1080,7 +1080,7 @@ export class LoginProvider {
                     }
                     const _query = req.query;
                     let uniquename: string = _query.uniquename;
-                    let _id: string = _query.id;
+                    let _id: string = _query.id || _query._id;
                     let query: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
