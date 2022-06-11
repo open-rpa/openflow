@@ -49,6 +49,9 @@
           (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers'))          
           ">
           <em class="fas fa-money-bill-wave"></em></a>
+          <a ng-href="#/Customer/{{model.customerid}}" class="btn" role="button" ng-show="menuctrl.user.customerid != null && menuctrl.WebSocketClientService.multi_tenant && model.customerid && model.customerid != ''">
+          <em class="fas fa-industry"></em></a>
+          
       </td>
       <td ng-show="ctrl.WebSocketClientService.validate_user_form != ''">
         <em ng-show="model.validated" class="fas fa-check"></em>
