@@ -1957,10 +1957,22 @@ export class Message {
                 if (!validated) {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        Logger.instanse.error("Message", "Signin", new Error(msg.user.username + " not validated"));
+                        Logger.instanse.error("Message", "Signin", msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
+                }
+                if (cli?.clientagent == "openrpa" && msg.user.dblocked) {
+                    // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
+                    // msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
+                    // msg.jwt = undefined;
+                    // Stall a little, to avoid spam
+                    // await new Promise(resolve => { setTimeout(resolve, 5000) });
+                    // 
+                    // setTimeout(() => {
+                    //     cli.Close();
+                    // }, 500);
                 }
             }
             try {
