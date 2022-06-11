@@ -1080,11 +1080,14 @@ export class LoginProvider {
                     }
                     const _query = req.query;
                     let uniquename: string = _query.uniquename;
+                    let _id: string = _query.id;
                     let query: any = {};
                     if (!NoderedUtil.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
                         if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
                         query = { "metadata.uniquename": uniquename };
+                    } else if (!NoderedUtil.IsNullEmpty(_id)) {
+                        query = { _id };
                     }
 
                     const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
