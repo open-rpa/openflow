@@ -182,13 +182,6 @@ export class workflow_in_node {
                 data.jwt = data.payload.__jwt;
                 delete data.payload.__jwt;
             }
-            while (data.payload != null && data.payload.payload != null) {
-                data.payload = data.payload.payload;
-            }
-            // if (data.payload != null && data.payload.payload != null) {
-            //     // UGLy ROLLBACK!
-            //     data.payload = data.payload.payload;
-            // }
             let _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
@@ -197,6 +190,14 @@ export class workflow_in_node {
                     }
                 }
             }
+
+            while (data.payload != null && data.payload.payload != null) {
+                data.payload = data.payload.payload;
+            }
+            // if (data.payload != null && data.payload.payload != null) {
+            //     // UGLy ROLLBACK!
+            //     data.payload = data.payload.payload;
+            // }
             if (_id !== null && _id !== undefined && _id !== "") {
                 this.node.status({ fill: "blue", shape: "dot", text: "Processing id " + _id });
                 const jwt = data.jwt;
