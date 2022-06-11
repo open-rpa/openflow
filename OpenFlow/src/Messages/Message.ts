@@ -2259,6 +2259,9 @@ export class Message {
         metadata._modifiedby = user.name;
         metadata._modifiedbyid = user._id;
         metadata._modified = metadata._created;
+        if (NoderedUtil.IsNullEmpty((metadata as any).uniquename)) {
+            (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(filename);
+        }
         if (NoderedUtil.IsNullEmpty(metadata.name)) {
             metadata.name = filename;
         }
@@ -4347,6 +4350,7 @@ export class Message {
                         (metadata as any).wi = wi._id;
                         (metadata as any).wiq = wiq.name;
                         (metadata as any).wiqid = wiq._id;
+                        (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                         metadata._acl = wiq._acl;
                         metadata.name = path.basename(file.filename);
@@ -4534,6 +4538,7 @@ export class Message {
                             (metadata as any).wi = wi._id;
                             (metadata as any).wiq = wiq.name;
                             (metadata as any).wiqid = wiq._id;
+                            (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                             metadata._acl = wiq._acl;
                             metadata.name = path.basename(file.filename);
@@ -4710,6 +4715,7 @@ export class Message {
                         (metadata as any).wi = wi._id;
                         (metadata as any).wiq = wiq.name;
                         (metadata as any).wiqid = wiq._id;
+                        (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                         metadata._acl = wiq._acl;
                         metadata.name = path.basename(file.filename);
