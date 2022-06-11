@@ -1961,8 +1961,7 @@ export class Message {
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
-                }
-                if (cli?.clientagent == "openrpa" && msg.user?.dblocked == true) {
+                } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
                     // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
                     // msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
