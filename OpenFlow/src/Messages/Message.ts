@@ -1702,15 +1702,20 @@ export class Message {
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                     type = "jwtsignin";
                     tuser = await Crypt.verityToken(msg.jwt);
+                    let _id = tuser._id;
                     if (tuser != null) {
                         if (NoderedUtil.IsNullEmpty(tuser._id)) {
+                            _id = tuser.username;
                             user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
                         } else {
                             user = await Logger.DBHelper.FindById(tuser._id, msg.jwt, span);
                         }
                     }
                     if (tuser == null || user == null) {
-                        throw new Error("Failed resolving token ");
+                        Logger.instanse.error("Message", "Signin", "Failed resolving token, could not find user by " + _id);
+                        // Nodered will spam this, so to not strain the system to much force an 1 second delay
+                        await new Promise(resolve => { setTimeout(resolve, 1000) });
+                        throw new Error("Failed resolving token");
                     }
                     if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
                         impostor = tuser.impostor;
