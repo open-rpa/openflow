@@ -182,9 +182,6 @@
         </div>
       </form>
 
-
-
-
       <div class="navbar-content d-md-none ml-auto">
         <div class="dropdown with-arrow">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
@@ -213,6 +210,10 @@
 
     </nav>
     <div class="content-wrapper">
+      <div class="alert alert-danger" ng-show="menuctrl.user.dblocked">
+        You are currently using more than the 25mb allowed. 
+        Please <a href="https://pc.openiap.io/#/Customer">buy more</a> storage or install <a href="https://openflow.openiap.io/">openflow</a> locally.
+      </div>
       <main role="main" class="container"
         ng-show="menuctrl.signedin || menuctrl.path=='/Login' || menuctrl.path=='/Signup'">
         <div ng-view class="starter-template">
