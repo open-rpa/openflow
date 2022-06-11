@@ -74,7 +74,7 @@ export class Logger {
         if (Logger.usecolors) {
             return prefix + color + message + Console.Reset;
         }
-        return prefix + message + Console.Reset;
+        return prefix + message;
     }
     public error(cls: string, func: string, message: string | Error | unknown) {
         if (Config.unittesting) return;
