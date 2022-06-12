@@ -1088,10 +1088,17 @@ export class LoginProvider {
                         query = { "metadata.uniquename": uniquename };
                     } else if (!NoderedUtil.IsNullEmpty(_id)) {
                         query = { _id };
+                    } else {
+                        return res.status(404).send({ message: 'nothing unique. Not found.' });
                     }
 
                     const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
-
+                    if (arr[0]) {
+                        if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                            return res.status(404).send({ message: 'uniquename ' + uniquename + ' Not found.' });
+                        }
+                        return res.status(404).send({ message: 'id ' + _id + ' Not found.' });
+                    }
                     const id = arr[0]._id;
                     const rows = await Config.db.query({ query: { _id: safeObjectID(id) }, top: 1, collectionname: "files", jwt }, span);
                     if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
