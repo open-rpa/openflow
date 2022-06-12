@@ -625,6 +625,30 @@ export class assign_workflow_node {
             NoderedUtil.HandleError(this, error, msg);
         }
     }
+    clone(obj: any) {
+        try {
+            var result = {};
+            var keys = Object.keys(obj);
+            keys.forEach(key => {
+                try {
+                    var val = obj[key];
+                    if (NoderedUtil.IsNullUndefinded(val)) {
+                        result[key] = val;
+                    } else if (Buffer.isBuffer(val)) {
+                    } else if (typeof (val) === "object") {
+                        result[key] = this.clone(val);
+                    } else {
+                        result[key] = val;
+                    }
+                } catch (error) {
+                    throw error;
+                }
+            });
+            return result;
+        } catch (error) {
+            throw error;
+        }
+    }
     async oninput(msg: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
@@ -654,15 +678,22 @@ export class assign_workflow_node {
 
 
             msg.jwt = (await NoderedUtil.RenewToken({ jwt, longtoken: true })).jwt;
+            let cloned = this.clone(msg);
+
             const runnerinstance = new Base();
             runnerinstance._type = "instance";
             runnerinstance.name = "runner: " + name;
             (runnerinstance as any).queue = this.localqueue;
             (runnerinstance as any).state = "idle";
-            (runnerinstance as any).msg = msg;
+            (runnerinstance as any).msg = cloned;
             (runnerinstance as any).jwt = msg.jwt;
             const who = WebSocketClient.instance.user;
             Base.addRight(runnerinstance, who._id, who.name, [-1]);
+
+            const size = JSON.stringify(runnerinstance).length * 2; // 2B per character
+            if (size > (512 * 1024)) {
+                throw new Error("msg object is over 512KB in size, please clean up the msg object before using Assign");
+            }
 
             const res3 = await NoderedUtil.InsertOne({ collectionname: "workflow_instances", item: runnerinstance, jwt, priority });
             msg._parentid = res3._id;
