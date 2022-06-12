@@ -129,5 +129,9 @@
     "lastrun": "Last run",
     "nextrun": "Next run",
     "forceddomains": "Forced domains",
-    "addforceddomains": "Add forced domain"
+    "addforceddomains": "Add forced domain",
+    "emailhistdetails": "Mail history details",
+    "validated": "Validated",
+    "emailvalidated": "Email validated",
+    "formvalidated": "Form validated"
 }

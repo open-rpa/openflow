@@ -130,5 +130,9 @@
     "nextrun": "Næste Kørsel",
     "autocreate": "Auto operet",
     "forceddomains": "Tvangs domæner",
-    "addforceddomains": "Tilføj tvungen domæne"
+    "addforceddomains": "Tilføj tvungen domæne",
+    "emailhistdetails": "Mail historik",
+    "validated": "Valideret",
+    "emailvalidated": "Email valideret",
+    "formvalidated": "Form valideret"
 }
