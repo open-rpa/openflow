@@ -1594,7 +1594,7 @@ export class Message {
         try {
             msg = DeleteManyMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, msg.jwt, span);
+            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, null, msg.jwt, span);
             delete msg.ids;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5045,7 +5045,7 @@ export class Message {
             msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
 
             if (msg.purge) {
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
                 }
@@ -5053,7 +5053,7 @@ export class Message {
                 if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, jwt, parent);
             }
         } catch (error) {
             await handleError(null, error);
@@ -5092,7 +5092,7 @@ export class Message {
             user = User.assign(Crypt.verityToken(this.jwt));
 
             if (msg.purge) {
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
                     items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
@@ -5100,7 +5100,7 @@ export class Message {
                 if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, jwt, parent);
             } else {
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
