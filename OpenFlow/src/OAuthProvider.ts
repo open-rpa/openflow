@@ -418,7 +418,7 @@ export class Account {
         return token.item;
     }
     static async RemoveTokenRequest(code: string, parent: Span) {
-        let tokens = await Config.db.DeleteMany({ _type: "tokenrequest", "code": code }, null, "oauthtokens", Crypt.rootToken(), parent);
+        let tokens = await Config.db.DeleteMany({ _type: "tokenrequest", "code": code }, null, "oauthtokens", null, Crypt.rootToken(), parent);
         return tokens[0];
     }
 }
