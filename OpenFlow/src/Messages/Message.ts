@@ -622,16 +622,6 @@ export class Message {
                     if (!this.EnsureJWT(cli)) break;
                     await this.StripeMessage(cli);
                     break;
-                case "dumpclients":
-                    break;
-                case "dumprabbitmq":
-                    break;
-                case "getrabbitmqqueue":
-                    break;
-                case "deleterabbitmqqueue":
-                    break;
-                case "pushmetrics":
-                    break;
                 case "ensurecustomer":
                     await this.EnsureCustomer(cli, span);
                     break;

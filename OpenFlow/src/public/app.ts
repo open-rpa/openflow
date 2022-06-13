@@ -3,8 +3,8 @@ import angular = require("angular");
 import { timesince, timetoo, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled, ngtype } from "./CommonControllers";
 import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
-    WorkflowsCtrl, ReportsCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl,
-    hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
+    WorkflowsCtrl, ReportsCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, NoderedCtrl,
+    hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
     OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl
 } from "./Controllers";
 
@@ -99,7 +99,6 @@ module openflow {
                 .when('/History/:collection/:id', { templateUrl: 'History.html', controller: HistoryCtrl, controllerAs: 'ctrl' })
                 .when('/Deleted/:collection', { templateUrl: 'Deleted.html', controller: DeletedCtrl, controllerAs: 'ctrl' })
 
-                .when('/Socket', { templateUrl: 'Socket.html', controller: SocketCtrl, controllerAs: 'ctrl' })
                 .when('/Nodered', { templateUrl: 'Nodered.html', controller: NoderedCtrl, controllerAs: 'ctrl' })
                 .when('/Nodered/:id', { templateUrl: 'Nodered.html', controller: NoderedCtrl, controllerAs: 'ctrl' })
 
@@ -109,11 +108,6 @@ module openflow {
                 .when('/Auditlogs', { templateUrl: 'Auditlogs.html', controller: AuditlogsCtrl, controllerAs: 'ctrl' })
 
                 .when('/Signup', { templateUrl: 'Signup.html', controller: SignupCtrl, controllerAs: 'ctrl' })
-
-                .when('/Queue', { templateUrl: 'Queue.html', controller: QueueCtrl, controllerAs: 'ctrl' })
-                .when('/Queue/:id', { templateUrl: 'Queue.html', controller: QueueCtrl, controllerAs: 'ctrl' })
-                .when('/Queues', { templateUrl: 'Queues.html', controller: QueuesCtrl, controllerAs: 'ctrl' })
-                .when('/Sockets', { templateUrl: 'Sockets.html', controller: SocketsCtrl, controllerAs: 'ctrl' })
 
                 .when('/Credentials', { templateUrl: 'Credentials.html', controller: CredentialsCtrl, controllerAs: 'ctrl' })
                 .when('/Credential', { templateUrl: 'Credential.html', controller: CredentialCtrl, controllerAs: 'ctrl' })
@@ -131,7 +125,6 @@ module openflow {
                 .when('/EntityRestrictions', { templateUrl: 'EntityRestrictions.html', controller: EntityRestrictionsCtrl, controllerAs: 'ctrl' })
                 .when('/EntityRestriction', { templateUrl: 'EntityRestriction.html', controller: EntityRestrictionCtrl, controllerAs: 'ctrl' })
                 .when('/EntityRestriction/:id', { templateUrl: 'EntityRestriction.html', controller: EntityRestrictionCtrl, controllerAs: 'ctrl' })
-
 
                 .when('/Resources', { templateUrl: 'Resources.html', controller: ResourcesCtrl, controllerAs: 'ctrl' })
                 .when('/Resource', { templateUrl: 'Resource.html', controller: ResourceCtrl, controllerAs: 'ctrl' })
