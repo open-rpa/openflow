@@ -2594,7 +2594,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
             const docs = await this.db.collection(collectionname).find(_query).toArray();
             for (let i = 0; i < docs.length; i++) {
-                let doc = docs[i];
+                let doc: Customer = docs[i];
                 if (collectionname == "users" && doc._type == "user") {
                     const usagedocs = await this.db.collection("config").find({ "userid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
                     if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete user with active resourceusage");
@@ -2602,12 +2602,46 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "users" && doc._type == "customer") {
                     const usagedocs = await this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
                     if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
-                    const userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
-                    if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                    let userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
+                    if (doc.userid != user._id) {
+                        if (userdocs.length > 0 && !Config.cleanup_on_delete_customer) {
+                            let defaulttest = userdocs.filter(x => x._id != doc.users && x._id != doc.admins && x._id != doc.userid)
+                            if (defaulttest.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                        }
+                        if (Config.cleanup_on_delete_customer) {
+                            Logger.instanse.warn("DatabaseConnection", "DeleteOne", "[" + user.username + "] Cleaning up after up after company " + doc.name);
+                            // let queries = [];
+                            // for (var y = 0; y < userdocs.length; y++) {
+                            //     if (userdocs[y]._type == "user") {
+                            //         queries.push({ "_createdbyid": userdocs[y]._id });
+                            //         // queries.push({ "_modifiedbyid": userdocs[y]._id });
+                            //     }
+                            // }
+                            // let query = { "$or": queries };
+                            // if (queries.length > 0) {
+                            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                            collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
+                                && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
+                                && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
+                                && x.name != "oauthtokens" && x.name != "users");
+                            for (let i = 0; i < collections.length; i++) {
+                                let collection = collections[i];
+                                // var res = await this.DeleteMany(query, null, collection.name, null, jwt, span);
+                                var res = await this.DeleteMany({}, null, collection.name, doc._id, jwt, span);
+                                Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after company " + doc.name);
+                            }
+                            // }
+                        }
+                        for (let i = 0; i < userdocs.length; i++) {
+                            await this.DeleteOne(userdocs[i]._id, "users", jwt, span);
+                        }
+                    } else {
+                        if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                    }
                 }
-                doc._deleted = new Date(new Date().toISOString());
-                doc._deletedby = user.name;
-                doc._deletedbyid = user._id;
+                (doc as any)._deleted = new Date(new Date().toISOString());
+                (doc as any)._deletedby = user.name;
+                (doc as any)._deletedbyid = user._id;
                 const fullhist = {
                     _acl: doc._acl,
                     _type: doc._type,
@@ -2617,14 +2651,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     _created: doc._modified,
                     _createdby: doc._modifiedby,
                     _createdbyid: doc._modifiedbyid,
-                    _deleted: doc._deleted,
-                    _deletedby: doc._deletedby,
-                    _deletedbyid: doc._deletedbyid,
+                    _deleted: (doc as any)._deleted,
+                    _deletedby: (doc as any)._deletedby,
+                    _deletedbyid: (doc as any)._deletedbyid,
                     name: doc.name,
                     id: doc._id,
                     item: doc,
                     _version: doc._version,
-                    reason: doc.reason
+                    reason: (doc as any).reason
                 }
                 const ot_end = Logger.otel.startTimer();
                 await this.db.collection(collectionname + '_hist').insertOne(fullhist);
@@ -2685,20 +2719,45 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteMany(query: string | any, ids: string[], collectionname: string, jwt: string, parent: Span): Promise<number> {
+    async DeleteMany(query: string | any, ids: string[], collectionname: string, queryas: string, jwt: string, parent: Span): Promise<number> {
         if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
             await this.connect();
             const user: TokenUser = await Crypt.verityToken(jwt);
-            let _query: any = {};
-            let aclfield = "_acl";
+
+
+            let baseq: any = {};
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
-                aclfield = "metadata._acl"
+                let impersonationquery;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.delete], span);
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    baseq = this.getbasequery(user, "metadata._acl", [Rights.delete]), impersonationquery;
+                } else {
+                    baseq = this.getbasequery(user, "metadata._acl", [Rights.delete]);
+                }
+            } else {
+                let impersonationquery: any;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "_acl", [Rights.delete], span)
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    baseq = this.getbasequery(user, "_acl", [Rights.delete]), impersonationquery;
+                } else {
+                    baseq = this.getbasequery(user, "_acl", [Rights.delete]);
+                }
             }
-            const baseq = this.getbasequery(user, aclfield, [Rights.delete]);
+            let _query: any = {};
             if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
+                let objectids = [];
+                if (collectionname == "files" || collectionname == "fs.files") {
+                    for (let i = 0; i < ids.length; i++) {
+                        try {
+                            objectids.push(safeObjectID(ids[i]))
+                        } catch (error) {
+                        }
+                        if (objectids.length > 0) ids = ids.concat(objectids);
+                    }
+                }
                 _query = { $and: [{ _id: { "$in": ids } }, baseq] };
             } else if (!NoderedUtil.IsNullUndefinded(query)) {
                 if (query !== null && query !== undefined) {
@@ -2744,7 +2803,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     deletecounter++;
                     const ot_end = Logger.otel.startTimer();
                     const _mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deletefile", span);
-                    await this._DeleteFile(c._id);
+                    try {
+                        await this._DeleteFile(c._id);
+                    } catch (error) {
+                    }
                     Logger.otel.endSpan(_mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
                 }
@@ -2953,6 +3015,9 @@ export class DatabaseConnection extends events.EventEmitter {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             user.roles.push(new Rolemember(user.name + " users", (user as any).users))
             user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
+            if (!NoderedUtil.IsNullEmpty((user as any as Customer).userid)) {
+                user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
+            }
             // const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
             return this.getbasequery(user, field, bits);
         }
