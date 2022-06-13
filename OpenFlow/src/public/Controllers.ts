@@ -111,7 +111,17 @@ export class MenuCtrl {
 
             this.customer = this.WebSocketClientService.customer;
 
-            this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 } });
+            this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
+            if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+                if (this.customers.filter(x => x._id == this.user.selectedcustomerid).length == 0) {
+                    this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.selectedcustomerid } })).concat(this.customers);
+                }
+            }
+            if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+                if (this.customers.filter(x => x._id == this.user.customerid).length == 0) {
+                    this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.customerid } })).concat(this.customers);
+                }
+            }
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.StartNewFeaturesTour(null);
         });
@@ -124,7 +134,17 @@ export class MenuCtrl {
                 this.customer = null;
             } else {
                 this.customer = this.WebSocketClientService.customer;
-                this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 } });
+                this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
+                if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+                    if (this.customers.filter(x => x._id == this.user.selectedcustomerid).length == 0) {
+                        this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.selectedcustomerid } })).concat(this.customers);
+                    }
+                }
+                if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+                    if (this.customers.filter(x => x._id == this.user.customerid).length == 0) {
+                        this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.customerid } })).concat(this.customers);
+                    }
+                }
                 if (this.customers && this.customers.length > 0) {
                     for (let cust of this.customers) {
                         if (cust._id == this.user.selectedcustomerid) {
@@ -149,7 +169,17 @@ export class MenuCtrl {
         this.$scope.$on('menurefresh', async (event, data) => {
             if (event && data) { }
             this.customer = this.WebSocketClientService.customer;
-            this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 } });
+            this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
+            if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+                if (this.customers.filter(x => x._id == this.user.selectedcustomerid).length == 0) {
+                    this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.selectedcustomerid } })).concat(this.customers);
+                }
+            }
+            if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+                if (this.customers.filter(x => x._id == this.user.customerid).length == 0) {
+                    this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.customerid } })).concat(this.customers);
+                }
+            }
             if (this.customers.length > 0) {
                 for (let cust of this.customers)
                     if (cust._id == this.user.selectedcustomerid) this.customer = cust;
@@ -2990,6 +3020,8 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
                 }
                 this.loadData();
                 this.collections = await NoderedUtil.ListCollections({});
+                console.log(this.collections);
+                this.collections.push({ name: "fs.files" });
             } catch (error) {
                 this.errormessage = error;
             }
@@ -5668,7 +5700,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             const item = (this.models[x] as any);
             ids.push(item.items[0]._id);
         }
-        await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
+        if (ids.length > 0) await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
         this.loading = false;
         this.loadData();
     }
@@ -5681,7 +5713,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
                 ids.push(item.items[y]._id);
             }
         }
-        await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
+        if (ids.length > 0) await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
         this.loading = false;
         this.loadData();
     }
@@ -5694,7 +5726,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
                 ids.push(item.items[y]._id);
             }
         }
-        await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
+        if (ids.length > 0) await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
         this.loading = false;
         this.loadData();
     }
@@ -5715,7 +5747,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (let i = 1; i < model.items.length; i++) {
             ids.push(model.items[i]._id);
         }
-        await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
+        if (ids.length > 0) await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
         this.loading = false;
         this.loadData();
     }
@@ -5727,7 +5759,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         for (let i = 0; i < model.items.length; i++) {
             ids.push(model.items[i]._id);
         }
-        await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
+        if (ids.length > 0) await NoderedUtil.DeleteMany({ collectionname: this.collection, ids });
         this.loading = false;
         this.loadData();
     }
@@ -5863,6 +5895,7 @@ export class CustomersCtrl extends entitiesCtrl<Provider> {
         console.debug("CustomersCtrl");
         this.basequery = { _type: "customer" };
         this.collection = "users";
+        this.skipcustomerfilter = true;
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
@@ -5993,8 +6026,11 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.errormessage = "";
             if (this.model != null) {
                 if (WebSocketClient.instance.user.selectedcustomerid != this.model._id) {
+                    console.log("update selected customer to id #" + this.model._id)
                     WebSocketClient.instance.user.selectedcustomerid = this.model._id;
                     this.$rootScope.$broadcast("menurefresh");
+                } else {
+                    console.log("user already have selected customer id #" + this.model._id)
                 }
             }
             if (this.$routeParams.action != null) {
