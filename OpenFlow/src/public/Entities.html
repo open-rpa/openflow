@@ -15,6 +15,10 @@
   </div>
   <div class=" col-md-6 text-right" id="entitiestools">
     <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
+    ng-show="menuctrl.WebSocketClientService.multi_tenant">
+  <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
+      all</span></label>
     <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
     <span ng-show="ctrl.collection == 'openrpa_instances'">
       <input type="checkbox" id="checkbox-1" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
