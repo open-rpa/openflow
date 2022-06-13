@@ -2509,6 +2509,10 @@ export class Message {
             if (!msg.initialrun) {
                 (_data as any).form = "unknown";
             }
+            if ((_data as any).payload._parentid) {
+                (_data as any)._parentid = (_data as any).payload._parentid;
+                delete (_data as any).payload._parentid;
+            }
 
             const res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt, span);
             msg.newinstanceid = res2._id;
