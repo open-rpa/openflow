@@ -26,6 +26,7 @@ export class Audit {
         Base.addRight(log, user._id, user.name, [Rights.read]);
         Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
         log.success = true;
+        log._type = "impersonate";
         log.type = "impersonate";
         log.userid = user._id;
         log.name = user.name;
@@ -42,6 +43,7 @@ export class Audit {
         Base.addRight(log, user._id, user.name, [Rights.read]);
         Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
         log.success = false;
+        log._type = "impersonate";
         log.type = "impersonate";
         log.userid = user._id;
         log.name = user.name;
