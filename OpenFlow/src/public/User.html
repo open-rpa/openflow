@@ -35,7 +35,7 @@
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>
-    <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.model.company">
+    <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.model.company != '' && ctrl.model.company != null && ctrl.model.company != undefined">
         <label for="company" class="col-sm-2 control-label" translate lib="web">company</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.company" class="form-control input-md"
@@ -43,19 +43,19 @@
         </div>
     </div>
     <div class="form-group" ng-show="menuctrl.hasrole('admins') && (ctrl.model.validated == true || ctrl.model.validated == false)">
-        <label for="company" class="col-sm-2 control-label" translate lib="web">validated</label>
+        <label for="validated" class="col-sm-2 control-label" translate lib="web">validated</label>
         <div class="col-sm-4">
             <input type="checkbox" ng-model="ctrl.model.validated" class="input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="menuctrl.hasrole('admins') && (ctrl.model.validated == true || ctrl.model.validated == false)">
-        <label for="company" class="col-sm-2 control-label" translate lib="web">emailvalidated</label>
+        <label for="emailvalidated" class="col-sm-2 control-label" translate lib="web">emailvalidated</label>
         <div class="col-sm-4">
             <input type="checkbox" ng-model="ctrl.model.emailvalidated" class="input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
     <div class="form-group" ng-show="menuctrl.hasrole('admins') && (ctrl.model.validated == true || ctrl.model.validated == false)">
-        <label for="company" class="col-sm-2 control-label" translate lib="web">formvalidated</label>
+        <label for="formvalidated" class="col-sm-2 control-label" translate lib="web">formvalidated</label>
         <div class="col-sm-4">
             <input type="checkbox" ng-model="ctrl.model.formvalidated" class="input-md" ng-disabled="ctrl.loading==true" />
         </div>
@@ -64,13 +64,6 @@
         <label for="name" class="col-sm-2 control-label" translate lib="web">disabled</label>
         <div class="col-sm-6">
             <input type="checkbox" ng-model="ctrl.model.disabled" class="input-md" ng-disabled="ctrl.loading==true" />
-        </div>
-    </div>
-    <div class="form-group" ng-show="ctrl.model.company != '' && ctrl.model.company != null && ctrl.model.company != undefined">
-        <label for="sid" class="col-sm-2 control-label" translate lib="web">company</label>
-        <div class="col-sm-4">
-            <input ng-model="ctrl.model.company" class="form-control input-md" ng-disabled="ctrl.loading==true || (!menuctrl.hasrole('admins') && !menuctrl.hasrole('customer admins') && !menuctrl.hasrole('resellers'))"
-             />
         </div>
     </div>
     <div class="form-group" ng-show="ctrl.model.sid != '' && ctrl.model.sid != null && ctrl.model.sid != undefined">
