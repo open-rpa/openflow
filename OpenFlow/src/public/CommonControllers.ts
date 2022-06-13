@@ -620,14 +620,18 @@ export class entitiesCtrl<T> {
             let query: object = Object.assign({}, this.basequery);
             let exactquery: object = null;
             let basequeryas = this.basequeryas;
-            if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter && this.WebSocketClientService.multi_tenant) {
-                // if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
-                //     basequeryas = this.WebSocketClientService.customer._id;
-                // }
-                if (this.WebSocketClientService.customer && !NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer._id)) {
-                    query["customerid"] = this.WebSocketClientService.customer._id;
-                }
+            // if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter && this.WebSocketClientService.multi_tenant) {
+            //     // if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+            //     //     basequeryas = this.WebSocketClientService.customer._id;
+            //     // }
+            //     if (this.WebSocketClientService.customer && !NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer._id)) {
+            //         query["customerid"] = this.WebSocketClientService.customer._id;
+            //     }
+            // }
+            if (this.WebSocketClientService.multi_tenant && !NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                basequeryas = this.WebSocketClientService.customer._id;
             }
+
             let orderby = this.orderby;
             if (this.lastsearchstring !== this.searchstring) {
                 this.models = [];
@@ -761,6 +765,7 @@ export class entitiesCtrl<T> {
     async DeleteOne(model: any): Promise<any> {
         this.loading = true;
         this.errormessage = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
         try {
             await NoderedUtil.DeleteOne({ collectionname: this.collection, id: model._id });
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
