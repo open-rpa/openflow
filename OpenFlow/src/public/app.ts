@@ -3,7 +3,7 @@ import angular = require("angular");
 import { timesince, timetoo, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled, ngtype } from "./CommonControllers";
 import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
-    WorkflowsCtrl, ReportsCtrl, jslogCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl,
+    WorkflowsCtrl, ReportsCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, SocketCtrl, NoderedCtrl,
     hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, SignupCtrl, QueuesCtrl, SocketsCtrl, QueueCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
     OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl
 } from "./Controllers";
@@ -81,7 +81,6 @@ module openflow {
 
                 .when('/Workflows', { templateUrl: 'Workflows.html', controller: WorkflowsCtrl, controllerAs: 'ctrl' })
                 .when('/Reports', { templateUrl: 'Reports.html', controller: ReportsCtrl, controllerAs: 'ctrl' })
-                .when('/jslog', { templateUrl: 'jslog.html', controller: jslogCtrl, controllerAs: 'ctrl' })
 
                 .when('/EditForm/:id', { templateUrl: 'EditForm.html', controller: EditFormCtrl, controllerAs: 'ctrl' })
                 .when('/EditForm', { templateUrl: 'EditForm.html', controller: EditFormCtrl, controllerAs: 'ctrl' })

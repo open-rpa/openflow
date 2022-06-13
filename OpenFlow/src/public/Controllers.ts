@@ -3806,51 +3806,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     }
 
 }
-export class jslogCtrl extends entitiesCtrl<Base> {
-    public message: string = "";
-    public charts: chartset[] = [];
-    constructor(
-        public $rootScope: ng.IRootScopeService,
-        public $scope: ng.IScope,
-        public $location: ng.ILocationService,
-        public $routeParams: ng.route.IRouteParamsService,
-        public $interval: ng.IIntervalService,
-        public WebSocketClientService: WebSocketClientService,
-        public api: api,
-        public userdata: userdata
-    ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
-        this.autorefresh = true;
-        console.debug("jslogCtrl");
-        this.searchfields = ["_createdby", "host", "message"];
-        this.collection = "jslog";
-        this.basequery = {};
-        this.baseprojection = { _type: 1, type: 1, host: 1, message: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
-        WebSocketClientService.onSignedin((user: TokenUser) => {
-            this.loadData();
-        });
-    }
-    async DeleteMany(): Promise<void> {
-        this.loading = true;
-        const Promises: Promise<void>[] = [];
-        this.models.forEach(model => {
-            Promises.push(NoderedUtil.DeleteOne({ collectionname: this.collection, id: model._id }));
-        });
-        const results: any = await Promise.all(Promises.map(p => p.catch(e => e)));
-        // const values: void[] = results.filter(result => !(result instanceof Error));
-        // const ids: string[] = [];
-        // values.forEach((x: void) => ids.push(x._id));
-        // this.models = this.models.filter(function (m: any): boolean { return ids.indexOf(m._id) === -1; });
-        // this.loading = false;
-
-        this.models = await NoderedUtil.Query({ collectionname: this.collection, query: this.basequery, projection: this.baseprojection, orderby: this.orderby });
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        if (this.models.length > 0) {
-            await this.DeleteMany();
-        }
-    }
-
-}
 export class EntityCtrl extends entityCtrl<Base> {
     searchFilteredList: TokenUser[] = [];
     searchSelectedItem: TokenUser = null;
