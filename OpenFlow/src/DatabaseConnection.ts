@@ -2673,6 +2673,19 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "users", jwt, span);
                     }
+                    if (Config.cleanup_on_delete_user) {
+                        let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                        collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
+                            && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
+                            && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
+                            && x.name != "oauthtokens" && x.name != "users");
+                        for (let i = 0; i < collections.length; i++) {
+                            let collection = collections[i];
+                            var res = await this.DeleteMany({ "$or": [{ "_createdbyid": doc._id }, { "_modifiedbyid": doc._id }] }, null, collection.name, doc._id, jwt, span);
+                            Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after user " + doc.name);
+                        }
+
+                    }
                     // await this.db.collection("audit").deleteMany({ "userid": doc._id });
                     // await this.db.collection("openrpa_instances").deleteMany({ "_modifiedbyid": doc._id });
                     // await this.db.collection("workflow_instances").deleteMany({ "_modifiedbyid": doc._id });

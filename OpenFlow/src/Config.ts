@@ -128,6 +128,7 @@ export class Config {
         Config.update_acl_based_on_groups = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
         Config.multi_tenant = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
         Config.cleanup_on_delete_customer = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer", "false"));
+        Config.cleanup_on_delete_user = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
 
         Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
         Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
@@ -322,6 +323,7 @@ export class Config {
     public static update_acl_based_on_groups: boolean = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer", "false"));
+    public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
