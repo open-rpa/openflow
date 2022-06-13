@@ -4802,42 +4802,6 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
 
     }
 }
-export class SignupCtrl extends entityCtrl<Base> {
-    searchFilteredList: TokenUser[] = [];
-    searchSelectedItem: TokenUser = null;
-    searchtext: string = "";
-    e: any = null;
-
-    public newkey: string = "";
-    public showjson: boolean = false;
-    public jsonmodel: string = "";
-    public message: string = "";
-    constructor(
-        public $rootScope: ng.IRootScopeService,
-        public $scope: ng.IScope,
-        public $location: ng.ILocationService,
-        public $routeParams: ng.route.IRouteParamsService,
-        public $interval: ng.IIntervalService,
-        public WebSocketClientService: WebSocketClientService,
-        public api: api,
-        public userdata: userdata
-    ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
-        console.debug("SignupCtrl");
-        this.collection = $routeParams.collection;
-        this.postloadData = this.processdata;
-        WebSocketClientService.onConnected(async () => {
-            if (this.id !== null && this.id !== undefined) {
-                await this.loadData();
-            } else {
-                this.processdata();
-            }
-        });
-    }
-    processdata() {
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-}
 declare const Stripe: any;
 export class CredentialsCtrl extends entitiesCtrl<Base> {
     constructor(
