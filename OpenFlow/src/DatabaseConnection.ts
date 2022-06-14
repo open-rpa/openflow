@@ -1758,8 +1758,10 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
-                throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+            if (q.query === null || q.query === undefined) {
+                if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
+                    throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                }
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
@@ -1883,9 +1885,12 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
-                    if (q.item._acl === null || q.item._acl === undefined) {
+                    if (q.item._acl === null || q.item._acl === undefined || !Array.isArray(q.item._acl)) {
                         q.item._acl = original._acl;
                         q.item._version = original._version;
+                        if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
+                            throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                        }
                     }
                     q.item = this.ensureResource(q.item, q.collectionname);
                     if (user._id != WellknownIds.root && original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
@@ -1940,9 +1945,13 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
-                    if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined) {
+                    if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined || !Array.isArray((q.item as any).metadata._acl)) {
                         (q.item as any).metadata._acl = (original as any).metadata._acl;
                         (q.item as any).metadata._version = (original as any).metadata._version;
+                        if (!DatabaseConnection.hasAuthorization(user, (q.item as any).metadata, Rights.update)) {
+                            throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                        }
+
                     }
                     (q.item as any).metadata = this.ensureResource((q.item as any).metadata, q.collectionname);
                     DatabaseConnection.traversejsonencode(q.item);
@@ -3144,7 +3153,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return true;
         }
 
-        if (item._acl != null && item._acl != undefined) {
+        if (item._acl != null && item._acl != undefined && Array.isArray(item._acl)) {
             if (typeof item._acl === 'string' || item._acl instanceof String) {
                 item._acl = JSON.parse((item._acl as any));
             }
