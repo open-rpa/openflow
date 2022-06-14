@@ -3323,10 +3323,13 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     }
     async hideFormElements() {
         console.debug("hideFormElements");
+
+        $('input[ref="component"]').prop("disabled", true);
         $('#workflowform :input').prop("disabled", true);
         $('#workflowform :button').prop("disabled", true);
         $('#workflowform :input').addClass("disabled");
         $('#workflowform :button').addClass("disabled");
+        $('#workflowform choices__list').hide();
         $('#workflowform .form-group').addClass("is-disabled");
         $('#workflowform .form-group').prop("isDisabled", true);
 
@@ -3368,8 +3371,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
 
 
-            if (this.model.form === "none" || this.model.form === "" || this.model.state == "processing") {
-                if (this.model.state != "failed" && this.model.state != "processing") {
+            if (this.model.form === "none" || this.model.form === "") {
+                if (this.model.state != "failed") {
                     this.$location.path("/main");
                 } else {
                     this.hideFormElements();
@@ -3751,6 +3754,11 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
             });
+        }
+        if (this.model.state == "processing") {
+            this.hideFormElements();
+            this.message = "Processing . . .";
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
         if (this.model.state == "completed" || this.model.state == "failed") {
             this.hideFormElements();
