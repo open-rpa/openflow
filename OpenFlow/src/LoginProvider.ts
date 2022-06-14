@@ -1093,7 +1093,7 @@ export class LoginProvider {
                     }
 
                     const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
-                    if (arr[0]) {
+                    if (arr.length == 0) {
                         if (!NoderedUtil.IsNullEmpty(uniquename)) {
                             return res.status(404).send({ message: 'uniquename ' + uniquename + ' Not found.' });
                         }
