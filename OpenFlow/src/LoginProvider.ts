@@ -1674,7 +1674,7 @@ export class LoginProvider {
             let id = NoderedUtil.GetUniqueIdentifier();
             let imgurl = Config.baseurl() + "read/" + id;
             text = text.split('\n').join('<br/>\n');
-            let html = text + `<img src="${imgurl}" border="0" width="1" height="1">`
+            let html = text + `<img src="${imgurl}" alt="isread" border="0" width="1" height="1">`
             let from = Config.smtp_from;
 
             if (Config.NODE_ENV != "production") {
