@@ -61,7 +61,7 @@
       ng-class="{multitenant: menuctrl.WebSocketClientService.multi_tenant == true, nonmultitenant: menuctrl.WebSocketClientService.multi_tenant == false}"
   >
         <div 
-        ng-class="{nonmultitenant: menuctrl.WebSocketClientService.multi_tenant == false ,  nonmultitenant: menuctrl.WebSocketClientService.multi_tenant == false}"
+        class="text-right"
           >
           <a href ng-click="ctrl.ShowPlans(model)" class="btn" role="button" ng-show="menuctrl.user.customerid != null && menuctrl.WebSocketClientService.multi_tenant && model.customerid && model.customerid != '' &&
           (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers'))          
