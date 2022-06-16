@@ -2190,6 +2190,7 @@ export class ProvidersCtrl extends entitiesCtrl<Provider> {
         console.debug("ProvidersCtrl");
         this.basequery = { _type: "provider" };
         this.collection = "config";
+        this.skipcustomerfilter = true;
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
@@ -5146,6 +5147,7 @@ export class OAuthClientsCtrl extends entitiesCtrl<Base> {
         this.collection = "config";
         this.searchfields = ["name", "username"];
         this.postloadData = this.processData;
+        this.skipcustomerfilter = true;
         if (this.userdata.data.OAuthClientsCtrl) {
             this.basequery = this.userdata.data.OAuthClientsCtrl.basequery;
             this.collection = this.userdata.data.OAuthClientsCtrl.collection;
@@ -6013,6 +6015,7 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "restriction" };
         this.collection = "config";
         this.postloadData = this.processData;
+        this.skipcustomerfilter = true;
         if (this.userdata.data.EntityRestrictionsCtrl) {
             this.basequery = this.userdata.data.EntityRestrictionsCtrl.basequery;
             this.collection = this.userdata.data.EntityRestrictionsCtrl.collection;
@@ -6382,6 +6385,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         this.basequery = { _type: "resource" };
         this.collection = "config";
         this.postloadData = this.processData;
+        this.skipcustomerfilter = true;
         if (this.userdata.data.ResourcesCtrl) {
             this.basequery = this.userdata.data.ResourcesCtrl.basequery;
             this.collection = this.userdata.data.ResourcesCtrl.collection;
@@ -7055,6 +7059,7 @@ export class MailHistsCtrl extends entitiesCtrl<Role> {
         this.basequery = {};
         this.collection = "mailhist";
         this.postloadData = this.processdata;
+        this.skipcustomerfilter = true;
         this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, read: 1, readcount: 1, userid: 1 };
         if (this.userdata.data.MailHistsCtrl) {
             this.basequery = this.userdata.data.MailHistsCtrl.basequery;
