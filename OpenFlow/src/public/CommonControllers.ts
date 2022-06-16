@@ -107,7 +107,7 @@ export class formatBytes implements ng.IDirective {
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
 
     }
-    formatBytes(bytes, decimals = 2) {
+    formatBytes(bytes, decimals = 1) {
         if (bytes === 0) return '0 Bytes';
 
         const k = 1024;
