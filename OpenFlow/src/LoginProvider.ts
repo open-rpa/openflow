@@ -2,6 +2,7 @@ import * as crypto from "crypto";
 import * as url from "url";
 import * as express from "express";
 import * as path from "path";
+import * as OpenIDConnectStrategy from "passport-openidconnect";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
 import * as passport from "passport";
@@ -1170,6 +1171,11 @@ export class LoginProvider {
                             LoginProvider._providers[provider.id] =
                                 LoginProvider.CreateGoogleStrategy(app, provider.id, provider.consumerKey, provider.consumerSecret, baseurl);
                         }
+                        if (provider.provider === "oidc") {
+                            await LoginProvider.CreateOpenIDStrategy(app, provider.saml_federation_metadata, provider.id,
+                                provider.consumerKey, provider.consumerSecret, baseurl);
+                        }
+
                     }
                     if (provider.provider === "local") { hasLocal = true; }
                 } catch (error) {
@@ -1196,6 +1202,55 @@ export class LoginProvider {
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    // https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
+    // https://login.microsoftonline.com/aa8306d8-5417-43cc-b8e8-7e77b918682c/v2.0/.well-known/openid-configuration
+
+    // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc
+    // common - Users with both a personal Microsoft account and a work or school account from Azure AD can sign in to the application.
+    // organizations - Only users with work or school accounts from Azure AD can sign in to the application
+    // consumers - Only users with a personal Microsoft account can sign in to the application
+    // aa8306d8-5417-43cc-b8e8-7e77b918682c - Only users from a specific Azure AD tenant
+    // 9188040d-6c67-4c5b-b112-36a304b66dad = consumers tenant
+
+    // https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration
+
+
+    static async CreateOpenIDStrategy(app: express.Express, discoveryurl: string, key: string, clientID: string, clientSecret: string, baseurl: string): Promise<any> {
+        Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
+        const response = await got.get(discoveryurl, options);
+        const document = JSON.parse(response.body);
+        var options = {
+            issuer: document.issuer,
+            authorizationURL: document.authorization_endpoint,
+            tokenURL: document.token_endpoint,
+            userInfoURL: document.userinfo_endpoint,
+            clientID: clientID,
+            clientSecret: clientSecret,
+            callbackURL: url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/",
+            verify: (LoginProvider.openidverify).bind(this),
+            scope: "email profile"
+        }
+        // Microsoft Graph: openid, email, profile, and offline_access. The address and phone. OpenID Connect scopes aren't supported
+        // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
+        const strategy: passport.Strategy = new OpenIDConnectStrategy.Strategy(options, options.verify);
+        passport.use(key, strategy);
+        strategy.name = key;
+        app.use("/" + key,
+            express.urlencoded({ extended: false }),
+            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
+            function (req: any, res: any): void {
+                const originalUrl: any = req.cookies.originalUrl;
+                res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
+                } else {
+                    res.redirect("/");
+                }
+            }
+        );
+        return strategy;
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
         Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
@@ -1575,6 +1630,72 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
+            span?.recordException(error);
+        }
+        Logger.otel.endSpan(span);
+    }
+
+    static async openidverify(issuer: string, profile: any, done: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.openidverify");
+        const remoteip: string = "unknown";
+        try {
+            if (profile.id && !profile.username) profile.username = profile.id;
+            if (profile.emails) {
+                const email: any = profile.emails[0];
+                profile.username = email.value;
+            }
+            let username: string = profile.username;
+            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            Logger.instanse.debug("LoginProvider", "openidverify", profile.id);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(profile.id, issuer, span);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                _user = await Logger.DBHelper.FindByUsernameOrFederationid(profile.username, issuer, span);
+            }
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                let createUser: boolean = Config.auto_create_users;
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
+                if (createUser) {
+                    const jwt: string = Crypt.rootToken();
+                    _user = new User(); _user.name = profile.name;
+                    if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
+                    _user.username = username;
+                    (_user as any).mobile = profile.mobile;
+                    // if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                    if (NoderedUtil.IsNullEmpty(_user.name)) _user.name = username
+                    let extraoptions = {
+                        federationids: [new FederationId(profile.id, issuer)],
+                        emailvalidated: true
+                    }
+                    // ,emailvalidated: true
+                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
+                }
+            } else {
+                var exists = _user.federationids.filter(x => x.id == profile.id && x.issuer == issuer);
+                if (exists.length == 0 || _user.emailvalidated == false) {
+                    _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
+                    _user.federationids.push(new FederationId(profile.id, issuer));
+                    _user.emailvalidated = true;
+                    if (_user.formvalidated) _user.validated = true;
+                    const jwt: string = Crypt.rootToken();
+                    await Logger.DBHelper.Save(_user, jwt, span);
+                    await Logger.DBHelper.DeleteKey("user" + _user._id);
+                }
+            }
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                done("unknown user " + username, null); return;
+            }
+            if (_user.disabled) {
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                done("Disabled user " + username, null);
+                return;
+            }
+            const tuser: TokenUser = TokenUser.From(_user);
+            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+            done(null, tuser);
+        } catch (error) {
+            Logger.instanse.error("LoginProvider", "openidverify", error);
             span?.recordException(error);
         }
         Logger.otel.endSpan(span);

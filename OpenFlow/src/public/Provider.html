@@ -14,6 +14,7 @@
             <select class="form-control" ng-model="ctrl.model.provider">
                 <option value="saml">WS-Federation/SAML</option>
                 <option value="google">Google OAuth</option>
+                <option value="oidc">OpenID Connect</option>
                 <option value="local">Username/Password</option>
             </select>
         </div>
@@ -36,20 +37,20 @@
             <input ng-model="ctrl.model.issuer" class="form-control input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
-    <div class="form-group" ng-show="ctrl.model.provider=='saml'">
+    <div class="form-group" ng-show="ctrl.model.provider=='saml' || ctrl.model.provider=='oidc'">
         <label for="saml_federation_metadata" class="col-sm-2 control-label" translate lib="web">metadataurl</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.saml_federation_metadata" class="form-control input-md"
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>
-    <div class="form-group" ng-show="ctrl.model.provider=='google'">
+    <div class="form-group" ng-show="ctrl.model.provider=='google' || ctrl.model.provider=='oidc'">
         <label for="consumerKey" class="col-sm-2 control-label" translate lib="web">consumerkey</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.consumerKey" class="form-control input-md" ng-disabled="ctrl.loading==true" />
         </div>
     </div>
-    <div class="form-group" ng-show="ctrl.model.provider=='google'">
+    <div class="form-group" ng-show="ctrl.model.provider=='google' || ctrl.model.provider=='oidc'">
         <label for="consumerSecret" class="col-sm-2 control-label" translate lib="web">consumersecret</label>
         <div class="col-sm-4">
             <input ng-model="ctrl.model.consumerSecret" class="form-control input-md"

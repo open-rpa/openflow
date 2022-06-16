@@ -134,9 +134,11 @@ export class DBHelper {
                 return Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
             });
             // const result: Provider[] = [];
+            // https://www.w3schools.com/icons/fontawesome5_icons_brands.asp
             items.forEach(provider => {
                 // const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-                provider.logo = "fa-question-circle";
+                provider.logo = "fa-microsoft";
+                if (provider.provider === "oidc") { provider.logo = "fa-openid"; }
                 if (provider.provider === "google") { provider.logo = "fa-google"; }
                 if (provider.provider === "saml") { provider.logo = "fa-windows"; }
                 //result.push(item);
