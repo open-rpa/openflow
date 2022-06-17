@@ -22,6 +22,7 @@ export class WebSocketClientService {
             }
             try {
                 const wsurl: string = data.wsurl;
+                this.wsurl = data.wsurl;
                 this.version = data.version;
                 this.domain = data.domain;
                 this.version = data.version;
@@ -170,6 +171,7 @@ export class WebSocketClientService {
     // public user: TokenUser = null;
     // public jwt: string = null;
     public version: string = "";
+    public wsurl: string = "";
     public messageQueue: IHashTable<QueuedMessage> = {};
     public usingCordova: boolean = false;
     public connected: boolean = false;

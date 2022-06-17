@@ -133,5 +133,8 @@
     "emailhistdetails": "Mail history details",
     "validated": "Validated",
     "emailvalidated": "Email validated",
-    "formvalidated": "Form validated"
+    "formvalidated": "Form validated",
+    "formresources": "Form resources",
+    "formresource": "Form resource",
+    "addformresource": "Add form resource"
 }

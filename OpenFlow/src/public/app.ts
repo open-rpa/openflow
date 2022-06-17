@@ -5,7 +5,7 @@ import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
     WorkflowsCtrl, ReportsCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, NoderedCtrl,
     hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
-    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl
+    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl
 } from "./Controllers";
 
 require('angular-route');
@@ -87,6 +87,9 @@ module openflow {
                 .when('/Forms', { templateUrl: 'Forms.html', controller: FormsCtrl, controllerAs: 'ctrl' })
                 .when('/Form/:id', { templateUrl: 'Form.html', controller: FormCtrl, controllerAs: 'ctrl' })
                 .when('/Form/:id/:instance', { templateUrl: 'Form.html', controller: FormCtrl, controllerAs: 'ctrl' })
+                .when('/FormResources', { templateUrl: 'FormResources.html', controller: FormResourcesCtrl, controllerAs: 'ctrl' })
+                .when('/FormResource', { templateUrl: 'FormResource.html', controller: FormResourceCtrl, controllerAs: 'ctrl' })
+                .when('/FormResource/:id', { templateUrl: 'FormResource.html', controller: FormResourceCtrl, controllerAs: 'ctrl' })
 
                 .when('/Files', { templateUrl: 'Files.html', controller: FilesCtrl, controllerAs: 'ctrl' })
                 .when('/Entities', { templateUrl: 'Entities.html', controller: EntitiesCtrl, controllerAs: 'ctrl' })

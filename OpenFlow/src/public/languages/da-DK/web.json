@@ -134,5 +134,8 @@
     "emailhistdetails": "Mail historik",
     "validated": "Valideret",
     "emailvalidated": "Email valideret",
-    "formvalidated": "Form valideret"
+    "formvalidated": "Form valideret",
+    "formresources": "Form ressourcer",
+    "formresource": "Form ressource",
+    "addformresource": "Tilføj form ressource"
 }

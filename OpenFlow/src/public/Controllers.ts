@@ -2987,8 +2987,6 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
                 }
                 this.loadData();
                 this.collections = await NoderedUtil.ListCollections({});
-                console.log(this.collections);
-                this.collections.push({ name: "fs.files" });
             } catch (error) {
                 this.errormessage = error;
             }
@@ -3035,11 +3033,140 @@ export class FormsCtrl extends entitiesCtrl<Base> {
         console.debug("FormsCtrl");
         this.autorefresh = true;
         this.collection = "forms";
+        this.basequery = { "_type": "form" }
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
     }
+}
+export class FormResourcesCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("FormsCtrl");
+        this.autorefresh = true;
+        this.collection = "forms";
+        this.basequery = { "_type": "resource" }
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+}
+export class FormResourceCtrl extends entityCtrl<Base> {
+    public newforceddomain: string = "";
+    public collections: any[];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("FormResourceCtrl");
+        this.collection = "forms";
+        this.postloadData = this.postload;
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.collections = await NoderedUtil.ListCollections({});
+            if (this.id !== null && this.id !== undefined) {
+                this.loadData();
+            } else {
+                try {
+                    this.model = new Base()
+                    this.model._type = "resource";
+                    // @ts-ignore
+                    this.model.collection = "entities"
+                    this.model.name = "entities"
+                    // @ts-ignore
+                    this.model.aggregates = [{ "$match": {} }, { "$project": { "name": 1, "_type": 1 } }];
+                } catch (error) {
+                    this.model = {} as any;
+                    this.model.name = "ente";
+                    this.model._type = "resource";
+                    // @ts-ignore
+                    this.model.collection = "entities"
+                    this.model.name = "entities"
+                    // @ts-ignore
+                    this.model.aggregates = [{ "$match": {} }, { "$project": { "name": 1, "_type": 1 } }];
+                }
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                this.fixtextarea()
+            }
+        });
+    }
+    collapsobject(o) {
+        const keys = Object.keys(o);
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            if (key.startsWith("$")) {
+                let newkey = "___" + key.substr(1);
+                o[newkey] = o[key];
+                delete o[key];
+                key = newkey;
+            }
+            if (typeof (o[key]) === "object") {
+                this.collapsobject(o[key]);
+            }
+        }
+    }
+    expandobject(o) {
+        const keys = Object.keys(o);
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            if (key.startsWith("___")) {
+                let newkey = "$" + key.substr(3);
+                o[newkey] = o[key];
+                delete o[key];
+                key = newkey;
+            }
+            if (typeof (o[key]) === "object") {
+                this.expandobject(o[key]);
+            }
+        }
+    }
+    postload() {
+        if (this.model) {
+            this.expandobject(this.model);
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        this.fixtextarea()
+    }
+    async submit(): Promise<void> {
+        try {
+            this.collapsobject(this.model);
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+            } else {
+                await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+            }
+            this.$location.path("/FormResources");
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    fixtextarea() {
+        setTimeout(() => {
+            const tx = document.getElementsByTagName('textarea');
+            for (let i = 0; i < tx.length; i++) {
+                tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
+            }
+        }, 500);
+    }
+
 }
 export class EditFormCtrl extends entityCtrl<Form> {
     public message: string = "";
@@ -3075,6 +3202,7 @@ export class EditFormCtrl extends entityCtrl<Form> {
                         this.model = {} as any;
                         this.model._type = "form";
                         this.model.dataType = "json";
+                        this.model.formData == { "display": "form" };
                     }
                     this.model.fbeditor = false;
                     this.renderform();
@@ -3089,6 +3217,9 @@ export class EditFormCtrl extends entityCtrl<Form> {
             // allready there
         }
         try {
+            console.log(this.model);
+            delete this.model.schema.changed
+            console.log(this.model);
             if (this.model._id) {
                 this.model = await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
             } else {
@@ -3149,12 +3280,11 @@ export class EditFormCtrl extends entityCtrl<Form> {
                 console.error(error);
             }
             if (this.model.formData == null || this.model.formData == undefined) { this.model.formData = {}; }
-            // "https://examples.form.io/wizard"
-            if (this.model.wizard == true) {
-                this.model.formData.display = "wizard";
-            } else {
-                this.model.formData.display = "form";
-            }
+            if (NoderedUtil.IsNullEmpty(this.model.formData.display)) this.model.formData.display = "form";
+            let protocol = "http:";
+            if (this.WebSocketClientService.wsurl.startsWith("wss")) protocol = "https:";
+            Formio.setBaseUrl(protocol + '//' + this.WebSocketClientService.domain);
+            Formio.setProjectUrl(protocol + '//' + this.WebSocketClientService.domain);
             this.Formiobuilder = await Formio.builder(document.getElementById('builder'), this.model.formData,
                 {
                     noAlerts: false,
@@ -4616,6 +4746,7 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
         console.debug("RolesCtrl");
         this.basequery = { _type: "unattendedclient" };
         this.collection = "openrpa";
+        this.skipcustomerfilter = true;
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });

@@ -91,8 +91,12 @@
         ng-show="menuctrl.WebSocketClientService.enable_entity_restriction && menuctrl.hasrole('admins')"><span
           translate lib="web">entityrestrictions</span></a>
       <a class="sidebar-link" href="#/Forms" id="menuadminforms"
-        ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
-          lib="web">forms</span></a>
+      ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
+        lib="web">forms</span></a>
+      <a class="sidebar-link" href="#/FormResources" id="menuadminformresources"
+      ng-show="menuctrl.WebSocketClientService.validlicense"
+      ng-class="{active: menuctrl.PathIs(['/FormResources', '/FormResource', '/FormResource/'])}"><span translate
+        lib="web">formresources</span></a>
       <a class="sidebar-link" href="#/Providers"
         ng-class="{active: menuctrl.PathIs(['/Providers', '/Provider', '/Provider/'])}"
         ng-show="menuctrl.hasrole('admins')"><span translate lib="web">providers</span></a>
