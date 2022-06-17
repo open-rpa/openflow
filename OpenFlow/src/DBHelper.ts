@@ -456,7 +456,11 @@ export class DBHelper {
                 });
 
                 if (results.length > 0) {
-                    user.roles = results[0].roles;
+                    user.roles = [];
+                    results[0].roles.forEach(r => {
+                        const exists = user.roles.filter(x => x._id == r._id);
+                        if (exists.length == 0) user.roles.push(r);
+                    });
                     results[0].roles2.forEach(r => {
                         const exists = user.roles.filter(x => x._id == r._id);
                         if (exists.length == 0) user.roles.push(r);
