@@ -126,6 +126,19 @@ export class WebServer {
             });
             span?.addEvent("Configure LoginProvider");
             await LoginProvider.configure(this.app, baseurl);
+            try {
+                span?.addEvent("Configure FormioEP");
+
+                let FormioEPProxy: any = null;
+                try {
+                    FormioEPProxy = require("./ee/FormioEP");
+                } catch (error) {
+                }
+                if (!NoderedUtil.IsNullUndefinded(FormioEPProxy)) {
+                    await FormioEPProxy.FormioEP.configure(this.app, baseurl);
+                }
+            } catch (error) {
+            }
             span?.addEvent("Configure SamlProvider");
             await SamlProvider.configure(this.app, baseurl);
             WebServer.server = null;
