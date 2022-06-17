@@ -846,7 +846,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read], span);
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.read], span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read]), impersonationquery] };
                 } else {
@@ -855,7 +855,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 projection = null;
             } else {
                 let impersonationquery: any;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "_acl", [Rights.read], span)
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.read], span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read]), impersonationquery] };
                 } else {
@@ -2763,7 +2763,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.delete], span);
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.delete], span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     baseq = this.getbasequery(user, "metadata._acl", [Rights.delete]), impersonationquery;
                 } else {
@@ -2771,7 +2771,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             } else {
                 let impersonationquery: any;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "_acl", [Rights.delete], span)
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.delete], span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     baseq = this.getbasequery(user, "_acl", [Rights.delete]), impersonationquery;
                 } else {
@@ -3035,7 +3035,7 @@ export class DatabaseConnection extends events.EventEmitter {
         // }
         return { $or: finalor.concat() };
     }
-    private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
+    private async getbasequeryuserid(calluser: TokenUser, userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
         // const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
@@ -3047,6 +3047,8 @@ export class DatabaseConnection extends events.EventEmitter {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             user.roles.push(new Rolemember(user.name + " users", (user as any).users))
             user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
+            if (user._id == calluser.customerid) user.roles.push(new Rolemember(calluser.name, calluser._id));
+
             if (!NoderedUtil.IsNullEmpty((user as any as Customer).userid)) {
                 user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
             }
