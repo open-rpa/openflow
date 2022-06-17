@@ -6178,9 +6178,11 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
             await this.newRestriction("Create workitemqueue in mq", "mq", ["$.[?(@ && @._type == 'workitemqueue')]"], false);
             await this.newRestriction("Create workitem in workitems", "workitems", ["$.[?(@ && @._type == 'workitem')]"], false);
 
+
             await this.newRestriction("Create queues", "mq", ["$.[?(@ && @._type == 'queue')]"], false);
             await this.newRestriction("Create exchanges", "mq", ["$.[?(@ && @._type == 'exchange')]"], false);
             await this.newRestriction("Create form", "forms", ["$.[?(@ && @._type == 'form')]"], false);
+            await this.newRestriction("Create resource in forms", "forms", ["$.[?(@ && @._type == 'resource')]"], false);
             await this.newRestriction("Create workflow", "openrpa", ["$.[?(@ && @._type == 'workflow')]"], false);
             await this.newRestriction("Create project", "openrpa", ["$.[?(@ && @._type == 'project')]"], false);
             await this.newRestriction("Create detector", "openrpa", ["$.[?(@ && @._type == 'detector')]"], false);
