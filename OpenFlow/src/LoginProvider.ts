@@ -453,7 +453,7 @@ export class LoginProvider {
                                 Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
                                 res.status(200).send(Object.assign(exists, { message: "ok" }));
                             } else {
-                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "USer not validated yet, for " + key);
+                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "User not validated yet, for key " + key + " user " + user.name + " " + user._id);
                                 res.status(200).send({ message: "ok" });
                             }
                         } catch (error) {
