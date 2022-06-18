@@ -3482,7 +3482,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             console.error(this.errormessage);
             return;
         }
-        // this.RegisterExchange(this.workflow.queue);
         if (this.instanceid !== null && this.instanceid !== undefined && this.instanceid !== "") {
             const res = await NoderedUtil.Query({ collectionname: "workflow_instances", query: { _id: this.instanceid }, orderby: { _created: -1 }, top: 1 });
             if (res.length > 0) { this.model = res[0]; } else {
@@ -3491,9 +3490,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 console.error(this.errormessage);
                 return;
             }
-            // console.debug(this.model);
-            // console.debug(this.model.form);
-            // console.debug("form: " + this.model.form);
             if (this.model.payload === null || this.model.payload === undefined) {
                 this.model.payload = { _id: this.instanceid };
             }
@@ -3503,6 +3499,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
 
             if (this.model.form === "none" || this.model.form === "") {
+                console.debug("workflow_instances has no form set, state " + this.model.state);
                 if (this.model.state != "failed") {
                     this.$location.path("/main");
                 } else {
@@ -3597,7 +3594,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         } else {
 
         }
-        // console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
         this.model.payload._id = this.instanceid;
         try {
             await this.SendOne(this.workflow.queue, this.model.payload);
@@ -3606,7 +3602,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             console.error(this.errormessage);
         }
-        // this.loadData();
     }
     traversecomponentsPostProcess(components: any[], data: any) {
         for (let i = 0; i < components.length; i++) {
@@ -3634,6 +3629,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
     }
     traversecomponentsMakeDefaults(components: any[]) {
+        if (!components) return;
         for (let y = 0; y < components.length; y++) {
             const item = components[y];
             if (item.type == "datagrid") {
@@ -3725,6 +3721,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         }
     }
     traversecomponentsAddCustomValidate(components: any[]) {
+        if (!components) return;
         for (let y = 0; y < components.length; y++) {
             const item = components[y];
             if (item.type == "file") {
@@ -3740,12 +3737,13 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         next();
     }
     async renderform() {
+
         if (this.form.fbeditor == null || this.form.fbeditor == undefined) this.form.fbeditor = true;
         if ((this.form.fbeditor as any) == "true") this.form.fbeditor = true;
         if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if (this.form.fbeditor === true) {
-            console.debug("renderform");
+            console.debug("renderform fbeditor");
             const roles: any = {};
             WebSocketClient.instance.user.roles.forEach(role => {
                 roles[role._id] = role.name;
@@ -3825,6 +3823,16 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
             this.formRender = ele.formRender(formRenderOpts);
         } else {
+            console.debug("renderform formio", this.form.schema?.components);
+            if (!this.form.schema || !this.form.schema.components || this.form.schema.components.length == 0) {
+                if (this.form.formData && this.form.formData.components && this.form.formData.components.length > 0) {
+                    console.warn("schema has no components, but forData does, using form formData.components instead")
+                    this.form.schema.components = this.form.formData.components;
+                }
+            }
+            if (!this.form.schema || !this.form.schema.components || this.form.schema.components.length == 0) {
+                console.error("Form has no schema ( components ) !", this.form)
+            }
             try {
                 const test = Formio.builder;
             } catch (error) {
@@ -3850,6 +3858,10 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             } else {
                 this.form.schema.display = "form";
             }
+            let protocol = "http:";
+            if (this.WebSocketClientService.wsurl.startsWith("wss")) protocol = "https:";
+            Formio.setBaseUrl(protocol + '//' + this.WebSocketClientService.domain);
+            Formio.setProjectUrl(protocol + '//' + this.WebSocketClientService.domain);
 
             this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
                 {
