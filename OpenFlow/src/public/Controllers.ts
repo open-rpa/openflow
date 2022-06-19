@@ -236,6 +236,9 @@ export class MenuCtrl {
     toggleDarkMode() {
         this.halfmoon.toggleDarkMode();
     }
+    toggleSidebar() {
+        this.halfmoon.toggleSidebar();
+    }
     Search() {
         this.$rootScope.$broadcast("search", this.searchstring);
     }
@@ -2325,28 +2328,6 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             this.errormessage = JSON.stringify(error);
         }
         this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async DeleteOneUser(model: TokenUser): Promise<any> {
-        try {
-            this.errormessage = "";
-            this.loading = true;
-            await NoderedUtil.DeleteOne({ collectionname: this.collection, id: model._id });
-            this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
-            this.loading = false;
-            let name = model.username;
-            name = name.split("@").join("").split(".").join("");
-            name = name.toLowerCase();
-
-            var query = { _type: "role", "$or": [{ name: name + "noderedadmins" }, { name: name + "nodered api users" }] }
-            const list = await NoderedUtil.Query({ collectionname: "users", query, top: 4 });
-            for (var i = 0; i < list.length; i++) {
-                console.debug("Deleting " + list[i].name)
-                await NoderedUtil.DeleteOne({ collectionname: "users", id: list[i]._id });
-            }
-        } catch (error) {
-            this.errormessage = error;
-        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     public Resources: Resource[];

@@ -550,7 +550,7 @@ export class DBHelper {
             if (role !== null && (role._id === id || NoderedUtil.IsNullEmpty(id))) { return role; }
             if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) {
                 Logger.instanse.warn("DBHelper", "EnsureRole", `Deleting ${name} with ${role._id} not matcing expected id ${id}`);
-                await Config.db.DeleteOne(role._id, "users", jwt, span);
+                await Config.db.DeleteOne(role._id, "users", false, jwt, span);
             }
             role = new Role(); role.name = name; role._id = id;
             Logger.instanse.verbose("DBHelper", "EnsureRole", `Adding new role ${name}`);
@@ -583,7 +583,7 @@ export class DBHelper {
             if (user !== null && id !== null) {
                 span?.addEvent("Deleting");
                 Logger.instanse.warn("DBHelper", "EnsureUser", `Deleting ${name} with ${user._id} not matcing expected id ${id}`);
-                await Config.db.DeleteOne(user._id, "users", jwt, span);
+                await Config.db.DeleteOne(user._id, "users", false, jwt, span);
             }
             user = new User();
             if (!NoderedUtil.IsNullUndefinded(extraoptions)) user = Object.assign(user, extraoptions);

@@ -2566,7 +2566,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteOne(id: string | any, collectionname: string, jwt: string, parent: Span): Promise<void> {
+    async DeleteOne(id: string | any, collectionname: string, recursive: boolean, jwt: string, parent: Span): Promise<void> {
         if (id === null || id === undefined || id === "") { throw Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteOne", parent);
         try {
@@ -2613,11 +2613,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
                     let userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
                     if (doc.userid != user._id) {
-                        if (userdocs.length > 0 && !Config.cleanup_on_delete_customer) {
+                        if (userdocs.length > 0 && !Config.cleanup_on_delete_customer && !recursive) {
                             let defaulttest = userdocs.filter(x => x._id != doc.users && x._id != doc.admins && x._id != doc.userid)
                             if (defaulttest.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
                         }
-                        if (Config.cleanup_on_delete_customer) {
+                        if (Config.cleanup_on_delete_customer || recursive) {
                             Logger.instanse.warn("DatabaseConnection", "DeleteOne", "[" + user.username + "] Cleaning up after up after company " + doc.name);
                             // let queries = [];
                             // for (var y = 0; y < userdocs.length; y++) {
@@ -2642,7 +2642,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             // }
                         }
                         for (let i = 0; i < userdocs.length; i++) {
-                            await this.DeleteOne(userdocs[i]._id, "users", jwt, span);
+                            await this.DeleteOne(userdocs[i]._id, "users", recursive, jwt, span);
                         }
                     } else {
                         if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
@@ -2680,9 +2680,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     names.push(doc.name + "noderedadmins"); names.push(doc.name + "noderedusers"); names.push(doc.name + "nodered api users")
                     const subdocs = await this.db.collection("users").find({ "name": { "$in": names }, "_type": "role" }).toArray();
                     for (var r of subdocs) {
-                        this.DeleteOne(r._id, "users", jwt, span);
+                        this.DeleteOne(r._id, "users", false, jwt, span);
                     }
-                    if (Config.cleanup_on_delete_user) {
+                    if (Config.cleanup_on_delete_user || recursive) {
                         let skip_collections = [];
                         if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
 
@@ -2715,7 +2715,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "users" && doc._type == "customer") {
                     const subdocs = await this.db.collection("config").find({ "customerid": doc._id }).toArray();
                     for (var r of subdocs) {
-                        this.DeleteOne(r._id, "config", jwt, span);
+                        this.DeleteOne(r._id, "config", false, jwt, span);
                     }
                 }
                 if (collectionname == "users" && doc._type == "role") {

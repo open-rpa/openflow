@@ -1563,7 +1563,7 @@ export class Message {
                 }
 
             }
-            await Config.db.DeleteOne(msg.id, msg.collectionname, msg.jwt, span);
+            await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -2643,7 +2643,7 @@ export class Message {
             if (usage.quantity > 0) {
                 await Config.db._UpdateOne(null, usage, "config", 1, false, Crypt.rootToken(), span);
             } else {
-                await Config.db.DeleteOne(usage._id, "config", Crypt.rootToken(), span);
+                await Config.db.DeleteOne(usage._id, "config", false, Crypt.rootToken(), span);
             }
         } catch (error) {
             span?.recordException(error);
@@ -3428,14 +3428,14 @@ export class Message {
                             await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
                         } else {
                             // Clean up old buy attempts
-                            await Config.db.DeleteOne(usage._id, "config", rootjwt, span);
+                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                         }
                     }
                 } else {
                     msg.customer.subscriptionid = null;
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     for (let usage of total_usage) {
-                        await Config.db.DeleteOne(usage._id, "config", rootjwt, span);
+                        await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                     }
                 }
                 if (msg.customer.vatnumber) {
@@ -4685,7 +4685,7 @@ export class Message {
                     var exists = wi.files.filter(x => x.name == file.filename);
                     if (exists.length > 0) {
                         try {
-                            await Config.db.DeleteOne(exists[0]._id, "fs.files", jwt, parent);
+                            await Config.db.DeleteOne(exists[0]._id, "fs.files", false, jwt, parent);
                         } catch (error) {
                             Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
                         }
@@ -4874,14 +4874,14 @@ export class Message {
 
             var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt }, parent);
             for (var i = 0; i < files.length; i++) {
-                await Config.db.DeleteOne(files[i]._id, "fs.files", jwt, parent);
+                await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
             }
             var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt }, parent);
             for (var i = 0; i < files.length; i++) {
-                await Config.db.DeleteOne(files[i]._id, "fs.files", jwt, parent);
+                await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
             }
 
-            await Config.db.DeleteOne(wi._id, "workitems", jwt, parent);
+            await Config.db.DeleteOne(wi._id, "workitems", false, jwt, parent);
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5102,9 +5102,9 @@ export class Message {
                 }
             }
 
-            await Config.db.DeleteOne(wiq._id, "mq", jwt, parent);
+            await Config.db.DeleteOne(wiq._id, "mq", false, jwt, parent);
             if (wiq.usersrole) {
-                await Config.db.DeleteOne(wiq.usersrole, "users", jwt, parent);
+                await Config.db.DeleteOne(wiq.usersrole, "users", false, jwt, parent);
             }
         } catch (error) {
             await handleError(null, error);
