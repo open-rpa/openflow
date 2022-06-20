@@ -592,21 +592,26 @@ export class entitiesCtrl<T> {
         // console.log(`${e.code}`, e);
         if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && !this.controldown) {
             this.controldown = true;
-            console.debug("Control down");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Control down");
         }
         if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && !this.shiftdown) {
             this.shiftdown = true;
-            console.debug("Shift down");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Shift down");
         }
     }
     public onKeyUp(e) {
+        // console.log(`${e.code}`, e);
         if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && this.controldown) {
             this.controldown = false;
-            console.debug("Control up");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Control up");
         }
         if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && this.shiftdown) {
             this.shiftdown = false;
-            console.debug("Shift up");
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Shift up");
         }
     }
     public static parseJson(txt, reviver, context) {
