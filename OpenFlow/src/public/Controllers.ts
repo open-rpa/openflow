@@ -5775,12 +5775,19 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 }
             }
-
             if (this.id !== null && this.id !== undefined) {
+                console.debug("Loading customer id " + this.id);
                 this.loading = false;
                 this.loadData();
             } else {
                 user = TokenUser.assign(user);
+                if (user.customerid != null) {
+                    this.id = user.customerid;
+                    console.debug("Loading customer id " + this.id);
+                    this.loading = false;
+                    this.loadData();
+                    return;
+                }
                 if (!user.HasRoleName("resellers")) {
                     if (!NoderedUtil.IsNullEmpty(user.customerid)) {
                         var results = await NoderedUtil.Query({
@@ -5821,6 +5828,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     console.debug("Create new customer");
                 }
                 this.loading = false;
+
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
@@ -5877,7 +5885,9 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 await NoderedUtil.EnsureCustomer({ customer: this.model });
             }
             this.Resources = await NoderedUtil.Query({ collectionname: "config", query: { "_type": "resource", "target": "customer", "allowdirectassign": true }, orderby: { _created: -1 } });
+            console.debug("Resources", this.Resources);
             this.Assigned = await NoderedUtil.Query({ collectionname: "config", query: { "_type": "resourceusage", "customerid": this.model._id, "userid": { "$exists": false } }, orderby: { _created: -1 } });
+            console.debug("Assigned", this.Assigned);
             for (var res of this.Resources) {
                 res.products = res.products.filter(x => x.allowdirectassign == true);
                 for (var prod of res.products) {
