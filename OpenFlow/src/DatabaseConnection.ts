@@ -2765,7 +2765,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let impersonationquery;
                 if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.delete], span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    baseq = this.getbasequery(user, "metadata._acl", [Rights.delete]), impersonationquery;
+                    baseq = impersonationquery;
                 } else {
                     baseq = this.getbasequery(user, "metadata._acl", [Rights.delete]);
                 }
@@ -2773,7 +2773,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let impersonationquery: any;
                 if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.delete], span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    baseq = this.getbasequery(user, "_acl", [Rights.delete]), impersonationquery;
+                    baseq = impersonationquery;
                 } else {
                     baseq = this.getbasequery(user, "_acl", [Rights.delete]);
                 }

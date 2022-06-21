@@ -345,6 +345,7 @@ export class OAuthProvider {
             try {
                 OAuthProvider.instance = instance;
                 instance.app = app;
+                // @ts-ignore
                 this.LoadClients();
             } catch (error) {
                 Logger.instanse.error("OAuthProvider", "configure", error);

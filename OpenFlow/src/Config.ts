@@ -444,7 +444,7 @@ export class Config {
         // if anything throws, we retry
         return promiseRetry(async () => {
             const reader: any = await fetch({ url });
-            if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); return; }
+            if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); }
             const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {

@@ -3183,7 +3183,7 @@ export class EditFormCtrl extends entityCtrl<Form> {
                         this.model = {} as any;
                         this.model._type = "form";
                         this.model.dataType = "json";
-                        this.model.formData == { "display": "form" };
+                        this.model.formData = { "display": "form" };
                     }
                     this.model.fbeditor = false;
                     this.renderform();
