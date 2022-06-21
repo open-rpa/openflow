@@ -42,6 +42,12 @@
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>
+    <div class="form-group" ng-show="menuctrl.hasrole('admins') && (ctrl.model.dblocked == true || ctrl.model.dblocked == false)">
+        <label for="dblocked" class="col-sm-2 control-label" translate lib="web">dblocked</label>
+        <div class="col-sm-4">
+            <input type="checkbox" ng-model="ctrl.model.dblocked" class="input-md" ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
     <div class="form-group" ng-show="menuctrl.hasrole('admins') && (ctrl.model.validated == true || ctrl.model.validated == false)">
         <label for="validated" class="col-sm-2 control-label" translate lib="web">validated</label>
         <div class="col-sm-4">
