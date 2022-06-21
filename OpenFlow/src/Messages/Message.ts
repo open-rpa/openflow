@@ -1954,11 +1954,16 @@ export class Message {
                 } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
                     // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
-                    // msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
-                    // msg.jwt = undefined;
+                    // Dillema ....
+                    // If we send an error or empy yser, the robot will spam new tabs 
+                    // If we just close the connection the user will not know what is wrong ...                    
+                    msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
+                    msg.jwt = undefined;
+                    msg.user = undefined;
                     // Stall a little, to avoid spam
-                    // await new Promise(resolve => { setTimeout(resolve, 5000) });
+                    await new Promise(resolve => { setTimeout(resolve, 5000) });
                     // 
+                    cli.Close();
                     // setTimeout(() => {
                     //     cli.Close();
                     // }, 500);
