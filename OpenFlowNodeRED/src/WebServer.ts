@@ -321,6 +321,7 @@ export class WebServer {
                 this.settings.httpNodeMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
                     noderedcontribmiddlewareauth.process(socket, req, res, next);
                 };
+                this.settings.adminAuth.strategy.autoLogin = true
 
                 Logger.instanse.silly("WebServer.configure::configure nodered storageModule");
                 this.settings.storageModule = new noderedcontribopenflowstorage(socket);
