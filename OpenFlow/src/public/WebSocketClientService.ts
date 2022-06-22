@@ -42,6 +42,8 @@ export class WebSocketClientService {
                 this.nodered_images = data.nodered_images;
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
+                this.enable_nodered_tours = data.enable_nodered_tours;
+
                 this.forceddomains = data.forceddomains;
 
                 if (data.collections_with_text_index) this.collections_with_text_index = data.collections_with_text_index;
@@ -190,6 +192,7 @@ export class WebSocketClientService {
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;
     public enable_web_tours: boolean;
+    public enable_nodered_tours: boolean;
     public forceddomains: string[] = [];
     public collections_with_text_index: string[] = [];
     public timeseries_collections: string[] = [];

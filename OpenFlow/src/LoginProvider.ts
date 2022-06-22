@@ -395,6 +395,7 @@ export class LoginProvider {
                     multi_tenant: Config.multi_tenant,
                     enable_entity_restriction: Config.enable_entity_restriction,
                     enable_web_tours: Config.enable_web_tours,
+                    enable_nodered_tours: Config.enable_nodered_tours,
                     collections_with_text_index: DatabaseConnection.collections_with_text_index,
                     timeseries_collections: DatabaseConnection.timeseries_collections,
                     ping_clients_interval: Config.ping_clients_interval,

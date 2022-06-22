@@ -4480,7 +4480,7 @@ export class NoderedCtrl {
 
             if (this.user.nodered == null) this.user.nodered = {} as any;
             if ((this.user.nodered as any).monaco == null) (this.user.nodered as any).monaco = false;
-            if ((this.user.nodered as any).tours == null) (this.user.nodered as any).tours = WebSocketClientService.enable_web_tours;
+            if ((this.user.nodered as any).tours == null) (this.user.nodered as any).tours = WebSocketClientService.enable_nodered_tours;
             if (this.user.nodered.function_external_modules == null) this.user.nodered.function_external_modules = true;
 
             this.user.nodered.nodered_image_name = this.user.nodered.nodered_image_name || WebSocketClientService.nodered_images[0].name;

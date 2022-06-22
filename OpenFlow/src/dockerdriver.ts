@@ -162,7 +162,7 @@ export class dockerdriver implements i_nodered_driver {
                 "NO_PROXY=" + Config.NO_PROXY,
                 "prometheus_expose_metric=" + "false",
                 "enable_analytics=" + Config.enable_analytics.toString(),
-                "tours=" + Config.enable_web_tours.toString(),
+                "tours=" + Config.enable_nodered_tours.toString(),
                 "otel_trace_url=" + Config.otel_trace_url,
                 "otel_metric_url=" + Config.otel_metric_url,
                 "otel_trace_interval=" + Config.otel_trace_interval.toString(),

@@ -48,6 +48,7 @@ export class Config {
         Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "50"));
         Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
         Config.enable_web_tours = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
+        Config.enable_nodered_tours = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
         Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "false"));
         Config.housekeeping_update_usage_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
         Config.housekeeping_update_usersize_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
@@ -241,6 +242,7 @@ export class Config {
     public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "50"));
     public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
     public static enable_web_tours: boolean = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
+    public static enable_nodered_tours: boolean = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
     public static housekeeping_update_usage_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
     public static housekeeping_update_usersize_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
