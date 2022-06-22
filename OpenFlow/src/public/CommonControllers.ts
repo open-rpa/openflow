@@ -811,6 +811,9 @@ export class entitiesCtrl<T> {
                 if (this.shiftdown == true) {
                     if (confirm("Confirm you want to HARD delete " + model.name + "\nWill delete all associated data") == true) {
                         recursive = true;
+                    } else {
+                        event.preventDefault();
+                        return;
                     }
                 }
             }
