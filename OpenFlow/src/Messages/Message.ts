@@ -1707,6 +1707,26 @@ export class Message {
                         await new Promise(resolve => { setTimeout(resolve, 1000) });
                         throw new Error("Failed resolving token");
                     }
+
+                    if (cli?.clientagent == "openrpa" && user.dblocked == true) {
+                        // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                        Logger.instanse.error("Message", "Signin", user.username + " is dblocked");
+                        // Dillema ....
+                        // If we send an error or empy yser, the robot will spam new tabs 
+                        // If we just close the connection the user will not know what is wrong ...                    
+                        msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
+                        msg.jwt = undefined;
+                        msg.user = undefined;
+                        // Stall a little, to avoid spam
+                        await new Promise(resolve => { setTimeout(resolve, 5000) });
+                        // 
+                        cli.Close();
+                        return;
+                        // setTimeout(() => {
+                        //     cli.Close();
+                        // }, 500);
+                    }
+
                     if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
                         impostor = tuser.impostor;
                     }
