@@ -56,7 +56,7 @@
     "envfile": "^6.14.0",
     "express": "^4.17.1",
     "flash": "^1.1.0",
-    "got": "^11.8.2",
+    "got": "^11.8.5",
     "halfmoon": "^1.1.1",
     "jose": "^2.0.4",
     "json-stable-stringify": "^1.0.1",
