@@ -1678,8 +1678,8 @@ export class Message {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.Signin", parent);
         try {
-            const hrstart = process.hrtime()
-            let hrend = process.hrtime(hrstart)
+            // const hrstart = process.hrtime()
+            // let hrend = process.hrtime(hrstart)
             let msg: SigninMessage
             let impostor: string = "";
             const UpdateDoc: any = { "$set": {} };
@@ -1691,7 +1691,12 @@ export class Message {
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                     type = "jwtsignin";
-                    tuser = await Crypt.verityToken(msg.jwt);
+                    try {
+                        tuser = await Crypt.verityToken(msg.jwt);
+                    } catch (error) {
+                        Logger.instanse.error("Message", "Signin", "verityToken failed for client/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " " + error.message ? error.message : error);
+                        throw error;
+                    }
                     let _id = tuser._id;
                     if (tuser != null) {
                         if (NoderedUtil.IsNullEmpty(tuser._id)) {
@@ -2002,7 +2007,7 @@ export class Message {
                 this.data = "";
                 await handleError(cli, error);
             }
-            hrend = process.hrtime(hrstart)
+            // hrend = process.hrtime(hrstart)
         } catch (error) {
             span?.recordException(error);
         }
