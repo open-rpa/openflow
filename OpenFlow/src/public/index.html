@@ -91,8 +91,12 @@
         ng-show="menuctrl.WebSocketClientService.enable_entity_restriction && menuctrl.hasrole('admins')"><span
           translate lib="web">entityrestrictions</span></a>
       <a class="sidebar-link" href="#/Forms" id="menuadminforms"
-        ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
-          lib="web">forms</span></a>
+      ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
+        lib="web">forms</span></a>
+      <a class="sidebar-link" href="#/FormResources" id="menuadminformresources"
+      ng-show="menuctrl.WebSocketClientService.validlicense"
+      ng-class="{active: menuctrl.PathIs(['/FormResources', '/FormResource', '/FormResource/'])}"><span translate
+        lib="web">formresources</span></a>
       <a class="sidebar-link" href="#/Providers"
         ng-class="{active: menuctrl.PathIs(['/Providers', '/Provider', '/Provider/'])}"
         ng-show="menuctrl.hasrole('admins')"><span translate lib="web">providers</span></a>
@@ -122,6 +126,7 @@
     <div class="sticky-alerts"></div>
 
     <nav class="navbar navbar-expand-md fixed-top" ng-show="menuctrl.signedin">
+      <button class="btn" type="button" ng-click="menuctrl.toggleSidebar()"><i class="fa fa-bars" aria-hidden="true"></i></button>
       <a href="#" class="navbar-brand">
         <span translate lib="web">sitename</span>
       </a>
@@ -182,9 +187,6 @@
         </div>
       </form>
 
-
-
-
       <div class="navbar-content d-md-none ml-auto">
         <div class="dropdown with-arrow">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
@@ -213,6 +215,10 @@
 
     </nav>
     <div class="content-wrapper">
+      <div class="alert alert-danger" ng-show="menuctrl.user.dblocked">
+        You are currently using more than the 25mb allowed. 
+        Please <a href="#/Customer">buy more</a> storage or install <a href="https://openflow.openiap.io/">openflow</a> locally.
+      </div>
       <main role="main" class="container"
         ng-show="menuctrl.signedin || menuctrl.path=='/Login' || menuctrl.path=='/Signup'">
         <div ng-view class="starter-template">

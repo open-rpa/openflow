@@ -128,5 +128,14 @@
     "queue": "Kø",
     "lastrun": "Sidste kørt",
     "nextrun": "Næste Kørsel",
-    "autocreate": "Auto operet"
+    "autocreate": "Auto operet",
+    "forceddomains": "Tvangs domæner",
+    "addforceddomains": "Tilføj tvungen domæne",
+    "emailhistdetails": "Mail historik",
+    "validated": "Valideret",
+    "emailvalidated": "Email valideret",
+    "formvalidated": "Form valideret",
+    "formresources": "Form ressourcer",
+    "formresource": "Form ressource",
+    "addformresource": "Tilføj form ressource"
 }

@@ -846,7 +846,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "metadata._acl", [Rights.read], span);
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.read], span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read]), impersonationquery] };
                 } else {
@@ -855,7 +855,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 projection = null;
             } else {
                 let impersonationquery: any;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(queryas, "_acl", [Rights.read], span)
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.read], span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read]), impersonationquery] };
                 } else {
@@ -1414,9 +1414,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (collectionname === "users" && item._type === "user") {
                 const u: TokenUser = (item as any);
-                u.validated = false;
-                u.formvalidated = false;
-                u.emailvalidated = false;
+                if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
+                if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
@@ -1429,7 +1429,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
                 Logger.DBHelper.clearCache("check for dublicates");
-                const exists2 = await Logger.DBHelper.FindRoleByName(r.name, span);
+                const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
 
@@ -1449,7 +1449,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                 span?.addEvent("FindRoleByName users");
-                const users: Role = await Logger.DBHelper.FindRoleByName("users", span);
+                const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
                 users.AddMember(item);
                 span?.addEvent("Save Users");
                 await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
@@ -1619,9 +1619,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (collectionname === "users" && item._type === "user") {
                     const u: TokenUser = (item as any);
-                    u.validated = false;
-                    u.formvalidated = false;
-                    u.emailvalidated = false;
+                    if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
+                    if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                    if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
                     if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                     if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
@@ -1632,7 +1632,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const r: Role = (item as any);
                     if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
-                    const exists2 = await Logger.DBHelper.FindRoleByName(r.name, span);
+                    const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                     if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                 }
 
@@ -1662,7 +1662,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span?.addEvent("FindRoleByName");
-                    const users: Role = await Logger.DBHelper.FindRoleByName("users", span);
+                    const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
                     users.AddMember(item);
                     span?.addEvent("CleanACL");
                     item = await this.CleanACL(item, user, collectionname, span);
@@ -1758,8 +1758,10 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
-                throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+            if (q.query === null || q.query === undefined) {
+                if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
+                    throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                }
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
 
@@ -1883,9 +1885,12 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
-                    if (q.item._acl === null || q.item._acl === undefined) {
+                    if (q.item._acl === null || q.item._acl === undefined || !Array.isArray(q.item._acl)) {
                         q.item._acl = original._acl;
                         q.item._version = original._version;
+                        if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
+                            throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                        }
                     }
                     q.item = this.ensureResource(q.item, q.collectionname);
                     if (user._id != WellknownIds.root && original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
@@ -1940,9 +1945,13 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
-                    if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined) {
+                    if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined || !Array.isArray((q.item as any).metadata._acl)) {
                         (q.item as any).metadata._acl = (original as any).metadata._acl;
                         (q.item as any).metadata._version = (original as any).metadata._version;
+                        if (!DatabaseConnection.hasAuthorization(user, (q.item as any).metadata, Rights.update)) {
+                            throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                        }
+
                     }
                     (q.item as any).metadata = this.ensureResource((q.item as any).metadata, q.collectionname);
                     DatabaseConnection.traversejsonencode(q.item);
@@ -2557,7 +2566,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteOne(id: string | any, collectionname: string, jwt: string, parent: Span): Promise<void> {
+    async DeleteOne(id: string | any, collectionname: string, recursive: boolean, jwt: string, parent: Span): Promise<void> {
         if (id === null || id === undefined || id === "") { throw Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteOne", parent);
         try {
@@ -2594,7 +2603,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
             const docs = await this.db.collection(collectionname).find(_query).toArray();
             for (let i = 0; i < docs.length; i++) {
-                let doc = docs[i];
+                let doc: Customer = docs[i];
                 if (collectionname == "users" && doc._type == "user") {
                     const usagedocs = await this.db.collection("config").find({ "userid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
                     if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete user with active resourceusage");
@@ -2602,12 +2611,46 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "users" && doc._type == "customer") {
                     const usagedocs = await this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
                     if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
-                    const userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
-                    if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                    let userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
+                    if (doc.userid != user._id) {
+                        if (userdocs.length > 0 && !Config.cleanup_on_delete_customer && !recursive) {
+                            let defaulttest = userdocs.filter(x => x._id != doc.users && x._id != doc.admins && x._id != doc.userid)
+                            if (defaulttest.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                        }
+                        if (Config.cleanup_on_delete_customer || recursive) {
+                            Logger.instanse.warn("DatabaseConnection", "DeleteOne", "[" + user.username + "] Cleaning up after up after company " + doc.name);
+                            // let queries = [];
+                            // for (var y = 0; y < userdocs.length; y++) {
+                            //     if (userdocs[y]._type == "user") {
+                            //         queries.push({ "_createdbyid": userdocs[y]._id });
+                            //         // queries.push({ "_modifiedbyid": userdocs[y]._id });
+                            //     }
+                            // }
+                            // let query = { "$or": queries };
+                            // if (queries.length > 0) {
+                            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                            collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
+                                && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
+                                && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
+                                && x.name != "oauthtokens" && x.name != "users");
+                            for (let i = 0; i < collections.length; i++) {
+                                let collection = collections[i];
+                                // var res = await this.DeleteMany(query, null, collection.name, null, jwt, span);
+                                var res = await this.DeleteMany({}, null, collection.name, doc._id, jwt, span);
+                                Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after company " + doc.name);
+                            }
+                            // }
+                        }
+                        for (let i = 0; i < userdocs.length; i++) {
+                            await this.DeleteOne(userdocs[i]._id, "users", recursive, jwt, span);
+                        }
+                    } else {
+                        if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                    }
                 }
-                doc._deleted = new Date(new Date().toISOString());
-                doc._deletedby = user.name;
-                doc._deletedbyid = user._id;
+                (doc as any)._deleted = new Date(new Date().toISOString());
+                (doc as any)._deletedby = user.name;
+                (doc as any)._deletedbyid = user._id;
                 const fullhist = {
                     _acl: doc._acl,
                     _type: doc._type,
@@ -2617,14 +2660,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     _created: doc._modified,
                     _createdby: doc._modifiedby,
                     _createdbyid: doc._modifiedbyid,
-                    _deleted: doc._deleted,
-                    _deletedby: doc._deletedby,
-                    _deletedbyid: doc._deletedbyid,
+                    _deleted: (doc as any)._deleted,
+                    _deletedby: (doc as any)._deletedby,
+                    _deletedbyid: (doc as any)._deletedbyid,
                     name: doc.name,
                     id: doc._id,
                     item: doc,
                     _version: doc._version,
-                    reason: doc.reason
+                    reason: (doc as any).reason
                 }
                 const ot_end = Logger.otel.startTimer();
                 await this.db.collection(collectionname + '_hist').insertOne(fullhist);
@@ -2637,7 +2680,30 @@ export class DatabaseConnection extends events.EventEmitter {
                     names.push(doc.name + "noderedadmins"); names.push(doc.name + "noderedusers"); names.push(doc.name + "nodered api users")
                     const subdocs = await this.db.collection("users").find({ "name": { "$in": names }, "_type": "role" }).toArray();
                     for (var r of subdocs) {
-                        this.DeleteOne(r._id, "users", jwt, span);
+                        this.DeleteOne(r._id, "users", false, jwt, span);
+                    }
+                    if (Config.cleanup_on_delete_user || recursive) {
+                        let skip_collections = [];
+                        if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
+
+                        let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                        collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
+                            && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
+                            && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
+                            && x.name != "oauthtokens" && x.name != "users");
+                        for (let i = 0; i < collections.length; i++) {
+                            let collection = collections[i];
+                            if (skip_collections.indexOf(collection.name) > -1) {
+                                Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] skipped " + collection.name + " due to housekeeping_skip_collections setting");
+                                continue;
+                            }
+                            let startTime = new Date();
+                            var res = await this.DeleteMany({ "$or": [{ "_createdbyid": doc._id }, { "_modifiedbyid": doc._id }] }, null, collection.name, doc._id, jwt, span);
+                            // @ts-ignore
+                            var timeDiff = ((new Date()) - startTime); //in ms
+                            Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after user " + doc.name + " (" + timeDiff + "ms)");
+                        }
+
                     }
                     // await this.db.collection("audit").deleteMany({ "userid": doc._id });
                     // await this.db.collection("openrpa_instances").deleteMany({ "_modifiedbyid": doc._id });
@@ -2649,7 +2715,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "users" && doc._type == "customer") {
                     const subdocs = await this.db.collection("config").find({ "customerid": doc._id }).toArray();
                     for (var r of subdocs) {
-                        this.DeleteOne(r._id, "config", jwt, span);
+                        this.DeleteOne(r._id, "config", false, jwt, span);
                     }
                 }
                 if (collectionname == "users" && doc._type == "role") {
@@ -2685,20 +2751,45 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteMany(query: string | any, ids: string[], collectionname: string, jwt: string, parent: Span): Promise<number> {
+    async DeleteMany(query: string | any, ids: string[], collectionname: string, queryas: string, jwt: string, parent: Span): Promise<number> {
         if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
             await this.connect();
             const user: TokenUser = await Crypt.verityToken(jwt);
-            let _query: any = {};
-            let aclfield = "_acl";
+
+
+            let baseq: any = {};
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
-                aclfield = "metadata._acl"
+                let impersonationquery;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.delete], span);
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    baseq = impersonationquery;
+                } else {
+                    baseq = this.getbasequery(user, "metadata._acl", [Rights.delete]);
+                }
+            } else {
+                let impersonationquery: any;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.delete], span)
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    baseq = impersonationquery;
+                } else {
+                    baseq = this.getbasequery(user, "_acl", [Rights.delete]);
+                }
             }
-            const baseq = this.getbasequery(user, aclfield, [Rights.delete]);
+            let _query: any = {};
             if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
+                let objectids = [];
+                if (collectionname == "files" || collectionname == "fs.files") {
+                    for (let i = 0; i < ids.length; i++) {
+                        try {
+                            objectids.push(safeObjectID(ids[i]))
+                        } catch (error) {
+                        }
+                        if (objectids.length > 0) ids = ids.concat(objectids);
+                    }
+                }
                 _query = { $and: [{ _id: { "$in": ids } }, baseq] };
             } else if (!NoderedUtil.IsNullUndefinded(query)) {
                 if (query !== null && query !== undefined) {
@@ -2744,7 +2835,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     deletecounter++;
                     const ot_end = Logger.otel.startTimer();
                     const _mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deletefile", span);
-                    await this._DeleteFile(c._id);
+                    try {
+                        await this._DeleteFile(c._id);
+                    } catch (error) {
+                    }
                     Logger.otel.endSpan(_mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
                 }
@@ -2941,7 +3035,7 @@ export class DatabaseConnection extends events.EventEmitter {
         // }
         return { $or: finalor.concat() };
     }
-    private async getbasequeryuserid(userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
+    private async getbasequeryuserid(calluser: TokenUser, userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
         // const user = await DBHelper.FindByUsernameOrId(null, userid, parent);
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
@@ -2953,6 +3047,11 @@ export class DatabaseConnection extends events.EventEmitter {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             user.roles.push(new Rolemember(user.name + " users", (user as any).users))
             user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
+            if (user._id == calluser.customerid) user.roles.push(new Rolemember(calluser.name, calluser._id));
+
+            if (!NoderedUtil.IsNullEmpty((user as any as Customer).userid)) {
+                user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
+            }
             // const jwt = Crypt.createToken(user as any, Config.shorttoken_expires_in);
             return this.getbasequery(user, field, bits);
         }
@@ -3066,7 +3165,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return true;
         }
 
-        if (item._acl != null && item._acl != undefined) {
+        if (item._acl != null && item._acl != undefined && Array.isArray(item._acl)) {
             if (typeof item._acl === 'string' || item._acl instanceof String) {
                 item._acl = JSON.parse((item._acl as any));
             }
@@ -3679,15 +3778,20 @@ export class EntityRestriction extends Base {
         }
         for (let path of this.paths) {
             if (!NoderedUtil.IsNullEmpty(path)) {
+                var json = { a: object };
+                Logger.instanse.verbose("DatabaseConnection", "IsMatch", path);
+                Logger.instanse.silly("DatabaseConnection", "IsMatch", JSON.stringify(json, null, 2));
                 try {
-                    const result = JSONPath({ path, json: { a: object } });
-                    if (result && result.length > 0) return true;
+                    const result = JSONPath({ path, json });
+                    if (result && result.length > 0) {
+                        Logger.instanse.verbose("DatabaseConnection", "IsMatch", "true");
+                        return true;
+                    }
                 } catch (error) {
                 }
-            } else {
-                var b = true;
             }
         }
+        Logger.instanse.verbose("DatabaseConnection", "IsMatch", "false");
         return false;
     }
     public IsAuthorized(user: TokenUser | User): boolean {

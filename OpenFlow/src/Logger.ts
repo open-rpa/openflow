@@ -71,7 +71,10 @@ export class Logger {
                 prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "] ").padEnd(60, " ");
             }
         }
-        return prefix + color + message + Console.Reset;
+        if (Logger.usecolors) {
+            return prefix + color + message + Console.Reset;
+        }
+        return prefix + message;
     }
     public error(cls: string, func: string, message: string | Error | unknown) {
         if (Config.unittesting) return;

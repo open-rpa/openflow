@@ -1,7 +1,7 @@
-import * as crypto from "crypto";
 import * as url from "url";
 import * as express from "express";
 import * as path from "path";
+import * as OpenIDConnectStrategy from "passport-openidconnect";
 import * as GoogleStrategy from "passport-google-oauth20";
 import * as LocalStrategy from "passport-local";
 import * as passport from "passport";
@@ -9,11 +9,8 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 import * as saml from "saml20";
-const multer = require('multer');
-// const GridFsStorage = require('multer-gridfs-storage');
-import { GridFsStorage } from "multer-gridfs-storage";
-import { GridFSBucket, ObjectID, Binary } from "mongodb";
-import { Base, User, NoderedUtil, TokenUser, WellknownIds, Rights, Role, InsertOrUpdateOneMessage, FederationId } from "@openiap/openflow-api";
+import { GridFSBucket, ObjectID } from "mongodb";
+import { Base, User, NoderedUtil, TokenUser, Role, FederationId } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
@@ -352,7 +349,7 @@ export class LoginProvider {
                 Logger.otel.endSpan(span);
             }
         });
-        app.get("/config", (req: any, res: any, next: any): void => {
+        app.get("/config", async (req: any, res: any, next: any): Promise<void> => {
             const span: Span = Logger.otel.startSpan("LoginProvider.config");
             try {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
@@ -366,6 +363,14 @@ export class LoginProvider {
                 let nodered_domain_schema = Config.nodered_domain_schema;
                 if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
                     nodered_domain_schema = "$nodered_id$." + Config.domain;
+                }
+                let forceddomains = [];
+                var providers = await Logger.DBHelper.GetProviders(null);
+                for (let i = 0; i < providers.length; i++) {
+                    var provider: any = providers[i];
+                    if (provider.forceddomains && Array.isArray(provider.forceddomains)) {
+                        forceddomains = forceddomains.concat(provider.forceddomains);
+                    }
                 }
                 const res2 = {
                     wshost: _url,
@@ -390,10 +395,12 @@ export class LoginProvider {
                     multi_tenant: Config.multi_tenant,
                     enable_entity_restriction: Config.enable_entity_restriction,
                     enable_web_tours: Config.enable_web_tours,
+                    enable_nodered_tours: Config.enable_nodered_tours,
                     collections_with_text_index: DatabaseConnection.collections_with_text_index,
                     timeseries_collections: DatabaseConnection.timeseries_collections,
                     ping_clients_interval: Config.ping_clients_interval,
-                    validlicense: Logger.License.validlicense
+                    validlicense: Logger.License.validlicense,
+                    forceddomains: forceddomains
                 }
                 Logger.instanse.debug("LoginProvider", "/config", "Return configuration settings");
                 res.end(JSON.stringify(res2));
@@ -447,7 +454,7 @@ export class LoginProvider {
                                 Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
                                 res.status(200).send(Object.assign(exists, { message: "ok" }));
                             } else {
-                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "USer not validated yet, for " + key);
+                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "User not validated yet, for key " + key + " user " + user.name + " " + user._id);
                                 res.status(200).send({ message: "ok" });
                             }
                         } catch (error) {
@@ -937,198 +944,6 @@ export class LoginProvider {
                 Logger.otel.endSpan(span);
             }
         });
-        try {
-            const storage = new GridFsStorage({
-                db: Config.db,
-                file: (req, file) => {
-                    return new Promise((resolve, reject) => {
-                        crypto.randomBytes(16, async (err, buf) => {
-                            if (err) {
-                                return reject(err);
-                            }
-                            // const filename = buf.toString('hex') + path.extname(file.originalname);
-                            const filename = file.originalname;
-                            const fileInfo = {
-                                filename: filename,
-                                metadata: new Base()
-                            };
-                            let user: TokenUser | undefined;
-                            let jwt: string;
-                            const authHeader = req.headers.authorization;
-                            if (authHeader) {
-                                user = await Crypt.verityToken(authHeader);
-                                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                            }
-                            else if (req.user) {
-                                user = TokenUser.From(req.user as any);
-                                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                            }
-                            const { query, headers } = req;
-                            if (user === undefined) throw new Error("Access denied, unknown user");
-
-                            fileInfo.metadata.name = filename;
-                            (fileInfo.metadata as any).filename = filename;
-                            (fileInfo.metadata as any).path = "";
-                            (fileInfo.metadata as any).uniquename = query.uniquename;
-                            (fileInfo.metadata as any).form = query.form;
-                            (fileInfo.metadata as any).project = query.project;
-                            (fileInfo.metadata as any).baseurl = query.baseUrl;
-                            fileInfo.metadata._acl = [];
-                            fileInfo.metadata._createdby = user.name;
-                            fileInfo.metadata._createdbyid = user._id;
-                            fileInfo.metadata._created = new Date(new Date().toISOString());
-                            fileInfo.metadata._modifiedby = user.name;
-                            fileInfo.metadata._modifiedbyid = user._id;
-                            fileInfo.metadata._modified = fileInfo.metadata._created;
-
-                            const keys = Object.keys(query);
-                            for (let i = 0; i < keys.length; i++) {
-                                fileInfo.metadata[keys[i]] = query[keys[i]];
-                            }
-                            Base.addRight(fileInfo.metadata, user._id, user.name, [Rights.full_control]);
-                            Base.addRight(fileInfo.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-                            Base.addRight(fileInfo.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
-                            // Fix acl
-                            fileInfo.metadata._acl.forEach((a, index) => {
-                                if (typeof a.rights === "string") {
-                                    fileInfo.metadata._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
-                                }
-                            });
-                            resolve(fileInfo);
-                        });
-                    });
-                },
-            });
-            const upload = multer({ //multer settings for single upload
-                storage: storage,
-                limits: {
-                    fileSize: (1000000 * Config.upload_max_filesize_mb) // 25MB
-                }
-            }).any();
-            app.delete("/upload", async (req: any, res: any, next: any): Promise<void> => {
-                const span: Span = Logger.otel.startSpan("LoginProvider.upload");
-                try {
-                    span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                    let user: TokenUser = null;
-                    let jwt: string = null;
-                    const authHeader = req.headers.authorization;
-                    if (authHeader) {
-                        user = await Crypt.verityToken(authHeader);
-                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                    }
-                    else if (req.user) {
-                        user = TokenUser.From(req.user as any);
-                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                    }
-                    if (user == null) {
-                        return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
-                    }
-                    const _query = req.query;
-                    let uniquename: string = _query.uniquename;
-                    let query: any = {};
-                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
-                        if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
-                        if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
-                        query = { "metadata.uniquename": uniquename };
-                    }
-
-                    const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
-                    if (arr.length > 0) {
-                        await Config.db.DeleteOne(arr[0]._id, "files", jwt, span);
-                    }
-                    res.send({
-                        status: "success",
-                        display_status: "Success",
-                        message: uniquename + " deleted"
-                    });
-                } catch (error) {
-                    span?.recordException(error);
-                    Logger.instanse.error("LoginProvider", "/upload", error);
-                    return res.status(500).send({ message: error.message ? error.message : error });
-                } finally {
-                    Logger.otel.endSpan(span);
-                }
-
-            });
-            app.get("/upload", async (req: any, res: any, next: any): Promise<void> => {
-                const span: Span = Logger.otel.startSpan("LoginProvider.upload");
-                try {
-                    span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                    let user: TokenUser = null;
-                    let jwt: string = null;
-                    const authHeader = req.headers.authorization;
-                    if (authHeader) {
-                        user = await Crypt.verityToken(authHeader);
-                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                    }
-                    else if (req.user) {
-                        user = TokenUser.From(req.user as any);
-                        jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                    }
-                    if (user == null) {
-                        return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
-                    }
-                    const _query = req.query;
-                    let uniquename: string = _query.uniquename;
-                    let query: any = {};
-                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
-                        if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
-                        if (uniquename.indexOf('/') > -1) uniquename = uniquename.substr(0, uniquename.indexOf('/'));
-                        query = { "metadata.uniquename": uniquename };
-                    }
-
-                    const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
-
-                    const id = arr[0]._id;
-                    const rows = await Config.db.query({ query: { _id: safeObjectID(id) }, top: 1, collectionname: "files", jwt }, span);
-                    if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
-                    const file = rows[0] as any;
-
-                    const bucket = new GridFSBucket(Config.db.db);
-                    let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-                    res.set('Content-Type', file.contentType);
-                    res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
-                    res.set('Content-Length', file.length);
-                    downloadStream.on("error", function (err) {
-                        res.end();
-                    });
-                    downloadStream.pipe(res);
-                    return;
-                } catch (error) {
-                    span?.recordException(error);
-                    return res.status(500).send({ message: error.message ? error.message : error });
-                } finally {
-                    Logger.otel.endSpan(span);
-                }
-            });
-            app.post("/upload", async (req, res) => {
-                let user: TokenUser = null;
-                let jwt: string = null;
-                const authHeader = req.headers.authorization;
-                if (authHeader) {
-                    user = await Crypt.verityToken(authHeader);
-                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                }
-                else if (req.user) {
-                    user = TokenUser.From(req.user as any);
-                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                }
-                if (user == null) {
-                    return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
-                }
-
-                upload(req, res, function (err) {
-                    if (err) {
-                        res.json({ error_code: 1, err_desc: err });
-                        return;
-                    }
-                    LoginProvider.redirect(res, req.headers.referer);
-                    // res.json({ error_code: 0, err_desc: null });
-                });
-            });
-        } catch (error) {
-            Logger.instanse.error("LoginProvider", "configure", error);
-        }
 
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
@@ -1150,6 +965,11 @@ export class LoginProvider {
                             LoginProvider._providers[provider.id] =
                                 LoginProvider.CreateGoogleStrategy(app, provider.id, provider.consumerKey, provider.consumerSecret, baseurl);
                         }
+                        if (provider.provider === "oidc") {
+                            await LoginProvider.CreateOpenIDStrategy(app, provider.saml_federation_metadata, provider.id,
+                                provider.consumerKey, provider.consumerSecret, baseurl);
+                        }
+
                     }
                     if (provider.provider === "local") { hasLocal = true; }
                 } catch (error) {
@@ -1176,6 +996,55 @@ export class LoginProvider {
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    // https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
+    // https://login.microsoftonline.com/aa8306d8-5417-43cc-b8e8-7e77b918682c/v2.0/.well-known/openid-configuration
+
+    // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc
+    // common - Users with both a personal Microsoft account and a work or school account from Azure AD can sign in to the application.
+    // organizations - Only users with work or school accounts from Azure AD can sign in to the application
+    // consumers - Only users with a personal Microsoft account can sign in to the application
+    // aa8306d8-5417-43cc-b8e8-7e77b918682c - Only users from a specific Azure AD tenant
+    // 9188040d-6c67-4c5b-b112-36a304b66dad = consumers tenant
+
+    // https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration
+
+
+    static async CreateOpenIDStrategy(app: express.Express, discoveryurl: string, key: string, clientID: string, clientSecret: string, baseurl: string): Promise<any> {
+        Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
+        const response = await got.get(discoveryurl, options);
+        const document = JSON.parse(response.body);
+        var options = {
+            issuer: document.issuer,
+            authorizationURL: document.authorization_endpoint,
+            tokenURL: document.token_endpoint,
+            userInfoURL: document.userinfo_endpoint,
+            clientID: clientID,
+            clientSecret: clientSecret,
+            callbackURL: url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/",
+            verify: (LoginProvider.openidverify).bind(this),
+            scope: "email profile"
+        }
+        // Microsoft Graph: openid, email, profile, and offline_access. The address and phone. OpenID Connect scopes aren't supported
+        // https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
+        const strategy: passport.Strategy = new OpenIDConnectStrategy.Strategy(options, options.verify);
+        passport.use(key, strategy);
+        strategy.name = key;
+        app.use("/" + key,
+            express.urlencoded({ extended: false }),
+            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
+            function (req: any, res: any): void {
+                const originalUrl: any = req.cookies.originalUrl;
+                res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    LoginProvider.redirect(res, originalUrl);
+                } else {
+                    res.redirect("/");
+                }
+            }
+        );
+        return strategy;
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
         Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
@@ -1316,9 +1185,9 @@ export class LoginProvider {
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
-                        user = await Logger.DBHelper.EnsureUser(jwt, user.name, user.username, null, password, span);
+                        user = await Logger.DBHelper.EnsureUser(jwt, user.name, user.username, null, password, null, span);
 
-                        const admins: Role = await Logger.DBHelper.FindRoleByName("admins", span);
+                        const admins: Role = await Logger.DBHelper.FindRoleByName("admins", null, span);
                         admins.AddMember(user);
                         await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
@@ -1366,7 +1235,7 @@ export class LoginProvider {
                     if (!createUser) {
                         return done(null, false);
                     }
-                    user = await Logger.DBHelper.EnsureUser(Crypt.rootToken(), username, username, null, password, span);
+                    user = await Logger.DBHelper.EnsureUser(Crypt.rootToken(), username, username, null, password, null, span);
                 } else {
                     if (user.disabled) {
                         await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
@@ -1393,7 +1262,25 @@ export class LoginProvider {
         passport.use("local", strategy);
         app.use("/local",
             express.urlencoded({ extended: false }),
-            function (req: any, res: any, next: any): void {
+            async (req: any, res: any, next: any) => {
+                const username = req.body?.username;
+                if (!NoderedUtil.IsNullEmpty(username) && username.indexOf("@") > -1) {
+                    const domain = username.substr(username.indexOf("@") + 1)
+
+                    var providers = await Logger.DBHelper.GetProviders(null);
+                    for (let i = 0; i < providers.length; i++) {
+                        var provider: any = providers[i];
+                        if (provider.forceddomains && Array.isArray(provider.forceddomains)) {
+                            for (let d = 0; d < provider.forceddomains.length; d++) {
+                                let forceddomain = new RegExp(provider.forceddomains[d], "i");
+                                if (forceddomain.test(domain)) {
+                                    res.redirect("/" + providers[i].id);
+                                    return next();
+                                }
+                            }
+                        }
+                    }
+                }
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
                     if (err) {
@@ -1484,9 +1371,11 @@ export class LoginProvider {
                     }
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     const jwt: string = Crypt.rootToken();
-                    _user.federationids = [];
-                    _user.federationids.push(new FederationId(username, issuer));
-                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
+                    let extraoptions = {
+                        federationids: [new FederationId(username, issuer)],
+                        emailvalidated: true
+                    }
+                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
                 }
             } else {
                 if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
@@ -1509,7 +1398,7 @@ export class LoginProvider {
                     const jwt: string = Crypt.rootToken();
                     const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                     for (let i = 0; i < strroles.length; i++) {
-                        const role: Role = await Logger.DBHelper.FindRoleByName(strroles[i], span);
+                        const role: Role = await Logger.DBHelper.FindRoleByName(strroles[i], jwt, span);
                         if (!NoderedUtil.IsNullUndefinded(role)) {
                             role.AddMember(_user);
                             await Logger.DBHelper.Save(role, jwt, span);
@@ -1535,6 +1424,72 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
+            span?.recordException(error);
+        }
+        Logger.otel.endSpan(span);
+    }
+
+    static async openidverify(issuer: string, profile: any, done: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.openidverify");
+        const remoteip: string = "unknown";
+        try {
+            if (profile.id && !profile.username) profile.username = profile.id;
+            if (profile.emails) {
+                const email: any = profile.emails[0];
+                profile.username = email.value;
+            }
+            let username: string = profile.username;
+            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
+            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            Logger.instanse.debug("LoginProvider", "openidverify", profile.id);
+            let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(profile.id, issuer, span);
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                _user = await Logger.DBHelper.FindByUsernameOrFederationid(profile.username, issuer, span);
+            }
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                let createUser: boolean = Config.auto_create_users;
+                if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
+                if (createUser) {
+                    const jwt: string = Crypt.rootToken();
+                    _user = new User(); _user.name = profile.name;
+                    if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
+                    _user.username = username;
+                    (_user as any).mobile = profile.mobile;
+                    // if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                    if (NoderedUtil.IsNullEmpty(_user.name)) _user.name = username
+                    let extraoptions = {
+                        federationids: [new FederationId(profile.id, issuer)],
+                        emailvalidated: true
+                    }
+                    // ,emailvalidated: true
+                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
+                }
+            } else {
+                var exists = _user.federationids.filter(x => x.id == profile.id && x.issuer == issuer);
+                if (exists.length == 0 || _user.emailvalidated == false) {
+                    _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
+                    _user.federationids.push(new FederationId(profile.id, issuer));
+                    _user.emailvalidated = true;
+                    if (_user.formvalidated) _user.validated = true;
+                    const jwt: string = Crypt.rootToken();
+                    await Logger.DBHelper.Save(_user, jwt, span);
+                    await Logger.DBHelper.DeleteKey("user" + _user._id);
+                }
+            }
+            if (NoderedUtil.IsNullUndefinded(_user)) {
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                done("unknown user " + username, null); return;
+            }
+            if (_user.disabled) {
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                done("Disabled user " + username, null);
+                return;
+            }
+            const tuser: TokenUser = TokenUser.From(_user);
+            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+            done(null, tuser);
+        } catch (error) {
+            Logger.instanse.error("LoginProvider", "openidverify", error);
             span?.recordException(error);
         }
         Logger.otel.endSpan(span);
@@ -1567,10 +1522,11 @@ export class LoginProvider {
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
                     if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
-                    _user.federationids = [];
-                    _user.federationids.push(new FederationId(username, issuer));
-                    _user.emailvalidated = true;
-                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, span);
+                    let extraoptions = {
+                        federationids: [new FederationId(username, issuer)],
+                        emailvalidated: true
+                    }
+                    _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
                 }
             } else {
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
@@ -1633,10 +1589,12 @@ export class LoginProvider {
             let id = NoderedUtil.GetUniqueIdentifier();
             let imgurl = Config.baseurl() + "read/" + id;
             text = text.split('\n').join('<br/>\n');
-            let html = text + `<img src="${imgurl}" border="0" width="1" height="1">`
+            let html = text + `<img src="${imgurl}" alt="isread" border="0" width="1" height="1">`
             let from = Config.smtp_from;
 
             if (Config.NODE_ENV != "production") {
+                Logger.instanse.warn("LoginProvider", "sendEmail", "Skip sending email to " + to);
+                Logger.instanse.info("LoginProvider", "sendEmail", text);
                 resolve("email not sent");
             } else {
                 transporter.sendMail({

@@ -182,13 +182,6 @@ export class workflow_in_node {
                 data.jwt = data.payload.__jwt;
                 delete data.payload.__jwt;
             }
-            while (data.payload != null && data.payload.payload != null) {
-                data.payload = data.payload.payload;
-            }
-            // if (data.payload != null && data.payload.payload != null) {
-            //     // UGLy ROLLBACK!
-            //     data.payload = data.payload.payload;
-            // }
             let _id = data._id;
             if (_id === null || _id === undefined || _id === "") {
                 if (data.payload !== null && data.payload !== undefined) {
@@ -197,6 +190,14 @@ export class workflow_in_node {
                     }
                 }
             }
+
+            while (data.payload != null && data.payload.payload != null) {
+                data.payload = data.payload.payload;
+            }
+            // if (data.payload != null && data.payload.payload != null) {
+            //     // UGLy ROLLBACK!
+            //     data.payload = data.payload.payload;
+            // }
             if (_id !== null && _id !== undefined && _id !== "") {
                 this.node.status({ fill: "blue", shape: "dot", text: "Processing id " + _id });
                 const jwt = data.jwt;
@@ -586,7 +587,7 @@ export class assign_workflow_node {
                 }
             }
             if (_id !== null && _id !== undefined && _id !== "") {
-                const res = await NoderedUtil.Query({ collectionname: "workflow_instances", query: { "_id": _id }, projection: { parentid: 1 }, top: 1, jwt: data.jwt, priority });
+                const res = await NoderedUtil.Query({ collectionname: "workflow_instances", query: { "_id": _id }, projection: { "_parentid": 1 }, top: 1, jwt: data.jwt, priority });
                 if (res.length == 0) {
                     NoderedUtil.HandleError(this, "Unknown workflow_instances id " + _id, msg);
                     if (ack !== null && ack !== undefined) ack();
@@ -594,7 +595,7 @@ export class assign_workflow_node {
                 }
                 const currentinstance = res[0];
                 const state = res[0].state;
-                const _parentid = res[0].parentid;
+                const _parentid = res[0]._parentid;
                 if (_parentid !== null && _parentid !== undefined && _parentid !== "") {
                     const res2 = await NoderedUtil.Query({ collectionname: "workflow_instances", query: { "_id": _parentid }, top: 1, priority });
                     if (res2.length == 0) {
@@ -611,8 +612,14 @@ export class assign_workflow_node {
                     result.user = data.user;
                     this.node.send([null, result]);
                     if (ack !== null && ack !== undefined) ack();
-                    // await NoderedUtil.UpdateOne("workflow_instances", null, res[0], 1, false, null);
+                    await NoderedUtil.UpdateOne({ collectionname: "workflow_instances", query: { _id: _parentid }, item: { "$set": { "state": "completed" } } })
                     return;
+                } else {
+                    const res = await NoderedUtil.Query({ collectionname: "workflow_instances", query: { "_id": _id }, projection: { msg: 1 }, top: 1, jwt: data.jwt, priority });
+                    if (res.length > 0 && res[0].msg) {
+                        result = res[0].msg;
+                        result.state = data.state;
+                    }
                 }
             }
             result.payload = data.payload;
@@ -622,6 +629,30 @@ export class assign_workflow_node {
             if (ack !== null && ack !== undefined) ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    clone(obj: any) {
+        try {
+            var result = {};
+            var keys = Object.keys(obj);
+            keys.forEach(key => {
+                try {
+                    var val = obj[key];
+                    if (NoderedUtil.IsNullUndefinded(val)) {
+                        result[key] = val;
+                    } else if (Buffer.isBuffer(val)) {
+                    } else if (typeof (val) === "object") {
+                        result[key] = this.clone(val);
+                    } else {
+                        result[key] = val;
+                    }
+                } catch (error) {
+                    throw error;
+                }
+            });
+            return result;
+        } catch (error) {
+            throw error;
         }
     }
     async oninput(msg: any) {
@@ -653,18 +684,26 @@ export class assign_workflow_node {
 
 
             msg.jwt = (await NoderedUtil.RenewToken({ jwt, longtoken: true })).jwt;
+            let cloned = this.clone(msg);
+
             const runnerinstance = new Base();
             runnerinstance._type = "instance";
             runnerinstance.name = "runner: " + name;
             (runnerinstance as any).queue = this.localqueue;
             (runnerinstance as any).state = "idle";
-            (runnerinstance as any).msg = msg;
+            (runnerinstance as any).msg = cloned;
             (runnerinstance as any).jwt = msg.jwt;
             const who = WebSocketClient.instance.user;
             Base.addRight(runnerinstance, who._id, who.name, [-1]);
 
+            const size = JSON.stringify(runnerinstance).length * 2; // 2B per character
+            if (size > (512 * 1024)) {
+                throw new Error("msg object is over 512KB in size, please clean up the msg object before using Assign");
+            }
+
             const res3 = await NoderedUtil.InsertOne({ collectionname: "workflow_instances", item: runnerinstance, jwt, priority });
             msg._parentid = res3._id;
+            msg.payload._parentid = res3._id;
 
             // parentid: res3._id, 
             msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance({ targetid, workflowid, resultqueue: this.localqueue, data: msg.payload, initialrun, jwt, priority });

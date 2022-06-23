@@ -90,12 +90,6 @@ export class WebServer {
 
             // Add headers
             this.app.use(function (req, res, next) {
-
-                // Grafana hack
-                if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
-                    return res.send("ok");
-                }
-                if (req.originalUrl.indexOf('/oidc') > -1) return next();
                 Logger.instanse.verbose('WebServer', 'setCORSHeaders', "add for " + req.originalUrl);
                 // const origin: string = (req.headers.origin as any);
                 // if (NoderedUtil.IsNullEmpty(origin)) {
@@ -121,11 +115,36 @@ export class WebServer {
                 res.header('Expires', '-1');
                 res.header('Pragma', 'no-cache');
 
+                if (req.originalUrl == "/me") {
+                    res.redirect('/oidc/me')
+                    return next();
+                }
+
+                // Grafana hack
+                if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
+                    return res.send("ok");
+                }
+                if (req.originalUrl.indexOf('/oidc') > -1) return next();
+
+
                 // Pass to next layer of middleware
                 next();
             });
             span?.addEvent("Configure LoginProvider");
             await LoginProvider.configure(this.app, baseurl);
+            try {
+                span?.addEvent("Configure FormioEP");
+
+                let FormioEPProxy: any = null;
+                try {
+                    FormioEPProxy = require("./ee/FormioEP");
+                } catch (error) {
+                }
+                if (!NoderedUtil.IsNullUndefinded(FormioEPProxy)) {
+                    await FormioEPProxy.FormioEP.configure(this.app, baseurl);
+                }
+            } catch (error) {
+            }
             span?.addEvent("Configure SamlProvider");
             await SamlProvider.configure(this.app, baseurl);
             WebServer.server = null;

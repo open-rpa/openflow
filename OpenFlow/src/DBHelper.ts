@@ -134,9 +134,11 @@ export class DBHelper {
                 return Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
             });
             // const result: Provider[] = [];
+            // https://www.w3schools.com/icons/fontawesome5_icons_brands.asp
             items.forEach(provider => {
                 // const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
-                provider.logo = "fa-question-circle";
+                provider.logo = "fa-microsoft";
+                if (provider.provider === "oidc") { provider.logo = "fa-openid"; }
                 if (provider.provider === "google") { provider.logo = "fa-google"; }
                 if (provider.provider === "saml") { provider.logo = "fa-windows"; }
                 //result.push(item);
@@ -454,7 +456,11 @@ export class DBHelper {
                 });
 
                 if (results.length > 0) {
-                    user.roles = results[0].roles;
+                    user.roles = [];
+                    results[0].roles.forEach(r => {
+                        const exists = user.roles.filter(x => x._id == r._id);
+                        if (exists.length == 0) user.roles.push(r);
+                    });
                     results[0].roles2.forEach(r => {
                         const exists = user.roles.filter(x => x._id == r._id);
                         if (exists.length == 0) user.roles.push(r);
@@ -511,15 +517,14 @@ export class DBHelper {
         }
         return user as any;
     }
-    public async FindRoleByName(name: string, parent: Span): Promise<Role> {
+    public async FindRoleByName(name: string, jwt: string, parent: Span): Promise<Role> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
             let item = await this.memoryCache.wrap("rolename_" + name, async () => {
-                const items: Role[] = await Config.db.query<Role>({ query: { name: name, "_type": "role" }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, parent);
-                if (items === null || items === undefined || items.length === 0) { return null; }
+                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 Logger.instanse.debug("DBHelper", "FindRoleByName", "Add role to cache : " + name);
-                return items[0];
+                return Config.db.GetOne<Role>({ query: { name: name, "_type": "role" }, collectionname: "users", jwt }, parent)
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return Role.assign(item);
@@ -537,15 +542,15 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
             Logger.instanse.verbose("DBHelper", "EnsureRole", `FindRoleByName ${name}`);
-            let role: Role = await this.FindRoleByName(name, span);
+            let role: Role = await this.FindRoleByName(name, jwt, span);
             if (role == null) {
                 Logger.instanse.verbose("DBHelper", "EnsureRole", `EnsureRole FindRoleById ${name}`);
-                role = await this.FindRoleById(name, null, span);
+                role = await this.FindRoleById(id, null, span);
             }
             if (role !== null && (role._id === id || NoderedUtil.IsNullEmpty(id))) { return role; }
             if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) {
                 Logger.instanse.warn("DBHelper", "EnsureRole", `Deleting ${name} with ${role._id} not matcing expected id ${id}`);
-                await Config.db.DeleteOne(role._id, "users", jwt, span);
+                await Config.db.DeleteOne(role._id, "users", false, jwt, span);
             }
             role = new Role(); role.name = name; role._id = id;
             Logger.instanse.verbose("DBHelper", "EnsureRole", `Adding new role ${name}`);
@@ -564,7 +569,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public async EnsureUser(jwt: string, name: string, username: string, id: string, password: string, parent: Span): Promise<User> {
+    public async EnsureUser(jwt: string, name: string, username: string, id: string, password: string, extraoptions: any, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
             span?.addEvent("FindByUsernameOrId");
@@ -578,9 +583,11 @@ export class DBHelper {
             if (user !== null && id !== null) {
                 span?.addEvent("Deleting");
                 Logger.instanse.warn("DBHelper", "EnsureUser", `Deleting ${name} with ${user._id} not matcing expected id ${id}`);
-                await Config.db.DeleteOne(user._id, "users", jwt, span);
+                await Config.db.DeleteOne(user._id, "users", false, jwt, span);
             }
-            user = new User(); user._id = id; user.name = name; user.username = username;
+            user = new User();
+            if (!NoderedUtil.IsNullUndefinded(extraoptions)) user = Object.assign(user, extraoptions);
+            user._id = id; user.name = name; user.username = username;
             if (password !== null && password !== undefined && password !== "") {
                 span?.addEvent("SetPassword");
                 await Crypt.SetPassword(user, password, span);
@@ -607,10 +614,13 @@ export class DBHelper {
     public async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<void> {
         if (Config.auto_create_personal_nodered_group || force) {
             let name = user.username;
-            name = name.split("@").join("").split(".").join("");
+            // name = name.split("@").join("").split(".").join("");
+            // name = name.toLowerCase();
             name = name.toLowerCase();
+            name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
 
-            let noderedadmins = await this.FindRoleById(name + "noderedadmins", jwt, parent);
+
+            let noderedadmins = await this.FindRoleByName(name + "noderedadmins", jwt, parent);
             if (noderedadmins == null) {
                 noderedadmins = await this.EnsureRole(jwt, name + "noderedadmins", null, parent);
                 Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
@@ -621,10 +631,12 @@ export class DBHelper {
         }
         if (Config.auto_create_personal_noderedapi_group || force) {
             let name = user.username;
-            name = name.split("@").join("").split(".").join("");
+            // name = name.split("@").join("").split(".").join("");
+            // name = name.toLowerCase();
             name = name.toLowerCase();
+            name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
 
-            let noderedadmins = await this.FindRoleById(name + "nodered api users", jwt, parent);
+            let noderedadmins = await this.FindRoleByName(name + "nodered api users", jwt, parent);
             if (noderedadmins == null) {
                 noderedadmins = await this.EnsureRole(jwt, name + "nodered api users", null, parent);
                 Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);

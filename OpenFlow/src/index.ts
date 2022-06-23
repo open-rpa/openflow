@@ -73,7 +73,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         const jwt: string = Crypt.rootToken();
         const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
-        const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, span);
+        const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, null, span);
 
         Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(root, WellknownIds.admins, [Rights.delete]);

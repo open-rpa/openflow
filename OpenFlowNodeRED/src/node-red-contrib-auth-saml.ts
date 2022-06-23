@@ -77,7 +77,7 @@ export class noderedcontribauthsaml {
             const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
             const reader: any = await fetch({ url, backupStore });
             if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (reader === null || reader === undefined) { throw new Error("Failed getting result"); return; }
+            if (reader === null || reader === undefined) { throw new Error("Failed getting result"); }
             const config: any = toPassportConfig(reader);
             // we need this, for Office 365 :-/
             if (reader.signingCerts && reader.signingCerts.length > 1) {

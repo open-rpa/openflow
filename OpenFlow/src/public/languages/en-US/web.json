@@ -128,5 +128,13 @@
     "queue": "Queue",
     "lastrun": "Last run",
     "nextrun": "Next run",
-    "autocreate": "Auto Create"
+    "forceddomains": "Forced domains",
+    "addforceddomains": "Add forced domain",
+    "emailhistdetails": "Mail history details",
+    "validated": "Validated",
+    "emailvalidated": "Email validated",
+    "formvalidated": "Form validated",
+    "formresources": "Form resources",
+    "formresource": "Form resource",
+    "addformresource": "Add form resource"
 }

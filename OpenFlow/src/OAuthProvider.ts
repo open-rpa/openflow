@@ -7,6 +7,7 @@ import { Provider, KoaContextWithOIDC } from "oidc-provider";
 import { MongoAdapter } from "./MongoAdapter";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { Audit } from "./Audit";
 
 // const Request = OAuthServer.Request;
 // const Response = OAuthServer.Response;
@@ -271,7 +272,21 @@ export class OAuthProvider {
 
                     if (req.user) {
                         const client = await this.instance.clients.filter(x => x.clientId == params.client_id)[0];
-                        const tuser: TokenUser = TokenUser.From(req.user as any);
+                        let _user: User = req.user as any;
+                        let tuser: TokenUser = TokenUser.From(_user);
+
+                        if (!NoderedUtil.IsNullEmpty(_user.impersonating)) {
+                            const tempjwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                            const items = await Config.db.query({ query: { _id: _user.impersonating }, top: 1, collectionname: "users", jwt: tempjwt }, span);
+                            if (items.length == 1) {
+                                const tuserimpostor = tuser;
+                                _user = User.assign(items[0] as User);
+                                tuser = TokenUser.From(_user);
+                                Logger.instanse.info("Message", "Signin", tuser.username + " successfully impersonated");
+                                await Audit.ImpersonateSuccess(tuser, tuserimpostor, "browser", Config.version, span);
+                            }
+                        }
+
                         Account.AddAccount(tuser, client);
                         await this.instance.oidc.interactionFinished(req, res,
 
@@ -330,6 +345,7 @@ export class OAuthProvider {
             try {
                 OAuthProvider.instance = instance;
                 instance.app = app;
+                // @ts-ignore
                 this.LoadClients();
             } catch (error) {
                 Logger.instanse.error("OAuthProvider", "configure", error);
@@ -418,7 +434,7 @@ export class Account {
         return token.item;
     }
     static async RemoveTokenRequest(code: string, parent: Span) {
-        let tokens = await Config.db.DeleteMany({ _type: "tokenrequest", "code": code }, null, "oauthtokens", Crypt.rootToken(), parent);
+        let tokens = await Config.db.DeleteMany({ _type: "tokenrequest", "code": code }, null, "oauthtokens", null, Crypt.rootToken(), parent);
         return tokens[0];
     }
 }

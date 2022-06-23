@@ -622,16 +622,6 @@ export class Message {
                     if (!this.EnsureJWT(cli)) break;
                     await this.StripeMessage(cli);
                     break;
-                case "dumpclients":
-                    break;
-                case "dumprabbitmq":
-                    break;
-                case "getrabbitmqqueue":
-                    break;
-                case "deleterabbitmqqueue":
-                    break;
-                case "pushmetrics":
-                    break;
                 case "ensurecustomer":
                     await this.EnsureCustomer(cli, span);
                     break;
@@ -779,13 +769,13 @@ export class Message {
                 if (mq != null) {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                            let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on exchange object " + msg.exchangename);
+                            let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing update permission on exchange object`);
                             Logger.instanse.error("Message", "RegisterExchange", error);
                             throw error;
                         }
                     } else if (Config.amqp_force_sender_has_invoke) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                            let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on exchange object " + msg.exchangename);
+                            let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
                             Logger.instanse.error("Message", "RegisterExchange", error);
                             throw error;
                         }
@@ -892,13 +882,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing update permission on users object {mq._id}`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object {mq._id}`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
@@ -911,13 +901,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing update permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing update permission on queue object`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                let error = new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
@@ -1011,11 +1001,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object ${mq._id}`);
+                                throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing read permission on users object " + mq.name + " " + mq._id);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing read permission on users object ${mq._id}`);
+                                throw error;
                             }
                         }
                         allowed = true;
@@ -1026,11 +1018,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing invoke permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
+                                throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("[" + tuser.name + "] Unknown queue or access denied, missing read permission on queue object " + msg.queuename);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing read permission on queue object`);
+                                throw error;
                             }
 
                         }
@@ -1054,11 +1048,13 @@ export class Message {
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                throw new Error("Unknown exchange or access denied, missing invoke permission on exchange object " + tuser.name);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing invoke permission on exchange object`);
+                                throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                throw new Error("Unknown exchange or access denied, missing read permission on exchange object " + tuser.name);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing read permission on exchange object`);
+                                throw error;
                             }
 
                         }
@@ -1567,7 +1563,7 @@ export class Message {
                 }
 
             }
-            await Config.db.DeleteOne(msg.id, msg.collectionname, msg.jwt, span);
+            await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1588,7 +1584,7 @@ export class Message {
         try {
             msg = DeleteManyMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, msg.jwt, span);
+            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, null, msg.jwt, span);
             delete msg.ids;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1682,8 +1678,8 @@ export class Message {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.Signin", parent);
         try {
-            const hrstart = process.hrtime()
-            let hrend = process.hrtime(hrstart)
+            // const hrstart = process.hrtime()
+            // let hrend = process.hrtime(hrstart)
             let msg: SigninMessage
             let impostor: string = "";
             const UpdateDoc: any = { "$set": {} };
@@ -1695,17 +1691,47 @@ export class Message {
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                     type = "jwtsignin";
-                    tuser = await Crypt.verityToken(msg.jwt);
+                    try {
+                        tuser = await Crypt.verityToken(msg.jwt);
+                    } catch (error) {
+                        Logger.instanse.error("Message", "Signin", "verityToken failed for client/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " " + error.message ? error.message : error);
+                        throw error;
+                    }
+                    let _id = tuser._id;
                     if (tuser != null) {
                         if (NoderedUtil.IsNullEmpty(tuser._id)) {
+                            _id = tuser.username;
                             user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
                         } else {
                             user = await Logger.DBHelper.FindById(tuser._id, msg.jwt, span);
                         }
                     }
                     if (tuser == null || user == null) {
-                        throw new Error("Failed resolving token ");
+                        Logger.instanse.error("Message", "Signin", "Failed resolving token, could not find user by " + _id);
+                        // Nodered will spam this, so to not strain the system to much force an 1 second delay
+                        await new Promise(resolve => { setTimeout(resolve, 1000) });
+                        throw new Error("Failed resolving token");
                     }
+
+                    if (cli?.clientagent == "openrpa" && user.dblocked == true) {
+                        // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                        Logger.instanse.error("Message", "Signin", user.username + " is dblocked");
+                        // Dillema ....
+                        // If we send an error or empy yser, the robot will spam new tabs 
+                        // If we just close the connection the user will not know what is wrong ...                    
+                        msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
+                        msg.jwt = undefined;
+                        msg.user = undefined;
+                        // Stall a little, to avoid spam
+                        await new Promise(resolve => { setTimeout(resolve, 5000) });
+                        // 
+                        cli.Close();
+                        return;
+                        // setTimeout(() => {
+                        //     cli.Close();
+                        // }, 500);
+                    }
+
                     if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
                         impostor = tuser.impostor;
                     }
@@ -1716,7 +1742,13 @@ export class Message {
                     } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                         if (Config.auto_create_user_from_jwt) {
                             const jwt: string = Crypt.rootToken();
-                            user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, span);
+                            let extraoptions = {
+                                federationids: [],
+                                emailvalidated: true,
+                                formvalidated: true,
+                                validated: true
+                            }
+                            user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, extraoptions, span);
                             if (user != null) tuser = TokenUser.From(user);
                             if (user == null) {
                                 tuser = new TokenUser();
@@ -1940,10 +1972,26 @@ export class Message {
                 if (!validated) {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        Logger.instanse.error("Message", "Signin", new Error(msg.user.username + " not validated"));
+                        Logger.instanse.error("Message", "Signin", msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
+                } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
+                    // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
+                    // Dillema ....
+                    // If we send an error or empy yser, the robot will spam new tabs 
+                    // If we just close the connection the user will not know what is wrong ...                    
+                    msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
+                    msg.jwt = undefined;
+                    msg.user = undefined;
+                    // Stall a little, to avoid spam
+                    await new Promise(resolve => { setTimeout(resolve, 5000) });
+                    // 
+                    cli.Close();
+                    // setTimeout(() => {
+                    //     cli.Close();
+                    // }, 500);
                 }
             }
             try {
@@ -1959,7 +2007,7 @@ export class Message {
                 this.data = "";
                 await handleError(cli, error);
             }
-            hrend = process.hrtime(hrstart)
+            // hrend = process.hrtime(hrstart)
         } catch (error) {
             span?.recordException(error);
         }
@@ -1994,6 +2042,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         let msg: EnsureNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2018,6 +2067,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedInstance", parent);
         let msg: DeleteNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = DeleteNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2042,6 +2092,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.DeleteNoderedPod", parent);
         let msg: DeleteNoderedPodMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = DeleteNoderedPodMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2066,6 +2117,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.RestartNoderedInstance", parent);
         let msg: RestartNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2090,6 +2142,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetKubeNodeLabels", parent);
         let msg: GetKubeNodeLabelsMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetKubeNodeLabelsMessage.assign(this.data);
             msg.result = await Logger.nodereddriver.NodeLabels(span);
         } catch (error) {
@@ -2113,6 +2166,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         let msg: GetNoderedInstanceMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetNoderedInstanceMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2137,6 +2191,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
         let msg: GetNoderedInstanceLogMessage;
         try {
+            if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetNoderedInstanceLogMessage.assign(this.data);
             const _tuser = await Crypt.verityToken(this.jwt);
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2240,6 +2295,9 @@ export class Message {
         metadata._modifiedby = user.name;
         metadata._modifiedbyid = user._id;
         metadata._modified = metadata._created;
+        if (NoderedUtil.IsNullEmpty((metadata as any).uniquename)) {
+            (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(filename);
+        }
         if (NoderedUtil.IsNullEmpty(metadata.name)) {
             metadata.name = filename;
         }
@@ -2481,6 +2539,10 @@ export class Message {
             if (!msg.initialrun) {
                 (_data as any).form = "unknown";
             }
+            if ((_data as any).payload._parentid) {
+                (_data as any)._parentid = (_data as any).payload._parentid;
+                delete (_data as any).payload._parentid;
+            }
 
             const res2 = await Config.db.InsertOne(_data, "workflow_instances", 1, true, msg.jwt, span);
             msg.newinstanceid = res2._id;
@@ -2611,7 +2673,7 @@ export class Message {
             if (usage.quantity > 0) {
                 await Config.db._UpdateOne(null, usage, "config", 1, false, Crypt.rootToken(), span);
             } else {
-                await Config.db.DeleteOne(usage._id, "config", Crypt.rootToken(), span);
+                await Config.db.DeleteOne(usage._id, "config", false, Crypt.rootToken(), span);
             }
         } catch (error) {
             span?.recordException(error);
@@ -3396,14 +3458,14 @@ export class Message {
                             await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
                         } else {
                             // Clean up old buy attempts
-                            await Config.db.DeleteOne(usage._id, "config", rootjwt, span);
+                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                         }
                     }
                 } else {
                     msg.customer.subscriptionid = null;
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     for (let usage of total_usage) {
-                        await Config.db.DeleteOne(usage._id, "config", rootjwt, span);
+                        await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                     }
                 }
                 if (msg.customer.vatnumber) {
@@ -4328,6 +4390,7 @@ export class Message {
                         (metadata as any).wi = wi._id;
                         (metadata as any).wiq = wiq.name;
                         (metadata as any).wiqid = wiq._id;
+                        (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                         metadata._acl = wiq._acl;
                         metadata.name = path.basename(file.filename);
@@ -4515,6 +4578,7 @@ export class Message {
                             (metadata as any).wi = wi._id;
                             (metadata as any).wiq = wiq.name;
                             (metadata as any).wiqid = wiq._id;
+                            (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                             metadata._acl = wiq._acl;
                             metadata.name = path.basename(file.filename);
@@ -4651,7 +4715,7 @@ export class Message {
                     var exists = wi.files.filter(x => x.name == file.filename);
                     if (exists.length > 0) {
                         try {
-                            await Config.db.DeleteOne(exists[0]._id, "fs.files", jwt, parent);
+                            await Config.db.DeleteOne(exists[0]._id, "fs.files", false, jwt, parent);
                         } catch (error) {
                             Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
                         }
@@ -4691,6 +4755,7 @@ export class Message {
                         (metadata as any).wi = wi._id;
                         (metadata as any).wiq = wiq.name;
                         (metadata as any).wiqid = wiq._id;
+                        (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                         metadata._acl = wiq._acl;
                         metadata.name = path.basename(file.filename);
@@ -4839,14 +4904,14 @@ export class Message {
 
             var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt }, parent);
             for (var i = 0; i < files.length; i++) {
-                await Config.db.DeleteOne(files[i]._id, "fs.files", jwt, parent);
+                await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
             }
             var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt }, parent);
             for (var i = 0; i < files.length; i++) {
-                await Config.db.DeleteOne(files[i]._id, "fs.files", jwt, parent);
+                await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
             }
 
-            await Config.db.DeleteOne(wi._id, "workitems", jwt, parent);
+            await Config.db.DeleteOne(wi._id, "workitems", false, jwt, parent);
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5004,7 +5069,7 @@ export class Message {
             msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
 
             if (msg.purge) {
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
                 }
@@ -5012,7 +5077,7 @@ export class Message {
                 if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, jwt, parent);
             }
         } catch (error) {
             await handleError(null, error);
@@ -5051,7 +5116,7 @@ export class Message {
             user = User.assign(Crypt.verityToken(this.jwt));
 
             if (msg.purge) {
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", jwt, parent);
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
                     items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
@@ -5059,7 +5124,7 @@ export class Message {
                 if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", jwt, parent);
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, jwt, parent);
             } else {
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
@@ -5067,9 +5132,9 @@ export class Message {
                 }
             }
 
-            await Config.db.DeleteOne(wiq._id, "mq", jwt, parent);
+            await Config.db.DeleteOne(wiq._id, "mq", false, jwt, parent);
             if (wiq.usersrole) {
-                await Config.db.DeleteOne(wiq.usersrole, "users", jwt, parent);
+                await Config.db.DeleteOne(wiq.usersrole, "users", false, jwt, parent);
             }
         } catch (error) {
             await handleError(null, error);

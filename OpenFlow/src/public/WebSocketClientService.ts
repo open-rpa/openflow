@@ -22,6 +22,7 @@ export class WebSocketClientService {
             }
             try {
                 const wsurl: string = data.wsurl;
+                this.wsurl = data.wsurl;
                 this.version = data.version;
                 this.domain = data.domain;
                 this.version = data.version;
@@ -41,6 +42,9 @@ export class WebSocketClientService {
                 this.nodered_images = data.nodered_images;
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
+                this.enable_nodered_tours = data.enable_nodered_tours;
+
+                this.forceddomains = data.forceddomains;
 
                 if (data.collections_with_text_index) this.collections_with_text_index = data.collections_with_text_index;
                 if (data.timeseries_collections) this.timeseries_collections = data.timeseries_collections;
@@ -169,6 +173,7 @@ export class WebSocketClientService {
     // public user: TokenUser = null;
     // public jwt: string = null;
     public version: string = "";
+    public wsurl: string = "";
     public messageQueue: IHashTable<QueuedMessage> = {};
     public usingCordova: boolean = false;
     public connected: boolean = false;
@@ -187,6 +192,8 @@ export class WebSocketClientService {
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;
     public enable_web_tours: boolean;
+    public enable_nodered_tours: boolean;
+    public forceddomains: string[] = [];
     public collections_with_text_index: string[] = [];
     public timeseries_collections: string[] = [];
     public ping_clients_interval: number = 10000;

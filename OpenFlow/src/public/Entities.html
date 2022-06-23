@@ -15,6 +15,10 @@
   </div>
   <div class=" col-md-6 text-right" id="entitiestools">
     <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
+    ng-show="menuctrl.WebSocketClientService.multi_tenant">
+  <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
+      all</span></label>
     <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
     <span ng-show="ctrl.collection == 'openrpa_instances'">
       <input type="checkbox" id="checkbox-1" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
@@ -71,7 +75,9 @@
           title="Edit this item"><em
             class="fas fa-edit"></em></a>
         <em class="fas fa-edit btn disabled" ng-show="ctrl.loading == true"></em>
-        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="btn" title="Delete this item"><em
+        <a href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true" class="btn" title="Delete this item"
+        ng-class="{'btn-danger': ctrl.shiftdown==true && ctrl.collection == 'users' && (model._type == 'user' || model._type == 'customer')}"
+        ><em
             class="fas fa-trash"></em></a>
       </td>
     </tr>

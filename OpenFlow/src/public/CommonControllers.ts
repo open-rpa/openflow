@@ -107,7 +107,7 @@ export class formatBytes implements ng.IDirective {
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
 
     }
-    formatBytes(bytes, decimals = 2) {
+    formatBytes(bytes, decimals = 1) {
         if (bytes === 0) return '0 Bytes';
 
         const k = 1024;
@@ -533,6 +533,8 @@ export class entitiesCtrl<T> {
     public errormessage: string = "";
     public skipcustomerfilter: boolean = false;
     public page: number = 0;
+    public _onKeyDown: any;
+    public _onKeyUp: any;
 
     public static $inject = [
         "$rootScope",
@@ -554,6 +556,15 @@ export class entitiesCtrl<T> {
         public api: api,
         public userdata: userdata
     ) {
+        this._onKeyDown = this.onKeyDown.bind(this);
+        this._onKeyUp = this.onKeyUp.bind(this);
+        document.addEventListener('keydown', this._onKeyDown);
+        document.addEventListener('keyup', this._onKeyUp);
+        $scope.$on('$destroy', () => {
+            console.log('ondestroy');
+            document.removeEventListener('keydown', this._onKeyDown);
+            document.removeEventListener('keyup', this._onKeyUp);
+        })
         if (this.userdata.data != null && this.userdata.data) {
             if (this.userdata.data.basequery != null) {
                 this.basequery = this.userdata.data.basequery;
@@ -574,6 +585,34 @@ export class entitiesCtrl<T> {
             this.loadData();
         });
 
+    }
+    public controldown: boolean = false;
+    public shiftdown: boolean = false;
+    public onKeyDown(e) {
+        // console.log(`${e.code}`, e);
+        if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && !this.controldown) {
+            this.controldown = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Control down");
+        }
+        if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && !this.shiftdown) {
+            this.shiftdown = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Shift down");
+        }
+    }
+    public onKeyUp(e) {
+        // console.log(`${e.code}`, e);
+        if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && this.controldown) {
+            this.controldown = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Control up");
+        }
+        if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && this.shiftdown) {
+            this.shiftdown = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            // console.debug("Shift up");
+        }
     }
     public static parseJson(txt, reviver, context) {
         context = context || 20
@@ -620,14 +659,18 @@ export class entitiesCtrl<T> {
             let query: object = Object.assign({}, this.basequery);
             let exactquery: object = null;
             let basequeryas = this.basequeryas;
-            if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter && this.WebSocketClientService.multi_tenant) {
-                // if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
-                //     basequeryas = this.WebSocketClientService.customer._id;
-                // }
-                if (this.WebSocketClientService.customer && !NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer._id)) {
-                    query["customerid"] = this.WebSocketClientService.customer._id;
-                }
+            // if (this.collection == "users" && (this.basequery._type == "user" || this.basequery._type == "role") && !this.skipcustomerfilter && this.WebSocketClientService.multi_tenant) {
+            //     // if (!NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+            //     //     basequeryas = this.WebSocketClientService.customer._id;
+            //     // }
+            //     if (this.WebSocketClientService.customer && !NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer._id)) {
+            //         query["customerid"] = this.WebSocketClientService.customer._id;
+            //     }
+            // }
+            if (this.WebSocketClientService.multi_tenant && !NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                basequeryas = this.WebSocketClientService.customer._id;
             }
+
             let orderby = this.orderby;
             if (this.lastsearchstring !== this.searchstring) {
                 this.models = [];
@@ -761,9 +804,26 @@ export class entitiesCtrl<T> {
     async DeleteOne(model: any): Promise<any> {
         this.loading = true;
         this.errormessage = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
         try {
-            await NoderedUtil.DeleteOne({ collectionname: this.collection, id: model._id });
+            let recursive: boolean = false;
+            if (this.collection == "users" && (model._type == "user" || model._type == "customer")) {
+                if (this.shiftdown == true) {
+                    if (confirm("Confirm you want to HARD delete " + model.name + "\nWill delete all associated data") == true) {
+                        recursive = true;
+                    } else {
+                        event.preventDefault();
+                        return;
+                    }
+                }
+            }
+            await NoderedUtil.DeleteOne({ collectionname: this.collection, id: model._id, recursive });
+            var oldcount = this.models.length;
             this.models = this.models.filter(function (m: any): boolean { return m._id !== model._id; });
+            if (this.models.length < oldcount && oldcount < 5) {
+                this.loading = false;
+                this.loadData();
+            }
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }

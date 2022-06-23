@@ -209,6 +209,7 @@
       this.validate_user_form = data.validate_user_form
       this.validate_emails = data.validate_emails
       this.forgot_pass_emails = data.forgot_pass_emails;
+      this.forceddomains = data.forceddomains;
       console.log("data", data)
       console.log("validate_emails", this.validate_emails);
       console.log("forgot_pass_emails", this.forgot_pass_emails);
@@ -340,6 +341,31 @@
           document.location.href="/login";
         });
     }
+    this.usernameblur = function () {
+      var ele = document.getElementById('username');
+      var val = ele.value;
+      console.log("val", val);
+      if(val && val.indexOf("@") > -1) {
+        var domain = val.substr(val.indexOf("@") + 1);
+        console.log("domain", domain);
+        for (let d = 0; d < this.forceddomains.length; d++) {
+          let forceddomain = new RegExp(this.forceddomains[d], "i");
+          if(forceddomain.test(domain)) {
+            console.log("domain found in forceddomains");
+            document.getElementById("password").style.display = "none";
+            document.getElementById("localbuttons").style.display = "none";
+            this.errormessage = "Please use provider button to login with this domain";
+            if (!$scope.$$phase) { $scope.$apply(); }
+            return;
+          }
+        }
+      }
+      console.log("domain is not forced");
+      this.errormessage = "";
+      if (!$scope.$$phase) { $scope.$apply(); }
+      document.getElementById("password").style.display = "block";
+      document.getElementById("localbuttons").style.display = "block";
+    }
   }
   angular.module('controllerExample', [])
     .controller('SettingsController2', SettingsController2);
@@ -360,10 +386,10 @@
             <form class="form-signin" ngNoForm method='post' action='/local' ng-show="ctrl.stage == 0">
               <div class="form-label-group" ng-show="ctrl.localenabled">
                 <input type="text" name="username" id="username" ng-model="ctrl.username" class="form-control" placeholder="email"
-                  required autofocus autocomplete='off'>
+                  required autofocus autocomplete='off' ng-change="ctrl.usernameblur()" ng-blur="ctrl.usernameblur()">
                 <label for="username" translate lib="web">email</label>
               </div>
-              <div class="form-label-group" ng-show="ctrl.localenabled">
+              <div class="form-label-group" ng-show="ctrl.localenabled" id="password">
                 <input type="password" name="password" ng-model="ctrl.password" class="form-control"
                   placeholder="Password" required autocomplete="current-password">
                 <label for="password" translate lib="web">password</label>
@@ -372,12 +398,13 @@
 
                 <label class="text-danger">{{ctrl.message}}</label>
               </div>
+              <div id="localbuttons">
               <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
                 translate lib="web">signin</button>
                 <hr class="my-4" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails">
                 <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-click="ctrl.BeginForgotPassword()" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails"
                 translate lib="web">forgot password</button>
-
+              </div>
                 
               <hr class="my-4" ng-show="ctrl.localenabled">
 
