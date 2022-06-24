@@ -61,8 +61,11 @@ export class WebSocketServer {
             this._socketserver = new WebSocket.Server({ server: server });
             this._socketserver.on("connection", (socketObject: WebSocket, req: any): void => {
                 let remoteip: string = "unknown";
-                if (!NoderedUtil.IsNullUndefinded(req)) {
-                    remoteip = WebSocketServerClient.remoteip(req);
+                if (Config.otel_trace_connection_ips) {
+                    if (!NoderedUtil.IsNullUndefinded(req)) {
+                        remoteip = WebSocketServerClient.remoteip(req);
+                    }
+                    remoteip = remoteip.split(":").join("-");
                 }
                 if (!this.total_connections_count[remoteip]) this.total_connections_count[remoteip] = 0;
                 this.total_connections_count[remoteip]++;
@@ -225,9 +228,10 @@ export class WebSocketServer {
                 });
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_connections_count)) {
-                WebSocketServer.p_all.clear();
-                const keys = Object.keys(p_all);
+                WebSocketServer.websocket_connections_count.clear();
+                const keys = Object.keys(WebSocketServer.websocket_connections_count);
                 keys.forEach(key => {
+                    key = key.split(":").join("-");
                     WebSocketServer.websocket_connections_count.bind({ ...Logger.otel.defaultlabels, remoteip: key }).update(this.total_connections_count[key]);
                 });
             }
