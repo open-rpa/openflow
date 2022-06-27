@@ -152,6 +152,7 @@ export class Logger {
         if (Config.log_webserver) Logger.enabled["WebServer"] = level.Verbose;
         if (Config.log_database) Logger.enabled["DatabaseConnection"] = level.Verbose;
         if (Config.log_grafana) Logger.enabled["grafana-proxy"] = level.Verbose;
+        if (Config.log_housekeeping) Logger.enabled["Housekeeping"] = level.Verbose;
         if (Config.log_otel) Logger.enabled["otel"] = level.Verbose;
 
 

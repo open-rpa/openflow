@@ -34,6 +34,7 @@ export class Config {
         Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
         Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+        Config.log_housekeeping = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
         Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
         Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
         Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
@@ -229,6 +230,7 @@ export class Config {
     public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
     public static log_database: boolean = Config.parseBoolean(Config.getEnv("log_database", "false"));
     public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+    public static log_housekeeping: boolean = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
     public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel", "false"));
     public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
     public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
