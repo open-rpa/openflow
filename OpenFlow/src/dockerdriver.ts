@@ -96,7 +96,7 @@ export class dockerdriver implements i_nodered_driver {
             // docker-compose -f docker-compose-traefik.yml -p demo up -d
             Labels["traefik.enable"] = "true";
             Labels["traefik.http.routers." + name + ".entrypoints"] = Config.nodered_docker_entrypoints;
-            Labels["traefik.http.routers." + name + ".rule"] = `Host(${hostname})`;
+            Labels["traefik.http.routers." + name + ".rule"] = "Host(`" + hostname + "`)";
             Labels["traefik.http.services." + name + ".loadbalancer.server.port"] = Config.port.toString();
             if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
                 Labels["traefik.http.routers." + name + ".tls.certresolver"] = Config.nodered_docker_certresolver;
