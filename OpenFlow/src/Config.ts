@@ -34,6 +34,7 @@ export class Config {
         Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
         Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+        Config.log_housekeeping = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
         Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
         Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
         Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
@@ -209,7 +210,8 @@ export class Config {
 
         Config.otel_trace_pingclients = Config.parseBoolean(Config.getEnv("otel_trace_pingclients", "false"));
         Config.otel_trace_dashboardauth = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
-        Config.otel_trace_include_query = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "true"));
+        Config.otel_trace_include_query = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
+        Config.otel_trace_connection_ips = Config.parseBoolean(Config.getEnv("otel_trace_connection_ips", "false"));
     
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
@@ -228,6 +230,7 @@ export class Config {
     public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
     public static log_database: boolean = Config.parseBoolean(Config.getEnv("log_database", "false"));
     public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
+    public static log_housekeeping: boolean = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
     public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel", "false"));
     public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
     public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
@@ -407,6 +410,7 @@ export class Config {
     public static otel_trace_pingclients: boolean = Config.parseBoolean(Config.getEnv("otel_trace_pingclients", "false"));
     public static otel_trace_dashboardauth: boolean = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
     public static otel_trace_include_query: boolean = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
+    public static otel_trace_connection_ips: boolean = Config.parseBoolean(Config.getEnv("otel_trace_connection_ips", "false"));
     
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");

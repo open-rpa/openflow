@@ -3674,7 +3674,7 @@ export class Message {
             const date = new Date();
             const a: number = (date as any) - (Message.lastHouseKeeping as any);
             const diffminutes = a / (1000 * 60);
-            Logger.instanse.debug("Message", "_Housekeeping", "Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)");
+            Logger.instanse.debug("Housekeeping", "_Housekeeping", "Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)");
             return;
         }
         Message.lastHouseKeeping = new Date();
@@ -3682,9 +3682,9 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             if (!skipNodered) {
-                Logger.instanse.debug("Message", "_Housekeeping", "Get running Nodered Instances");
+                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Get running Nodered Instances");
                 await this.GetNoderedInstance(span);
-                Logger.instanse.debug("Message", "_Housekeeping", "Get users with autocreate");
+                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Get users with autocreate");
                 const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
                 // TODO: we should get instances and compare, running ensure for each user will not scale well
                 for (let i = 0; i < users.length; i++) {
@@ -3701,7 +3701,7 @@ export class Message {
                         doensure = true;
                     }
                     if (doensure) {
-                        Logger.instanse.debug("Message", "_Housekeeping", "EnsureNoderedInstance not " + user.name);
+                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "EnsureNoderedInstance not " + user.name);
                         var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
                         ensuremsg._id = user._id;
                         var msg: Message = new Message(); msg.jwt = jwt;
@@ -3709,7 +3709,7 @@ export class Message {
                         await msg.EnsureNoderedInstance(span);
                     }
                 }
-                Logger.instanse.debug("Message", "_Housekeeping", "Done processing autocreate");
+                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Done processing autocreate");
             }
         } catch (error) {
         }
@@ -3731,7 +3731,7 @@ export class Message {
                 if (DatabaseConnection.usemetadata(collectionname)) {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("Message", "_Housekeeping", "Start creating metadata._searchnames for collection " + collectionname);
+                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Start creating metadata._searchnames for collection " + collectionname);
                         await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
                             [
                                 {
@@ -3791,12 +3791,12 @@ export class Message {
                                 { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("Message", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
                     }
                 } else {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("Message", "_Housekeeping", "Start creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Start creating _searchnames for collection " + collectionname);
                         await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
                             [
                                 {
@@ -3856,7 +3856,7 @@ export class Message {
                                 { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("Message", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
                     }
                 }
             }
@@ -3875,7 +3875,7 @@ export class Message {
                 for (let col of collections) {
                     if (col.name == "fs.chunks") continue;
                     if (skip_collections.indexOf(col.name) > -1) {
-                        Logger.instanse.debug("Message", "_Housekeeping", "skipped " + col.name + " due to housekeeping_skip_collections setting");
+                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "skipped " + col.name + " due to housekeeping_skip_collections setting");
                         continue;
                     }
 
@@ -3980,7 +3980,7 @@ export class Message {
                                     bulkInsert.insert(item);
                                 }
                             } catch (error) {
-                                Logger.instanse.error("Message", "_Housekeeping", error);
+                                Logger.instanse.error("Housekeeping", "_Housekeeping", error);
                                 span?.recordException(error);
                             }
 
@@ -3990,19 +3990,19 @@ export class Message {
                             if (col.name != "cvr") {
                                 await bulkInsert.execute();
                             }
-                            if (items.length > 0) Logger.instanse.debug("Message", "_Housekeeping", "[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
+                            if (items.length > 0) Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
 
                         } catch (error) {
-                            Logger.instanse.error("Message", "_Housekeeping", error);
+                            Logger.instanse.error("Housekeeping", "_Housekeeping", error);
                             span?.recordException(error);
                         }
                     }
                 }
-                Logger.instanse.debug("Message", "_Housekeeping", "Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
+                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
             }
 
         } catch (error) {
-            Logger.instanse.error("Message", "_Housekeeping", error);
+            Logger.instanse.error("Housekeeping", "_Housekeeping", error);
             span?.recordException(error);
         }
         try {
@@ -4011,9 +4011,12 @@ export class Message {
                 let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": yesterday } } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("Message", "_Housekeeping", "Begin updating all users (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
                 const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
+                // const cursor = Config.db.db.collection("users").find({ "_type": "user" })
+                // const cursor = Config.db.db.collection("users").find({ "_type": "user", dblocked: true })
+                // const cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 23815993 } })
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;
                     index++;
@@ -4030,22 +4033,22 @@ export class Message {
                     ]// "items": { "$push": "$$ROOT" }
                     const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
                     if (items.length > 0) {
-                        Logger.instanse.debug("Message", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
+                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
                         await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
                     }
-                    if (index % 100 == 0) Logger.instanse.debug("Message", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
+                    if (index % 100 == 0) Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
                 }
-                Logger.instanse.debug("Message", "_Housekeeping", "Completed updating all users dbusage field");
+                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Completed updating all users dbusage field");
             }
         } catch (error) {
-            Logger.instanse.error("Message", "_Housekeeping", error);
+            Logger.instanse.error("Housekeeping", "_Housekeeping", error);
             span?.recordException(error);
         }
         if (Config.multi_tenant) {
             try {
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("Message", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
                 }
                 const pipe = [
                     { "$match": { "_type": "customer" } },
@@ -4094,7 +4097,7 @@ export class Message {
                     let dbusage: number = 0;
                     for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
                     await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
-                    Logger.instanse.debug("Message", "_Housekeeping", c.name + " using " + this.formatBytes(dbusage));
+                    Logger.instanse.debug("Housekeeping", "_Housekeeping", c.name + " using " + this.formatBytes(dbusage));
                 }
                 var sleep = (ms) => {
                     return new Promise(resolve => { setTimeout(resolve, ms) })
@@ -4102,7 +4105,7 @@ export class Message {
                 await sleep(2000);
 
             } catch (error) {
-                Logger.instanse.error("Message", "_Housekeeping", error);
+                Logger.instanse.error("Housekeeping", "_Housekeeping", error);
                 span?.recordException(error);
             }
         }
@@ -4111,7 +4114,7 @@ export class Message {
                 let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("Message", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
                 }
 
                 const pipe = [
@@ -4179,13 +4182,13 @@ export class Message {
                             if (c.dbusage > resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("Message", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("Message", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
                                 }
                             }
@@ -4194,13 +4197,13 @@ export class Message {
                             if (c.dbusage > quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("Message", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("Message", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
                                 }
                             }
@@ -4209,7 +4212,7 @@ export class Message {
                             if (billabledbusage > 0) {
                                 const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);
 
-                                Logger.instanse.debug("Message", "_Housekeeping", "Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
+                                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
                                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                                 const payload: any = { "quantity": billablecount, "timestamp": dt };
                                 if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
@@ -4222,9 +4225,9 @@ export class Message {
                             }
                         }
                         // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
-                        if (index % 100 == 0) Logger.instanse.debug("Message", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
+                        if (index % 100 == 0) Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
                     }
-                    Logger.instanse.debug("Message", "_Housekeeping", "Completed updating all customers dbusage field");
+                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Completed updating all customers dbusage field");
 
 
                     const pipe2 = [
@@ -4235,24 +4238,24 @@ export class Message {
                         if (Config.db.WellknownIdsArray.indexOf(c._id) > -1) continue;
                         if (c.dbusage == null) c.dbusage = 0;
                         if (c.dbusage > resource.defaultmetadata.dbusage) {
-                            Logger.instanse.debug("Message", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                            Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                             await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                         } else {
                             if (c.dblocked) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                Logger.instanse.debug("Message", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                             }
 
                         }
                     }
-                    Logger.instanse.debug("Message", "_Housekeeping", "Completed updating all users without a customer dbusage field");
+                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Completed updating all users without a customer dbusage field");
                 }
             } catch (error) {
                 if (error.response && error.response.body) {
-                    Logger.instanse.error("Message", "_Housekeeping", error.response.body);
+                    Logger.instanse.error("Housekeeping", "_Housekeeping", error.response.body);
                     span?.recordException(error.response.body);
                 } else {
-                    Logger.instanse.error("Message", "_Housekeeping", error);
+                    Logger.instanse.error("Housekeeping", "_Housekeeping", error);
                     span?.recordException(error);
                 }
             }

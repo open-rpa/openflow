@@ -20,6 +20,7 @@ export class WebSocketServer {
     public static websocket_rate_limit: BaseObserver;
     public static websocket_errors: BaseObserver;
     public static websocket_messages: ValueRecorder;
+    public static websocket_connections_count: BaseObserver;
     public static message_queue_count: BaseObserver;
     public static mongodb_watch_count: BaseObserver;
     public static BaseRateLimiter: any;
@@ -42,6 +43,8 @@ export class WebSocketServer {
             // WebSocketServer.mongodb_watch_count.bind({ ...Logger.otel.defaultlabels, clientid: cli.id, agent: cli.clientagent }).update(cli.streamcount());
         }
     }
+    //public static total_connections_count: number = 0;
+    public static total_connections_count: any = {};
     static configure(server: http.Server, parent: Span): void {
         const span: Span = Logger.otel.startSubSpan("WebSocketServer.configure", parent);
         try {
@@ -57,6 +60,16 @@ export class WebSocketServer {
             this._clients = [];
             this._socketserver = new WebSocket.Server({ server: server });
             this._socketserver.on("connection", (socketObject: WebSocket, req: any): void => {
+                let remoteip: string = "unknown";
+                if (Config.otel_trace_connection_ips) {
+                    if (!NoderedUtil.IsNullUndefinded(req)) {
+                        remoteip = WebSocketServerClient.remoteip(req);
+                    }
+                    remoteip = remoteip.split(":").join("-");
+                }
+                if (!this.total_connections_count[remoteip]) this.total_connections_count[remoteip] = 0;
+                this.total_connections_count[remoteip]++;
+                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_connections_count)) WebSocketServer.websocket_connections_count.bind({ ...Logger.otel.defaultlabels, remoteip: remoteip }).update(this.total_connections_count[remoteip]);
                 this._clients.push(new WebSocketServerClient(socketObject, req));
             });
             this._socketserver.on("error", (error: Error): void => {
@@ -88,6 +101,10 @@ export class WebSocketServer {
                 WebSocketServer.mongodb_watch_count = Logger.otel.meter.createUpDownSumObserver("mongodb_watch", {
                     description: 'Total number af steams  watching for changes'
                 }) // "agent", "clientid"
+                WebSocketServer.websocket_connections_count = Logger.otel.meter.createUpDownSumObserver('openflow_websocket_connections_count', {
+                    description: 'Total number of connection requests',
+                    boundaries: Logger.otel.default_boundaries
+                }); // "command"
             }
             // setInterval(this.pingClients, 10000);
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
@@ -210,6 +227,16 @@ export class WebSocketServer {
                     WebSocketServer.p_all.bind({ ...Logger.otel.defaultlabels, agent: key }).update(p_all[key]);
                 });
             }
+            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_connections_count)) {
+                WebSocketServer.websocket_connections_count.clear();
+                const keys = Object.keys(WebSocketServer.websocket_connections_count);
+                keys.forEach(key => {
+                    key = key.split(":").join("-");
+                    WebSocketServer.websocket_connections_count.bind({ ...Logger.otel.defaultlabels, remoteip: key }).update(this.total_connections_count[key]);
+                });
+            }
+
+
         } catch (error) {
             span?.recordException(error);
             Logger.instanse.error("WebSocketServer", "pingClients", error);
