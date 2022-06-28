@@ -4438,6 +4438,10 @@ export class Message {
     async DuplicateWorkitem(originalwi: Workitem, wiq: string, wiqid: string, jwt: string, parent: Span): Promise<void> {
         var wi: Workitem = null;
         wi = Object.assign({}, originalwi);
+        delete wi.success_wiqid;
+        delete wi.success_wiq;
+        delete wi.failed_wiqid;
+        delete wi.failed_wiq;
         delete wi._id;
         delete wi.errormessage;
         delete wi.errorsource;
