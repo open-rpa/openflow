@@ -661,10 +661,12 @@ export class assign_workflow_node {
             const workflowid = (!NoderedUtil.IsNullEmpty(this.config.workflowid) ? this.config.workflowid : msg.workflowid);
             const targetid = (!NoderedUtil.IsNullEmpty(this.config.targetid) ? this.config.targetid : msg.targetid);
             const initialrun = await Util.EvaluateNodeProperty<boolean>(this, msg, "initialrun");
+            let topic = await Util.EvaluateNodeProperty<string>(this, msg, "topic");
 
-            let name = this.config.name;
-            if (NoderedUtil.IsNullEmpty(name)) name = msg.name;
-            if (NoderedUtil.IsNullEmpty(name)) name = this.config.queue;
+
+            if (NoderedUtil.IsNullEmpty(topic)) topic = this.config.name;
+            if (NoderedUtil.IsNullEmpty(topic)) topic = msg.name;
+            if (NoderedUtil.IsNullEmpty(topic)) topic = this.config.queue;
             let priority: number = 1;
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
 
@@ -688,7 +690,7 @@ export class assign_workflow_node {
 
             const runnerinstance = new Base();
             runnerinstance._type = "instance";
-            runnerinstance.name = "runner: " + name;
+            runnerinstance.name = "runner: " + topic;
             (runnerinstance as any).queue = this.localqueue;
             (runnerinstance as any).state = "idle";
             (runnerinstance as any).msg = cloned;
@@ -706,7 +708,7 @@ export class assign_workflow_node {
             msg.payload._parentid = res3._id;
 
             // parentid: res3._id, 
-            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance({ targetid, workflowid, resultqueue: this.localqueue, data: msg.payload, initialrun, jwt, priority });
+            msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance({ targetid, workflowid, name: topic, resultqueue: this.localqueue, data: msg.payload, initialrun, jwt, priority });
             // msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance(targetid, workflowid, null, this.localqueue, res3._id, msg.payload, initialrun, jwt, priority);;
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });

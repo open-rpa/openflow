@@ -1297,6 +1297,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (item._type == "role" && item.name == "administrator") {
                             // temp, allow this
                         } else {
+                            Logger.instanse.error("DatabaseConnection", "InsertOne", item.name + " or " + (item as any).username + " is reserved.");
                             throw new Error("Access denied");
                         }
                     }
@@ -1567,6 +1568,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             if (item._type == "role" && item.name == "administrator") {
                                 // temp, allow this
                             } else {
+                                Logger.instanse.error("DatabaseConnection", "InsertMany", item.name + " or " + (item as any).username + " is reserved.");
                                 throw new Error("Access denied");
                             }
                         }
@@ -1794,6 +1796,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             if (q.item._type == "role" && q.item.name == "administrator") {
                                 // temp, allow this
                             } else {
+                                Logger.instanse.error("DatabaseConnection", "UpdateOne", q.item.name + " or " + (q.item as any).username + " is reserved.");
                                 throw new Error("Access denied");
                             }
 
@@ -3554,15 +3557,18 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (indexnames.indexOf("id_1__version_-1") === -1) {
                             await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 }, null, span)
                         }
+                        if (indexnames.indexOf("_deleted") === -1) {
+                            await this.createIndex(collection.name, "_deleted", { "_deleted": 1 }, null, span)
+                        }
                         if (indexnames.indexOf("_acl") === -1) {
                             await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                         }
                     } else {
                         switch (collection.name) {
                             case "fs.files":
-                                if (indexnames.indexOf("metadata.workflow_1") === -1) {
-                                    await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("metadata.workflow_1") === -1) {
+                                //     await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
+                                // }
                                 if (indexnames.indexOf("metadata._acl") === -1) {
                                     await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
                                 }
@@ -3570,18 +3576,18 @@ export class DatabaseConnection extends events.EventEmitter {
                             case "fs.chunks":
                                 break;
                             case "workflow":
-                                if (indexnames.indexOf("_created_1") === -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_modified_1") === -1) {
-                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("queue_1") === -1) {
-                                    await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_acl") === -1) {
-                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("_created_1") === -1) {
+                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_modified_1") === -1) {
+                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("queue_1") === -1) {
+                                //     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_acl") === -1) {
+                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                // }
                                 break;
                             case "openrpa_instances":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -3603,15 +3609,20 @@ export class DatabaseConnection extends events.EventEmitter {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 }
                                 break;
+                            case "workflow_instances":
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
+                                break;
                             case "audit":
                                 if (indexnames.indexOf("_type_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_modified_1") === -1) {
-                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_acl") === -1) {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
@@ -3621,54 +3632,54 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 break;
                             case "users":
-                                if (indexnames.indexOf("name_1") === -1) {
-                                    await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_type_1") === -1) {
-                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_created_1") === -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_modified_1") === -1) {
-                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("name_1") === -1) {
+                                //     await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_type_1") === -1) {
+                                //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_created_1") === -1) {
+                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_modified_1") === -1) {
+                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                // }
                                 // if (indexnames.indexOf("unique_username_1") === -1) {
                                 //     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                 //         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
                                 // }
-                                if (indexnames.indexOf("username_1") === -1) {
-                                    await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("username_1") === -1) {
+                                //     await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
+                                // }
                                 if (indexnames.indexOf("members._id_1") === -1) {
                                     await this.createIndex(collection.name, "members._id_1", { "members._id": 1 },
                                         { "partialFilterExpression": { "_type": "role" } }, span)
                                 }
-                                if (indexnames.indexOf("_acl") === -1) {
-                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("_acl") === -1) {
+                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                // }
                                 break;
                             case "openrpa":
-                                if (indexnames.indexOf("_created_1") === -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_modified_1") === -1) {
-                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("_created_1") === -1) {
+                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_modified_1") === -1) {
+                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                // }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("_acl") === -1) {
-                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("_acl") === -1) {
+                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                // }
                                 break;
                             case "dbusage":
-                                if (indexnames.indexOf("_created_1") === -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_modified_1") === -1) {
-                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("_created_1") === -1) {
+                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_modified_1") === -1) {
+                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                // }
                                 if (indexnames.indexOf("collection_1_timestamp_1_userid_1") === -1) {
                                     await this.createIndex(collection.name, "collection_1_timestamp_1_userid_1", { _type: 1, "{collection:1,timestamp:1,userid:1}": 1 }, null, span)
                                 }
@@ -3678,29 +3689,29 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("timestamp_1") === -1) {
                                     await this.createIndex(collection.name, "timestamp_1", { _type: 1, "{timestamp:1}": 1 }, null, span)
                                 }
-                                if (indexnames.indexOf("_acl") === -1) {
-                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("_acl") === -1) {
+                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                // }
                                 break;
                             default:
-                                if (indexnames.indexOf("_type_1") === -1) {
-                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_created_1") === -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_modified_1") === -1) {
-                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                }
-                                if (DatabaseConnection.timeseries_collections.indexOf(collection.name) > -1) {
-                                    if (indexnames.indexOf("metadata._acl") === -1) {
-                                        await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
-                                    }
-                                } else {
-                                    if (indexnames.indexOf("_acl") === -1) {
-                                        await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                    }
-                                }
+                                // if (indexnames.indexOf("_type_1") === -1) {
+                                //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_created_1") === -1) {
+                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_modified_1") === -1) {
+                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                // }
+                                // if (DatabaseConnection.timeseries_collections.indexOf(collection.name) > -1) {
+                                //     if (indexnames.indexOf("metadata._acl") === -1) {
+                                //         await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
+                                //     }
+                                // } else {
+                                //     if (indexnames.indexOf("_acl") === -1) {
+                                //         await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                //     }
+                                // }
                                 break;
                         }
                     }

@@ -5632,7 +5632,8 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         this.autorefresh = true;
         this.basequery = {};
         this.collection = $routeParams.collection;
-        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, _deleted: 1 };
+        this.orderby = { "_deleted": -1 }
         this.postloadData = this.processdata;
         if (this.userdata.data.DeletedCtrl) {
             this.basequery = this.userdata.data.DeletedCtrl.basequery;
