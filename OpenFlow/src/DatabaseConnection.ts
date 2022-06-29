@@ -1568,7 +1568,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             if (item._type == "role" && item.name == "administrator") {
                                 // temp, allow this
                             } else {
-                                Logger.instanse.error("DatabaseConnection", "InsertOne", item.name + " or " + (item as any).username + " is reserved.");
+                                Logger.instanse.error("DatabaseConnection", "InsertMany", item.name + " or " + (item as any).username + " is reserved.");
                                 throw new Error("Access denied");
                             }
                         }
@@ -1796,7 +1796,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             if (q.item._type == "role" && q.item.name == "administrator") {
                                 // temp, allow this
                             } else {
-                                Logger.instanse.error("DatabaseConnection", "InsertOne", q.item.name + " or " + (q.item as any).username + " is reserved.");
+                                Logger.instanse.error("DatabaseConnection", "UpdateOne", q.item.name + " or " + (q.item as any).username + " is reserved.");
                                 throw new Error("Access denied");
                             }
 
