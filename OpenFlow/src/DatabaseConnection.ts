@@ -3554,15 +3554,18 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (indexnames.indexOf("id_1__version_-1") === -1) {
                             await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 }, null, span)
                         }
+                        if (indexnames.indexOf("_deleted") === -1) {
+                            await this.createIndex(collection.name, "_deleted", { "_deleted": 1 }, null, span)
+                        }
                         if (indexnames.indexOf("_acl") === -1) {
                             await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                         }
                     } else {
                         switch (collection.name) {
                             case "fs.files":
-                                if (indexnames.indexOf("metadata.workflow_1") === -1) {
-                                    await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("metadata.workflow_1") === -1) {
+                                //     await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
+                                // }
                                 if (indexnames.indexOf("metadata._acl") === -1) {
                                     await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
                                 }
@@ -3570,18 +3573,18 @@ export class DatabaseConnection extends events.EventEmitter {
                             case "fs.chunks":
                                 break;
                             case "workflow":
-                                if (indexnames.indexOf("_created_1") === -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_modified_1") === -1) {
-                                    await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("queue_1") === -1) {
-                                    await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_acl") === -1) {
-                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("_created_1") === -1) {
+                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_modified_1") === -1) {
+                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("queue_1") === -1) {
+                                //     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
+                                // }
+                                // if (indexnames.indexOf("_acl") === -1) {
+                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                // }
                                 break;
                             case "openrpa_instances":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -3603,6 +3606,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 }
                                 break;
+                            case "workflow_instances":
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
+                                break;
                             case "audit":
                                 if (indexnames.indexOf("_type_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
@@ -3618,9 +3629,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 break;
                             case "users":
-                                if (indexnames.indexOf("name_1") === -1) {
-                                    await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
-                                }
+                                // if (indexnames.indexOf("name_1") === -1) {
+                                //     await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
+                                // }
                                 // if (indexnames.indexOf("_type_1") === -1) {
                                 //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 // }
