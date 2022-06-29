@@ -22,7 +22,13 @@ docker-compose.yml
 docker-compose-toolbox.yml
 docker-compose-traefik.yml
 docker-compose-traefik-letsencrypt.yml
+sonar-project.properties
 .nyc_output
 .scannerwor
 test
 crash.log
+.scannerwork
+.mocharc.json
+.nyrc.json
+dockerignore
+register.js
