@@ -187,6 +187,12 @@ If you have buttons on the form, you can get the name of the button clicked in m
         <input type="hidden" id="node-input-initialruntype">
         <input style="width:70%" type="text" id="node-input-initialrun">
     </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Instance Name</label>
+        <input type="hidden" id="node-input-topictype">
+        <input style="width:70%" type="text" id="node-input-topic" placeholder="Instance name">
+    </div>
+    
 </script>
 <script type="text/x-red" data-help-name="assign workflow">
     <p>
@@ -217,6 +223,11 @@ If you have buttons on the form, you can get the name of the button clicked in m
 
             targetid: { value: "" },
             workflowid: { value: "" },
+
+
+            topic: { value: "topic", validate: validate("topictype")},
+            topictype: { value: "msg" },
+
         },
         inputs: 1,
         outputs: 2,
@@ -229,6 +240,13 @@ If you have buttons on the form, you can get the name of the button clicked in m
         },
 
         oneditprepare: function () {
+            if (this.topictype === 'val') $("#node-input-topictype").val('str');
+            $("#node-input-topic").typedInput({
+                default: 'str',
+                typeField: $("#node-input-topictype"),
+                types: ['msg', 'str', 'flow', 'global']
+            });
+
             let queue = $('#node-input-queue').val();
             if (queue === null || queue === undefined || queue === "") {
                 queue = generateUuid();
