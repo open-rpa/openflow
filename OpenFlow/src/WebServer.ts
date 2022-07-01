@@ -16,6 +16,7 @@ const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { WebSocketServerClient } from "./WebSocketServerClient";
 var _hostname = "";
 
 
@@ -49,6 +50,35 @@ export class WebServer {
     public static app: express.Express;
     public static BaseRateLimiter: any;
     public static server: http.Server = null;
+    public static async isBlocked(req: express.Request): Promise<boolean> {
+        try {
+            var remoteip = LoginProvider.remoteip(req);
+            if (!NoderedUtil.IsNullEmpty(remoteip)) {
+                remoteip = remoteip.toLowerCase();
+                var blocks = await Logger.DBHelper.GetIPBlockList(null);
+                if (blocks && blocks.length > 0) {
+                    for (var i = 0; i < blocks.length; i++) {
+                        var block: any = blocks[i];
+                        var blocklist = block.ips;
+                        if (blocklist && Array.isArray(blocklist)) {
+                            for (var x = 0; x < blocklist.length; x++) {
+                                var ip = blocklist[x];
+                                if (!NoderedUtil.IsNullEmpty(ip)) {
+                                    ip = ip.toLowerCase();
+                                    if (ip == remoteip) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            Logger.instanse.error("WebServer", "/ipblock", error);
+        }
+        return false;
+    }
     static async configure(baseurl: string, parent: Span): Promise<http.Server> {
         const span: Span = Logger.otel.startSubSpan("WebServer.configure", parent);
         WebServer.BaseRateLimiter = new RateLimiterMemory({
@@ -69,6 +99,18 @@ export class WebServer {
                     Logger.instanse.silly("WebServer", "configure", message);
                 }
             };
+            this.app.use(async (req, res, next) => {
+                if (await WebServer.isBlocked(req)) {
+                    var remoteip = WebSocketServerClient.remoteip(req);
+                    Logger.instanse.error("WebServer", "setCORSHeaders", remoteip + " is blocked");
+                    try {
+                        res.status(429).json({ "message": "ip blocked" });
+                    } catch (error) {
+                    }
+                    return;
+                }
+                next();
+            });
             this.app.use("/", express.static(path.join(__dirname, "/public")));
             this.app.use(morgan('combined', { stream: loggerstream }));
             this.app.use(compression());
@@ -86,6 +128,19 @@ export class WebServer {
                 if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
                 res.end(JSON.stringify({ "success": "true", "hostname": _hostname }));
                 res.end();
+            });
+
+            // https://scaleup.us/2020/06/21/how-to-block-ips-in-your-traefik-proxy-server/
+            this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
+                if (await WebServer.isBlocked(req)) {
+                    var remoteip = LoginProvider.remoteip(req);
+                    Logger.instanse.error("WebServer", "/ipblock", remoteip + " is blocked");
+                    res.statusCode = 401;
+                    res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
+                    res.end('Unauthorized');
+                    return;
+                }
+                return res.status(200).send({ message: 'ok.' });
             });
 
             // Add headers

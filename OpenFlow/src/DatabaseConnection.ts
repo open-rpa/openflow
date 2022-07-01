@@ -332,6 +332,9 @@ export class DatabaseConnection extends events.EventEmitter {
                             await Logger.DBHelper.ClearProviders();
                             await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
                         }
+                        if (collectionname == "config" && _type == "ipblock") {
+                            await Logger.DBHelper.ClearIPBlockList();
+                        }
                         if (collectionname === "config" && _type === "oauthclient") {
                             setTimeout(() => OAuthProvider.LoadClients(), 1000);
                         }
