@@ -9,6 +9,7 @@ import { Span } from "@opentelemetry/api";
 import { ValueRecorder, BaseObserver } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
+import { WebServer } from "./WebServer";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 
 export class WebSocketServer {
@@ -59,7 +60,7 @@ export class WebSocketServer {
 
             this._clients = [];
             this._socketserver = new WebSocket.Server({ server: server });
-            this._socketserver.on("connection", (socketObject: WebSocket, req: any): void => {
+            this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
                 let remoteip: string = "unknown";
                 if (Config.otel_trace_connection_ips) {
                     if (!NoderedUtil.IsNullUndefinded(req)) {
@@ -70,6 +71,16 @@ export class WebSocketServer {
                 if (!this.total_connections_count[remoteip]) this.total_connections_count[remoteip] = 0;
                 this.total_connections_count[remoteip]++;
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_connections_count)) WebSocketServer.websocket_connections_count.bind({ ...Logger.otel.defaultlabels, remoteip: remoteip }).update(this.total_connections_count[remoteip]);
+
+                if (await WebServer.isBlocked(req)) {
+                    remoteip = WebSocketServerClient.remoteip(req);
+                    Logger.instanse.error("WebSocketServer", "connection", remoteip + " is blocked");
+                    try {
+                        socketObject.close()
+                    } catch (error) {
+                    }
+                    return;
+                }
                 this._clients.push(new WebSocketServerClient(socketObject, req));
             });
             this._socketserver.on("error", (error: Error): void => {
@@ -229,7 +240,7 @@ export class WebSocketServer {
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_connections_count)) {
                 WebSocketServer.websocket_connections_count.clear();
-                const keys = Object.keys(WebSocketServer.websocket_connections_count);
+                const keys = Object.keys(this.total_connections_count);
                 keys.forEach(key => {
                     key = key.split(":").join("-");
                     WebSocketServer.websocket_connections_count.bind({ ...Logger.otel.defaultlabels, remoteip: key }).update(this.total_connections_count[key]);

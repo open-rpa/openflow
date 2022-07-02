@@ -4013,10 +4013,18 @@ export class Message {
                 if (usercount.length > 0) {
                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
-                const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
+                let cursor: Cursor<any>;
+                if (Config.NODE_ENV == "production") {
+                    cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } });
+                } else {
+                    // While debugging, also update users who has not been online the last 24 hours
+                    cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                }
+                // const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
                 // const cursor = Config.db.db.collection("users").find({ "_type": "user" })
                 // const cursor = Config.db.db.collection("users").find({ "_type": "user", dblocked: true })
                 // const cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 23815993 } })
+                // const cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 10000 } })
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;
                     index++;
@@ -4808,7 +4816,7 @@ export class Message {
                     await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
                 }
                 if (newstate == "failed" && (!NoderedUtil.IsNullEmpty(failed_wiq) || !NoderedUtil.IsNullEmpty(failed_wiqid))) {
-                    await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
+                    await this.DuplicateWorkitem(wi, failed_wiq, failed_wiqid, this.jwt, parent);
                 }
             }
         } catch (error) {

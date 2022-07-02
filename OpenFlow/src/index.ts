@@ -58,8 +58,12 @@ function doHouseKeeping() {
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
     var h = dt.getHours();
     var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-    msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
-
+    if (Config.NODE_ENV == "production") {
+        msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
+    } else {
+        // While debugging, always do all calculations
+        msg2._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
+    }
     // var dt = new Date(new Date().toISOString());
     // var msg = new Message(); msg.jwt = Crypt.rootToken();
     // var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
@@ -278,6 +282,8 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     } else {
                         Logger.instanse.verbose("index", "initDatabase", "SKIP housekeeping");
                     }
+                } else {
+                    doHouseKeeping();
                 }
             }, randomNum2 * 1000);
         }

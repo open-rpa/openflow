@@ -128,7 +128,7 @@ export class DBHelper {
     }
     public async GetProviders(parent: Span): Promise<Provider[]> {
         await this.init();
-        const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetProviders", parent);
         try {
             let items = await this.memoryCache.wrap("providers", () => {
                 return Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
@@ -693,5 +693,24 @@ export class DBHelper {
             //     Config.prometheus_measure_onlineuser, null);
             return { $set: updatedoc };
         }
+    }
+    public async GetIPBlockList(parent: Span): Promise<Base[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetIPBlockList", parent);
+        try {
+            let items = await this.memoryCache.wrap("ipblock", () => {
+                return Config.db.query<Base>({ query: { _type: "ipblock" }, projection: { "ips": 1 }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
+            });
+            if (NoderedUtil.IsNullUndefinded(items)) items = [];
+            return items;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async ClearIPBlockList() {
+        await this.memoryCache.del("ipblock");
     }
 }
