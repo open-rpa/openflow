@@ -604,16 +604,32 @@ export class WebSocketServerClient {
     }
     public watches: IHashTable<ClientWatch> = {};
     async Watch(aggregates: object[], collectionname: string, jwt: string, id: string = null): Promise<string> {
+        if (typeof aggregates === "string") {
+            try {
+                aggregates = JSON.parse(aggregates);
+            } catch (error) {
+            }
+        }
+        // if (Array.isArray(aggregates)) {
+        //     for (let p = 0; p < aggregates.length; p++) {
+        //         let path = aggregates[p];
+        //         if (typeof path === "string") {
+        //             try {
+        //                 path = JSON.parse(path);
+        //             } catch (error) {
+        //             }
+        //         }
+        //     }
+        // }
         const stream: clsstream = new clsstream();
         stream.id = NoderedUtil.GetUniqueIdentifier();
         stream.collectionname = collectionname;
         stream.aggregates = aggregates;
         if (id == null) id = NoderedUtil.GetUniqueIdentifier();
-
-            WebSocketServer.update_mongodb_watch_count(this);
-            this.watches[id] = {
-                aggregates, collectionname //, streamid: stream.id
-            } as ClientWatch;
+        WebSocketServer.update_mongodb_watch_count(this);
+        this.watches[id] = {
+            aggregates, collectionname //, streamid: stream.id
+        } as ClientWatch;
         return id;
     }
 }
