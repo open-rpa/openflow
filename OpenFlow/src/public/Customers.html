@@ -1,3 +1,9 @@
+<style type="text/css">
+  .dbusage {
+    /* width: 80px; */
+    white-space:nowrap
+  }
+</style>
 <div class="row">
   <h1 translate lib="web">customers</h1>
 </div>
@@ -9,10 +15,11 @@
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
-  <caption>Customers</caption>
+  <caption></caption>
   <thead class="thead-dark">
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>
+      <th ng-click="ctrl.ToggleOrder('dbusage')" class="dbusage"><b translate lib="web">dbusage</b></th>
       <th class="w-150" ng-click="ctrl.ToggleOrder('_created')" scope="col"><strong translate lib="web">created</strong>
       </th>
       <th class="w-150" scope="col"></th>
@@ -21,6 +28,11 @@
   <tbody>
     <tr ng-repeat="model in ctrl.models">
       <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/Customer/{{model._id}}">{{model.name}}</a></td>
+      <td class="dbusage">
+        <div >
+          <format-bytes ng-model="model.dbusage" />
+        </div>
+      </td>
       <td>
         <timesince ng-model="model._created" />
       </td>

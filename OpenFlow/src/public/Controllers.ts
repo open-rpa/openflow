@@ -5746,6 +5746,7 @@ export class CustomersCtrl extends entitiesCtrl<Provider> {
         this.basequery = { _type: "customer" };
         this.collection = "users";
         this.skipcustomerfilter = true;
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, dbusage: 1 };
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
