@@ -3696,6 +3696,13 @@ export class DatabaseConnection extends events.EventEmitter {
                                 //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 // }
                                 break;
+                            case "workitems":
+                                if (indexnames.indexOf("_type_1_state_1_wiqid_1_priority_1") === -1) {
+                                    await this.createIndex(collection.name, "timestamp_1", { "_type": 1, "state": 1, "wiqid": 1, "priority": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_type_1_state_1_wiq_1_lastrun_-1") === -1) {
+                                    await this.createIndex(collection.name, "timestamp_1", { "_type": 1, "state": 1, "wiq": 1, "lastrun": -1 }, null, span)
+                                }
                             default:
                                 // if (indexnames.indexOf("_type_1") === -1) {
                                 //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
