@@ -4279,7 +4279,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         });
         this.models = await NoderedUtil.Query({
             collectionname: this.collection + "_hist", query: { id: this.id },
-            projection: { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _version: 1, _type: 1 }, orderby: this.orderby
+            projection: { name: 1, _createdby: 1, _modified: 1, _deleted: 1, _deletedby: 1, _version: 1, _type: 1 }, orderby: this.orderby
         });
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -5632,7 +5632,7 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
         this.autorefresh = true;
         this.basequery = {};
         this.collection = $routeParams.collection;
-        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, _deleted: 1 };
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, _deleted: 1, _deletedby: 1 };
         this.orderby = { "_deleted": -1 }
         this.postloadData = this.processdata;
         if (this.userdata.data.DeletedCtrl) {
@@ -5693,11 +5693,20 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
             }
 
         }
-        this.models = await NoderedUtil.Query({
-            collectionname: this.collection + "_hist",
-            query, projection: { name: 1, _type: 1, _createdby: 1, _created: 1, _modified: 1, _deleted: 1, _version: 1, id: 1 },
-            orderby: this.orderby
-        });
+        if (this.page == 0) {
+            this.models = await NoderedUtil.Query({
+                collectionname: this.collection + "_hist",
+                query, projection: { name: 1, _type: 1, _createdby: 1, _created: 1, _modified: 1, _deleted: 1, _deletedby: 1, _version: 1, id: 1 },
+                orderby: this.orderby
+            });
+        } else {
+            var temp = await NoderedUtil.Query({
+                collectionname: this.collection + "_hist",
+                query, projection: { name: 1, _type: 1, _createdby: 1, _created: 1, _modified: 1, _deleted: 1, _deletedby: 1, _version: 1, id: 1, skip: this.pagesize * this.page },
+                orderby: this.orderby
+            });
+            this.models = this.models.concat(temp);
+        }
         this.loading = false;
         this.processdata();
     }
