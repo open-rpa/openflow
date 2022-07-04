@@ -31,7 +31,7 @@
       <!-- <th scope="col" ng-click="ctrl.ToggleOrder('_createdby')"><b translate lib="web">createdby</b></th> -->
       <th scope="col" ng-click="ctrl.ToggleOrder('_deleted')"><b translate lib="web">deleted</b></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('_deletedby')"><b translate lib="web">by</b></th>
-      <th scope="col" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th>
+      <!-- <th scope="col" ng-click="ctrl.ToggleOrder('_created')"><b translate lib="web">created</b></th> -->
       <th scope="col" ng-click="ctrl.ToggleOrder('_modified')"><b translate lib="web">updated</b></th>
       <th></th>
     </tr>
@@ -47,9 +47,9 @@
       <td>
         {{ model._deletedby }}
       </td>
-      <td>
+      <!-- <td>
         <timesince ng-model="model._created" />
-      </td>
+      </td> -->
       <td>
         <timesince ng-model="model._modified" />
       </td>
