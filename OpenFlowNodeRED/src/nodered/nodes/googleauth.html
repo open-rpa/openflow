@@ -142,7 +142,7 @@
                     });
             });
             $('#node-config-input-setcode').click(() => {
-                $.getJSON('googleauth-set-code', { code: $('#node-config-input-code').val() }, function (data) {
+                $.getJSON('/googleauth-set-code', { code: $('#node-config-input-code').val() }, function (data) {
                     $('#code').hide();
                     $('#tokens').show();
                     $('#node-config-input-tokens').val(JSON.stringify(data.tokens));

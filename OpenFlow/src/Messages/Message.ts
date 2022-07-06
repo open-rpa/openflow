@@ -7,10 +7,10 @@ import { Config } from "../Config";
 import { Audit, tokenType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectID, Cursor } from "mongodb";
+import { GridFSBucket, ObjectID, Cursor, Binary } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -3713,6 +3713,48 @@ export class Message {
             }
         } catch (error) {
         }
+
+        // if (Config.NODE_ENV != "production") {
+        //     let ui: number = 0;
+        //     let updatecount: number = 0;
+        //     try {
+        //         let cursor: Cursor<any>;
+        //         cursor = Config.db.db.collection("dbusage").find({})
+        //         for await (const u of cursor) {
+        //             ui++;
+        //             var item: Base = u;
+        //             var needsupdate: boolean = false;
+
+        //             // @ts-ignore
+        //             var exists = item._acl.filter(x => x._id == item.userid);
+        //             if (exists.length == 0) {
+        //                 // @ts-ignore
+        //                 Base.addRight(item, item.userid, item.name, [Rights.read]);
+        //             }
+        //             for (let i = item._acl.length - 1; i >= 0; i--) {
+        //                 {
+        //                     const ace = item._acl[i];
+        //                     if (typeof ace.rights === "string") {
+        //                         const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+        //                         (ace.rights as any) = b;
+        //                         needsupdate = true;
+        //                     }
+        //                 }
+        //             }
+        //             if (needsupdate) {
+        //                 updatecount++;
+        //                 await Config.db.db.collection("dbusage").updateOne({ _id: item._id },
+        //                     { $set: { "_acl": item._acl } });
+        //             }
+        //             if ((ui % 500 == 0)) {
+        //                 Logger.instanse.info("Housekeeping", "_Housekeeping", "Processed " + ui + " items so far, and updated " + updatecount + " items.");
+        //             }
+        //         }
+        //     } catch (error) {
+        //         Logger.instanse.error("Housekeeping", "_Housekeeping", error);
+        //         span?.recordException(error);
+        //     }
+        // }
         try {
             await Config.db.ensureindexes(span);
         } catch (error) {
@@ -3957,6 +3999,15 @@ export class Message {
                                 item = Config.db.ensureResource(item, "dbusage");
                                 item = await Config.db.CleanACL(item, tuser, "dbusage", span);
                                 Base.addRight(item, item.userid, item.name, [Rights.read]);
+                                for (let i = item._acl.length - 1; i >= 0; i--) {
+                                    {
+                                        const ace = item._acl[i];
+                                        if (typeof ace.rights === "string") {
+                                            const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+                                            (ace.rights as any) = b;
+                                        }
+                                    }
+                                }
                                 delete item._id;
                                 item.username = item.name;
                                 item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
@@ -4473,21 +4524,30 @@ export class Message {
         wi.wiqid = _wiq._id;
         wi.nextrun = new Date(new Date().toISOString());
         wi.nextrun.setSeconds(wi.nextrun.getSeconds() + _wiq.initialdelay);
+        for (let i = _wiq._acl.length - 1; i >= 0; i--) {
+            const ace = _wiq._acl[i];
+            let bits = [];
+            if (ace.rights == "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=") {
+                bits = [-1];
+            } else {
+                for (let y = 0; y < ace.ace_right_bits; y++) {
+                    if (Ace.isBitSet(ace, y)) bits.push(y);
+                }
+            }
+            Base.addRight(wi, ace._id, ace.name, bits);
+        }
         for (var i = 0; i < wi.files.length; i++) {
             var _f = wi.files[i];
             var file = await this._GetFile(_f._id, false);
-
             const metadata = new Base();
             (metadata as any).wi = wi._id;
             (metadata as any).wiq = _wiq.name;
             (metadata as any).wiqid = _wiq._id;
-
-            metadata._acl = _wiq._acl;
+            metadata._acl = wi._acl;
             metadata.name = path.basename(_f.filename);
             (metadata as any).filename = _f.filename;
             (metadata as any).path = path.dirname(_f.filename);
             if ((metadata as any).path == ".") (metadata as any).path = "";
-
             _f._id = await this._addFile(file, _f.filename, null, metadata, false, jwt);
         }
         wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
