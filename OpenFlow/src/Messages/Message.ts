@@ -7,7 +7,7 @@ import { Config } from "../Config";
 import { Audit, tokenType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectID, Cursor } from "mongodb";
+import { GridFSBucket, ObjectID, Cursor, Binary } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage } from "@openiap/openflow-api";
@@ -3957,6 +3957,15 @@ export class Message {
                                 item = Config.db.ensureResource(item, "dbusage");
                                 item = await Config.db.CleanACL(item, tuser, "dbusage", span);
                                 Base.addRight(item, item.userid, item.name, [Rights.read]);
+                                for (let i = item._acl.length - 1; i >= 0; i--) {
+                                    {
+                                        const ace = item._acl[i];
+                                        if (typeof ace.rights === "string") {
+                                            const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+                                            (ace.rights as any) = b;
+                                        }
+                                    }
+                                }
                                 delete item._id;
                                 item.username = item.name;
                                 item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
