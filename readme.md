@@ -1,7 +1,7 @@
 # OpenFlow
 Collect, transport, store and report on events and data from humans, IT systems and the physical world
 
-Test it in a single user and multi tenant installation [here](https://app.openiap.io/)
+Try it online here [here](https://app.openiap.io/)
 
 Installation guides and light documentation at [openflow.openiap.io](https://openflow.openiap.io/) 
 
