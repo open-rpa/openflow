@@ -47,19 +47,31 @@ export class nodered_settings {
         palette: {
             catalogues: []
         },
-        tours: true,
+        tours: false,
         codeEditor: {
-            lib: "" // monaco
-        },
-        projects: {
-            enabled: false,
-            workflow: {
-                //  - manual - you must manually commit changes
-                //  - auto - changes are automatically committed
-                mode: "manual"
+            lib: "monaco",
+            options: {
             }
         }
-    };
+    }
+
+    // public editorTheme = {
+    //     palette: {
+    //         catalogues: []
+    //     },
+    //     tours: true,
+    //     codeEditor: {
+    //         lib: "" // monaco
+    //     },
+    //     projects: {
+    //         enabled: false,
+    //         workflow: {
+    //             //  - manual - you must manually commit changes
+    //             //  - auto - changes are automatically committed
+    //             mode: "manual"
+    //         }
+    //     }
+    // };
 
     // adminAuth: import("c:/code/OpenFlow/OpenFlowNodeRED/src/node-red-contrib-auth-google").noderedcontribauthgoogle;
     // constructor() {
