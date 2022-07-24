@@ -19,7 +19,7 @@ export class recorder {
     constructor() {
     }
     onadd() {
-        var routeAuthHandler = RED.auth.needsPermission("flow-debugger.write");
+        var routeAuthHandler = RED.auth.needsPermission("flow-recorder.write");
         console.log(routeAuthHandler);
     }
     async oninput(msg: any) {
