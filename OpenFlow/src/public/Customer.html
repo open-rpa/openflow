@@ -7,19 +7,19 @@
 <div class="row"
     ng-show="ctrl.WebSocketClientService.customer == null && menuctrl.WebSocketClientService.stripe_api_key && menuctrl.WebSocketClientService.stripe_api_key != ''">
     <div class="col-sm-7">
-        To enable multitenancy you need to fill out the form below.<br>
-        To allow purchase options TAX/VAT is mandatory<br>
+        To enable multitenancy (multiple users and roles) fill out company name and click save.<br>
     </div>
 </div>
-<div class="row"
+<!-- <div class="row"
     ng-show="ctrl.WebSocketClientService.customer != null && menuctrl.WebSocketClientService.stripe_api_key && menuctrl.WebSocketClientService.stripe_api_key != '' && (ctrl.WebSocketClientService.customer.stripeid == '' || ctrl.WebSocketClientService.customer.stripeid == null) ">
     <div class="col-sm-7">
         To allow purchase a valid TAX/VAT number is mandatory<br><br>
     </div>
-</div>
+</div> -->
 
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
 
     <div class="form-row row-eq-spacing-sm">
@@ -28,9 +28,15 @@
             <input type="text" class="form-control" id="name" placeholder="Company name" required="required"
                 ng-model="ctrl.model.name" ng-disabled="ctrl.loading==true">
         </div>
-        <div class="col-sm">
+        <div class="col-sm" ng-show="ctrl.model.vattype && ctrl.model.vattype != ''>
             <label for="country" class="required">country</label>
-            <select class="form-control" id="country" ng-model="ctrl.model.country" required="required"
+            <div>
+                <br>
+                {{ctrl.model.country}}
+            </div>
+<!-- 
+            <select ng-hide="ctrl.model.vattype && ctrl.model.vattype != '' && !menuctrl.hasrole('admins')"
+            class="form-control" id="country" ng-model="ctrl.model.country" required="required"
                 ng-disabled="ctrl.loading==true" ng-change="ctrl.CountryUpdate()">
                 <option value="" selected>(please select a country)</option>
                 <option value="AF">Afghanistan</option>
@@ -272,11 +278,20 @@
                 <option value="YU">Yugoslavia</option>
                 <option value="ZM">Zambia</option>
                 <option value="ZW">Zimbabwe</option>
-            </select>
-
+            </select> -->
         </div>
     </div>
-    <div class="form-row row-eq-spacing-sm">
+    <div class="form-row row-eq-spacing-sm" ng-show="ctrl.model.vattype && ctrl.model.vattype != ''">
+        <div class="col-sm">
+            <label for="vattype" class="required">vat type</label><br />
+            {{ctrl.model.vattype}}
+        </div>
+        <div class="col-sm">
+            <label for="vatnumber" class="required">TAX/VAT ID</label><br />
+            {{ctrl.model.vatnumber}}
+        </div>
+    </div>
+    <!-- <div class="form-row row-eq-spacing-sm">
         <div class="col-sm">
             <label for="vattype" class="required">vat type</label>
             <select class="form-control" id="vattype" ng-model="ctrl.model.vattype" required="required"
@@ -312,13 +327,13 @@
             <input type="text" class="form-control" id="vatnumber" ng-model="ctrl.model.vatnumber"
                 placeholder="TAX or VAT number" ng-disabled="ctrl.loading==true">
         </div>
-    </div>
+    </div> -->
 
-    <div class="form-row row-eq-spacing-sm">
+    <div class="form-row row-eq-spacing-sm" ng-show=" ctrl.loading==false">
         <div class="col-sm">
-            <label for="email" class="required">billing email</label>
+            <!-- <label for="email" class="required">billing email</label>
             <input type="text" class="form-control" id="email" ng-model="ctrl.model.email" placeholder="Billing email"
-                required="required" ng-disabled="ctrl.loading==true">
+                required="required" ng-disabled="ctrl.loading==true"> -->
         </div>
         <div class="col-sm">
             <br> <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">

@@ -69,6 +69,7 @@ export class Config {
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
         Config.stripe_force_vat = Config.parseBoolean(Config.getEnv("stripe_force_vat", "false"));
         Config.stripe_force_checkout = Config.parseBoolean(Config.getEnv("stripe_force_checkout", "true"));
+        Config.stripe_allow_promotion_codes = Config.parseBoolean(Config.getEnv("stripe_allow_promotion_codes", "true"));
 
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
         Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
@@ -266,6 +267,7 @@ export class Config {
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
     public static stripe_force_vat: boolean = Config.parseBoolean(Config.getEnv("stripe_force_vat", "false"));
     public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout", "false"));
+    public static stripe_allow_promotion_codes: boolean = Config.parseBoolean(Config.getEnv("stripe_allow_promotion_codes", "true"));
 
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));

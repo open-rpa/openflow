@@ -41,7 +41,7 @@
     "google-auth-library": "^7.0.4",
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
-    "node-red": "^2.2.2",
+    "node-red": "^3.0.0",
     "pako": "^2.0.4",
     "passport-saml": "^3.2.0",
     "passport-saml-metadata": "^2.5.0",
