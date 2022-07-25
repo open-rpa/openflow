@@ -1101,7 +1101,7 @@ export class DatabaseConnection extends events.EventEmitter {
             aggregates = [{ $match: base }, aggregates];
         }
         if (json.toLowerCase().indexOf("$limit") == -1) {
-            aggregates.push({ "$limit": 100 });
+            aggregates.push({ "$limit": 500 });
         }
         const options: CollectionAggregationOptions = {};
         options.hint = myhint;

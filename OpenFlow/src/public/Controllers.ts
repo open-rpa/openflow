@@ -1302,26 +1302,26 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         try {
             this.queuename = await NoderedUtil.RegisterQueue({
                 callback: (data: QueueMessage, ack: any) => {
-                ack();
-                console.debug(data);
-                if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
-                this.messages += data.data.command + "\n";
-                if (data.data.command == "invokecompleted") {
-                    this.arguments = data.data.data;
-                }
-                if (data.data.command == "invokefailed") {
-                    if (data.data && data.data.data && data.data.data.Message) {
-                        this.errormessage = data.data.data.Message;
-                    } else {
-                        this.errormessage = JSON.stringify(data.data);
+                    ack();
+                    console.debug(data);
+                    if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
+                    this.messages += data.data.command + "\n";
+                    if (data.data.command == "invokecompleted") {
+                        this.arguments = data.data.data;
                     }
+                    if (data.data.command == "invokefailed") {
+                        if (data.data && data.data.data && data.data.data.Message) {
+                            this.errormessage = data.data.data.Message;
+                        } else {
+                            this.errormessage = JSON.stringify(data.data);
+                        }
 
-                }
-                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }, closedcallback: (msg) => {
-                this.queuename = "";
-                console.debug("rabbitmq disconnected, start reconnect")
-                setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                    this.queuename = "";
+                    console.debug("rabbitmq disconnected, start reconnect")
+                    setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
                 }
             });
             console.debug("queuename: " + this.queuename);
@@ -2408,44 +2408,50 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async AddPlan2() {
-        this.loading = true;
-        this.CloseNextInvoiceModal();
-        this.CloseModal();
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        var result = await NoderedUtil.StripeAddPlan({
-            userid: this.user._id, customerid: this.user.customerid,
-            resourceid: this.resource._id, stripeprice: this.product.stripeprice
-        });
-        var checkout = result.checkout;
-        if (checkout) {
-            const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
-            stripe
-                .redirectToCheckout({
-                    sessionId: checkout.id,
-                })
-                .then(function (event) {
-                    if (event.complete) {
-                        // enable payment button
-                    } else if (event.error) {
-                        console.error(event.error);
-                        if (event.error && event.error.message) {
-                            this.cardmessage = event.error.message;
-                        } else {
-                            this.cardmessage = event.error;
-                        }
-                        console.error(event.error);
+        try {
+            this.loading = true;
+            this.CloseNextInvoiceModal();
+            this.CloseModal();
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var result = await NoderedUtil.StripeAddPlan({
+                userid: this.user._id, customerid: this.user.customerid,
+                resourceid: this.resource._id, stripeprice: this.product.stripeprice
+            });
+            var checkout = result.checkout;
+            if (checkout) {
+                const stripe = Stripe(this.WebSocketClientService.stripe_api_key);
+                stripe
+                    .redirectToCheckout({
+                        sessionId: checkout.id,
+                    })
+                    .then(function (event) {
+                        if (event.complete) {
+                            // enable payment button
+                        } else if (event.error) {
+                            console.error(event.error);
+                            if (event.error && event.error.message) {
+                                this.cardmessage = event.error.message;
+                            } else {
+                                this.cardmessage = event.error;
+                            }
+                            console.error(event.error);
 
-                        // show validation to customer
-                    } else {
-                    }
-                }).catch((error) => {
-                    console.error(error);
-                    this.errormessage = error;
-                });
-        } else {
+                            // show validation to customer
+                        } else {
+                        }
+                    }).catch((error) => {
+                        console.error(error);
+                        this.errormessage = error;
+                    });
+            } else {
+                this.loading = false;
+                this.loadData();
+            }
+        } catch (error) {
             this.loading = false;
-            this.loadData();
+            this.errormessage = error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     private resource: Resource;
     private product: ResourceVariant;
@@ -2462,8 +2468,18 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
 
             let items = [];
             items.push({ quantity: 1, price: product.stripeprice });
-
-            this.nextinvoice = await NoderedUtil.GetNextInvoice({ customerid: this.WebSocketClientService.customer._id, subscription_items: items })
+            if (this.user) {
+                // If customer is created in stripe and has a subscriptuon we can calculate new invoice
+                // if not, just ignore the error and send them to tripe to see the price for current product.
+                try {
+                    this.nextinvoice = await NoderedUtil.GetNextInvoice({ customerid: this.user.customerid, subscription_items: items })
+                } catch (error) {
+                    this.loading = false;
+                    if (error != "Need customer to work with invoices_upcoming") {
+                        this.errormessage = error;
+                    }
+                }
+            }
             if (this.nextinvoice != null) {
                 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
                 const period_start = new Date(this.nextinvoice.period_start * 1000);
@@ -3372,30 +3388,30 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         const result = await NoderedUtil.RegisterExchange(
             {
                 exchangename: exchange, algorithm: "direct", callback: async (msg: QueueMessage, ack: any) => {
-                console.debug(msg);
-                ack();
-                if (NoderedUtil.IsNullEmpty(msg.routingkey) || msg.routingkey == this.instanceid) {
-                    // this.loadData();
-                    this.model.payload = Object.assign(this.model.payload, msg.data.payload);
-                    if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
-                        if (msg.data.payload.form != this.model.form) {
-                            const res = await NoderedUtil.Query({
-                                collectionname: "forms", query: { _id: msg.data.payload.form },
-                                orderby: { _created: -1 }, top: 1
-                            });
-                            if (res.length > 0) {
-                                this.model.form = msg.data.payload.form;
-                                this.form = res[0];
-                            } else {
-                                console.error("Failed locating form " + msg.data.payload.form)
+                    console.debug(msg);
+                    ack();
+                    if (NoderedUtil.IsNullEmpty(msg.routingkey) || msg.routingkey == this.instanceid) {
+                        // this.loadData();
+                        this.model.payload = Object.assign(this.model.payload, msg.data.payload);
+                        if (!NoderedUtil.IsNullEmpty(msg.data.payload.form)) {
+                            if (msg.data.payload.form != this.model.form) {
+                                const res = await NoderedUtil.Query({
+                                    collectionname: "forms", query: { _id: msg.data.payload.form },
+                                    orderby: { _created: -1 }, top: 1
+                                });
+                                if (res.length > 0) {
+                                    this.model.form = msg.data.payload.form;
+                                    this.form = res[0];
+                                } else {
+                                    console.error("Failed locating form " + msg.data.payload.form)
+                                }
                             }
                         }
+                        this.renderform();
                     }
-                    this.renderform();
-                }
                 }, closedcallback: (msg) => {
-                // if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
-                // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                    // if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
+                    // setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
                 }
             });
         this.localexchangequeue = result.queuename;
@@ -3405,31 +3421,31 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
     async RegisterQueue() {
         this.queuename = await NoderedUtil.RegisterQueue({
             callback: (data: QueueMessage, ack: any) => {
-            ack();
-            console.debug(data);
-            if (data.queuename == this.queuename) {
-                if (data && data.data && data.data.command == "timeout") {
-                    this.errormessage = "No \"workflow in\" node listening or message timed out, is nodered running?";
-                    console.error(this.errormessage);
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                    return;
-                } else {
-                    this.queue_message_timeout = (60 * 1000); // 1 min
+                ack();
+                console.debug(data);
+                if (data.queuename == this.queuename) {
+                    if (data && data.data && data.data.command == "timeout") {
+                        this.errormessage = "No \"workflow in\" node listening or message timed out, is nodered running?";
+                        console.error(this.errormessage);
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        return;
+                    } else {
+                        this.queue_message_timeout = (60 * 1000); // 1 min
+                    }
+                    if (this.instanceid == null && data.data._id != null) {
+                        this.instanceid = data.data._id;
+                        // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
+                        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                        this.loadData();
+                        return;
+                    } else {
+                        this.loadData();
+                    }
                 }
-                if (this.instanceid == null && data.data._id != null) {
-                    this.instanceid = data.data._id;
-                    // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
-                    // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                    this.loadData();
-                    return;
-                } else {
-                    this.loadData();
-                }
-            }
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }, closedcallback: (msg) => {
-            this.queuename = "";
-            setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                this.queuename = "";
+                setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             }
         });
     }
@@ -5786,14 +5802,16 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 }
             }
-            if (this.id !== null && this.id !== undefined) {
+            if (this.id !== null && this.id !== undefined && this.id != "new") {
                 console.debug("Loading customer id " + this.id);
                 this.loading = false;
                 this.loadData();
+                return;
             } else {
                 user = TokenUser.assign(user);
-                if (user.customerid != null) {
+                if (user.customerid != null && this.id != "new") {
                     this.id = user.customerid;
+                    this.basequery = { _id: this.id };
                     console.debug("Loading customer id " + this.id);
                     this.loading = false;
                     this.loadData();
@@ -5879,6 +5897,11 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     public support: ResourceUsage[] = [];
     async processdata() {
         try {
+            if (this.model._type != "customer") {
+                console.log("Not customer!", this.model);
+                return;
+            }
+            console.log(this.model);
             console.debug("processdata");
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -5959,15 +5982,18 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     ShowPlans() {
         if (this.WebSocketClientService.customer == null) return false;
         if (!this.WebSocketClientService.multi_tenant) return false;
-        if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.stripe_api_key)) {
-            if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer.stripeid)) return true;
-            return false;
-        } else {
-            return true;
-        }
+        // if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.stripe_api_key)) {
+        //     if (!NoderedUtil.IsNullEmpty(this.WebSocketClientService.customer.stripeid)) return true;
+        //     return false;
+        // } else {
+        //     return true;
+        // }
+        return true;
     }
     async NextInvoice() {
         try {
+            if (this.WebSocketClientService.customer == null) return false;
+            if (!this.WebSocketClientService.multi_tenant) return false;
             this.proration = false;
             this.loading = true;
             this.nextinvoice = await NoderedUtil.GetNextInvoice({ customerid: this.WebSocketClientService.customer._id });
@@ -5985,7 +6011,13 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         } catch (error) {
             console.debug(error);
             this.loading = false;
-            this.errormessage = error;
+            this.errormessage = error.message ? error.message : error;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            try {
+                await NoderedUtil.EnsureCustomer({ customer: this.model });
+                this.loadData();
+            } catch (error) {
+            }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -6025,44 +6057,54 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async AddPlan2() {
-        this.loading = true;
-        this.CloseNextInvoiceModal();
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        var result = await NoderedUtil.StripeAddPlan({ customerid: this.WebSocketClientService.customer._id, resourceid: this.resource._id, stripeprice: this.product.stripeprice });
-        var checkout = result.checkout;
-        if (checkout) {
-            this.stripe
-                .redirectToCheckout({
-                    sessionId: checkout.id,
-                })
-                .then(function (event) {
-                    if (event.complete) {
-                        // enable payment button
-                    } else if (event.error) {
-                        console.error(event.error);
-                        if (event.error && event.error.message) {
-                            this.cardmessage = event.error.message;
-                        } else {
-                            this.cardmessage = event.error;
-                        }
-                        console.error(event.error);
+        try {
+            this.CloseNextInvoiceModal();
+            if (this.WebSocketClientService.customer == null) return false;
+            if (!this.WebSocketClientService.multi_tenant) return false;
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            var result = await NoderedUtil.StripeAddPlan({ customerid: this.WebSocketClientService.customer._id, resourceid: this.resource._id, stripeprice: this.product.stripeprice });
+            var checkout = result.checkout;
+            if (checkout) {
+                this.stripe
+                    .redirectToCheckout({
+                        sessionId: checkout.id,
+                    })
+                    .then(function (event) {
+                        if (event.complete) {
+                            // enable payment button
+                        } else if (event.error) {
+                            console.error(event.error);
+                            if (event.error && event.error.message) {
+                                this.cardmessage = event.error.message;
+                            } else {
+                                this.cardmessage = event.error;
+                            }
+                            console.error(event.error);
 
-                        // show validation to customer
-                    } else {
-                    }
-                }).catch((error) => {
-                    console.error(error);
-                    this.errormessage = error;
-                });
-        } else {
+                            // show validation to customer
+                        } else {
+                        }
+                    }).catch((error) => {
+                        console.error(error);
+                        this.errormessage = error;
+                    });
+            } else {
+                this.loading = false;
+                this.loadData();
+            }
+        } catch (error) {
             this.loading = false;
-            this.loadData();
+            this.errormessage = error;
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     private resource: Resource;
     private product: ResourceVariant
     async AddPlan(resource: Resource, product: ResourceVariant) {
         try {
+            if (this.WebSocketClientService.customer == null) return false;
+            if (!this.WebSocketClientService.multi_tenant) return false;
             this.loading = true;
             this.errormessage = "";
 
@@ -6072,7 +6114,16 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             let items = [];
             items.push({ quantity: 1, price: product.stripeprice });
 
-            this.nextinvoice = await NoderedUtil.GetNextInvoice({ customerid: this.WebSocketClientService.customer._id, subscription_items: items });
+            try {
+                // If customer is created in stripe and has a subscriptuon we can calculate new invoice
+                // if not, just ignore the error and send them to tripe to see the price for current product.
+                this.nextinvoice = await NoderedUtil.GetNextInvoice({ customerid: this.WebSocketClientService.customer._id, subscription_items: items });
+            } catch (error) {
+                this.loading = false;
+                if (error != "Need customer to work with invoices_upcoming") {
+                    this.errormessage = error;
+                }
+            }
             if (this.nextinvoice != null) {
                 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
                 const period_start = new Date(this.nextinvoice.period_start * 1000);
@@ -6089,9 +6140,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         } catch (error) {
             this.loading = false;
             this.errormessage = error;
-            try {
-            } catch (error) {
-            }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -6127,8 +6175,15 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 this.errormessage = "Failed getting portal session url";
             }
         } catch (error) {
+            this.loading = false;
             console.error(error);
             this.errormessage = error;
+            try {
+                await NoderedUtil.EnsureCustomer({ customer: this.model });
+                this.loadData();
+            } catch (error) {
+
+            }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -6587,7 +6642,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
 
                 const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, false, 0),
+                        this.newProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "single", "single", supporthours._id, "plan_HEZAsA1DfkiQ6k", 1, {}, true, 0),
                     ], true, true, 0);
 
                 const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
@@ -6617,7 +6672,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
 
                 const support = await this.newResource("Support Agreement", "customer", "singlevariant", "singlevariant", {},
                     [
-                        this.newProduct("Basic Support", "prod_HG1vTqU4c7EaV5", "plan_HG1vb53VlOu46y", "single", "single", supporthours._id, "plan_HG1wBF6yq1O15C", 1, {}, false, 0),
+                        this.newProduct("Basic Support", "prod_HG1vTqU4c7EaV5", "plan_HG1vb53VlOu46y", "single", "single", supporthours._id, "plan_HG1wBF6yq1O15C", 1, {}, true, 0),
                     ], true, true, 0);
 
                 const premium: Resource = await this.newResource("Openflow License", "customer", "singlevariant", "singlevariant", {},
@@ -6634,9 +6689,9 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
 
                 const poc = await this.newResource("Proff of Concept", "customer", "multiplevariants", "multiplevariants", {},
                     [
-                        this.newProduct("POC adhoc Hours", "prod_Jgk2LqELt4QFwB", "price_1J3MZ3C2vUMc6gvhhWdgSqjW", "single", "single", "", "", 1, { "supportplan": true }, true, 0)
+                        this.newProduct("POC adhoc Hours", "prod_Jgk2LqELt4QFwB", "price_1J3MZ3C2vUMc6gvhhWdgSqjW", "metered", "metered", "", "", 1, { "supportplan": true }, true, 0)
                     ], true, true, 3);
-                poc.products.push(this.newProduct("POC Starter pack", "prod_Jgk2LqELt4QFwB", "price_1J3MZZC2vUMc6gvhh0sOq19z", "single", "single", poc._id, "prod_Jgk2LqELt4QFwB", 1, {}, true, 1));
+                poc.products.push(this.newProduct("POC Starter pack", "prod_Jgk2LqELt4QFwB", "price_1J3MZZC2vUMc6gvhh0sOq19z", "single", "single", poc._id, "price_1J3MZ3C2vUMc6gvhhWdgSqjW", 1, {}, true, 1));
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: poc });
             } else {
                 const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
@@ -6683,6 +6738,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         userassign: "singlevariant" | "multiplevariants",
         defaultmetadata: any,
         products: ResourceVariant[], allowdirectassign: boolean, customeradmins: boolean, order: number): Promise<Resource> {
+        customeradmins = false;
         var results = await NoderedUtil.Query({ collectionname: this.collection, query: { "name": name }, top: 1 });
         const model: Resource = (results.length == 1 ? results[0] : new Resource());
         model.name = name;
