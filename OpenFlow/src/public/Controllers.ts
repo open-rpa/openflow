@@ -2534,6 +2534,9 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                 (this.model as any).newpassword = "";
                 (this.model as any).sid = "";
                 (this.model as any).federationids = [];
+                if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
+                    this.model.customerid = WebSocketClient.instance.user.selectedcustomerid;
+                }
                 this.processdata();
             }
 
@@ -2685,6 +2688,9 @@ export class RoleCtrl extends entityCtrl<Role> {
                 await this.loadData();
             } else {
                 this.model = new Role();
+                if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
+                    this.model.customerid = WebSocketClient.instance.user.selectedcustomerid;
+                }
             }
         });
     }

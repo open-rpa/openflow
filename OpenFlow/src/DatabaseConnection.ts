@@ -3,7 +3,7 @@ import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
-import { ValueRecorder } from "@opentelemetry/api-metrics"
+import { Histogram } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 const { JSONPath } = require('jsonpath-plus');
@@ -46,15 +46,15 @@ export class DatabaseConnection extends events.EventEmitter {
     public db: Db;
     private _dbname: string;
     // public static ot_mongodb_query_count: Counter;
-    public static mongodb_query: ValueRecorder;
-    public static mongodb_aggregate: ValueRecorder;
-    public static mongodb_insert: ValueRecorder;
-    public static mongodb_insertmany: ValueRecorder;
-    public static mongodb_update: ValueRecorder;
-    public static mongodb_updatemany: ValueRecorder;
-    public static mongodb_replace: ValueRecorder;
-    public static mongodb_delete: ValueRecorder;
-    public static mongodb_deletemany: ValueRecorder;
+    public static mongodb_query: Histogram;
+    public static mongodb_aggregate: Histogram;
+    public static mongodb_insert: Histogram;
+    public static mongodb_insertmany: Histogram;
+    public static mongodb_update: Histogram;
+    public static mongodb_updatemany: Histogram;
+    public static mongodb_replace: Histogram;
+    public static mongodb_delete: Histogram;
+    public static mongodb_deletemany: Histogram;
     // public static semaphore = Auth.Semaphore(1);
 
     public registerGlobalWatches: boolean = true;
@@ -68,41 +68,33 @@ export class DatabaseConnection extends events.EventEmitter {
         if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
-            DatabaseConnection.mongodb_query = Logger.otel.meter.createValueRecorder('openflow_mongodb_query_seconds', {
-                description: 'Duration for mongodb queries',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_query = Logger.otel.meter.createHistogram('openflow_mongodb_query_seconds', {
+                description: 'Duration for mongodb queries', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createValueRecorder('openflow_mongodb_aggregate_seconds', {
-                description: 'Duration for mongodb aggregates',
-                boundaries: Logger.otel.default_boundaries
+            // valueType: ValueType.DOUBLE
+            DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createHistogram('openflow_mongodb_aggregate_seconds', {
+                description: 'Duration for mongodb aggregates', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_insert = Logger.otel.meter.createValueRecorder('openflow_mongodb_insert_seconds', {
-                description: 'Duration for mongodb inserts',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_insert = Logger.otel.meter.createHistogram('openflow_mongodb_insert_seconds', {
+                description: 'Duration for mongodb inserts', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_insertmany = Logger.otel.meter.createValueRecorder('openflow_mongodb_insertmany_seconds', {
-                description: 'Duration for mongodb insert many',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_insertmany = Logger.otel.meter.createHistogram('openflow_mongodb_insertmany_seconds', {
+                description: 'Duration for mongodb insert many', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_update = Logger.otel.meter.createValueRecorder('openflow_mongodb_update_seconds', {
-                description: 'Duration for mongodb updates',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_update = Logger.otel.meter.createHistogram('openflow_mongodb_update_seconds', {
+                description: 'Duration for mongodb updates', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_updatemany = Logger.otel.meter.createValueRecorder('openflow_mongodb_updatemany_seconds', {
-                description: 'Duration for mongodb update many',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_updatemany = Logger.otel.meter.createHistogram('openflow_mongodb_updatemany_seconds', {
+                description: 'Duration for mongodb update many', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_replace = Logger.otel.meter.createValueRecorder('openflow_mongodb_replace_seconds', {
-                description: 'Duration for mongodb replaces',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_replace = Logger.otel.meter.createHistogram('openflow_mongodb_replace_seconds', {
+                description: 'Duration for mongodb replaces', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_delete = Logger.otel.meter.createValueRecorder('openflow_mongodb_delete_seconds', {
-                description: 'Duration for mongodb deletes',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_delete = Logger.otel.meter.createHistogram('openflow_mongodb_delete_seconds', {
+                description: 'Duration for mongodb deletes', valueType: 1, unit: 's'
             });
-            DatabaseConnection.mongodb_deletemany = Logger.otel.meter.createValueRecorder('openflow_mongodb_deletemany_seconds', {
-                description: 'Duration for mongodb deletemanys',
-                boundaries: Logger.otel.default_boundaries
+            DatabaseConnection.mongodb_deletemany = Logger.otel.meter.createHistogram('openflow_mongodb_deletemany_seconds', {
+                description: 'Duration for mongodb deletemanys', valueType: 1, unit: 's'
             });
         }
     }
@@ -1337,7 +1329,6 @@ export class DatabaseConnection extends events.EventEmitter {
 
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
                 } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
-                    // user2.customerid = user.customerid;
                     if (NoderedUtil.IsNullEmpty(user2.selectedcustomerid)) {
                         if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                         if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) user2.customerid = user.customerid;
@@ -1345,7 +1336,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (NoderedUtil.IsNullEmpty(user2.customerid)) throw new Error("Access denied, no customerid on you, and no customer selected");
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span);
                 } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
-                    // user2.customerid = user.customerid;
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                         customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span);
@@ -1452,22 +1442,37 @@ export class DatabaseConnection extends events.EventEmitter {
             item = result.ops[0];
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-                span?.addEvent("FindRoleByName users");
-                const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
-                users.AddMember(item);
-                span?.addEvent("Save Users");
-                await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
+
+                await this.db.collection("users").updateOne(
+                    { _id: WellknownIds.users },
+                    { "$push": { members: new Rolemember(item.name, item._id) } }
+                );
+                //  fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
+                // span?.addEvent("FindRoleByName users");
+                // const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
+                // users.AddMember(item);
+                // span?.addEvent("Save Users");
+                // await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
+
                 let user2: TokenUser = item as any;
-                if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                    // TODO: Check user has permission to this customer
-                    const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
-                    if (!NoderedUtil.IsNullUndefinded(custusers)) {
-                        custusers.AddMember(item);
-                        await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
-                    } else {
-                        Logger.instanse.debug("DatabaseConnection", "InsertOne", "[" + user.username + "][" + collectionname + "] Failed finding customer users " + customer.users + " role while updating item " + item._id);
-                    }
+                // if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                //     // TODO: Check user has permission to this customer
+                //     const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
+                //     if (!NoderedUtil.IsNullUndefinded(custusers)) {
+                //         custusers.AddMember(item);
+                //         await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
+                //     } else {
+                //         Logger.instanse.debug("DatabaseConnection", "InsertOne", "[" + user.username + "][" + collectionname + "] Failed finding customer users " + customer.users + " role while updating item " + item._id);
+                //     }
+                // }
+                if (!NoderedUtil.IsNullUndefinded(customer) && !NoderedUtil.IsNullEmpty(customer.users)) {
+                    await this.db.collection("users").updateOne(
+                        { _id: customer.users },
+                        { "$push": { members: new Rolemember(item.name, item._id) } }
+                    );
+                    await Logger.DBHelper.DeleteKey("users" + customer.users);
                 }
+                await Logger.DBHelper.DeleteKey("users" + WellknownIds.users);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);
@@ -1667,12 +1672,18 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "users" && item._type === "user") {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span?.addEvent("FindRoleByName");
-                    const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
-                    users.AddMember(item);
+                    // const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
+                    // users.AddMember(item);
                     span?.addEvent("CleanACL");
                     item = await this.CleanACL(item, user, collectionname, span);
-                    span?.addEvent("Save");
-                    await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
+                    // span?.addEvent("Save");
+                    // await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
+                    await this.db.collection("users").updateOne(
+                        { _id: WellknownIds.users },
+                        { "$push": { members: new Rolemember(item.name, item._id) } }
+                    );
+                    await Logger.DBHelper.DeleteKey("users" + WellknownIds.users);
+
                     const user2: TokenUser = item as any;
                     await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
@@ -2165,10 +2176,10 @@ export class DatabaseConnection extends events.EventEmitter {
                             custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
                             custusers.AddMember(q.item);
                             await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
-                            await Logger.DBHelper.DeleteKey("user" + q.item._id);
+                            await Logger.DBHelper.DeleteKey("users" + q.item._id);
                         }
                     } else {
-                        await Logger.DBHelper.DeleteKey("user" + q.item._id);
+                        await Logger.DBHelper.DeleteKey("users" + q.item._id);
                     }
                     await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
@@ -3698,11 +3709,18 @@ export class DatabaseConnection extends events.EventEmitter {
                                 break;
                             case "workitems":
                                 if (indexnames.indexOf("_type_1_state_1_wiqid_1_priority_1") === -1) {
-                                    await this.createIndex(collection.name, "timestamp_1", { "_type": 1, "state": 1, "wiqid": 1, "priority": 1 }, null, span)
+                                    await this.createIndex(collection.name, "_type_1_state_1_wiqid_1_priority_1", { "_type": 1, "state": 1, "wiqid": 1, "priority": 1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_type_1_state_1_wiq_1_lastrun_-1") === -1) {
-                                    await this.createIndex(collection.name, "timestamp_1", { "_type": 1, "state": 1, "wiq": 1, "lastrun": -1 }, null, span)
+                                    await this.createIndex(collection.name, "_type_1_state_1_wiq_1_lastrun_", { "_type": 1, "state": 1, "wiq": 1, "lastrun": -1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_type_1__created_-1") === -1) {
+                                    await this.createIndex(collection.name, "_type_1__created_-1", { "_type": 1, "_created": -1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_type_1_state_1__created_-1") === -1) {
+                                    await this.createIndex(collection.name, "_type_1_state_1__created_-1", { "_type": 1, "state": 1, "_created": -1 }, null, span)
+                                }
+
                             default:
                                 // if (indexnames.indexOf("_type_1") === -1) {
                                 //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)

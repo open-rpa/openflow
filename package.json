@@ -33,11 +33,11 @@
   "dependencies": {
     "@kubernetes/client-node": "0.17.0",
     "@openiap/openflow-api": "^2.0.13",
-    "@opentelemetry/api": "1.0.0-rc.3",
-    "@opentelemetry/core": "0.19.0",
-    "@opentelemetry/exporter-collector-grpc": "0.19.0",
-    "@opentelemetry/metrics": "0.19.0",
-    "@opentelemetry/tracing": "0.19.0",
+    "@opentelemetry/api-metrics": "^0.31.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.31.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.31.0",
+    "@opentelemetry/sdk-metrics-base": "^0.31.0",
+    "@opentelemetry/sdk-node": "^0.31.0",
     "@skadefro/cache-manager-mongodb": "^0.3.2",
     "@types/amqplib": "^0.8.2",
     "@types/node": "^18.6.1",
@@ -74,7 +74,7 @@
     "oauth2-server": "^3.1.1",
     "oidc-provider": "^6.31.0",
     "pako": "^2.0.4",
-    "passport": "^0.6.0",
+    "passport": "^0.5.3",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "passport-openidconnect": "^0.1.1",
@@ -89,7 +89,7 @@
     "shepherd.js": "^8.3.1",
     "ts-mockito": "^2.6.1",
     "ts-node": "^10.0.0",
-    "ws": "^7.5.0"
+    "ws": "^8.8.1"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^5.15.3",

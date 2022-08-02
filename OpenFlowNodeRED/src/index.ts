@@ -39,9 +39,9 @@ if (_otel_require != null) {
             endTimer: () => undefined,
             setdefaultlabels: () => undefined,
             meter: {
-                createValueRecorder: () => undefined,
+                createHistogram: () => undefined,
                 createCounter: () => undefined,
-                createUpDownSumObserver: () => undefined,
+                createObservableUpDownCounter: () => undefined,
             }
         } as any;
 }
@@ -184,12 +184,10 @@ let server: http.Server = null;
                 if (!NoderedUtil.IsNullEmpty(result.otel_metric_url)) Config.otel_metric_url = result.otel_metric_url;
                 if (result.otel_trace_interval > 0) Config.otel_trace_interval = result.otel_trace_interval;
                 if (result.otel_metric_interval > 0) Config.otel_metric_interval = result.otel_metric_interval;
-                if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid) || !NoderedUtil.IsNullEmpty(result.otel_metric_url)) {
-                    if (!NoderedUtil.IsNullUndefinded(_otel_require)) {
-                        Config.enable_analytics = result.enable_analytics;
-                        Logger.instanse.info("reconfigure otel");
-                        Logger.otel = _otel_require.otel.configure();
-                    }
+                if (!NoderedUtil.IsNullEmpty(result.otel_metric_url) || !NoderedUtil.IsNullEmpty(result.otel_trace_url)) {
+                    Config.enable_analytics = result.enable_analytics;
+                    Logger.instanse.info("configure otel");
+                    Logger.otel.registerurl(result.otel_metric_url, result.otel_trace_url);
                 }
                 if (server == null) {
 

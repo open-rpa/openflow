@@ -1,5 +1,7 @@
-import * as http from "http";
 import { Logger } from "./Logger";
+Logger.configure(false, false);
+import * as http from "http";
+
 import { WebServer } from "./WebServer";
 import { WebSocketServer } from "./WebSocketServer";
 import { DatabaseConnection } from "./DatabaseConnection";
@@ -12,7 +14,7 @@ import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
 import { Message } from "./Messages/Message";
 
-Logger.configure(false, false);
+
 Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);
 
 
@@ -63,12 +65,8 @@ function doHouseKeeping() {
     } else {
         // While debugging, always do all calculations
         msg2._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
+        // msg2._Housekeeping(true, true, true, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
     }
-    // var dt = new Date(new Date().toISOString());
-    // var msg = new Message(); msg.jwt = Crypt.rootToken();
-    // var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-    // await msg.Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null);
-
 }
 async function initDatabase(parent: Span): Promise<boolean> {
     const span: Span = Logger.otel.startSubSpan("initDatabase", parent);
@@ -159,6 +157,8 @@ async function initDatabase(parent: Span): Promise<boolean> {
         if (Config.multi_tenant) {
             try {
                 const resellers: Role = await Logger.DBHelper.EnsureRole(jwt, "resellers", WellknownIds.resellers, span);
+                // @ts-ignore
+                resellers.hidemembers = true;
                 Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
                 Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
@@ -166,6 +166,8 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 await Logger.DBHelper.Save(resellers, jwt, span);
 
                 const customer_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "customer admins", WellknownIds.customer_admins, span);
+                // @ts-ignore
+                customer_admins.hidemembers = true;
                 Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
                 Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
                 Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);

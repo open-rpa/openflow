@@ -23,7 +23,6 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, Delet
 const pako = require('pako');
 const got = require("got");
 
-let errorcounter: number = 0;
 var _hostname = "";
 async function handleError(cli: WebSocketServerClient, error: Error) {
     try {
@@ -32,8 +31,9 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
             return;
         }
         if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
-        errorcounter++;
-        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
+
+        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors))
+            WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
         Logger.instanse.error("Message", "handleError", error.message ? error.message : error);
     } catch (error) {
@@ -215,7 +215,9 @@ export class Message {
                 if (Config.socket_rate_limit) await WebSocketServer.BaseRateLimiter.consume(cli.id);
             } catch (error) {
                 if (error.consumedPoints) {
-                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, command: command }).update(cli.inccommandcounter(command));
+
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit))
+                        WebSocketServer.websocket_rate_limit.add(1, { ...Logger.otel.defaultlabels, command: command });
                     if ((error.consumedPoints % 100) == 0) Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
                         Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
@@ -247,7 +249,6 @@ export class Message {
                     }
                     if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
                     delete cli.messageQueue[this.replyto];
-                    WebSocketServer.update_message_queue_count(cli);
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 return;
@@ -1663,9 +1664,12 @@ export class Message {
                 Logger.instanse.error("Message", "DoSign", new Error(tuser.username + " failed logging in, user is disabled"));
                 await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
+            } else if (cli.user?.dblocked == true) {
+                Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
             } else if (tuser != null) {
                 Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in");
-                await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                // let's turn down the audit logging
+                // await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 Logger.DBHelper.UpdateHeartbeat(cli);
             }
         } catch (error) {
@@ -1831,7 +1835,11 @@ export class Message {
                         impostor = undefined;
                     }
                     Logger.instanse.info("Message", "Signin", tuser.username + " successfully signed in");
-                    await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
+                        // await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    } else {
+                        await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    }
                     const userid: string = user._id;
                     if (msg.longtoken) {
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -3694,7 +3702,7 @@ export class Message {
         if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
-        Logger.DBHelper.DeleteKey("user" + cli.user._id);
+        Logger.DBHelper.DeleteKey("users" + cli.user._id);
         cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -4324,28 +4332,28 @@ export class Message {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
                                 }
                             }
-                        } else if (config.product.customerassign == "single") {
-                            let quota: number = resource.defaultmetadata.dbusage + (c.quantity * c.config.metadata.dbusage);
+                        } else if (config.product.customerassign != "metered") {
+                            let quota: number = resource.defaultmetadata.dbusage + (config.quantity * config.product.metadata.dbusage);
                             if (c.dbusage > quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
                                 }
                             }
                         } else if (config.product.customerassign == "metered") {
@@ -4362,7 +4370,7 @@ export class Message {
                             }
                             if (c.dblocked || !c.dblocked) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
                             }
                         }
                         // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });

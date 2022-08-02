@@ -37,7 +37,6 @@ const rateLimiter = (req: express.Request, res: express.Response, next: express.
         });
 };
 
-// let websocket_rate_limit: BaseObserver = null;
 export class WebServer {
     public static remoteip(req: express.Request) {
         let remoteip: string = req.socket.remoteAddress;
@@ -88,7 +87,7 @@ export class WebServer {
 
         try {
             if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
-                // websocket_rate_limit = Logger.otel.meter.createUpDownSumObserver("openflow_webserver_rate_limit_count", {
+                // websocket_rate_limit = Logger.otel.meter.createObservableUpDownCounter("openflow_webserver_rate_limit_count", {
                 //     description: 'Total number of rate limited web request'
                 // }) // "route"
             }
