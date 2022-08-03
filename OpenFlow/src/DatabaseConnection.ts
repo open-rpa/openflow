@@ -2665,29 +2665,35 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
                     }
                 }
-                (doc as any)._deleted = new Date(new Date().toISOString());
-                (doc as any)._deletedby = user.name;
-                (doc as any)._deletedbyid = user._id;
-                const fullhist = {
-                    _acl: doc._acl,
-                    _type: doc._type,
-                    _modified: doc._modified,
-                    _modifiedby: doc._modifiedby,
-                    _modifiedbyid: doc._modifiedbyid,
-                    _created: doc._modified,
-                    _createdby: doc._modifiedby,
-                    _createdbyid: doc._modifiedbyid,
-                    _deleted: (doc as any)._deleted,
-                    _deletedby: (doc as any)._deletedby,
-                    _deletedbyid: (doc as any)._deletedbyid,
-                    name: doc.name,
-                    id: doc._id,
-                    item: doc,
-                    _version: doc._version,
-                    reason: (doc as any).reason
+
+                const _skip_array: string[] = Config.skip_history_collections.split(",");
+                const skip_array: string[] = [];
+                _skip_array.forEach(x => skip_array.push(x.trim()));
+                if (skip_array.indexOf(collectionname) == -1) {
+                    (doc as any)._deleted = new Date(new Date().toISOString());
+                    (doc as any)._deletedby = user.name;
+                    (doc as any)._deletedbyid = user._id;
+                    const fullhist = {
+                        _acl: doc._acl,
+                        _type: doc._type,
+                        _modified: doc._modified,
+                        _modifiedby: doc._modifiedby,
+                        _modifiedbyid: doc._modifiedbyid,
+                        _created: doc._modified,
+                        _createdby: doc._modifiedby,
+                        _createdbyid: doc._modifiedbyid,
+                        _deleted: (doc as any)._deleted,
+                        _deletedby: (doc as any)._deletedby,
+                        _deletedbyid: (doc as any)._deletedbyid,
+                        name: doc.name,
+                        id: doc._id,
+                        item: doc,
+                        _version: doc._version,
+                        reason: (doc as any).reason
+                    }
+                    await this.db.collection(collectionname + '_hist').insertOne(fullhist);
                 }
                 const ot_end = Logger.otel.startTimer();
-                await this.db.collection(collectionname + '_hist').insertOne(fullhist);
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deleteOne", span);
                 await this.db.collection(collectionname).deleteOne({ _id: doc._id });
                 Logger.otel.endSpan(mongodbspan);
