@@ -4798,6 +4798,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         this.autorefresh = true;
         console.debug("RobotsCtrl");
         this.basequery = { _type: "user" };
+        this.searchfields = ["name", "username"];
         this.collection = "users";
         this.postloadData = this.processdata;
         this.preloadData = () => {
