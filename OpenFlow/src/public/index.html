@@ -20,8 +20,6 @@
           <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
             ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch">
         </div>
-        <!-- ng-show="
-          !menuctrl.PathIs(['/Nodered', '/Payment', '/Customer', '/Customer/', '/Entity/', '/User/', '/User', '/Role/', '/Role'])" -->
       </div>
       <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
         ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
