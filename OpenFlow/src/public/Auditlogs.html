@@ -37,10 +37,9 @@
         <i ng-class="model.fa">
           <i ng-class="model.fa2">
       </td>
-      <td><a href ng-click="ctrl.ShowAudit(model)" class="btn">{{( model.name == "" || model.name
-          == null? "unknown": model.name)}}</a></td>
+      <td><a href ng-click="ctrl.ShowAudit(model)" class="btn">{{ (model.name || model.username || "unknown") | limitTo: 30 }}</a></td>
       <td>{{model.type}}</td>
-      <td>{{model.impostorname}}</td>
+      <td>{{model.impostorname | limitTo: 25 }}</td>
       <td>{{model.clientagent || model.imagename}}</td>
       <td>{{model.clientversion || model.imageversion}}</td>
       <td>{{model.remoteip}}</td>

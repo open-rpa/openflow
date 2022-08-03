@@ -4900,7 +4900,7 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
     ) {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = false;
-        this.baseprojection = { name: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
+        this.baseprojection = { name: 1, username: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
         this.searchfields = ["name", "impostorname", "clientagent", "type"];
         console.debug("AuditlogsCtrl");
         // this.pagesize = 20;
