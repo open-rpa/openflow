@@ -2397,13 +2397,13 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
                 const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: msg.jwt }, span);
-                if (rows.length == 0) { throw new Error("Not found"); }
+                if (rows.length == 0) { throw new Error("File " + msg.id + " not found"); }
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
             } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
                 let rows = await Config.db.query({ query: { "metadata.uniquename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
                 if (rows.length == 0) rows = await Config.db.query({ query: { "filename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
-                if (rows.length == 0) { throw new Error("Not found"); }
+                if (rows.length == 0) { throw new Error("File " + msg.filename + " not found"); }
                 msg.id = rows[0]._id;
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
@@ -2455,7 +2455,7 @@ export class Message {
             const q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
             const files = bucket.find(q);
             const count = await this.filescount(files);
-            if (count == 0) { throw new Error("Not found"); }
+            if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
             const file = await this.filesnext(files);
             msg.metadata._createdby = file.metadata._createdby;
             msg.metadata._createdbyid = file.metadata._createdbyid;
