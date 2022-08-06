@@ -5224,11 +5224,11 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
             if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
             if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
-            if (!msg.failed_wiq === null) { delete wiq.failed_wiq; delete wiq.failed_wiqid; }
+            if (msg.failed_wiq === null) { delete wiq.failed_wiq; delete wiq.failed_wiqid; }
             if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
             if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
             if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
-            if (!msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
+            if (msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
 
             if (msg._acl) wiq._acl = msg._acl;
 
