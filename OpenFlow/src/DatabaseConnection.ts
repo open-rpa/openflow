@@ -3628,6 +3628,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_acl") === -1) {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 }
+                                // if (indexnames.indexOf("_createdbyid_1") === -1) {
+                                //     await this.createIndex(collection.name, "_createdbyid_1", { "_createdbyid": 1 }, null, span)
+                                // }
                                 break;
                             case "workflow_instances":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -3714,6 +3717,12 @@ export class DatabaseConnection extends events.EventEmitter {
                                 // }
                                 break;
                             case "workitems":
+                                if (indexnames.indexOf("_type_1_wiq_1") === -1) {
+                                    await this.createIndex(collection.name, "_type_1_wiq_1", { "_type": 1, "wiq": 1 }, null, span)
+                                }
+                                if (indexnames.indexOf("_type_1_wiqid_1") === -1) {
+                                    await this.createIndex(collection.name, "_type_1_wiqid_1", { "_type": 1, "wiqid": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("_type_1_state_1_wiqid_1_priority_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1_state_1_wiqid_1_priority_1", { "_type": 1, "state": 1, "wiqid": 1, "priority": 1 }, null, span)
                                 }
