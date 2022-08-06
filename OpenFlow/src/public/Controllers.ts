@@ -2930,6 +2930,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
 export class EntitiesCtrl extends entitiesCtrl<Base> {
     public collections: any;
     public showrunning: boolean = false;
+    public showpending: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -2955,6 +2956,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
             this.searchstring = this.userdata.data.EntitiesCtrl.searchstring;
             this.basequeryas = this.userdata.data.EntitiesCtrl.basequeryas;
             this.showrunning = this.userdata.data.EntitiesCtrl.showrunning;
+            this.showpending = this.userdata.data.EntitiesCtrl.showpending;
         } else {
             if (NoderedUtil.IsNullEmpty(this.collection)) {
                 this.$location.path("/Entities/entities");
@@ -2974,8 +2976,10 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.preloadData = () => {
-            if (this.showrunning) {
+            if (this.showrunning && this.collection == "openrpa_instances") {
                 this.basequery = { "state": { "$in": ["idle", "running"] } };
+            } else if (this.showpending && this.collection == "config") {
+                this.basequery = { "siid": { "$exists": false }, "_type": "resourceusage" };
             } else {
                 this.basequery = {};
             }
@@ -3005,6 +3009,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         this.userdata.data.EntitiesCtrl.searchstring = this.searchstring;
         this.userdata.data.EntitiesCtrl.basequeryas = this.basequeryas;
         this.userdata.data.EntitiesCtrl.showrunning = this.showrunning;
+        this.userdata.data.EntitiesCtrl.showpending = this.showpending;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     SelectCollection() {

@@ -24,6 +24,10 @@
       <input type="checkbox" id="checkbox-1" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
       <label for="checkbox-1"><span translate lib="web">running</span></label>
     </span>
+    <span ng-show="ctrl.collection == 'config'">
+      <input type="checkbox" id="checkbox-1" ng-model="ctrl.showpending" ng-change="ctrl.loadData()">
+      <label for="checkbox-1"><span translate lib="web">pending</span></label>
+    </span>
 
     <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"
       title="Show deleted items, if history is not disabled for this collection"><em
