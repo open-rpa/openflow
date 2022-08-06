@@ -42,7 +42,7 @@
       <td>{{model.impostorname | limitTo: 25 }}</td>
       <td>{{model.clientagent || model.imagename}}</td>
       <td>{{model.clientversion || model.imageversion}}</td>
-      <td>{{model.remoteip}}</td>
+      <td><a ng-href="https://www.iplocation.net/?query={{model.remoteip}}" target="_blank">{{model.remoteip}}</a></td>
       <td>
         <timesince ng-model="model._created" />
       </td>
