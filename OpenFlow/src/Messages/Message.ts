@@ -1851,12 +1851,16 @@ export class Message {
                         impostor = undefined;
                     }
                     Logger.instanse.info("Message", "Signin", tuser.username + " successfully signed in");
+                    span?.setAttribute("name", tuser.name);
+                    span?.setAttribute("username", tuser.username);
                     if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
                         // await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     } else {
                         await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     }
                     const userid: string = user._id;
+                    span?.setAttribute("name", tuser.name);
+                    span?.setAttribute("username", tuser.username);
                     if (msg.longtoken) {
                         span?.addEvent("createToken for longtoken");
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -1923,6 +1927,10 @@ export class Message {
                         tuser = TokenUser.From(user);
                         tuser.impostor = userid;
                         (user as any).impostor = userid;
+                        span?.setAttribute("impostername", tuserimpostor.name);
+                        span?.setAttribute("imposterusername", tuserimpostor.username);
+                        span?.setAttribute("name", tuser.name);
+                        span?.setAttribute("username", tuser.username);
                         if (msg.longtoken) {
                             span?.addEvent("createToken for longtoken");
                             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
@@ -1987,8 +1995,12 @@ export class Message {
                     }
                     span?.addEvent("Update user using update document");
                     await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    span?.addEvent("memoryCache.delete users" + user._id);
                     Logger.DBHelper.memoryCache.del("users" + user._id);
-                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) Logger.DBHelper.memoryCache.del("users" + tuser.impostor);
+                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        span?.addEvent("memoryCache.delete users" + tuser.impostor);
+                        Logger.DBHelper.memoryCache.del("users" + tuser.impostor);
+                    }
                 }
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -2005,12 +2017,14 @@ export class Message {
                 }
                 if (!validated) {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
+                        span?.addEvent("User not validet, decline login");
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                         Logger.instanse.error("Message", "Signin", msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
                 } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
+                    span?.addEvent("User dblocked, decline login");
                     // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
                     // Dillema ....
@@ -2020,6 +2034,7 @@ export class Message {
                     msg.jwt = undefined;
                     msg.user = undefined;
                     // Stall a little, to avoid spam
+                    span?.addEvent("Stall for 5 seconds to avoid spam");
                     await new Promise(resolve => { setTimeout(resolve, 5000) });
                     // 
                     cli.Close();
@@ -2044,6 +2059,8 @@ export class Message {
             // hrend = process.hrtime(hrstart)
         } catch (error) {
             span?.recordException(error);
+        } finally {
+            span?.addEvent("Signin complete");
         }
         Logger.otel.endSpan(span);
         if (cli) this.Send(cli);
