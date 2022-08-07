@@ -1694,6 +1694,7 @@ export class Message {
                 let tuser: TokenUser = null;
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    span?.addEvent("using jwt, verify token");
                     type = "jwtsignin";
                     try {
                         tuser = await Crypt.verityToken(msg.jwt);
@@ -1704,11 +1705,15 @@ export class Message {
                     let _id = tuser._id;
                     if (tuser != null) {
                         if (NoderedUtil.IsNullEmpty(tuser._id)) {
+                            span?.addEvent("token valid, lookup username " + tuser.username);
                             _id = tuser.username;
                             user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
                         } else {
+                            span?.addEvent("token valid, lookup id " + tuser._id);
                             user = await Logger.DBHelper.FindById(tuser._id, msg.jwt, span);
                         }
+                    } else {
+                        span?.addEvent("Failed resolving token");
                     }
                     if (tuser == null || user == null) {
                         Logger.instanse.error("Message", "Signin", "Failed resolving token, could not find user by " + _id);
@@ -1766,19 +1771,25 @@ export class Message {
                         tuser.impostor = impostor;
                     }
                 } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
+                    span?.addEvent("using rawAssertion, verify token");
                     let AccessToken = null;
                     let User = null;
                     try {
+                        span?.addEvent("AccessToken.find");
                         AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
                         if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                            span?.addEvent("Account.findAccount");
                             User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
                         } else {
                             var c = OAuthProvider.instance.clients;
                             for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
                                 try {
+                                    span?.addEvent("Client.find");
                                     var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
+                                    span?.addEvent("IdToken.validate");
                                     AccessToken = await OAuthProvider.instance.oidc.IdToken.validate(msg.rawAssertion, _cli);
                                     if (!NoderedUtil.IsNullEmpty(AccessToken)) {
+                                        span?.addEvent("Account.findAccount");
                                         User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.payload.sub);
                                         break;
                                     }
@@ -1792,20 +1803,24 @@ export class Message {
                     }
                     if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         user = User.user;
+                        span?.addEvent("TokenUser.From");
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                     } else {
                         type = "samltoken";
+                        span?.addEvent("LoginProvider.validateToken");
                         user = await LoginProvider.validateToken(msg.rawAssertion, span);
                         // refresh, for roles and stuff
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                     }
                     delete msg.rawAssertion;
                 } else {
+                    span?.addEvent("using username/password, validate credentials");
                     user = await Auth.ValidateByPassword(msg.username, msg.password, span);
                     tuser = null;
                     // refresh, for roles and stuff
                     if (user != null) tuser = TokenUser.From(user);
                     if (user == null) {
+                        span?.addEvent("using username/password, failed, check for exceptions");
                         tuser = new TokenUser();
                         tuser.username = msg.username;
                     }
@@ -1822,6 +1837,7 @@ export class Message {
                     Logger.instanse.error("Message", "Signin", new Error("Disabled user " + tuser.username + " failed logging in using " + type));
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
+                        span?.addEvent("looking up impersonated user " + impostor);
                         user = await Logger.DBHelper.FindById(impostor, Crypt.rootToken(), span);
                         if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                         user.impersonating = undefined;
@@ -1842,26 +1858,33 @@ export class Message {
                     }
                     const userid: string = user._id;
                     if (msg.longtoken) {
+                        span?.addEvent("createToken for longtoken");
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                         originialjwt = msg.jwt;
                     } else {
+                        span?.addEvent("createToken for shorttoken");
                         msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         originialjwt = msg.jwt;
                     }
                     msg.user = tuser;
                     if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                        span?.addEvent("Lookup impersonating user " + user.impersonating);
                         const items = await Config.db.query({ query: { _id: user.impersonating }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                         if (items.length == 0) {
+                            span?.addEvent("Failed Lookup");
                             msg.impersonate = null;
                         } else {
+                            span?.addEvent("Lookup succeeded");
                             msg.impersonate = user.impersonating;
                             user.selectedcustomerid = null;
                             tuser.selectedcustomerid = null;
                         }
                     }
                     if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
+                        span?.addEvent("Lookup impersonate user " + user.impersonating);
                         const items = await Config.db.query({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                         if (items.length == 0) {
+                            span?.addEvent("Lookup failed, lookup as root");
                             const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
                             const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
                             let imp: TokenUser = TokenUser.From(impb);
@@ -1901,8 +1924,10 @@ export class Message {
                         tuser.impostor = userid;
                         (user as any).impostor = userid;
                         if (msg.longtoken) {
+                            span?.addEvent("createToken for longtoken");
                             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                         } else {
+                            span?.addEvent("createToken for shorttoken");
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
@@ -1960,6 +1985,7 @@ export class Message {
                             UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
                         }
                     }
+                    span?.addEvent("Update user using update document");
                     await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
                     Logger.DBHelper.memoryCache.del("users" + user._id);
                     if (NoderedUtil.IsNullEmpty(tuser.impostor)) Logger.DBHelper.memoryCache.del("users" + tuser.impostor);
