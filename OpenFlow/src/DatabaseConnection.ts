@@ -203,8 +203,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
             })
             for await (const wiq of cursor) {
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: "mq" });
-                ot_end = null;
+                if (ot_end != null) {
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: "mq" });
+                    ot_end = null;
+                }
                 // const payload = await this.db.collection("workitems").findOne({ "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } });
                 const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
                 const payload = await this.GetOne({ jwt, collectionname, query }, null);
