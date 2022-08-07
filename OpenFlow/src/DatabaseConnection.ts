@@ -15,7 +15,6 @@ import { SocketMessage } from "./SocketMessage";
 import { LoginProvider } from "./LoginProvider";
 import { WebServer } from "./WebServer";
 
-
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
@@ -196,9 +195,55 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!this.isConnected == true) return;
             if (this.queuemonitoringpaused) return;
             const jwt = Crypt.rootToken();
+            const collectionname = "workitems";
+            let ot_end = Logger.otel.startTimer();
+            const cursor = await this.db.collection("mq").find({
+                "$or": [
+                    { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
+                    { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
+            })
+            for await (const wiq of cursor) {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: "mq" });
+                ot_end = null;
+                // const payload = await this.db.collection("workitems").findOne({ "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } });
+                const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
+                const payload = await this.GetOne({ jwt, collectionname, query }, null);
+                if (payload == null) continue;
+                if (wiq.robotqueue != null && wiq.workflowid != null) {
+                    if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
+                        Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to robot queue " + wiq.workflowid);
+                        let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
+                        if (expiration < 500) expiration = 500;
+                        await amqpwrapper.Instance().send(null, wiq.robotqueue, payload, expiration, null, null, 2);
+                    }
+
+                }
+                if (wiq.amqpqueue != null) {
+                    if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue) && wiq.amqpqueue.toLowerCase() != "(empty)") {
+                        Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to amqp queue " + wiq.amqpqueue);
+                        let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
+                        if (expiration < 500) expiration = 500;
+                        await amqpwrapper.Instance().send(null, wiq.amqpqueue, payload, expiration, null, null, 2);
+                    }
+                }
+            }
+            if (ot_end != null) Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: "mq" });
+        } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "queuemonitoring", error);
+        }
+        finally {
+            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        }
+    }
+    async queuemonitoring_old() {
+        try {
+            if (!this.isConnected == true) return;
+            if (this.queuemonitoringpaused) return;
+            const jwt = Crypt.rootToken();
             var pipeline: any[] = [];
             pipeline.push({ "$match": { state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } } });
             pipeline.push({ "$group": { _id: "$wiq", "count": { "$sum": 1 } } });
+            pipeline.push({ "$match": { "count": { $gte: 1 } } });
             pipeline.push({
                 "$graphLookup":
                 {
@@ -207,14 +252,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     connectFromField: '_id',
                     connectToField: 'name',
                     as: 'queue',
-                    maxDepth: 1,
+                    maxDepth: 0,
                     restrictSearchWithMatch: {
                         "$or": [
                             { robotqueue: { "$exists": true, $ne: null } },
                             { amqpqueue: { "$exists": true, $ne: null } }
                         ]
                     }
-                }
+                },
             });
             pipeline.push({ "$match": { "queue": { $size: 1 } } });
 
