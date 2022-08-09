@@ -2534,6 +2534,9 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                 (this.model as any).newpassword = "";
                 (this.model as any).sid = "";
                 (this.model as any).federationids = [];
+                if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
+                    this.model.customerid = WebSocketClient.instance.user.selectedcustomerid;
+                }
                 this.processdata();
             }
 
@@ -2685,6 +2688,9 @@ export class RoleCtrl extends entityCtrl<Role> {
                 await this.loadData();
             } else {
                 this.model = new Role();
+                if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
+                    this.model.customerid = WebSocketClient.instance.user.selectedcustomerid;
+                }
             }
         });
     }
@@ -2924,6 +2930,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
 export class EntitiesCtrl extends entitiesCtrl<Base> {
     public collections: any;
     public showrunning: boolean = false;
+    public showpending: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -2949,6 +2956,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
             this.searchstring = this.userdata.data.EntitiesCtrl.searchstring;
             this.basequeryas = this.userdata.data.EntitiesCtrl.basequeryas;
             this.showrunning = this.userdata.data.EntitiesCtrl.showrunning;
+            this.showpending = this.userdata.data.EntitiesCtrl.showpending;
         } else {
             if (NoderedUtil.IsNullEmpty(this.collection)) {
                 this.$location.path("/Entities/entities");
@@ -2968,8 +2976,10 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.preloadData = () => {
-            if (this.showrunning) {
+            if (this.showrunning && this.collection == "openrpa_instances") {
                 this.basequery = { "state": { "$in": ["idle", "running"] } };
+            } else if (this.showpending && this.collection == "config") {
+                this.basequery = { "siid": { "$exists": false }, "_type": "resourceusage" };
             } else {
                 this.basequery = {};
             }
@@ -2999,6 +3009,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         this.userdata.data.EntitiesCtrl.searchstring = this.searchstring;
         this.userdata.data.EntitiesCtrl.basequeryas = this.basequeryas;
         this.userdata.data.EntitiesCtrl.showrunning = this.showrunning;
+        this.userdata.data.EntitiesCtrl.showpending = this.showpending;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     SelectCollection() {
@@ -4792,6 +4803,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         this.autorefresh = true;
         console.debug("RobotsCtrl");
         this.basequery = { _type: "user" };
+        this.searchfields = ["name", "username"];
         this.collection = "users";
         this.postloadData = this.processdata;
         this.preloadData = () => {
@@ -4893,7 +4905,7 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
     ) {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = false;
-        this.baseprojection = { name: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
+        this.baseprojection = { name: 1, username: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
         this.searchfields = ["name", "impostorname", "clientagent", "type"];
         console.debug("AuditlogsCtrl");
         // this.pagesize = 20;

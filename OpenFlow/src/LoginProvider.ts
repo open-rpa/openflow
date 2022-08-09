@@ -537,7 +537,7 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(validateurl)) {
                     if (tuser != null) {
                         if (tuser.validated) {
-                            await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                            await Logger.DBHelper.DeleteKey("users" + tuser._id);
                         }
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
                         } else {
@@ -738,7 +738,7 @@ export class LoginProvider {
                             }
                             Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
                             var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                            await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                            await Logger.DBHelper.DeleteKey("users" + tuser._id);
                             // await new Promise(resolve => { setTimeout(resolve, 1000) })
                         }
                         if (!(tuser.validated == true) && Config.validate_user_form != "") {
@@ -763,7 +763,7 @@ export class LoginProvider {
                                 const UpdateDoc: any = { "$set": {} };
                                 UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
                                 var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                                await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                                await Logger.DBHelper.DeleteKey("users" + tuser._id);
                                 // await new Promise(resolve => { setTimeout(resolve, 1000) })
 
                                 res.end(JSON.stringify({ jwt: "" }));
@@ -780,7 +780,7 @@ export class LoginProvider {
                                     UpdateDoc.$set["validated"] = true;
                                     UpdateDoc.$set["emailvalidated"] = true;
                                     var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                                    await Logger.DBHelper.DeleteKey("user" + tuser._id);
+                                    await Logger.DBHelper.DeleteKey("users" + tuser._id);
                                     // await new Promise(resolve => { setTimeout(resolve, 1000) })
                                     res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
                                     return;
@@ -874,7 +874,7 @@ export class LoginProvider {
                         if (!user.emailvalidated) user.validated = false;
                     }
                     await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
-                    await Logger.DBHelper.DeleteKey("user" + user._id);
+                    await Logger.DBHelper.DeleteKey("users" + user._id);
                     await Logger.DBHelper.DeleteKey("forgotpass" + id);
                     return res.end(JSON.stringify({ id }));
                 }
@@ -1390,7 +1390,7 @@ export class LoginProvider {
                 if (_user.formvalidated) _user.validated = true;
                 const jwt: string = Crypt.rootToken();
                 await Logger.DBHelper.Save(_user, jwt, span);
-                await Logger.DBHelper.DeleteKey("user" + _user._id);
+                await Logger.DBHelper.DeleteKey("users" + _user._id);
             }
 
             if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -1473,7 +1473,7 @@ export class LoginProvider {
                     if (_user.formvalidated) _user.validated = true;
                     const jwt: string = Crypt.rootToken();
                     await Logger.DBHelper.Save(_user, jwt, span);
-                    await Logger.DBHelper.DeleteKey("user" + _user._id);
+                    await Logger.DBHelper.DeleteKey("users" + _user._id);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1537,7 +1537,7 @@ export class LoginProvider {
                     if (_user.formvalidated) _user.validated = true;
                     const jwt: string = Crypt.rootToken();
                     await Logger.DBHelper.Save(_user, jwt, span);
-                    await Logger.DBHelper.DeleteKey("user" + _user._id);
+                    await Logger.DBHelper.DeleteKey("users" + _user._id);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {

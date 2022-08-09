@@ -23,7 +23,6 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, Delet
 const pako = require('pako');
 const got = require("got");
 
-let errorcounter: number = 0;
 var _hostname = "";
 async function handleError(cli: WebSocketServerClient, error: Error) {
     try {
@@ -32,8 +31,9 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
             return;
         }
         if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
-        errorcounter++;
-        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors)) WebSocketServer.websocket_errors.bind({ ...Logger.otel.defaultlabels }).update(errorcounter);
+
+        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors))
+            WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
         Logger.instanse.error("Message", "handleError", error.message ? error.message : error);
     } catch (error) {
@@ -215,7 +215,9 @@ export class Message {
                 if (Config.socket_rate_limit) await WebSocketServer.BaseRateLimiter.consume(cli.id);
             } catch (error) {
                 if (error.consumedPoints) {
-                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit)) WebSocketServer.websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, command: command }).update(cli.inccommandcounter(command));
+
+                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit))
+                        WebSocketServer.websocket_rate_limit.add(1, { ...Logger.otel.defaultlabels, command: command });
                     if ((error.consumedPoints % 100) == 0) Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
                         Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
@@ -247,7 +249,6 @@ export class Message {
                     }
                     if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
                     delete cli.messageQueue[this.replyto];
-                    WebSocketServer.update_message_queue_count(cli);
                 }
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 return;
@@ -1663,9 +1664,12 @@ export class Message {
                 Logger.instanse.error("Message", "DoSign", new Error(tuser.username + " failed logging in, user is disabled"));
                 await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
+            } else if (cli.user?.dblocked == true) {
+                Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
             } else if (tuser != null) {
                 Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in");
-                await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                // let's turn down the audit logging
+                // await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 Logger.DBHelper.UpdateHeartbeat(cli);
             }
         } catch (error) {
@@ -1690,6 +1694,7 @@ export class Message {
                 let tuser: TokenUser = null;
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    span?.addEvent("using jwt, verify token");
                     type = "jwtsignin";
                     try {
                         tuser = await Crypt.verityToken(msg.jwt);
@@ -1700,11 +1705,15 @@ export class Message {
                     let _id = tuser._id;
                     if (tuser != null) {
                         if (NoderedUtil.IsNullEmpty(tuser._id)) {
+                            span?.addEvent("token valid, lookup username " + tuser.username);
                             _id = tuser.username;
                             user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
                         } else {
+                            span?.addEvent("token valid, lookup id " + tuser._id);
                             user = await Logger.DBHelper.FindById(tuser._id, msg.jwt, span);
                         }
+                    } else {
+                        span?.addEvent("Failed resolving token");
                     }
                     if (tuser == null || user == null) {
                         Logger.instanse.error("Message", "Signin", "Failed resolving token, could not find user by " + _id);
@@ -1762,19 +1771,25 @@ export class Message {
                         tuser.impostor = impostor;
                     }
                 } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
+                    span?.addEvent("using rawAssertion, verify token");
                     let AccessToken = null;
                     let User = null;
                     try {
+                        span?.addEvent("AccessToken.find");
                         AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
                         if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                            span?.addEvent("Account.findAccount");
                             User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
                         } else {
                             var c = OAuthProvider.instance.clients;
                             for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
                                 try {
+                                    span?.addEvent("Client.find");
                                     var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
+                                    span?.addEvent("IdToken.validate");
                                     AccessToken = await OAuthProvider.instance.oidc.IdToken.validate(msg.rawAssertion, _cli);
                                     if (!NoderedUtil.IsNullEmpty(AccessToken)) {
+                                        span?.addEvent("Account.findAccount");
                                         User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.payload.sub);
                                         break;
                                     }
@@ -1788,20 +1803,24 @@ export class Message {
                     }
                     if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         user = User.user;
+                        span?.addEvent("TokenUser.From");
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                     } else {
                         type = "samltoken";
+                        span?.addEvent("LoginProvider.validateToken");
                         user = await LoginProvider.validateToken(msg.rawAssertion, span);
                         // refresh, for roles and stuff
                         if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
                     }
                     delete msg.rawAssertion;
                 } else {
+                    span?.addEvent("using username/password, validate credentials");
                     user = await Auth.ValidateByPassword(msg.username, msg.password, span);
                     tuser = null;
                     // refresh, for roles and stuff
                     if (user != null) tuser = TokenUser.From(user);
                     if (user == null) {
+                        span?.addEvent("using username/password, failed, check for exceptions");
                         tuser = new TokenUser();
                         tuser.username = msg.username;
                     }
@@ -1818,6 +1837,7 @@ export class Message {
                     Logger.instanse.error("Message", "Signin", new Error("Disabled user " + tuser.username + " failed logging in using " + type));
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
+                        span?.addEvent("looking up impersonated user " + impostor);
                         user = await Logger.DBHelper.FindById(impostor, Crypt.rootToken(), span);
                         if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                         user.impersonating = undefined;
@@ -1831,29 +1851,44 @@ export class Message {
                         impostor = undefined;
                     }
                     Logger.instanse.info("Message", "Signin", tuser.username + " successfully signed in");
-                    await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    span?.setAttribute("name", tuser.name);
+                    span?.setAttribute("username", tuser.username);
+                    if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
+                        // await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    } else {
+                        await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    }
                     const userid: string = user._id;
+                    span?.setAttribute("name", tuser.name);
+                    span?.setAttribute("username", tuser.username);
                     if (msg.longtoken) {
+                        span?.addEvent("createToken for longtoken");
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                         originialjwt = msg.jwt;
                     } else {
+                        span?.addEvent("createToken for shorttoken");
                         msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         originialjwt = msg.jwt;
                     }
                     msg.user = tuser;
                     if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                        span?.addEvent("Lookup impersonating user " + user.impersonating);
                         const items = await Config.db.query({ query: { _id: user.impersonating }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                         if (items.length == 0) {
+                            span?.addEvent("Failed Lookup");
                             msg.impersonate = null;
                         } else {
+                            span?.addEvent("Lookup succeeded");
                             msg.impersonate = user.impersonating;
                             user.selectedcustomerid = null;
                             tuser.selectedcustomerid = null;
                         }
                     }
                     if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
+                        span?.addEvent("Lookup impersonate user " + user.impersonating);
                         const items = await Config.db.query({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                         if (items.length == 0) {
+                            span?.addEvent("Lookup failed, lookup as root");
                             const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
                             const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
                             let imp: TokenUser = TokenUser.From(impb);
@@ -1892,9 +1927,15 @@ export class Message {
                         tuser = TokenUser.From(user);
                         tuser.impostor = userid;
                         (user as any).impostor = userid;
+                        span?.setAttribute("impostername", tuserimpostor.name);
+                        span?.setAttribute("imposterusername", tuserimpostor.username);
+                        span?.setAttribute("name", tuser.name);
+                        span?.setAttribute("username", tuser.username);
                         if (msg.longtoken) {
+                            span?.addEvent("createToken for longtoken");
                             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
                         } else {
+                            span?.addEvent("createToken for shorttoken");
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
@@ -1952,9 +1993,14 @@ export class Message {
                             UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
                         }
                     }
+                    span?.addEvent("Update user using update document");
                     await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    span?.addEvent("memoryCache.delete users" + user._id);
                     Logger.DBHelper.memoryCache.del("users" + user._id);
-                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) Logger.DBHelper.memoryCache.del("users" + tuser.impostor);
+                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        span?.addEvent("memoryCache.delete users" + tuser.impostor);
+                        Logger.DBHelper.memoryCache.del("users" + tuser.impostor);
+                    }
                 }
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1971,12 +2017,14 @@ export class Message {
                 }
                 if (!validated) {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
+                        span?.addEvent("User not validet, decline login");
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                         Logger.instanse.error("Message", "Signin", msg.user.username + " not validated");
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
                 } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
+                    span?.addEvent("User dblocked, decline login");
                     // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
                     // Dillema ....
@@ -1986,6 +2034,7 @@ export class Message {
                     msg.jwt = undefined;
                     msg.user = undefined;
                     // Stall a little, to avoid spam
+                    span?.addEvent("Stall for 5 seconds to avoid spam");
                     await new Promise(resolve => { setTimeout(resolve, 5000) });
                     // 
                     cli.Close();
@@ -2010,6 +2059,8 @@ export class Message {
             // hrend = process.hrtime(hrstart)
         } catch (error) {
             span?.recordException(error);
+        } finally {
+            span?.addEvent("Signin complete");
         }
         Logger.otel.endSpan(span);
         if (cli) this.Send(cli);
@@ -2389,13 +2440,13 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.id)) {
                 const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: msg.jwt }, span);
-                if (rows.length == 0) { throw new Error("Not found"); }
+                if (rows.length == 0) { throw new Error("File " + msg.id + " not found"); }
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
             } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
                 let rows = await Config.db.query({ query: { "metadata.uniquename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
                 if (rows.length == 0) rows = await Config.db.query({ query: { "filename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
-                if (rows.length == 0) { throw new Error("Not found"); }
+                if (rows.length == 0) { throw new Error("File " + msg.filename + " not found"); }
                 msg.id = rows[0]._id;
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
@@ -2447,7 +2498,7 @@ export class Message {
             const q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
             const files = bucket.find(q);
             const count = await this.filescount(files);
-            if (count == 0) { throw new Error("Not found"); }
+            if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
             const file = await this.filesnext(files);
             msg.metadata._createdby = file.metadata._createdby;
             msg.metadata._createdbyid = file.metadata._createdbyid;
@@ -3694,7 +3745,7 @@ export class Message {
         if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
-        Logger.DBHelper.DeleteKey("user" + cli.user._id);
+        Logger.DBHelper.DeleteKey("users" + cli.user._id);
         cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -4324,28 +4375,28 @@ export class Message {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
                                 }
                             }
-                        } else if (config.product.customerassign == "single") {
-                            let quota: number = resource.defaultmetadata.dbusage + (c.quantity * c.config.metadata.dbusage);
+                        } else if (config.product.customerassign != "metered") {
+                            let quota: number = resource.defaultmetadata.dbusage + (config.quantity * config.product.metadata.dbusage);
                             if (c.dbusage > quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": true } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } });
                                 }
                             } else if (c.dbusage <= quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
                                 }
                             }
                         } else if (config.product.customerassign == "metered") {
@@ -4362,7 +4413,7 @@ export class Message {
                             }
                             if (c.dblocked || !c.dblocked) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                await Config.db.db.collection("users").updateMany({ customerid: c._id }, { $set: { "dblocked": false } });
+                                await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
                             }
                         }
                         // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
@@ -5216,9 +5267,11 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
             if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
             if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
+            if (msg.failed_wiq === null) { delete wiq.failed_wiq; delete wiq.failed_wiqid; }
             if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
             if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
             if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
+            if (msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
 
             if (msg._acl) wiq._acl = msg._acl;
 

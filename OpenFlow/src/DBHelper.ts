@@ -2,10 +2,10 @@ import { Crypt } from "./Crypt";
 import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
+import { Observable } from '@opentelemetry/api-metrics';
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 import { WebSocketServerClient } from "./WebSocketServerClient";
-import { BaseObserver } from "@opentelemetry/api-metrics"
 import { LoginProvider, Provider } from "./LoginProvider";
 import * as cacheManager from "cache-manager";
 import { TokenRequest } from "./TokenRequest";
@@ -82,12 +82,13 @@ export class DBHelper {
         Logger.instanse.debug("DBHelper", "DeleteKey", "Remove from cache : " + key);
         await this.memoryCache.del(key);
     }
-    public item_cache: BaseObserver = null;
+    public item_cache: Observable = null;
     public ensureotel() {
         if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter) && NoderedUtil.IsNullUndefinded(this.item_cache)) {
-            this.item_cache = Logger.otel.meter.createValueObserver("openflow_item_cache_count", {
+            this.item_cache = Logger.otel.meter.createObservableGauge("openflow_item_cache_count", {
                 description: 'Total number of cached items'
-            }, async (res) => {
+            });
+            this.item_cache?.addCallback(async (res) => {
                 var keys: any = null;
                 try {
                     if (Config.cache_store_type == "redis") {
@@ -103,7 +104,7 @@ export class DBHelper {
                 } else {
                     res.observe(0, { ...Logger.otel.defaultlabels, type: Config.cache_store_type })
                 }
-            });
+            })
         }
     }
     public async FindById(_id: string, jwt: string, parent: Span): Promise<User> {

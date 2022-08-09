@@ -259,10 +259,11 @@ export class Logger {
                     setdefaultlabels: () => undefined,
                     shutdown: () => undefined,
                     meter: {
-                        createValueRecorder: () => undefined,
+                        createHistogram: () => undefined,
                         createCounter: () => undefined,
-                        createUpDownSumObserver: () => undefined,
+                        createObservableUpDownCounter: () => undefined,
                         createValueObserver: () => undefined,
+                        createObservableGauge: () => undefined,
                     }
                 } as any;
         }

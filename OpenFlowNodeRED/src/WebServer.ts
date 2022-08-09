@@ -18,7 +18,7 @@ import { noderedcontribmiddlewareauth } from "./node-red-contrib-middleware-auth
 import * as passport from "passport";
 import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { WebSocketClient, NoderedUtil, Message } from "@openiap/openflow-api";
-import { ValueRecorder, Counter, BaseObserver } from "@opentelemetry/api-metrics"
+import { Histogram, Counter, Observable, ObservableResult } from "@opentelemetry/api-metrics"
 import { HrTime, Span } from "@opentelemetry/api";
 import { hrTime } from "@opentelemetry/core";
 import * as RED from "node-red";
@@ -74,19 +74,9 @@ export class log_message {
 export class WebServer {
     private static app: express.Express = null;
 
-    // public static openflow_nodered_node_activations: Counter;
-    public static openflow_nodered_node_duration: ValueRecorder;
-    public static message_queue_count: BaseObserver;
-
-    // public static openflow_nodered_nodeid_duration = new client.Histogram({
-    //     name: 'openflow_nodered_nodeid_duration',
-    //     help: 'Duration of each node call',
-    //     labelNames: ["nodetype", "nodeid"]
-    // })
-
+    public static openflow_nodered_node_duration: Histogram;
+    public static message_queue_count: Observable;
     public static log_messages: { [key: string]: log_message; } = {};
-    // public static log_messages: Record<string, log_message> = {};
-    // public static spans: any = {};
     private static settings: nodered_settings = null;
     static async configure(socket: WebSocketClient): Promise<http.Server> {
         const options: any = null;
@@ -95,20 +85,14 @@ export class WebServer {
         if (this.app !== null) { return; }
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
-            // this.openflow_nodered_node_activations = _otel.meter.createCounter("openflow_nodered_node_activations", {
-            //     description: 'Total number of node type activations calls'
-            // }) // "nodetype"
-
-            this.openflow_nodered_node_duration = Logger.otel.meter.createValueRecorder('openflow_nodered_node_duration', {
-                description: 'Duration of each node type call',
-                boundaries: Logger.otel.default_boundaries
-            }); // "nodetype"
-            this.message_queue_count = Logger.otel.meter.createUpDownSumObserver("openflow_message_queue_count", {
+            this.openflow_nodered_node_duration = Logger.otel.meter.createHistogram('openflow_nodered_node_duration', {
+                description: 'Duration of each node type call'
+            });
+            this.message_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_message_queue_count", {
                 description: 'Total number messages waiting on reply from client'
-            }) // "command"
-
+            })
+            this.message_queue_count.addCallback(this.update_message_queue_count.bind(this));
         }
-
         try {
             Logger.instanse.silly("WebServer.configure::begin");
             let server: http.Server = null;
@@ -450,9 +434,11 @@ export class WebServer {
         }
         return null;
     }
-    public static update_message_queue_count(cli: WebSocketClient) {
+    public static update_message_queue_count(res: ObservableResult) {
         if (!Config.prometheus_measure_queued_messages) return;
         if (!WebServer.message_queue_count) return;
+        if (NoderedUtil.IsNullUndefinded(res) || NoderedUtil.IsNullUndefinded(res.observe)) return;
+        var cli: WebSocketClient = WebSocketClient.instance;
         const result: any = {};
         const keys = Object.keys(cli.messageQueue);
         keys.forEach(key => {
@@ -468,9 +454,8 @@ export class WebServer {
             }
         });
         const keys2 = Object.keys(result);
-        WebServer.message_queue_count.clear();
         keys2.forEach(key => {
-            WebServer.message_queue_count.bind({ ...Logger.otel.defaultlabels, command: key }).update(result[key]);
+            res.observe(result[key], { ...Logger.otel.defaultlabels, command: key });
         });
     }
 }

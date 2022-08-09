@@ -4,3 +4,4 @@ dist
 .env
 *otel.ts*
 *license*
+ee

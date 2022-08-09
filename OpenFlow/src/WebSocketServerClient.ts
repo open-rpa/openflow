@@ -65,17 +65,9 @@ export class WebSocketServerClient {
     public _queuescurrentstr: string = "0";
     public _exchanges: amqpexchange[] = [];
     public devnull: boolean = false;
-    public commandcounter: object = {};
     private _amqpdisconnected: any = null;
     private _dbdisconnected: any = null;
     private _dbconnected: any = null;
-    public inccommandcounter(command: string): number {
-        let result: number = 0;
-        if (!NoderedUtil.IsNullUndefinded(this.commandcounter[command])) result = this.commandcounter[command];
-        result++;
-        this.commandcounter[command] = result;
-        return result;
-    }
     public static remoteip(req: express.Request) {
         let remoteip: string = req.socket.remoteAddress;
         if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
@@ -175,9 +167,6 @@ export class WebSocketServerClient {
                 if (this.queuecount() > 0) {
                     this.CloseConsumers(span);
                 }
-                // if (this.streamcount() > 0) {
-                //     this.CloseStreams();
-                // }
                 return;
             }
             if (this._socketObject.readyState === this._socketObject.CLOSED || this._socketObject.readyState === this._socketObject.CLOSING) {
@@ -231,7 +220,6 @@ export class WebSocketServerClient {
                 Logger.instanse.error("WebSocketServerClient", "CloseConsumers", "WebSocketclient::closeconsumers " + error);
             }
         }
-        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
         semaphore.up();
     }
     public async Close(): Promise<void> {
@@ -264,7 +252,6 @@ export class WebSocketServerClient {
             span?.recordException(error);
             throw error;
         } finally {
-            WebSocketServer.update_mongodb_watch_count(this);
             Logger.otel.endSpan(span);
         }
     }
@@ -283,7 +270,6 @@ export class WebSocketServerClient {
                         this._queues.splice(i, 1);
                         this._queuescurrent--;
                         this._queuescurrentstr = this._queuescurrent.toString();
-                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
                     } catch (error) {
                         Logger.instanse.error("WebSocketServerClient", "CloseConsumer", error);
                     }
@@ -422,7 +408,6 @@ export class WebSocketServerClient {
                     this._queuescurrentstr = this._queuescurrent.toString();
                     this._queues.push(queue);
                 }
-                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_count)) WebSocketServer.websocket_queue_count.bind({ ...Logger.otel.defaultlabels, clientid: this.id }).update(this._queues.length);
             } catch (error) {
                 throw error
             }
@@ -512,7 +497,6 @@ export class WebSocketServerClient {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
             if (NoderedUtil.IsNullEmpty(message.replyto)) {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
-                WebSocketServer.update_message_queue_count(this);
             }
             this._sendQueue.push(singlemessage);
             return;
@@ -524,7 +508,6 @@ export class WebSocketServerClient {
         }
         if (NoderedUtil.IsNullEmpty(message.replyto)) {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
-            WebSocketServer.update_message_queue_count(this);
         }
         this.ProcessQueue();
     }
@@ -626,7 +609,6 @@ export class WebSocketServerClient {
         stream.collectionname = collectionname;
         stream.aggregates = aggregates;
         if (id == null) id = NoderedUtil.GetUniqueIdentifier();
-        WebSocketServer.update_mongodb_watch_count(this);
         this.watches[id] = {
             aggregates, collectionname //, streamid: stream.id
         } as ClientWatch;
