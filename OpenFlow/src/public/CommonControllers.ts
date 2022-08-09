@@ -123,8 +123,9 @@ export class formatBytes implements ng.IDirective {
         scope.$watch(() => {
             if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
             const size = ngModelCtrl.$viewValue;
+            const decimal = parseInt(attr.decimal || 1);
             try {
-                element.text(this.formatBytes(size));
+                element.text(this.formatBytes(size, decimal));
             } catch (error) {
                 console.error(error);
             }

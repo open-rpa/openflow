@@ -365,8 +365,8 @@
 
 <div ng-show="ctrl.model.dbusage || WebSocketClientService.user.dbusage">
     Current database usage:
-    <format-bytes ng-model="ctrl.model.dbusage" ng-show="ctrl.model.dbusage" />
-    <format-bytes ng-model="WebSocketClientService.user.dbusage" ng-show="!ctrl.model.dbusage" />
+    <format-bytes ng-model="ctrl.model.dbusage" decimal=0 ng-show="ctrl.model.dbusage" />
+    <format-bytes ng-model="WebSocketClientService.user.dbusage" decimal=0 ng-show="!ctrl.model.dbusage" />
 </div>
 <div class="row" ng-show="ctrl.ShowPlans() && ctrl.Resources.length > 0">
     <div class="col-sm-7">
@@ -393,7 +393,7 @@
     <div class="row" ng-show="Resource.customerassign == 'singlevariant'">
         <div class="col">
             {{Resource.name}} :
-            <format-bytes ng-model="ctrl.model.dbusage" ng-show="Resource.name == 'Database Usage'" />
+            <format-bytes ng-model="ctrl.model.dbusage" decimal=0 ng-show="Resource.name == 'Database Usage'" />
         </div>
 
         <div class="col">
