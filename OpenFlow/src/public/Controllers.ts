@@ -2534,6 +2534,9 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                 (this.model as any).newpassword = "";
                 (this.model as any).sid = "";
                 (this.model as any).federationids = [];
+                this.model.validated = true;
+                this.model.emailvalidated = true;
+                this.model.formvalidated = true;
                 if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
                     this.model.customerid = WebSocketClient.instance.user.selectedcustomerid;
                 }
