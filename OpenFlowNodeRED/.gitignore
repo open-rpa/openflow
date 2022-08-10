@@ -5,3 +5,4 @@ dist
 *otel.ts*
 *license*
 ee
+package-lock.json
