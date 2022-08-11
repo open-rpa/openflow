@@ -156,7 +156,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     }
     @timeout(5000)
     @test async 'Many'() {
-        await Config.db.DeleteMany({}, null, "entities", this.userToken, null);
+        await Config.db.DeleteMany({}, null, "entities", null, this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         var items = await Config.db.query({ query: {}, collectionname: "entities", top: 100, jwt: this.userToken }, null);
         assert.notDeepStrictEqual(items, null);
@@ -172,7 +172,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.strictEqual(items[0].name, "Item 0");
         assert.ok(!NoderedUtil.IsNullEmpty(items[0]._id));
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        await Config.db.DeleteMany({}, null, "entities", this.userToken, null);
+        await Config.db.DeleteMany({}, null, "entities", null, this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         var items = await Config.db.query({ query: {}, collectionname: "entities", top: 100, jwt: this.userToken }, null);
         assert.notDeepStrictEqual(items, null);
@@ -195,11 +195,10 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.strictEqual(item.name, "test item updated");
         assert.ok(!NoderedUtil.IsNullEmpty(item._id));
         assert.strictEqual(item._version, 1);
-        await Config.db.DeleteOne(item._id, "entities", this.userToken, null);
+        await Config.db.DeleteOne(item._id, "entities", false, this.userToken, null);
     }
     @timeout(5000)
     @test async 'indextest'() {
-        Config.log_index_mngt = false;
         await Config.db.ensureindexes(null)
         const indexes = await Config.db.db.collection("entities").indexes();
         const indexnames = indexes.map(x => x.name);
@@ -207,7 +206,6 @@ import { Crypt } from '../OpenFlow/src/Crypt';
             await Config.db.deleteIndex("entities", "test_index", null);
         }
         await Config.db.createIndex("entities", "test_index", { "_id": 1 }, null, null);
-        Config.log_index_mngt = true;
     }
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/DatabaseConnection.test.ts'

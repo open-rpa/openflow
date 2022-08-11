@@ -29,8 +29,8 @@ import { KubeUtil } from '../OpenFlow/src/ee/KubeUtil';
         assert.notStrictEqual(dep, null);
         assert.strictEqual(dep.metadata.name, "api");
     }
-    @test async 'GetIngressV1beta1'() {
-        var dep = await KubeUtil.instance().GetIngressV1beta1(Config.namespace, "useringress");
+    @test async 'GetIngressV1'() {
+        var dep = await KubeUtil.instance().GetIngressV1(Config.namespace, "useringress");
         assert.notStrictEqual(dep, null);
         assert.strictEqual(dep.metadata.name, "useringress");
     }

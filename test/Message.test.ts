@@ -31,9 +31,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     @test async 'Unselect customer as root'() {
         var q = new SelectCustomerMessage();
         var msg = new Message(); msg.jwt = this.rootToken;
-        Config.log_errors = false;
         await msg.SelectCustomer(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(!NoderedUtil.IsNullEmpty(q.error), "Expected a fail, when unselecting customer as root");
@@ -41,9 +39,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     @test async 'select customer as root'() {
         var q = new SelectCustomerMessage(); q.customerid = "60b683e12382b05d20762f09";
         var msg = new Message(); msg.jwt = this.rootToken;
-        Config.log_errors = false;
         await msg.SelectCustomer(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(!NoderedUtil.IsNullEmpty(q.error), "Expected a fail, when selecting a customer as root");

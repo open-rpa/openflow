@@ -41,9 +41,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.GetWorkitemQueue(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         return q.result;
     }
@@ -71,10 +69,8 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         console.log("before: base64 data length: " + this.formatBytes(q.file.length));
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         console.log("after: base64 data length: " + this.formatBytes(msg.data.length));
         await msg.SaveFile(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -95,10 +91,8 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         console.log("before: zlib data length: " + this.formatBytes(q.file.length));
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         console.log("after: zlib data length: " + this.formatBytes(msg.data.length));
         await msg.SaveFile(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -136,9 +130,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.wiqid = wiq._id; q.wiq = wiq.name;
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.PopWorkitem(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -155,9 +147,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q._id = wi._id;
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.DeleteWorkitem(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -178,9 +168,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
             q.files.push(f);
         }
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.UpdateWorkitem(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -211,9 +199,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
             q.files.push(f2);
         }
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.AddWorkitem(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -228,9 +214,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.AddWorkitemQueue(null, null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -243,9 +227,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.UpdateWorkitemQueue(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
@@ -259,9 +241,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         q.name = name ? name : "test queue";
         q.purge = true;
         msg.data = JSON.stringify(q);
-        Config.log_errors = false;
         await msg.DeleteWorkitemQueue(null);
-        Config.log_errors = true;
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
