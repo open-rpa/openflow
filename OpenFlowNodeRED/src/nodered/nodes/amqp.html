@@ -44,6 +44,10 @@
     <input type="text" id="node-input-queue" placeholder="Queue name">
 </div>
 <div class="form-row">
+    <label><i class="fa fa-tag"></i> Auto ack</label>
+    <input type="checkbox" id="node-input-autoack" style="width: auto;">
+</div>
+<div class="form-row">
     <label><i class="fa fa-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -61,6 +65,7 @@ Remember that your queue maybe get prefixed with your usename, if amqp_force_que
         defaults: {
             queue: { value: "", required: true },
             name: { value: "" },
+            autoack: { value: false },
             config: { value: "", type: "amqp-connection", required: false }
         },
         inputs: 0,
@@ -241,6 +246,10 @@ Acknowledgment processing a AMQP message.
     <input type="text" id="node-input-routingkey" placeholder="Routing Key">
 </div>
 <div class="form-row">
+    <label><i class="fa fa-tag"></i> Auto ack</label>
+    <input type="checkbox" id="node-input-autoack" style="width: auto;">
+</div>
+<div class="form-row">
     <label><i class="fa fa-tag"></i> Name</label>
     <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -259,6 +268,7 @@ Remember that your queue maybe get prefixed with your usename, if amqp_force_exc
             exchange: { value: "", required: true },
             name: { value: "" },
             routingkey: { value: "" },
+            autoack: { value: false },
             algorithm: { value: "fanout", required: true },
             config: { value: "", type: "amqp-connection", required: false }
         },

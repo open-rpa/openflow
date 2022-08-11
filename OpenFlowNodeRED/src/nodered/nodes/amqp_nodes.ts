@@ -82,6 +82,7 @@ export class amqp_connection {
 export interface Iamqp_consumer_node {
     config: any;
     queue: string;
+    autoack: boolean;
     name: string;
 }
 export class amqp_consumer_node {
@@ -150,7 +151,15 @@ export class amqp_consumer_node {
     async OnMessage(msg: any, ack: any) {
         try {
             const data: any = msg.data;
-            data.amqpacknowledgment = ack;
+            if (this.config.autoack) {
+                const data: any = Object.assign({}, msg.data);
+                delete data.jwt;
+                delete data.__jwt;
+                delete data.__user;
+                ack(true, data);
+            } else {
+                data.amqpacknowledgment = ack;
+            }
             if (!NoderedUtil.IsNullUndefinded(data.__user)) {
                 data.user = data.__user;
                 delete data.__user;
@@ -374,6 +383,7 @@ export interface Iamqp_exchange_node {
     exchange: string;
     routingkey: string;
     algorithm: "direct" | "fanout" | "topic" | "header";
+    autoack: boolean;
     name: string;
 }
 export class amqp_exchange_node {
@@ -443,7 +453,15 @@ export class amqp_exchange_node {
     async OnMessage(msg: any, ack: any) {
         try {
             const data: any = msg.data;
-            data.amqpacknowledgment = ack;
+            if (this.config.autoack) {
+                const data: any = Object.assign({}, msg.data);
+                delete data.jwt;
+                delete data.__jwt;
+                delete data.__user;
+                ack(true, data);
+            } else {
+                data.amqpacknowledgment = ack;
+            }            
             if (!NoderedUtil.IsNullUndefinded(data.__user)) {
                 data.user = data.__user;
                 delete data.__user;
