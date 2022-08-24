@@ -14,6 +14,7 @@ export class Audit {
             const log: Singin = new Singin();
             Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
             log.remoteip = remoteip;
+            log.ip = Audit.dot2num(log.remoteip);
             log.success = true;
             log.type = type;
             log.provider = provider;
@@ -87,6 +88,7 @@ export class Audit {
         try {
             const log: Singin = new Singin();
             log.remoteip = remoteip;
+            log.ip = Audit.dot2num(log.remoteip);
             log.success = false;
             log.type = type;
             log.provider = provider;
@@ -131,6 +133,23 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
+    static dot2num(dot: string): number {
+        if (NoderedUtil.IsNullEmpty(dot)) return 0;
+        if (dot.indexOf(".") == -1) return 0;
+        var d = dot.split('.');
+        return ((((((+d[0]) * 256) + (+d[1])) * 256) + (+d[2])) * 256) + (+d[3]);
+    }
+    static num2dot(num: number): string {
+        if (NoderedUtil.IsNullEmpty(num)) return "";
+        if (num < 1) return "";
+        var d: string = (num % 256).toString();
+        for (var i = 3; i > 0; i--) {
+            num = Math.floor(num / 256);
+            d = num % 256 + '.' + d;
+        }
+        return d;
+    }
+
 }
 export class Singin extends Base {
     public success: boolean;
@@ -139,6 +158,7 @@ export class Singin extends Base {
     public userid: string;
     public username: string;
     public remoteip: string;
+    public ip: number;
     public impostoruserid: string;
     public impostorname: string;
     public impostorusername: string;

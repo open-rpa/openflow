@@ -334,27 +334,27 @@ export class WebServer {
 
                 this.app.set('trust proxy', 1)
 
-                const events = require("@node-red/util").events;
-                const validateNodes = (e) => {
-                    if (e.id == "runtime-state" && e.payload == null) {
-                        setTimeout(() => {
-                            try {
-                                RED.nodes.eachNode(function (node) {
-                                    try {
-                                        RED.editor.validateNode(node)
-                                    } catch (error) {
-                                    }
-                                });
-                            } catch (error) {
-                            }
-                        }, 1000);
-                        events.off("runtime-event", validateNodes);
-                    }
-                }
-                events.on("runtime-event", validateNodes);
-                events.on("node-status", (e, e2, e3) => {
-                    // {id:"runtime-unsupported-version",type:"error",text:"message.id"}
-                });
+                // const events = require("@node-red/util").events;
+                // const validateNodes = (e) => {
+                //     if (e.id == "runtime-state" && e.payload == null) {
+                //         setTimeout(() => {
+                //             try {
+                //                 RED.nodes.eachNode((node) => {
+                //                     try {
+                //                         RED.editor.validateNode(node)
+                //                     } catch (error) {
+                //                     }
+                //                 });
+                //             } catch (error) {
+                //             }
+                //         }, 1000);
+                //         events.off("runtime-event", validateNodes);
+                //     }
+                // }
+                // events.on("runtime-event", validateNodes);
+                // events.on("node-status", (e, e2, e3) => {
+                //     // {id:"runtime-unsupported-version",type:"error",text:"message.id"}
+                // });
 
                 Logger.instanse.debug("WebServer.configure::init nodered");
                 // initialise the runtime with a server and settings

@@ -47,7 +47,7 @@ export class QueueClient {
                     Logger.instanse.debug("QueueClient", "AddQueueConsumer", "Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId);
                     await msg.QueueProcess(options, span);
                     ack();
-                    await amqpwrapper.Instance().send(options.exchange, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey);
+                    await amqpwrapper.Instance().send(options.exchangename, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey);
                 } else {
                     ack(false);
                     Logger.instanse.debug("QueueClient", "AddQueueConsumer", "[queue][ack] No replyto !!!!");

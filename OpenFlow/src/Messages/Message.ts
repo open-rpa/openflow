@@ -7,7 +7,7 @@ import { Config } from "../Config";
 import { Audit, tokenType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectID, Cursor, Binary } from "mongodb";
+import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base } from "@openiap/openflow-api";
@@ -48,7 +48,7 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
 
 }
 
-const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
+const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 export class Message {
     public id: string;
     public replyto: string;
@@ -942,6 +942,12 @@ export class Message {
         let msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
+            // Backward compatibility
+            // @ts-ignore
+            if (!NoderedUtil.IsNullEmpty(msg.exchange) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
+                // @ts-ignore
+                msg.exchangename = msg.exchange
+            }
             const jwt: string = msg.jwt || this.jwt;
             const rootjwt = Crypt.rootToken();
             if (!NoderedUtil.IsNullUndefinded(msg.data)) {
@@ -954,7 +960,7 @@ export class Message {
                     msg.data.jwt = jwt;
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(msg.exchange) && !Config.amqp_enabled_exchange) {
+            if (!NoderedUtil.IsNullEmpty(msg.exchangename) && !Config.amqp_enabled_exchange) {
                 let error = new Error("AMQP exchange is not enabled on this OpenFlow");
                 Logger.instanse.error("Message", "QueueMessage", error);
                 throw error;
@@ -975,13 +981,13 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.exchange) && msg.exchange.toLowerCase() == "openflow") {
+            } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename.toLowerCase() == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto.toLowerCase() == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchange)) {
+            } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 Logger.instanse.error("Message", "QueueMessage", new Error("queuename or exchange must be given"));
                 throw new Error("queuename or exchange must be given");
             }
@@ -1033,28 +1039,28 @@ export class Message {
                     }
                 }
             }
-            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchange)) {
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 const tuser = await Crypt.verityToken(jwt);
                 let allowed: boolean = false;
-                if (tuser._id == msg.exchange) {
+                if (tuser._id == msg.exchangename) {
                     // Queue is for me
                     allowed = true;
                 } else if (tuser.roles != null) {
                     // Queue is for a role i am a member of.
-                    const isrole = tuser.roles.filter(x => x._id == msg.exchange);
+                    const isrole = tuser.roles.filter(x => x._id == msg.exchangename);
                     if (isrole.length > 0) allowed = true;
                 }
                 if (!allowed) {
-                    let mq = await Logger.DBHelper.FindExchangeByName(msg.exchange, rootjwt, parent);
+                    let mq = await Logger.DBHelper.FindExchangeByName(msg.exchangename, rootjwt, parent);
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing invoke permission on exchange object`);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
                                 throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing read permission on exchange object`);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchangename} or access denied, missing read permission on exchange object`);
                                 throw error;
                             }
 
@@ -1084,13 +1090,13 @@ export class Message {
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
-                await amqpwrapper.Instance().send(msg.exchange, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey);
+                await amqpwrapper.Instance().send(msg.exchangename, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey);
             } else {
                 if (msg.queuename === msg.replyto) {
                     throw new Error("Cannot send reply to self queuename: " + msg.queuename + " correlationId: " + msg.correlationId);
                 }
                 const sendthis = msg.data;
-                await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
+                await amqpwrapper.Instance().sendWithReplyTo(msg.exchangename, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
             }
         } catch (error) {
             await handleError(cli, error);
@@ -2470,7 +2476,7 @@ export class Message {
         Logger.otel.endSpan(span);
         this.Send(cli);
     }
-    private async filescount(files: Cursor<any>): Promise<number> {
+    private async filescount(files: FindCursor<GridFSFile>): Promise<number> {
         return new Promise<number>(async (resolve, reject) => {
             files.count((error, result) => {
                 if (error) return reject(error);
@@ -2478,8 +2484,8 @@ export class Message {
             });
         });
     }
-    private async filesnext(files: Cursor<any>): Promise<any> {
-        return new Promise<number>(async (resolve, reject) => {
+    private async filesnext(files: FindCursor<GridFSFile>): Promise<GridFSFile> {
+        return new Promise<GridFSFile>(async (resolve, reject) => {
             files.next((error, result) => {
                 if (error) return reject(error);
                 resolve(result);
@@ -2495,7 +2501,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
             const bucket = new GridFSBucket(Config.db.db);
-            const q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
+            const q: Filter<GridFSFile> = {};
+            q._id = safeObjectID(msg.id);
             const files = bucket.find(q);
             const count = await this.filescount(files);
             if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
@@ -3822,6 +3829,7 @@ export class Message {
                     if (Config.multi_tenant) {
                         if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                             if (!NoderedUtil.IsNullEmpty(user.customerid)) {
+                                // @ts-ignore
                                 var customers: Customer[] = await Config.db.db.collection("users").find({ "_type": "customer", "_id": user.customerid }).toArray();
                                 if (customers.length > 0 && !NoderedUtil.IsNullEmpty(customers[0].subscriptionid)) {
                                     doensure = true;
@@ -4197,18 +4205,17 @@ export class Message {
                 if (usercount.length > 0) {
                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
-                let cursor: Cursor<any>;
+                let cursor: FindCursor<any>;
                 if (Config.NODE_ENV == "production") {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } });
                 } else {
+                    if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
+                        cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                    } else {
+                        cursor = Config.db.db.collection("users").find({ "_type": "user" })
+                    }
                     // While debugging, also update users who has not been online the last 24 hours
-                    cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
                 }
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user" })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", dblocked: true })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 23815993 } })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 10000 } })
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;
                     index++;
@@ -4361,7 +4368,8 @@ export class Message {
                 // {
                 //     "$match": { config: { $not: { $size: 0 } } }
                 // }
-                const cursor = await Config.db.db.collection("users").aggregate(pipe)
+                const cursor = await Config.db.db.collection("users").aggregate(pipe);
+                // @ts-ignore
                 let resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Database Usage" }).toArray();
                 if (resources.length > 0) {
                     let resource: Resource = resources[0];
@@ -4521,7 +4529,7 @@ export class Message {
 
 
             var wi: Workitem = new Workitem(); wi._type = "workitem";
-            wi._id = new ObjectID().toHexString();
+            wi._id = new ObjectId().toHexString();
             wi._acl = wiq._acl;
             wi.wiq = wiq.name;
             wi.wiqid = wiq._id;
@@ -4717,7 +4725,7 @@ export class Message {
             for (let i = 0; i < msg.items.length; i++) {
                 let item = msg.items[i];
                 let wi: Workitem = new Workitem(); wi._type = "workitem";
-                wi._id = new ObjectID().toHexString();
+                wi._id = new ObjectId().toHexString();
                 wi._acl = wiq._acl;
                 wi.wiq = wiq.name;
                 wi.wiqid = wiq._id;

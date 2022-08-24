@@ -529,7 +529,7 @@ export class WebSocketServerClient {
         q.correlationId = options.correlationId; q.queuename = queuename;
         q.consumerTag = options.consumerTag;
         q.routingkey = options.routingKey;
-        q.exchange = options.exchange;
+        q.exchangename = options.exchangename;
         let m: Message = Message.fromcommand("queuemessage");
         if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);

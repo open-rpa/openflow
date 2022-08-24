@@ -9,7 +9,7 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 import * as saml from "saml20";
-import { GridFSBucket, ObjectID } from "mongodb";
+import { GridFSBucket, ObjectId } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, Role, FederationId } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -18,7 +18,7 @@ import { TokenRequest } from "./TokenRequest";
 var nodemailer = require('nodemailer');
 var dns = require('dns');
 const got = require("got");
-const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
+const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
