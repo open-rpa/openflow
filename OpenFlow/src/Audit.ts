@@ -5,7 +5,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
-export type loginProvider = "saml" | "google" | "local" | "websocket";
+export type loginProvider = "saml" | "google" | "openid" | "local" | "websocket";
 export type clientType = "browser" | "openrpa" | "nodered" | "webapp" | "openflow" | "powershell" | "mobileapp" | "samlverify" | "googleverify" | "aiotmobileapp" | "aiotwebapp";
 export class Audit {
     public static async LoginSuccess(user: TokenUser, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
