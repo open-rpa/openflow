@@ -178,18 +178,7 @@ export class dockerdriver implements i_nodered_driver {
                 "TZ=" + tz
             ]
 
-            // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
-
-            // if (tzvolume != null) {
-            //     _deployment.spec.template.spec.volumes.push(tzvolume);
-            //     _deployment.spec.template.spec.containers[0].volumeMounts.push({ "name": "tz", "mountPath": "/etc/localtime" });
-            // }
             if (tzvolume != null) {
-                // var testVolume = {
-                //     "Name": "tz",
-                //     "Driver": "local",
-                //     "Mountpoint": "/etc/localtime"
-                //   };
                 HostConfig.Binds = ["/etc/localtime", tzvolume]
             }
             await this._pullImage(docker, nodered_image);
