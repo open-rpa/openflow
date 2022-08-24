@@ -59,11 +59,17 @@ export class dockerdriver implements i_nodered_driver {
 
 
             let nodered_image_name = Config.nodered_images[0].name;
+            let tzvolume: string = null;
+            let tz: string = undefined;
             if (user.nodered) {
                 try {
                     if (user.nodered.api_allow_anonymous == null) user.nodered.api_allow_anonymous = false;
                     if (user.nodered.function_external_modules == null) user.nodered.function_external_modules = false;
                     if (user.nodered.nodered_image_name == null) user.nodered.nodered_image_name = nodered_image_name;
+                    if (!NoderedUtil.IsNullEmpty(user.nodered.tz)) {
+                        tz = user.nodered.tz;
+                        tzvolume = "/usr/share/zoneinfo/" + user.nodered.tz
+                    }
                 } catch (error) {
                     user.nodered = { api_allow_anonymous: false, function_external_modules: false, nodered_image_name } as any;
                 }
@@ -168,10 +174,24 @@ export class dockerdriver implements i_nodered_driver {
                 "otel_trace_interval=" + Config.otel_trace_interval.toString(),
                 "otel_metric_interval=" + Config.otel_metric_interval.toString(),
                 "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString(),
-                "noderedcatalogues=" + Config.noderedcatalogues
+                "noderedcatalogues=" + Config.noderedcatalogues,
+                "TZ=" + tz
             ]
 
             // const image = await docker.pull(nodered_image, { serveraddress: "https://index.docker.io/v1" });
+
+            // if (tzvolume != null) {
+            //     _deployment.spec.template.spec.volumes.push(tzvolume);
+            //     _deployment.spec.template.spec.containers[0].volumeMounts.push({ "name": "tz", "mountPath": "/etc/localtime" });
+            // }
+            if (tzvolume != null) {
+                // var testVolume = {
+                //     "Name": "tz",
+                //     "Driver": "local",
+                //     "Mountpoint": "/etc/localtime"
+                //   };
+                HostConfig.Binds = ["/etc/localtime", tzvolume]
+            }
             await this._pullImage(docker, nodered_image);
             instance = await docker.createContainer({
                 Image: nodered_image, name, Labels, Env, NetworkingConfig, HostConfig
