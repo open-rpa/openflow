@@ -1164,9 +1164,14 @@ export class MenuCtrl {
                 id: '4'
             });
 
+
+            var nodered_multi_tenant_turns_off = "";
+            if (this.WebSocketClientService.multi_tenant) {
+                nodered_multi_tenant_turns_off = "The free version will stop after 24 hours and have limited amount of ram. ";
+            }
             tour.addStep({
                 title: 'Nodered',
-                text: `On the NodeRED page, you can start your personal NodeRED instance. The free version will stop after 24 hours and have limited amount of ram. This is where you can schedule robots, and install modules that allows easy integration to more than 3500 IT systems. This is also where you create workflow, that can involve humans using different channels like email, chat, voice or the forms you design in OpenFlow`,
+                text: `On the NodeRED page, you can start your personal NodeRED instance. ` + nodered_multi_tenant_turns_off + `This is where you can schedule robots, and install modules that allows easy integration to more than 3500 IT systems. This is also where you create workflow, that can involve humans using different channels like email, chat, voice or the forms you design in OpenFlow`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
