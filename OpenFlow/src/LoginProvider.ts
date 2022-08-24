@@ -1477,16 +1477,16 @@ export class LoginProvider {
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
                 done("unknown user " + username, null); return;
             }
             if (_user.disabled) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
             const tuser: TokenUser = TokenUser.From(_user);
-            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
             done(null, tuser);
         } catch (error) {
             Logger.instanse.error("LoginProvider", "openidverify", error);
