@@ -86,7 +86,6 @@
     "request": "^2.88.2",
     "saml20": "^0.1.14",
     "samlp": "^6.0.2",
-    "shepherd.js": "^8.3.1",
     "ws": "^8.8.1"
   },
   "devDependencies": {
@@ -114,6 +113,7 @@
     "mocha": "^10.0.0",
     "popper.js": "^1.16.1",
     "sass": "^1.54.4",
+    "shepherd.js": "^10.0.1",
     "tinyify": "^3.1.0",
     "ts-mockito": "^2.6.1",
     "ts-node": "^10.9.1",
