@@ -53,6 +53,7 @@ function _timeToo(timeStamp) {
         return day + " " + month + year;
     }
 }
+// @ts-ignore
 export class timesince implements ng.IDirective {
     // restrict = 'E';
     require = 'ngModel';
@@ -75,6 +76,7 @@ export class timesince implements ng.IDirective {
         return directive;
     }
 }
+// @ts-ignore
 export class timetoo implements ng.IDirective {
     // restrict = 'E';
     require = 'ngModel';
@@ -97,8 +99,7 @@ export class timetoo implements ng.IDirective {
         return directive;
     }
 }
-
-
+// @ts-ignore
 export class formatBytes implements ng.IDirective {
     // restrict = 'E';
     require = 'ngModel';
@@ -137,8 +138,7 @@ export class formatBytes implements ng.IDirective {
         return directive;
     }
 }
-
-
+// @ts-ignore
 export class whenScrolled implements ng.IDirective {
     constructor(public $rootScope: ng.IRootScopeService, public $window: ng.IWindowService, public $timeout: ng.ITimeoutService) {
     }
