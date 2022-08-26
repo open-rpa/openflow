@@ -3233,9 +3233,9 @@ export class EditFormCtrl extends entityCtrl<Form> {
             // allready there
         }
         try {
-            console.log(this.model);
-            delete this.model.schema.changed
-            console.log(this.model);
+            // console.log(this.model);
+            // // delete this.model.schema.changed
+            // console.log(this.model);
             if (this.model._id) {
                 this.model = await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
             } else {
