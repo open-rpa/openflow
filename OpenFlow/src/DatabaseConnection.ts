@@ -1825,7 +1825,6 @@ export class DatabaseConnection extends events.EventEmitter {
         } else {
             throw Error("UpdateOne failed!!!");
         }
-        return q.result;
     }
     async UpdateOne<T extends Base>(q: UpdateOneMessage, parent: Span): Promise<UpdateOneMessage> {
         const span: Span = Logger.otel.startSubSpan("db.UpdateOne", parent);
