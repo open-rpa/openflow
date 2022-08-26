@@ -5060,27 +5060,53 @@ export class Message {
             }
             if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
-            // query: { wiqid: wiq._id, "_type": "workitem", state: { "$in": ["new", "pending"] } },
-            var workitems = await Config.db.query<Workitem>({
-                query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
-                orderby: { "priority": 1 },
-                collectionname: "workitems", jwt
-            }, parent);
+            let workitems: Workitem[] = null;
+            do {
+                workitems = await Config.db.query<Workitem>({
+                    query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
+                    orderby: { "priority": 1 },
+                    collectionname: "workitems", jwt, top: 1
+                }, parent);
+                if (workitems.length > 0) {
+                    const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                    let _wi = workitems[0];
+                    _wi.lastrun = new Date(new Date().toISOString());
 
-            if (workitems.length > 0) {
-                var wi = workitems[0];
-                if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
-                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-                wi.state = "processing";
-                wi.userid = user._id;
-                wi.username = user.name;
-                wi.lastrun = new Date(new Date().toISOString());
-                wi.nextrun = null;
-                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
-                wi = await Config.db._UpdateOne<Workitem>(null, wi, "workitems", 1, true, jwt, parent);
-                msg.result = wi;
-            }
+                    if (NoderedUtil.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
+                    if (typeof workitems[0].payload !== 'object') UpdateDoc["$set"]["payload"] = { "value": workitems[0].payload };
+                    UpdateDoc["$set"]["state"] = "processing";
+                    UpdateDoc["$set"]["userid"] = user._id;
+                    UpdateDoc["$set"]["username"] = user.name;
+                    UpdateDoc["$set"]["lastrun"] = _wi.lastrun;
+                    UpdateDoc["$unset"]["nextrun"] = "";
+                    if (NoderedUtil.IsNullEmpty(workitems[0].priority)) UpdateDoc["$set"]["priority"] = 2;
+
+                    var result: any = null;
+                    try {
+                        result = await Config.db._UpdateOne({
+                            "_id": workitems[0]._id,
+                            "state": workitems[0].state,
+                            "userid": workitems[0].userid,
+                            "username": workitems[0].username,
+                        }, UpdateDoc, "workitems", 1, true, Crypt.rootToken(), null)
+
+                        if (NoderedUtil.IsNullEmpty(_wi.retries)) _wi.retries = 0;
+                        if (typeof _wi.payload !== 'object') _wi.payload = { "value": _wi.payload };
+                        _wi.state = "processing";
+                        _wi.userid = user._id;
+                        _wi.username = user.name;
+                        _wi.nextrun = null;
+                        if (NoderedUtil.IsNullEmpty(_wi.priority)) _wi.priority = 2;
+
+                        msg.result = _wi;
+                    } catch (error) {
+                        Logger.instanse.warn("Message", "PopWorkitem", (error.message ? error.message : error));
+                    }
+                }
+            } while (workitems.length > 0 && msg.result == null);
+
+
+
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
