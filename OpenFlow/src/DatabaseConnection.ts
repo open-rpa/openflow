@@ -182,10 +182,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
         }
-        // if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
-        //     this.queuemonitoringpaused = false;
-        //     this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-        // }
+        if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
+            this.queuemonitoringpaused = false;
+            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        }
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
@@ -213,10 +213,16 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (payload == null) continue;
                 if (wiq.robotqueue != null && wiq.workflowid != null) {
                     if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
+                        const robotpayload = {
+                            command: "invoke",
+                            workflowid: wiq.workflowid,
+                            data: { "workitem": payload }
+                        }
+
                         Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to robot queue " + wiq.workflowid);
                         let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
                         if (expiration < 500) expiration = 500;
-                        await amqpwrapper.Instance().send(null, wiq.robotqueue, payload, expiration, null, null, 2);
+                        await amqpwrapper.Instance().send(null, wiq.robotqueue, robotpayload, expiration, null, null, 2);
                     }
 
                 }
@@ -276,7 +282,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         workflowid: wiq.workflowid,
                         data: { payload: {} }
                     }
-                    if ("(Empty)")
                     if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
                         if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
                             Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to robot queue " + wiq.workflowid);
