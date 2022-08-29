@@ -562,7 +562,6 @@ export class entitiesCtrl<T> {
         document.addEventListener('keydown', this._onKeyDown);
         document.addEventListener('keyup', this._onKeyUp);
         $scope.$on('$destroy', () => {
-            console.log('ondestroy');
             document.removeEventListener('keydown', this._onKeyDown);
             document.removeEventListener('keyup', this._onKeyUp);
         })
@@ -590,29 +589,23 @@ export class entitiesCtrl<T> {
     public controldown: boolean = false;
     public shiftdown: boolean = false;
     public onKeyDown(e) {
-        // console.log(`${e.code}`, e);
         if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && !this.controldown) {
             this.controldown = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            // console.debug("Control down");
         }
         if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && !this.shiftdown) {
             this.shiftdown = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            // console.debug("Shift down");
         }
     }
     public onKeyUp(e) {
-        // console.log(`${e.code}`, e);
         if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && this.controldown) {
             this.controldown = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            // console.debug("Control up");
         }
         if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && this.shiftdown) {
             this.shiftdown = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            // console.debug("Shift up");
         }
     }
     public static parseJson(txt, reviver, context) {

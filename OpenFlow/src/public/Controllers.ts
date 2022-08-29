@@ -255,11 +255,6 @@ export class MenuCtrl {
         }
     }
     async SelectCustomer(customer) {
-        // if (customer != null) {
-        //     console.debug("SelectCustomer " + customer.name, customer)
-        // } else {
-        //     console.debug("SelectCustomer null", customer)
-        // }
         try {
             this.customer = customer;
             if (customer != null) {
@@ -2092,7 +2087,6 @@ export class LoginCtrl {
         try {
             console.debug("QRScannerHit");
             if (err) {
-                // console.error(err._message);
                 console.error(err);
                 return;
             }
@@ -3233,9 +3227,6 @@ export class EditFormCtrl extends entityCtrl<Form> {
             // allready there
         }
         try {
-            // console.log(this.model);
-            // // delete this.model.schema.changed
-            // console.log(this.model);
             if (this.model._id) {
                 this.model = await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
             } else {
@@ -3556,10 +3547,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                         return;
                     }
                 }
-            } else {
-                // this.errormessage = "Model contains no form";
-                // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                // console.error(this.errormessage);
             }
             this.renderform();
         } else {
@@ -3697,7 +3684,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                                 if (item.data != null && item.data != undefined) {
                                     item.data.values = obj2;
                                     item.data.json = JSON.stringify(values);
-                                    // console.debug("Setting values for " + keys[i], JSON.stringify(obj));
                                 } else {
                                     item.values = values;
                                 }
@@ -3706,23 +3692,16 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                                 if (item.data != null && item.data != undefined) {
                                     item.data.values = values;
                                     item.data.json = JSON.stringify(values);
-                                    // console.debug("Setting values for " + keys[i], JSON.stringify(values));
                                 } else {
                                     item.values = values;
                                 }
                             }
-                            // if (item.data != null && item.data != undefined) {
-                            //     console.debug(keys[i], item.data);
-                            // } else {
-                            //     console.debug(keys[i], item);
-                            // }
                         }
                     }
 
                 }
             }
         }
-
         for (let i = 0; i < components.length; i++) {
             const item = components[i];
             if (item.type == "table") {
@@ -3771,31 +3750,25 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 let value = this.model.payload[this.form.formData[i].name];
                 if (value == undefined || value == null) { value = ""; }
                 if (value != "" || this.form.formData[i].type != "button") {
-                    // console.debug("0:" + this.form.formData[i].label + " -> " + value);
                     this.form.formData[i].userData = [value];
                 }
                 if (Array.isArray(value)) {
-                    // console.debug("1:" + this.form.formData[i].userData + " -> " + value);
                     this.form.formData[i].userData = value;
                 }
                 if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
                     value = this.model.payload[this.form.formData[i].label];
                     if (value == undefined || value == null) { value = ""; }
                     if (this.form.formData[i].type != "button") {
-                        // console.debug("2:" + this.form.formData[i].label + " -> " + value);
                         this.form.formData[i].label = value;
                     } else if (value != "") {
-                        // console.debug("2button:" + this.form.formData[i].label + " -> " + value);
                         this.form.formData[i].label = value;
                     } else {
-                        // console.debug("skip " + this.form.formData[i].label);
                     }
                 }
                 if (this.model.values !== null && this.model.values !== undefined) {
                     if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
                         value = this.model.values[this.form.formData[i].name];
                         if (value == undefined || value == null) { value = []; }
-                        // console.debug("3:" + this.form.formData[i].values + " -> " + value);
                         this.form.formData[i].values = value;
                     }
                 }
@@ -3818,10 +3791,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 return emptyStr;
             }
             setTimeout(() => {
-                console.debug("Attach buttons! 2");
                 $('button[type="button"]').each(function () {
                     const cur: any = $(this)[0];
-                    console.debug("set submit");
                     cur.type = "submit";
                 });
                 const click = function (evt) {
@@ -4221,9 +4192,6 @@ export class EntityCtrl extends entityCtrl<Base> {
                 }
                 return;
             }
-            else {
-                // console.debug(this.e.keyCode);
-            }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
                 this.adduser();
@@ -4232,7 +4200,6 @@ export class EntityCtrl extends entityCtrl<Base> {
     }
     async handlefilter(e) {
         this.e = e;
-        // console.debug(e.keyCode);
         let ids: string[];
         if (this.collection == "files") {
             ids = (this.model as any).metadata._acl.map(item => item._id);
@@ -5234,9 +5201,6 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 }
                 return;
             }
-            else {
-                // console.debug(this.e.keyCode);
-            }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
                 this.adduser();
@@ -5245,7 +5209,6 @@ export class CredentialCtrl extends entityCtrl<Base> {
     }
     async handlefilter(e) {
         this.e = e;
-        // console.debug(e.keyCode);
         let ids: string[];
         if (this.collection == "files") {
             ids = (this.model as any).metadata._acl.map(item => item._id);
@@ -6534,9 +6497,6 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
-            }
-            else {
-                // console.debug(this.e.keyCode);
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {

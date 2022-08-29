@@ -67,7 +67,6 @@
         let data = xhr.response;
         if (typeof data === "string" || data instanceof String) {
           try {
-            console.log(data);
             data = JSON.parse(data);
           } catch (error) {
             console.error(error);
@@ -117,7 +116,6 @@
         this.errormessage = data.message ? data.message : data;
       }
       if (!$scope.$$phase) { $scope.$apply(); }
-      console.log("process", data)
       this.providers = data;
       for (let i = this.providers.length - 1; i >= 0; i--) {
         if (this.providers[i].provider == "local") {
@@ -134,7 +132,6 @@
           if (!$scope.$$phase) { $scope.$apply(); }
           retrun;
         }
-        console.log("validateuserform", data)
         this.form = data;
         this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
           {
@@ -143,7 +140,6 @@
           });
         this.formioRender.submission = { data: this.user };
         this.formioRender.on('submit', async submission => {
-          console.debug('onsubmit', submission);
           this.errormessage = "";
           if (!$scope.$$phase) { $scope.$apply(); }
           postJSON("/validateuserform", submission, (err, data) => {
@@ -153,7 +149,6 @@
               this.loadform.bind(this)();
               return;
             }
-            console.log("validateuserform", data)
             location.reload();
           })
         });
@@ -166,7 +161,6 @@
         this.errormessage = data.message ? data.message : data;
       }
       if (!$scope.$$phase) { $scope.$apply(); }
-      console.log("jwt", data)
       if (this.user) {
         if (this.validate_user_form != "" && this.user.formvalidated != true) {
           delete this.user.roles;
@@ -179,18 +173,15 @@
             }
           //});
         } else if (this.validate_emails == true && this.user.emailvalidated != true) {
-          console.log("Update formio about email");
           var ele = document.getElementById('formio');
           ele.innerHTML = '<b>Please check you email, for a validation code</b>';
           setTimeout(() => {
             var ele = document.getElementById('code')
-            console.log(ele);
             ele.focus();
           }, 500);
           if (!$scope.$$phase) { $scope.$apply(); }
           setTimeout(() => {
             var ele = document.getElementById('code')
-            console.log(ele);
             ele.focus();
           }, 250);
           
@@ -204,25 +195,17 @@
       if(err) {
         this.errormessage = data.message ? data.message : data;
       }
-      console.log("config", data)
       this.allow_user_registration = data.allow_user_registration;
       this.validate_user_form = data.validate_user_form
       this.validate_emails = data.validate_emails
       this.forgot_pass_emails = data.forgot_pass_emails;
       this.forceddomains = data.forceddomains;
-      console.log("data", data)
-      console.log("validate_emails", this.validate_emails);
-      console.log("forgot_pass_emails", this.forgot_pass_emails);
       if (!$scope.$$phase) { $scope.$apply(); }
 
       getJSON("/user", async (err, data) => {
-      console.log("user", data)
       if (err) console.error(err);
       if (data._id) {
         this.user = data;
-
-        console.log("emailvalidated", this.user?.emailvalidated);
-
       if(this.user.validated == true) {
           location.reload();
         } else {
@@ -247,7 +230,6 @@
             // this.loadform.bind(this)();
             return;
           }
-          console.log("validateuserform", data)
           location.reload();
         })
       }
@@ -344,14 +326,11 @@
     this.usernameblur = function () {
       var ele = document.getElementById('username');
       var val = ele.value;
-      console.log("val", val);
       if(val && val.indexOf("@") > -1) {
         var domain = val.substr(val.indexOf("@") + 1);
-        console.log("domain", domain);
         for (let d = 0; d < this.forceddomains.length; d++) {
           let forceddomain = new RegExp(this.forceddomains[d], "i");
           if(forceddomain.test(domain)) {
-            console.log("domain found in forceddomains");
             document.getElementById("password").style.display = "none";
             document.getElementById("localbuttons").style.display = "none";
             this.errormessage = "Please use provider button to login with this domain";
@@ -360,7 +339,6 @@
           }
         }
       }
-      console.log("domain is not forced");
       this.errormessage = "";
       if (!$scope.$$phase) { $scope.$apply(); }
       document.getElementById("password").style.display = "block";

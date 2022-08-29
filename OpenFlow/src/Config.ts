@@ -26,6 +26,8 @@ export class Config {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
+        Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
+
         Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "true"));
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
