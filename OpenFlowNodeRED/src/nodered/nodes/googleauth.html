@@ -136,8 +136,6 @@
                         const win = window.open(data.url, '_blank');
                         win.focus();
                     }).error(function (jqXHR, textStatus, errorThrown) {
-                        console.error("error " + textStatus);
-                        console.error("incoming Text " + jqXHR.responseText);
                         alert("error:" + jqXHR.responseText);
                     });
             });
@@ -147,8 +145,6 @@
                     $('#tokens').show();
                     $('#node-config-input-tokens').val(JSON.stringify(data.tokens));
                 }).error(function (jqXHR, textStatus, errorThrown) {
-                    console.error("error " + textStatus);
-                    console.error("incoming Text " + jqXHR.responseText);
                     alert("error:" + jqXHR.responseText);
                 });
             });

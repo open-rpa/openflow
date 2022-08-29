@@ -1,16 +1,11 @@
 <script type="text/javascript">
-console.log("Recorder.html");
-console.log("Recorder: function called");
 if (!RED.view.annotations) {
-  console.log("Recorder requires Node-RED 2.0.0-beta.2 or later");
   RED.notify("Recorder requires Node-RED 2.0.0-beta.2 or later");
 } else {
-  console.log("Recorder: call registerPlugin");
   RED.plugins.registerPlugin("node-red-contrib-recorder", {
     onadd: function() {
     },
     onadd2: function() {
-      console.log("Recorder: onadd called");
       var sidebarContent = $("<div>").css({"position":"relative","height":"100%"});
       sidebarContent.add("<h1>hi mom</h1>")
       var footerToolbar = $('<div></div>');

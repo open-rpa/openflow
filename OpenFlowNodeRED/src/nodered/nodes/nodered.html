@@ -54,8 +54,6 @@
                     });
                     $('#node-input-targetid-select').val($('#node-input-targetid').val());
                 }).error(function (jqXHR, textStatus, errorThrown) {
-                    console.error("error " + textStatus);
-                    console.error("incoming Text " + jqXHR.responseText);
                     alert("error:" + jqXHR.responseText);
                 });
             }

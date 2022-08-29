@@ -2,17 +2,12 @@
     function validate(name) {
         return function () {
             if (this[name] == null || this[name] == "") {
-                console.log(this.type, name + " false: value null");
                 if (name == "entities" && this.inputfield != null) {
                     this[name] = this.inputfield; return true;
                     this[name + "type"] = "msg";
                 }
                 return false;
             }
-            // if (this[name + "type"] == null || this[name + "type"] == "") {
-            //     console.log(this.type, name + " false: type null");
-            //     return false;
-            // }
             return RED.validators.typedInput(name);
         }
     }
@@ -845,8 +840,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                 });
                 $('#node-input-targetid-select').val($('#node-input-targetid').val());
             }).error(function (jqXHR, textStatus, errorThrown) {
-                console.error("error " + textStatus);
-                console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
 
@@ -934,8 +927,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
                 });
                 $('#node-input-targetid-select').val($('#node-input-targetid').val());
             }).error(function (jqXHR, textStatus, errorThrown) {
-                console.error("error " + textStatus);
-                console.error("incoming Text " + jqXHR.responseText);
                 alert("error:" + jqXHR.responseText);
             });
 

@@ -15,7 +15,7 @@ export class libmailserver extends EventEmitter {
         try {
             //config.log(4, 'XFORWARD ADDR=%s', session.xForward.get('ADDR'));
         } catch (err) {
-            Logger.instanse.error(err);
+            Logger.instanse.error("libmailserver", "onMailFrom", err);
         }
         callback();
     }
@@ -35,7 +35,7 @@ export class libmailserver extends EventEmitter {
     static setupSMTP(port: number) {
         return new Promise<libmailserver>(async (resolve, reject) => {
             if (libmailserver.current) {
-                Logger.instanse.debug('Smtpserver is allready listening on ' + port);
+                Logger.instanse.debug("libmailserver", "setupSMTP", 'Smtpserver is allready listening on ' + port);
                 return resolve(libmailserver.current);
             }
 
@@ -54,7 +54,7 @@ export class libmailserver extends EventEmitter {
                     onAuth: libmailserver.current.onAuth,
                     onData: libmailserver.current.onData
                 });
-                Logger.instanse.info('Smtpserver listening on ' + port);
+                Logger.instanse.info("libmailserver", "setupSMTP", 'Smtpserver listening on ' + port);
                 await libmailserver.current.server.listen(port);
                 resolve(libmailserver.current);
             } catch (err) {
