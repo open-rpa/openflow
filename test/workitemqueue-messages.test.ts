@@ -66,10 +66,8 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var q: SaveFileMessage = new SaveFileMessage();
         q.filename = "base64" + path.basename(filepath);
         q.file = fs.readFileSync(filepath, { encoding: 'base64' });
-        console.log("before: base64 data length: " + this.formatBytes(q.file.length));
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
-        console.log("after: base64 data length: " + this.formatBytes(msg.data.length));
         await msg.SaveFile(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -88,10 +86,8 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         (q as any).compressed = true;
         q.filename = "zlib" + path.basename(filepath);
         q.file = Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString('base64');
-        console.log("before: zlib data length: " + this.formatBytes(q.file.length));
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
-        console.log("after: zlib data length: " + this.formatBytes(msg.data.length));
         await msg.SaveFile(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");

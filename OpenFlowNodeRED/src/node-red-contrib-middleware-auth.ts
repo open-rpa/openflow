@@ -53,12 +53,12 @@ export class noderedcontribmiddlewareauth {
                     if (allowed.length > 0 && !NoderedUtil.IsNullEmpty(allowed[0].name)) {
                         cacheduser = new CachedUser(result.user, result.jwt);
                         this.authorizationCache[authorization] = cacheduser;
-                        Logger.instanse.info("noderedcontribmiddlewareauth: Authorized " + user.username + " for " + req.url);
+                        Logger.instanse.info("auth", "Authorized", "Authorized " + user.username + " for " + req.url);
                         req.user = cacheduser.user;
                         (req.user as any).jwt = cacheduser.jwt;
                         return next();
                     } else {
-                        console.warn("noderedcontribmiddlewareauth: " + user.username + " is not member of 'nodered api users' for " + req.url);
+                        Logger.instanse.warn("auth", "Authorized", user.username + " is not member of 'nodered api users' for " + req.url);
                     }
                 }
             } catch (error) {
@@ -83,12 +83,12 @@ export class noderedcontribmiddlewareauth {
                     if (allowed.length > 0 && !NoderedUtil.IsNullEmpty(allowed[0].name)) {
                         cacheduser = new CachedUser(result.user, result.jwt);
                         this.authorizationCache[authorization] = cacheduser;
-                        Logger.instanse.info("noderedcontribmiddlewareauth: Authorized " + user.username + " for " + req.url);
+                        Logger.instanse.info("auth", "process", "Authorized " + user.username + " for " + req.url);
                         req.user = cacheduser.user;
                         (req.user as any).jwt = cacheduser.jwt;
                         return next();
                     } else {
-                        console.warn("noderedcontribmiddlewareauth: " + user.username + " is not member of 'nodered api users' for " + req.url);
+                        Logger.instanse.warn("auth", "process", user.username + " is not member of 'nodered api users' for " + req.url);
                     }
                 } else {
                     console.warn("noderedcontribmiddlewareauth: failed locating user for " + req.url);
@@ -97,7 +97,7 @@ export class noderedcontribmiddlewareauth {
                 console.error(error);
             }
         } else {
-            Logger.instanse.warn("noderedcontribmiddlewareauth: Unauthorized, no username/password for " + req.url);
+            Logger.instanse.warn("auth", "process", "Unauthorized, no username/password for " + req.url);
         }
         res.statusCode = 401;
         res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');

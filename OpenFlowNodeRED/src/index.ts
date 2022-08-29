@@ -7,44 +7,8 @@ import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "@openiap/openflow-api";
-Logger.configure();
-Logger.instanse.info("starting openflow nodered");
-
-let _otel_require: any = null;
-try {
-    _otel_require = require("./ee/otel");
-} catch (error) {
-
-}
-if (_otel_require != null) {
-    Logger.otel = _otel_require.otel.configure();
-} else {
-    const fakespan = {
-        context: () => undefined,
-        setAttribute: () => undefined,
-        setAttributes: () => undefined,
-        addEvent: () => undefined,
-        setStatus: () => undefined,
-        updateName: () => undefined,
-        end: () => undefined,
-        isRecording: () => undefined,
-        recordException: () => undefined,
-    };
-    Logger.otel =
-        {
-            startSpan: () => fakespan,
-            startSubSpan: () => fakespan,
-            endSpan: () => undefined,
-            startTimer: () => undefined,
-            endTimer: () => undefined,
-            setdefaultlabels: () => undefined,
-            meter: {
-                createHistogram: () => undefined,
-                createCounter: () => undefined,
-                createObservableUpDownCounter: () => undefined,
-            }
-        } as any;
-}
+Logger.configure(false);
+Logger.instanse.info("index", "", "starting openflow nodered");
 
 process.on('beforeExit', (code) => {
     console.error('Process beforeExit event with code: ', code);
@@ -123,7 +87,7 @@ let server: http.Server = null;
         if (!NoderedUtil.IsNullEmpty(flowjson) && Config.allow_start_from_cache) {
             server = await WebServer.configure(socket);
             const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
-            Logger.instanse.info("listening on " + baseurl);
+            Logger.instanse.info("index", "", "listening on " + baseurl);
             if (!NoderedUtil.IsNullUndefinded(userjson)) {
                 const nodered = JSON.parse(userjson);
                 if (!NoderedUtil.IsNullEmpty(nodered.function_external_modules)) { Config.function_external_modules = nodered.function_external_modules; }
@@ -148,7 +112,7 @@ let server: http.Server = null;
         socket.setCacheFolder(Config.logpath);
         socket.agent = "nodered";
         socket.version = Config.version;
-        Logger.instanse.info("VERSION: " + Config.version);
+        Logger.instanse.info("index", "", "VERSION: " + Config.version);
         socket.update_message_queue_count = WebServer.update_message_queue_count;
         socket.max_message_queue_time_seconds = Config.max_message_queue_time_seconds;
         socket.events.on("onerror", async () => {
@@ -173,7 +137,7 @@ let server: http.Server = null;
                     throw new Error("missing encryption_key and jwt, signin not possible!");
                 }
                 const result = await NoderedUtil.SigninWithToken({ jwt, websocket: socket });
-                Logger.instanse.info("signed in as " + result.user.name + " with id " + result.user._id);
+                Logger.instanse.info("index", "", "signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
                 if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid)) {
@@ -186,7 +150,6 @@ let server: http.Server = null;
                 if (result.otel_metric_interval > 0) Config.otel_metric_interval = result.otel_metric_interval;
                 if (!NoderedUtil.IsNullEmpty(result.otel_metric_url) || !NoderedUtil.IsNullEmpty(result.otel_trace_url)) {
                     Config.enable_analytics = result.enable_analytics;
-                    Logger.instanse.info("configure otel");
                     Logger.otel.registerurl(result.otel_metric_url, result.otel_trace_url);
                 }
                 if (server == null) {
@@ -207,21 +170,21 @@ let server: http.Server = null;
                     }
                     server = await WebServer.configure(socket);
                     const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
-                    Logger.instanse.info("listening on " + baseurl);
+                    Logger.instanse.info("index", "", "listening on " + baseurl);
                 }
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
                 let closemsg: any = (error.message ? error.message : error);
-                Logger.instanse.error(closemsg);
+                Logger.instanse.error("index", "", closemsg);
                 socket.close(1000, closemsg);
                 socket.connect().catch(reason => {
-                    Logger.instanse.error(reason);
+                    Logger.instanse.error("index", "", reason);
                     process.exit(404);
                 })
             }
         });
     } catch (error) {
-        Logger.instanse.error(error.message ? error.message : error);
+        Logger.instanse.error("index", "", error);
     }
 })();
 

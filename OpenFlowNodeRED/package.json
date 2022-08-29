@@ -26,11 +26,11 @@
   "dependencies": {
     "@nodemailer/mailparser2": "^1.0.3",
     "@openiap/openflow-api": "^2.0.15",
-    "@opentelemetry/api-metrics": "^0.31.0",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.31.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.31.0",
+    "@opentelemetry/api-metrics": "^0.32.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.32.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.32.0",
     "@opentelemetry/sdk-metrics-base": "^0.31.0",
-    "@opentelemetry/sdk-node": "^0.31.0",
+    "@opentelemetry/sdk-node": "^0.32.0",
     "body-parser": "^1.20.0",
     "command-line-args": "^5.2.1",
     "compression": "^1.7.4",
@@ -48,11 +48,10 @@
     "pm2": "^5.2.0",
     "readline-sync": "^1.4.10",
     "request": "^2.88.2",
-    "smtp-server": "^3.11.0",
-    "winston": "^3.3.3"
+    "smtp-server": "^3.11.0"
   },
   "devDependencies": {
     "@types/compression": "^1.7.2",
-    "@types/node": "^18.7.1"
+    "@types/node": "^18.7.13"
   }
 }

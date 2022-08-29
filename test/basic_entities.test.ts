@@ -22,7 +22,6 @@ import { Logger } from '../OpenFlow/src/Logger';
             await this.socket.Connect();
             await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser" });
         } catch (error) {
-            console.error(error);
             throw error;
         }
     }
