@@ -68,7 +68,7 @@ export class Audit {
             log._type = "impersonate";
             log.type = "impersonate";
             log.userid = user._id;
-            log.name = user.name;
+            log.name = impostor.name + " -> " + user.name;
             log.username = user.username;
             log.impostoruserid = impostor._id;
             log.impostorname = impostor.name;
@@ -91,6 +91,7 @@ export class Audit {
             log.ip = Audit.dot2num(log.remoteip);
             log.success = false;
             log.type = type;
+            log.name = "[failed]" + username;
             log.provider = provider;
             log.username = username;
             log.clientagent = clientagent;
