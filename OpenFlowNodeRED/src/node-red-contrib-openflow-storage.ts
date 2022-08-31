@@ -121,9 +121,11 @@ export class noderedcontribopenflowstorage {
         return results;
     }
     async GetMissingModules(settings: any) {
-        let currentmodules = this.scanDirForNodesModules(path.resolve('.'));
+        // let currentmodules = this.scanDirForNodesModules(path.resolve('.'));
+        let currentmodules = this.scanDirForNodesModules(this.settings.userDir);
+        let globaldir: string = "";
         try {
-            let globaldir: string = child_process.execSync('npm root -g').toString();
+            globaldir = child_process.execSync('npm root -g').toString();
             if (globaldir.indexOf('\n')) {
                 if (globaldir.endsWith('\n')) globaldir = globaldir.substr(0, globaldir.length - 1);
                 globaldir = globaldir.substr(globaldir.lastIndexOf('\n') + 1);
@@ -142,6 +144,8 @@ export class noderedcontribopenflowstorage {
             const pcks = currentmodules.filter(x => x.name == key && x.version == version);
             if (pcks.length != 1) {
                 modules += (" " + key + "@" + version);
+            } else {
+                Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + "@" + version + " found local or " + globaldir);
             }
         }
         keys = Object.keys(settings.modules);
@@ -152,6 +156,8 @@ export class noderedcontribopenflowstorage {
             const pcks = currentmodules.filter(x => x.name == key);
             if (pcks.length != 1) {
                 modules += (" " + key);
+            } else {
+                Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + " found local or " + globaldir);
             }
         }
         return modules.trim();
@@ -707,6 +713,11 @@ export class noderedcontribopenflowstorage {
         } else {
             if (this._settings == null) {
                 this._settings = settings;
+                const packageFile: string = path.join(this.settings.userDir, "package.json");
+                if (fs.existsSync(packageFile)) {
+                    const packagejson = fs.readFileSync(packageFile, "utf8");
+                    console.log(packagejson);
+                }
                 try {
                     let modules = await this.GetMissingModules(settings);
                     if (!NoderedUtil.IsNullEmpty(modules)) {
@@ -726,9 +737,11 @@ export class noderedcontribopenflowstorage {
                                 } catch (error) {
                                 }
                             });
-
                         }
-
+                        if (fs.existsSync(packageFile)) {
+                            const packagejson = fs.readFileSync(packageFile, "utf8");
+                            console.log(packagejson);
+                        }
                     }
                 } catch (error) {
                     Logger.instanse.error("storage", "getSettings", error);
