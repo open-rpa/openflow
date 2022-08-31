@@ -132,7 +132,7 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             console.error(error);
         }
-        const keys = Object.keys(settings.nodes);
+        let keys = Object.keys(settings.nodes);
         let modules = "";
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i];
@@ -142,6 +142,16 @@ export class noderedcontribopenflowstorage {
             const pcks = currentmodules.filter(x => x.name == key && x.version == version);
             if (pcks.length != 1) {
                 modules += (" " + key + "@" + version);
+            }
+        }
+        keys = Object.keys(settings.modules);
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            const val = settings.modules[key];
+            if (val.builtin || val.known) continue;
+            const pcks = currentmodules.filter(x => x.name == key);
+            if (pcks.length != 1) {
+                modules += (" " + key);
             }
         }
         return modules.trim();
