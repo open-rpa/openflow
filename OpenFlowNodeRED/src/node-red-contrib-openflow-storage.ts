@@ -713,11 +713,7 @@ export class noderedcontribopenflowstorage {
         } else {
             if (this._settings == null) {
                 this._settings = settings;
-                const packageFile: string = path.join(this.settings.userDir, "package.json");
-                if (fs.existsSync(packageFile)) {
-                    const packagejson = fs.readFileSync(packageFile, "utf8");
-                    console.log(packagejson);
-                }
+                // const packageFile: string = path.join(this.settings.userDir, "package.json");
                 try {
                     let modules = await this.GetMissingModules(settings);
                     if (!NoderedUtil.IsNullEmpty(modules)) {
@@ -737,10 +733,6 @@ export class noderedcontribopenflowstorage {
                                 } catch (error) {
                                 }
                             });
-                        }
-                        if (fs.existsSync(packageFile)) {
-                            const packagejson = fs.readFileSync(packageFile, "utf8");
-                            console.log(packagejson);
                         }
                     }
                 } catch (error) {
