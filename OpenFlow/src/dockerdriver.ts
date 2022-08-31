@@ -175,6 +175,7 @@ export class dockerdriver implements i_nodered_driver {
                 "otel_metric_interval=" + Config.otel_metric_interval.toString(),
                 "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString(),
                 "noderedcatalogues=" + Config.noderedcatalogues,
+                "log_with_colors=" + Config.log_with_colors,
                 "TZ=" + tz
             ]
 
