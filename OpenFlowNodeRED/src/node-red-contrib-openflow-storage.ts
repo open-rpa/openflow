@@ -148,7 +148,7 @@ export class noderedcontribopenflowstorage {
                 if (pcks.length != 1) {
                     modules += (" " + key + "@" + version);
                 } else {
-                    Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + "@" + version + " found local or " + globaldir);
+                    Logger.instanse.debug("storage", "GetMissingModules", "Skipping " + key + "@" + version + " found locally or " + globaldir);
                 }
             }
         }
@@ -162,7 +162,7 @@ export class noderedcontribopenflowstorage {
                 if (pcks.length != 1) {
                     modules += (" " + key);
                 } else {
-                    Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + " found local or " + globaldir);
+                    Logger.instanse.debug("storage", "GetMissingModules", "Skipping " + key + " found locally or " + globaldir);
                 }
             }
         }
