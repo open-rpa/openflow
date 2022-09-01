@@ -134,30 +134,36 @@ export class noderedcontribopenflowstorage {
         } catch (error) {
             console.error(error);
         }
-        let keys = Object.keys(settings.nodes);
+        let keys: string[];
         let modules = "";
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            if (key == "node-red" || key == "node-red-node-rbe" || key == "node-red-node-tail") continue;
-            const val = settings.nodes[key];
-            const version = (val.pending_version ? val.pending_version : val.version)
-            const pcks = currentmodules.filter(x => x.name == key && x.version == version);
-            if (pcks.length != 1) {
-                modules += (" " + key + "@" + version);
-            } else {
-                Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + "@" + version + " found local or " + globaldir);
+        if (NoderedUtil.IsNullUndefinded(settings)) return modules;
+        if (!NoderedUtil.IsNullUndefinded(settings.nodes)) {
+            keys = Object.keys(settings.nodes);
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                if (key == "node-red" || key == "node-red-node-rbe" || key == "node-red-node-tail") continue;
+                const val = settings.nodes[key];
+                const version = (val.pending_version ? val.pending_version : val.version)
+                const pcks = currentmodules.filter(x => x.name == key && x.version == version);
+                if (pcks.length != 1) {
+                    modules += (" " + key + "@" + version);
+                } else {
+                    Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + "@" + version + " found local or " + globaldir);
+                }
             }
         }
-        keys = Object.keys(settings.modules);
-        for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            const val = settings.modules[key];
-            if (val.builtin || val.known) continue;
-            const pcks = currentmodules.filter(x => x.name == key);
-            if (pcks.length != 1) {
-                modules += (" " + key);
-            } else {
-                Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + " found local or " + globaldir);
+        if (!NoderedUtil.IsNullUndefinded(settings.modules)) {
+            keys = Object.keys(settings.modules);
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                const val = settings.modules[key];
+                if (val.builtin || val.known) continue;
+                const pcks = currentmodules.filter(x => x.name == key);
+                if (pcks.length != 1) {
+                    modules += (" " + key);
+                } else {
+                    Logger.instanse.info("storage", "GetMissingModules", "Skipping " + key + " found local or " + globaldir);
+                }
             }
         }
         return modules.trim();
