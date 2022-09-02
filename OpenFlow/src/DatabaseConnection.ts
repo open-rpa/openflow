@@ -1826,6 +1826,9 @@ export class DatabaseConnection extends events.EventEmitter {
             } else if (q.opresult.modifiedCount !== 1) {
                 throw Error("More than one item was updated !!!");
             }
+            if (!NoderedUtil.IsNullUndefinded(q.item) && NoderedUtil.IsNullUndefinded(q.query)) {
+                return q.item as any;
+            }
             return q.opresult;
         } else {
             throw Error("UpdateOne failed!!!");
