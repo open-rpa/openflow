@@ -3291,6 +3291,9 @@ export class Message {
                     customer = customers[0];
                 }
             }
+            if (!cli.user.HasRoleId(WellknownIds.admins)) {
+                delete msg.customer.domains;
+            }
             if (customer == null) {
                 if (!NoderedUtil.IsNullEmpty(user.customerid) && !user.HasRoleName("resellers")) {
                     throw new Error("Access denied creating customer");
@@ -3333,6 +3336,9 @@ export class Message {
                 customer.customattr3 = msg.customer.customattr3;
                 customer.customattr4 = msg.customer.customattr4;
                 customer.customattr5 = msg.customer.customattr5;
+                if (!NoderedUtil.IsNullUndefinded(msg.customer.domains)) {
+                    customer.domains = msg.customer.domains;
+                }
 
                 msg.customer = customer;
                 if (!NoderedUtil.IsNullEmpty(customer.vatnumber)) msg.customer.vatnumber = msg.customer.vatnumber.toUpperCase();
@@ -3341,6 +3347,11 @@ export class Message {
             let tax_exempt: string = "none";
             if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(msg.customer.vattype) || NoderedUtil.IsNullEmpty(msg.customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
+            }
+            if (!NoderedUtil.IsNullUndefinded(customer.domains)) {
+                for (var i = 0; i < customer.domains.length; i++) {
+                    customer.domains[i] = customer.domains[i].toLowerCase();
+                }
             }
 
             // @ts-ignore
@@ -3504,11 +3515,14 @@ export class Message {
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
-            customeradmins.AddMember(user);
+            if (!cli.user.HasRoleId(WellknownIds.admins)) {
+                customeradmins.AddMember(user);
+            }
+
             customeradmins.AddMember(global_customer_admins);
             if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
                 const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
-                if (usercustomer != null) {
+                if (usercustomer != null && !cli.user.HasRoleId(WellknownIds.admins)) {
                     const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, true, span);
                     if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
                 }
@@ -3523,7 +3537,7 @@ export class Message {
             Base.removeRight(customerusers, customeradmins._id, [Rights.delete]);
             customerusers.AddMember(customeradmins);
             if (NoderedUtil.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
-                customerusers.AddMember(cli.user);
+                if (!cli.user.HasRoleId(WellknownIds.admins)) customerusers.AddMember(cli.user);
             }
             await Logger.DBHelper.Save(customerusers, rootjwt, span);
 

@@ -5850,6 +5850,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.errormessage = "";
+            if (!NoderedUtil.IsNullEmpty(this.newdomain)) this.adddomain();
             if (this.model._id) {
                 await NoderedUtil.EnsureCustomer({ customer: this.model });
                 this.$rootScope.$broadcast("menurefresh");
@@ -6178,6 +6179,27 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             if (this.model.vatnumber == null || this.model.vatnumber == "") this.model.vatnumber = this.model.country;
         }
     }
+    public newdomain: string = "";
+    deletedomain(domain) {
+        if ((this.model as any).domains === null || (this.model as any).domains === undefined) {
+            (this.model as any).domains = [];
+        }
+        (this.model as any).domains = (this.model as any).domains.filter(function (m: any): boolean { return m !== domain; });
+    }
+    adddomain() {
+        if ((this.model as any).domains === null || (this.model as any).domains === undefined) {
+            (this.model as any).domains = [];
+        }
+        var v = this.newdomain;
+        try {
+            v = JSON.parse(v);
+        } catch (error) {
+        }
+        (this.model as any).domains.push(v);
+        this.newdomain = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
 }
 
 

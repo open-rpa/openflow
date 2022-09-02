@@ -1374,6 +1374,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (this.WellknownIdsArray.indexOf(user2._id) > -1) {
                     delete user2.customerid;
                 }
+
                 if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span)
                     if (user2._type == "user") {
@@ -1521,7 +1522,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 // span?.addEvent("Save Users");
                 // await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
 
-                let user2: TokenUser = item as any;
+                let user2: User = User.assign(item as any);
                 // if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                 //     // TODO: Check user has permission to this customer
                 //     const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
@@ -1532,6 +1533,62 @@ export class DatabaseConnection extends events.EventEmitter {
                 //         Logger.instanse.debug("DatabaseConnection", "InsertOne", "[" + user.username + "][" + collectionname + "] Failed finding customer users " + customer.users + " role while updating item " + item._id);
                 //     }
                 // }
+
+                if (Config.validate_emails && user2.emailvalidated || !Config.validate_emails) {
+                    let domain: string = user2.username;
+                    if (!NoderedUtil.IsNullEmpty(user2.email)) domain = user2.email;
+                    if (domain.indexOf("@") > -1) {
+                        var userupdate: any = { "$set": {}, "$push": {} };
+                        domain = domain.substring(domain.indexOf("@") + 1).toLowerCase();
+                        var customers = await this.query<Customer>({ query: { _type: "customer", domains: { $in: [domain] } }, collectionname: "users", jwt: jwt }, span);
+                        var doupdate: boolean = false;
+                        for (var i = 0; i < customers.length; i++) {
+                            if (NoderedUtil.IsNullEmpty(user2.customerid)) {
+                                user2.customerid = customers[i]._id;
+                                userupdate["$set"]["customerid"] = user2.customerid;
+                                doupdate = true;
+                            }
+                            // @ts-ignore
+                            if (NoderedUtil.IsNullEmpty(user2.company)) {
+                                // @ts-ignore
+                                user2.company = customers[i].name;
+                                userupdate["$set"]["company"] = customers[i].name;
+                                doupdate = true;
+                            }
+                            if (!user2.HasRoleId(customers[i].users)) {
+                                user2.roles.push(new Rolemember(customers[i].name + " users", customers[i].users));
+                                var ace: Ace = new Ace();
+                                ace._id = customers[i].users; ace.name = customers[i].name + " users";
+                                Ace.resetnone(ace); Ace.setBit(ace, Rights.read);
+                                ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                if (!userupdate["$push"]["_acl"]) {
+                                    userupdate["$push"]["_acl"] = { "$each": [] };
+                                }
+                                userupdate["$push"]["_acl"]["$each"].push(ace);
+                                var ace: Ace = new Ace();
+                                ace._id = customers[i].admins; ace.name = customers[i].name + " admins";
+                                Ace.resetfullcontrol(ace);
+                                ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                userupdate["$push"]["_acl"]["$each"].push(ace);
+                                await this.db.collection("users").updateOne(
+                                    { _id: customers[i].users },
+                                    { "$push": { members: new Rolemember(item.name, item._id) } }
+                                );
+                                doupdate = true;
+                            }
+                            await Logger.DBHelper.DeleteKey("users" + customers[i].users);
+
+                        }
+                        if (doupdate) {
+                            await this.db.collection("users").updateOne(
+                                { _id: item._id },
+                                userupdate
+                            );
+                            await Logger.DBHelper.DeleteKey("users" + user2._id);
+                        }
+                    }
+                }
+
                 if (!NoderedUtil.IsNullUndefinded(customer) && !NoderedUtil.IsNullEmpty(customer.users)) {
                     await this.db.collection("users").updateOne(
                         { _id: customer.users },
@@ -1826,7 +1883,7 @@ export class DatabaseConnection extends events.EventEmitter {
             } else if (q.opresult.modifiedCount !== 1) {
                 throw Error("More than one item was updated !!!");
             }
-            if (!NoderedUtil.IsNullUndefinded(q.item) && NoderedUtil.IsNullUndefinded(q.query)) {
+            if (!NoderedUtil.IsNullUndefinded(q.item) && NoderedUtil.IsNullUndefinded(query)) {
                 return q.item as any;
             }
             return q.opresult;
@@ -2222,7 +2279,63 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 DatabaseConnection.traversejsondecode(q.item);
                 if (q.collectionname === "users" && q.item._type === "user") {
-                    let user2: TokenUser = q.item as any;
+                    let user2: User = User.assign(q.item as any);
+
+                    if (Config.validate_emails && user2.emailvalidated || !Config.validate_emails) {
+                        let domain: string = user2.username;
+                        if (!NoderedUtil.IsNullEmpty(user2.email)) domain = user2.email;
+                        if (domain.indexOf("@") > -1) {
+                            var userupdate: any = { "$set": {}, "$push": {} };
+                            domain = domain.substring(domain.indexOf("@") + 1).toLowerCase();
+                            var customers = await this.query<Customer>({ query: { _type: "customer", domains: { $in: [domain] } }, collectionname: "users", jwt: q.jwt }, span);
+                            var doupdate: boolean = false;
+                            for (var i = 0; i < customers.length; i++) {
+                                if (NoderedUtil.IsNullEmpty(user2.customerid)) {
+                                    user2.customerid = customers[i]._id;
+                                    userupdate["$set"]["customerid"] = user2.customerid;
+                                    doupdate = true;
+                                }
+                                // @ts-ignore
+                                if (NoderedUtil.IsNullEmpty(user2.company)) {
+                                    // @ts-ignore
+                                    user2.company = customers[i].name;
+                                    userupdate["$set"]["company"] = customers[i].name;
+                                    doupdate = true;
+                                }
+                                if (!user2.HasRoleId(customers[i].users)) {
+                                    user2.roles.push(new Rolemember(customers[i].name + " users", customers[i].users));
+                                    var ace: Ace = new Ace();
+                                    ace._id = customers[i].users; ace.name = customers[i].name + " users";
+                                    Ace.resetnone(ace); Ace.setBit(ace, Rights.read);
+                                    ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                    if (!userupdate["$push"]["_acl"]) {
+                                        userupdate["$push"]["_acl"] = { "$each": [] };
+                                    }
+                                    userupdate["$push"]["_acl"]["$each"].push(ace);
+                                    var ace: Ace = new Ace();
+                                    ace._id = customers[i].admins; ace.name = customers[i].name + " admins";
+                                    Ace.resetfullcontrol(ace);
+                                    ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                    userupdate["$push"]["_acl"]["$each"].push(ace);
+                                    await this.db.collection("users").updateOne(
+                                        { _id: customers[i].users },
+                                        { "$push": { members: new Rolemember(q.item.name, q.item._id) } }
+                                    );
+                                    doupdate = true;
+                                }
+                                await Logger.DBHelper.DeleteKey("users" + customers[i].users);
+
+                            }
+                            if (doupdate) {
+                                await this.db.collection("users").updateOne(
+                                    { _id: q.item._id },
+                                    userupdate
+                                );
+                                await Logger.DBHelper.DeleteKey("users" + user2._id);
+                            }
+                        }
+                    }
+
 
                     if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
                         // TODO: Check user has permission to this customer

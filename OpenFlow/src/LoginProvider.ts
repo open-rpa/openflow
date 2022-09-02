@@ -736,6 +736,8 @@ export class LoginProvider {
                                 UpdateDoc.$set["validated"] = true;
                                 tuser.validated = true;
                             }
+
+
                             Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
                             var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                             await Logger.DBHelper.DeleteKey("users" + tuser._id);
@@ -775,13 +777,19 @@ export class LoginProvider {
                             if (exists.length > 0) {
                                 var u: User = exists[0];
                                 if ((u as any)._mailcode == req.body.code) {
-                                    const UpdateDoc: any = { "$set": {}, "$unset": {} };
-                                    UpdateDoc.$unset["_mailcode"] = "";
-                                    UpdateDoc.$set["validated"] = true;
-                                    UpdateDoc.$set["emailvalidated"] = true;
-                                    var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                                    // @ts-ignore
+                                    delete u._mailcode;
+                                    u.validated = true;
+                                    u.emailvalidated = true;
+                                    await Logger.DBHelper.Save(u, Crypt.rootToken(), span);
+
+                                    // const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                                    // UpdateDoc.$unset["_mailcode"] = "";
+                                    // UpdateDoc.$set["validated"] = true;
+                                    // UpdateDoc.$set["emailvalidated"] = true;
+                                    // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                                     await Logger.DBHelper.DeleteKey("users" + tuser._id);
-                                    // await new Promise(resolve => { setTimeout(resolve, 1000) })
+                                    await new Promise(resolve => { setTimeout(resolve, 1000) })
                                     res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
                                     return;
                                 } else {
