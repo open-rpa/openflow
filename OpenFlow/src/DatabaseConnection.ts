@@ -352,6 +352,24 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                             Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+
+                            if (_type == "user" && item.disabled == true) {
+                                for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                                    var _cli = WebSocketServer._clients[i];
+                                    if (_cli.user?._id == item._id) {
+                                        Logger.instanse.warn("DatabaseConnection", "registerGlobalWatch", "Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on disabled!");
+                                        WebSocketServer._clients[i].Close();
+                                    }
+                                }
+                            } else if (_type == "user" && item.dblocked == true) {
+                                for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                                    var _cli = WebSocketServer._clients[i];
+                                    if (_cli.user?._id == item._id && _cli.clientagent == "openrpa") {
+                                        Logger.instanse.warn("DatabaseConnection", "registerGlobalWatch", "Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on dblocked!");
+                                        WebSocketServer._clients[i].Close();
+                                    }
+                                }
+                            }
                             // await DBHelper.memoryCache.del("users" + item._id);
                             // if (_type == "role") {
                             //     var role: Role = item as Role;
@@ -378,6 +396,15 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                         if (collectionname == "config" && _type == "ipblock") {
                             await Logger.DBHelper.ClearIPBlockList();
+                            if (!NoderedUtil.IsNullUndefinded(item.ips) && item.ips.length > 0) {
+                                for (let i = 0; i < WebSocketServer._clients.length; i++) {
+                                    var _cli = WebSocketServer._clients[i];
+                                    if (item.ips.indexOf(_cli.remoteip) > -1) {
+                                        Logger.instanse.warn("DatabaseConnection", "registerGlobalWatch", "Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list!");
+                                        WebSocketServer._clients[i].Close();
+                                    }
+                                }
+                            }
                         }
                         if (collectionname === "config" && _type === "oauthclient") {
                             setTimeout(() => OAuthProvider.LoadClients(), 1000);
