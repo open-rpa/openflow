@@ -5746,9 +5746,29 @@ export class CustomersCtrl extends entitiesCtrl<Provider> {
         this.collection = "users";
         this.skipcustomerfilter = true;
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, dbusage: 1 };
+        this.postloadData = this.processData;
+        if (this.userdata.data.CustomersCtrl) {
+            this.basequery = this.userdata.data.CustomersCtrl.basequery;
+            this.collection = this.userdata.data.CustomersCtrl.collection;
+            this.baseprojection = this.userdata.data.CustomersCtrl.baseprojection;
+            this.orderby = this.userdata.data.CustomersCtrl.orderby;
+            this.searchstring = this.userdata.data.CustomersCtrl.searchstring;
+            this.basequeryas = this.userdata.data.CustomersCtrl.basequeryas;
+        }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.CustomersCtrl) this.userdata.data.CustomersCtrl = {};
+        this.userdata.data.CustomersCtrl.basequery = this.basequery;
+        this.userdata.data.CustomersCtrl.collection = this.collection;
+        this.userdata.data.CustomersCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.CustomersCtrl.orderby = this.orderby;
+        this.userdata.data.CustomersCtrl.searchstring = this.searchstring;
+        this.userdata.data.CustomersCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class CustomerCtrl extends entityCtrl<Customer> {
