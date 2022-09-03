@@ -152,7 +152,6 @@ export class WebSocketServer {
                     });
                 });
             }
-            // setInterval(this.pingClients, 10000);
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
         } catch (error) {
             span?.recordException(error);
