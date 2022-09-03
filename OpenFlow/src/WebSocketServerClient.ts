@@ -224,6 +224,9 @@ export class WebSocketServerClient {
     public async Close(): Promise<void> {
         const span: Span = Logger.otel.startSpan("WebSocketServerClient.Close");
         try {
+            Config.db.removeListener("disconnected", this._dbdisconnected);
+            Config.db.removeListener("connected", this._dbconnected);
+
             await this.CloseConsumers(span);
             // await this.CloseStreams();
             if (this._socketObject != null) {
@@ -247,6 +250,15 @@ export class WebSocketServerClient {
             for (var i = 0; i < keys.length; i++) {
                 await this.UnWatch(keys[i], this.jwt);
             }
+            var keys = Object.keys(this.messageQueue);
+            for (var i = 0; i < keys.length; i++) {
+                delete this.messageQueue[keys[i]].cb;
+                delete this.messageQueue[keys[i]];
+            }
+            // this._receiveQueue
+            // this._sendQueue
+            // this._queues
+            // this._exchanges
         } catch (error) {
             span?.recordException(error);
             throw error;
