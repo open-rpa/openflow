@@ -3,7 +3,7 @@ import { Crypt } from "./Crypt";
 import { Config } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
-import { Histogram } from "@opentelemetry/api-metrics"
+import { ObservableUpDownCounter, Histogram } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 const { JSONPath } = require('jsonpath-plus');
@@ -54,6 +54,8 @@ export class DatabaseConnection extends events.EventEmitter {
     public static mongodb_replace: Histogram;
     public static mongodb_delete: Histogram;
     public static mongodb_deletemany: Histogram;
+    public static mongodb_active_sessions: ObservableUpDownCounter;
+
     // public static semaphore = Auth.Semaphore(1);
 
     public registerGlobalWatches: boolean = true;
@@ -95,6 +97,16 @@ export class DatabaseConnection extends events.EventEmitter {
             DatabaseConnection.mongodb_deletemany = Logger.otel.meter.createHistogram('openflow_mongodb_deletemany_seconds', {
                 description: 'Duration for mongodb deletemanys', valueType: 1, unit: 's'
             });
+            DatabaseConnection.mongodb_active_sessions = Logger.otel.meter.createObservableUpDownCounter('openflow_mongodb_active_sessions', {
+                description: 'Number of active mongodb sessions'
+            });
+            DatabaseConnection.mongodb_active_sessions?.addCallback((res) => {
+                // @ts-ignore
+                var value = this.cli?.s?.activeSessions?.size;
+                if (!value) value = 0;
+                res.observe(value, { ...Logger.otel.defaultlabels });
+            });
+
         }
     }
 
