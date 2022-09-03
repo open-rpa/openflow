@@ -59,6 +59,7 @@ export class WebSocketServer {
                     try {
                         socketObject.close()
                     } catch (error) {
+                        Logger.instanse.error("WebSocketServer", "connection", error);
                     }
                     return;
                 }
@@ -76,12 +77,13 @@ export class WebSocketServer {
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         try {
                             const cli = WebSocketServer._clients[i];
-                            if (cli.user != null) {
+                            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
                                 if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
-                                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
-                                        if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
-                                        p_all[cli.clientagent] += 1;
-                                    }
+                                    if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
+                                    p_all[cli.clientagent] += 1;
+                                } else {
+                                    if (NoderedUtil.IsNullUndefinded(p_all["unknown"])) p_all["unknown"] = 0;
+                                    p_all["unknown"] += 1;
                                 }
                             }
                         } catch (error) {
