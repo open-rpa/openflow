@@ -72,8 +72,12 @@ export class WebSocketServer {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
                     description: 'Total number of online websocket clients'
                 }) // "agent", "version"
+                let p_all = {};
                 WebSocketServer.p_all?.addCallback(res => {
-                    const p_all = {};
+                    let keys = Object.keys(p_all);
+                    keys.forEach(key => {
+                        p_all[key] = 0;
+                    });
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         try {
                             const cli = WebSocketServer._clients[i];
@@ -91,10 +95,13 @@ export class WebSocketServer {
                             Logger.instanse.error("WebSocketServer", "pingClients", error);
                         }
                     }
-
-                    const keys = Object.keys(p_all);
+                    keys = Object.keys(p_all);
                     keys.forEach(key => {
-                        res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
+                        if (p_all[key] > 0) {
+                            res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
+                        } else {
+                            res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
+                        }                        
                     });
                 });
                 WebSocketServer.websocket_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_queue", {
