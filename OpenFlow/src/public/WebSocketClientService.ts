@@ -11,13 +11,11 @@ export class WebSocketClientService {
         public $location,
         public $window: any
     ) {
-        console.debug("WebSocketClientService::constructor");
         this.load();
     }
     load() {
         this.getJSON("/config", async (error: any, data: any) => {
             if (NoderedUtil.IsNullUndefinded(data)) {
-                console.error("/config return null");
                 return;
             }
             try {
@@ -77,7 +75,6 @@ export class WebSocketClientService {
                 if (NoderedUtil.IsNullUndefinded(data.jwt) || data.jwt.trim() === "") { data.jwt = null; }
                 if (NoderedUtil.IsNullUndefinded(data.rawAssertion) || data.rawAssertion.trim() === "") { data.rawAssertion = null; }
                 if (NoderedUtil.IsNullUndefinded(data.jwt)) {
-                    console.debug("data.jwt and data.rawAssertion is null");
                     data = null;
                 }
             }

@@ -9,7 +9,7 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 import * as saml from "saml20";
-import { GridFSBucket, ObjectID } from "mongodb";
+import { GridFSBucket, ObjectId } from "mongodb";
 import { Base, User, NoderedUtil, TokenUser, Role, FederationId } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -18,7 +18,7 @@ import { TokenRequest } from "./TokenRequest";
 var nodemailer = require('nodemailer');
 var dns = require('dns');
 const got = require("got");
-const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
+const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -510,7 +510,10 @@ export class LoginProvider {
                         Logger.instanse.debug("LoginProvider", "/login", "User signed in, with key " + key);
                         this.redirect(res, "/");
                     } else {
-                        res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                        try {
+                            res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                        } catch (error) {
+                        }
                         Logger.instanse.debug("LoginProvider", "/login", "User not signed in, redirect to /login");
                         this.redirect(res, "/login");
                     }
@@ -736,6 +739,8 @@ export class LoginProvider {
                                 UpdateDoc.$set["validated"] = true;
                                 tuser.validated = true;
                             }
+
+
                             Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
                             var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                             await Logger.DBHelper.DeleteKey("users" + tuser._id);
@@ -775,13 +780,19 @@ export class LoginProvider {
                             if (exists.length > 0) {
                                 var u: User = exists[0];
                                 if ((u as any)._mailcode == req.body.code) {
-                                    const UpdateDoc: any = { "$set": {}, "$unset": {} };
-                                    UpdateDoc.$unset["_mailcode"] = "";
-                                    UpdateDoc.$set["validated"] = true;
-                                    UpdateDoc.$set["emailvalidated"] = true;
-                                    var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                                    // @ts-ignore
+                                    delete u._mailcode;
+                                    u.validated = true;
+                                    u.emailvalidated = true;
+                                    await Logger.DBHelper.Save(u, Crypt.rootToken(), span);
+
+                                    // const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                                    // UpdateDoc.$unset["_mailcode"] = "";
+                                    // UpdateDoc.$set["validated"] = true;
+                                    // UpdateDoc.$set["emailvalidated"] = true;
+                                    // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                                     await Logger.DBHelper.DeleteKey("users" + tuser._id);
-                                    // await new Promise(resolve => { setTimeout(resolve, 1000) })
+                                    await new Promise(resolve => { setTimeout(resolve, 1000) })
                                     res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
                                     return;
                                 } else {
@@ -1477,16 +1488,16 @@ export class LoginProvider {
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
                 done("unknown user " + username, null); return;
             }
             if (_user.disabled) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
             const tuser: TokenUser = TokenUser.From(_user);
-            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "openidverify" as any, "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
             done(null, tuser);
         } catch (error) {
             Logger.instanse.error("LoginProvider", "openidverify", error);

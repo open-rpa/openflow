@@ -2,8 +2,8 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, SigninMessage, Message, QueueMessage } from "@openiap/openflow-api";
-import { Logger } from "../../Logger";
 import { Util } from "./Util";
+import { Logger } from "../../Logger";
 
 export interface Iamqp_connection {
     name: string;
@@ -34,10 +34,10 @@ export class amqp_connection {
         this.host = this.config.host;
         this.name = config.name || this.host;
         if (!NoderedUtil.IsNullUndefinded(this.host)) {
-            this.webcli = new WebSocketClient(Logger.instanse, this.host);
+            this.webcli = new WebSocketClient(null, this.host);
             this.webcli.agent = "remotenodered";
             this.webcli.version = Config.version;
-            Logger.instanse.info("amqp_config: connecting to " + this.host);
+            Logger.instanse.info("amqp_nodes", "config", "connecting to " + this.host);
             this.webcli.events.on("onopen", async () => {
                 try {
                     const q: SigninMessage = new SigninMessage();
@@ -46,20 +46,20 @@ export class amqp_connection {
                     q.username = this.username;
                     q.password = this.password;
                     const msg: Message = new Message(); msg.command = "signin"; msg.data = JSON.stringify(q);
-                    Logger.instanse.info("amqp_config: signing into " + this.host + " as " + this.username);
+                    Logger.instanse.info("amqp_nodes", "config", "signing into " + this.host + " as " + this.username);
                     const result: SigninMessage = await this.webcli.Send<SigninMessage>(msg, 1);
-                    Logger.instanse.info("signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
+                    Logger.instanse.info("amqp_nodes", "config", "signed in to " + this.host + " as " + result.user.name + " with id " + result.user._id);
                     this.webcli.user = result.user;
                     this.webcli.jwt = result.jwt;
                     this.webcli.events.emit("onsignedin", result.user);
                 } catch (error) {
-                    Logger.instanse.error(error);
+                    Logger.instanse.error("amqp_nodes", "config", error);
                     this.webcli.events.emit("onclose", (error.message ? error.message : error));
                     NoderedUtil.HandleError(this.node, error, null);
                 }
             });
             this.webcli.events.on("onsignedin", async (user) => {
-                Logger.instanse.info("signed in to " + this.host + " as " + user.name + " with id " + user._id);
+                Logger.instanse.info("amqp_nodes", "config", "signed in to " + this.host + " as " + user.name + " with id " + user._id);
             });
         }
     }
@@ -82,6 +82,7 @@ export class amqp_connection {
 export interface Iamqp_consumer_node {
     config: any;
     queue: string;
+    autoack: boolean;
     name: string;
 }
 export class amqp_consumer_node {
@@ -130,7 +131,7 @@ export class amqp_consumer_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            Logger.instanse.info("track::amqp consumer node in::connect");
+            Logger.instanse.info("amqp_nodes", "connect", "consumer node in::connect");
 
             this.localqueue = await NoderedUtil.RegisterQueue({
                 websocket: this.websocket(), queuename: this.config.queue, callback: (msg: QueueMessage, ack: any) => {
@@ -140,7 +141,7 @@ export class amqp_consumer_node {
                 setTimeout(this.connect.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
                 }
             });
-            Logger.instanse.info("registed amqp consumer as " + this.localqueue);
+            Logger.instanse.info("amqp_nodes", "connect", "registed amqp consumer as " + this.localqueue);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error, null);
@@ -150,7 +151,15 @@ export class amqp_consumer_node {
     async OnMessage(msg: any, ack: any) {
         try {
             const data: any = msg.data;
-            data.amqpacknowledgment = ack;
+            if (this.config.autoack) {
+                const data: any = Object.assign({}, msg.data);
+                delete data.jwt;
+                delete data.__jwt;
+                delete data.__user;
+                ack(true, data);
+            } else {
+                data.amqpacknowledgment = ack;
+            }
             if (!NoderedUtil.IsNullUndefinded(data.__user)) {
                 data.user = data.__user;
                 delete data.__user;
@@ -235,7 +244,7 @@ export class amqp_publisher_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            Logger.instanse.info("track::amqp publiser node::connect");
+            Logger.instanse.info("amqp_nodes", "connect", "track::amqp publiser node::connect");
             this.localqueue = this.config.localqueue;
             this.localqueue = await NoderedUtil.RegisterQueue({
                 websocket: this.websocket(), queuename: this.localqueue, callback: (msg: QueueMessage, ack: any) => {
@@ -247,7 +256,7 @@ export class amqp_publisher_node {
                 }
             });
             if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-                Logger.instanse.info("registed amqp published return queue as " + this.localqueue);
+                Logger.instanse.info("amqp_nodes", "connect", "registed amqp published return queue as " + this.localqueue);
                 this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
             } else {
                 if (this != null && this.node != null) this.node.status({ fill: "red", shape: "dot", text: "Disconnected" });
@@ -374,6 +383,7 @@ export interface Iamqp_exchange_node {
     exchange: string;
     routingkey: string;
     algorithm: "direct" | "fanout" | "topic" | "header";
+    autoack: boolean;
     name: string;
 }
 export class amqp_exchange_node {
@@ -422,7 +432,7 @@ export class amqp_exchange_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            Logger.instanse.info("track::amqp exchange node in::connect");
+            Logger.instanse.info("amqp_nodes", "connect", "track::amqp exchange node in::connect");
             const result = await NoderedUtil.RegisterExchange({
                 websocket: this.websocket(), exchangename: this.config.exchange, algorithm: this.config.algorithm,
                 routingkey: this.config.routingkey, callback: (msg: QueueMessage, ack: any) => {
@@ -433,7 +443,7 @@ export class amqp_exchange_node {
                 }
             });
             this.localqueue = result.queuename;
-            Logger.instanse.info("registed amqp exchange as " + result.exchangename);
+            Logger.instanse.info("amqp_nodes", "connect", "registed amqp exchange as " + result.exchangename);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + result.exchangename });
         } catch (error) {
             NoderedUtil.HandleError(this, error, null);
@@ -443,7 +453,15 @@ export class amqp_exchange_node {
     async OnMessage(msg: any, ack: any) {
         try {
             const data: any = msg.data;
-            data.amqpacknowledgment = ack;
+            if (this.config.autoack) {
+                const data: any = Object.assign({}, msg.data);
+                delete data.jwt;
+                delete data.__jwt;
+                delete data.__user;
+                ack(true, data);
+            } else {
+                data.amqpacknowledgment = ack;
+            }            
             if (!NoderedUtil.IsNullUndefinded(data.__user)) {
                 data.user = data.__user;
                 delete data.__user;

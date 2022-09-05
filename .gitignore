@@ -14,3 +14,4 @@ docker-package.json
 sonar-scanner.properties
 sonar-project.properties
 crash.log
+package-lock.json

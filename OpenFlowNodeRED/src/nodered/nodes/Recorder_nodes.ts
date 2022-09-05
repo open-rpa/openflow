@@ -1,6 +1,5 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { Logger } from "../../Logger";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { Util } from "./Util";
 const pako = require('pako');
@@ -20,7 +19,6 @@ export class recorder {
     }
     onadd() {
         var routeAuthHandler = RED.auth.needsPermission("flow-recorder.write");
-        console.log(routeAuthHandler);
     }
     async oninput(msg: any) {
         try {
@@ -35,7 +33,6 @@ export class recorder {
     async onclose(removed: boolean, done: any) {
         try {
         } catch (error) {
-            Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error, null);
         }
         if (done != null) done();

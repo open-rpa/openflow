@@ -9,6 +9,5 @@ export = function (RED: Red) {
         // var module = registry.getModule(moduleId);
         // RED.plugins.registerPlugin("node-red-contrib-recorder", rec);
     } catch (error) {
-        console.error(error)
     }
 }

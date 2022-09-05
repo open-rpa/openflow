@@ -17,7 +17,16 @@ export class Config {
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
-        Config.log_otel_times = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+        Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
+        Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
+
+        Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
+        Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
+        Config.log_verbose = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
+        Config.log_silly = Config.parseBoolean(Config.getEnv("log_silly", "false"));
+        Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
+        Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
+        Config.log_storage = Config.parseBoolean(Config.getEnv("log_storage", "false"));
 
         Config.nodered_id = Config.getEnv("nodered_id", "1");
         Config.nodered_sa = Config.getEnv("nodered_sa", "");
@@ -88,8 +97,18 @@ export class Config {
         Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "5000"));
     }
     public static version: string = Config.getversion();
+    public static unittesting: boolean = false;
     public static logpath: string = Config.getEnv("logpath", __dirname);
-    public static log_otel_times: boolean = Config.parseBoolean(Config.getEnv("log_otel_times", "false"));
+    public static log_with_trace: boolean = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
+    public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
+    public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
+    public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
+    public static log_verbose: boolean = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
+    public static log_silly: boolean = Config.parseBoolean(Config.getEnv("log_silly", "false"));
+    public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel", "false"));
+    public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
+    public static log_storage: boolean = Config.parseBoolean(Config.getEnv("log_storage", "false"));
+
     public static nodered_id: string = Config.getEnv("nodered_id", "1");
     public static nodered_sa: string = Config.getEnv("nodered_sa", "");
 

@@ -1,6 +1,5 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { Logger } from "../../Logger";
 import { AddWorkitem, MessageWorkitemFile, NoderedUtil, Workitem, WorkitemFile } from "@openiap/openflow-api";
 import { Util } from "./Util";
 const pako = require('pako');
@@ -95,7 +94,6 @@ export class addworkitem {
     async onclose(removed: boolean, done: any) {
         try {
         } catch (error) {
-            Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error, null);
         }
         if (done != null) done();
@@ -166,7 +164,6 @@ export class addworkitems {
     async onclose(removed: boolean, done: any) {
         try {
         } catch (error) {
-            Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error, null);
         }
         if (done != null) done();
@@ -226,7 +223,6 @@ export class updateworkitem {
     async onclose(removed: boolean, done: any) {
         try {
         } catch (error) {
-            Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error, null);
         }
         if (done != null) done();
@@ -302,7 +298,6 @@ export class popworkitem {
     async onclose(removed: boolean, done: any) {
         try {
         } catch (error) {
-            Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error, null);
         }
         if (done != null) done();
@@ -349,7 +344,6 @@ export class deleteworkitem {
     async onclose(removed: boolean, done: any) {
         try {
         } catch (error) {
-            Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error, null);
         }
         if (done != null) done();

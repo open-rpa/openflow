@@ -1,6 +1,5 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { Logger } from "../../Logger";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, Base, Role, Rolemember, QueueMessage } from "@openiap/openflow-api";
 import { Util } from "./Util";
@@ -157,9 +156,6 @@ export class workflow_in_node {
                     target[sourcekey] = source[sourcekey];
                 }
             } catch (error) {
-                if (target != null && target != undefined) Logger.instanse.info(JSON.stringify(target));
-                if (source != null && source != undefined) Logger.instanse.info(JSON.stringify(source));
-                Logger.instanse.error(error);
             }
         }
         return target;
@@ -255,7 +251,6 @@ export class workflow_in_node {
                     try {
                         data.payload._id = res2._id;
                     } catch (error) {
-                        Logger.instanse.warn(error);
                     }
                 }
                 // result = this.nestedassign(res2, result);
@@ -286,7 +281,6 @@ export class workflow_in_node {
                 }
                 ack(false, JSON.stringify(data));
             } catch (error) {
-                Logger.instanse.error(error);
             }
         }
     }
@@ -313,7 +307,6 @@ export class workflow_in_node {
                 this.localexchangequeue = "";
             }
         } catch (error) {
-            Logger.instanse.error(error);
             NoderedUtil.HandleError(this, error, null);
         }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);

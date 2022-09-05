@@ -259,7 +259,8 @@ export class MongoAdapter {
         MongoAdapter.consume(id);
     }
     static async consume(id) {
-        await this.coll().findOneAndUpdate({ id }, { $set: { 'payload.consumed': Math.floor(Date.now() / 1000) } });
+        var updoc: any = { $set: { 'payload.consumed': Math.floor(Date.now() / 1000) } };
+        await this.coll().findOneAndUpdate({ id }, updoc);
     }
     coll() {
         return MongoAdapter.coll();

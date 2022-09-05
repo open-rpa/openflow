@@ -3,9 +3,9 @@
 // npm i npm install --global --production windows-build-tools
 import * as fs from "fs";
 import { Logger } from './Logger';
-Logger.configure();
+Logger.configure(true);
 import { Config } from "./Config";
-import { logger, loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
+import { loadenv, envfilename, envfilepathname, servicename, isOpenFlow } from "./nodeclient/cliutil";
 import { WebSocketClient, NoderedUtil } from "@openiap/openflow-api";
 import { pm2stop, pm2delete, pm2start, pm2restart, pm2disconnect, pm2dump, pm2startup, pm2exists } from "./nodeclient/pm2util";
 
@@ -59,7 +59,7 @@ try {
         if (!isOpenFlow()) {
             let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
             if (parsedFile.jwt == null || parsedFile.jwt == "") {
-                if (options.authenticate != true) logger.warn(envfilename + " is missing a jwt, switching to --authenticate")
+                if (options.authenticate != true) Logger.instanse.warn("cli", "", envfilename + " is missing a jwt, switching to --authenticate")
                 options.authenticate = true;
             }
         }
@@ -72,8 +72,8 @@ try {
 
 function getToken(): Promise<string> {
     return new Promise<string>(async (resolve, reject) => {
-        logger.info("wsurl " + Config.api_ws_url);
-        let socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
+        Logger.instanse.info("cli", "", "wsurl " + Config.api_ws_url);
+        let socket: WebSocketClient = new WebSocketClient(null, Config.api_ws_url);
         socket.agent = "nodered-cli";
         socket.version = Config.version;
         socket.events.on("onopen", async () => {
@@ -82,7 +82,7 @@ function getToken(): Promise<string> {
                 const password: string = readlineSync.question('password? ', { hideEchoBack: true });
 
                 const result = await NoderedUtil.SigninWithUsername({ username, password, longtoken: true });
-                logger.info("signed in as " + result.user.name + " with id " + result.user._id);
+                Logger.instanse.info("cli", "", "signed in as " + result.user.name + " with id " + result.user._id);
                 WebSocketClient.instance.user = result.user;
                 WebSocketClient.instance.jwt = result.jwt;
                 socket.close(1000, "Close by user");
@@ -90,7 +90,7 @@ function getToken(): Promise<string> {
                 socket = null;
             } catch (error) {
                 let closemsg: any = (error.message ? error.message : error);
-                logger.error(error);
+                Logger.instanse.error("cli", "", error);
                 socket.close(1000, closemsg);
                 reject(closemsg);
                 socket = null;
@@ -130,7 +130,7 @@ async function doit() {
                 await pm2delete(servicename);
             }
             try {
-                logger.info("isOpenFlow: " + isOpenFlow());
+                Logger.instanse.info("cli", "", "isOpenFlow: " + isOpenFlow());
                 if (!isOpenFlow()) {
                     loadenv();
                     let jwt = await getToken();
@@ -145,10 +145,10 @@ async function doit() {
                     script: __filename,
                     args: [servicename, "--run", "--config", envfilepathname]
                 });
-                logger.info("Quit");
+                Logger.instanse.info("cli", "", "Quit");
                 pm2disconnect();
             } catch (error) {
-                logger.error(error);
+                Logger.instanse.error("cli", "", error);
             }
         } else if (options.install == true) {
             console.log("install");
@@ -205,12 +205,12 @@ async function doit() {
             pm2disconnect();
             console.log("run");
             loadenv();
-            logger.info("Starting as service " + servicename);
+            Logger.instanse.info("cli", "", "Starting as service " + servicename);
             let index = path.join(__dirname, "/index.js");
             if (!fs.existsSync(index)) {
                 index = path.join(__dirname, "dist", "/index.js");
             }
-            logger.info("run: " + index);
+            Logger.instanse.info("cli", "", "run: " + index);
             require(index);
         } else {
             console.log("unknown, print usage");

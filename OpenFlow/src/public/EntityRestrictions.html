@@ -8,8 +8,7 @@
   <a href="#/EntityRestriction" class="btn btn-info" translate lib="web">addEntityRestriction</a>
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
-<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
-  <caption>List of entity restrictions</caption>
+<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;" aria-label="List of entity restrictions">
   <thead class="thead-dark">
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>

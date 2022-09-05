@@ -1,7 +1,6 @@
 import { Logger } from "../Logger";
 import { Config } from "../Config";
 import * as fs from "fs";
-export const logger = Logger.configure();
 const cp = require('child_process');
 const path = require('path');
 const envfile = require('envfile')
@@ -56,7 +55,7 @@ export function hassourceenv(): boolean {
     return fs.existsSync(sourceenv);
 }
 export function loadenv() {
-    logger.info("NodeJS version " + process.version + " Config " + envfilepathname);
+    Logger.instanse.info("cli", "", "NodeJS version " + process.version + " Config " + envfilepathname);
     let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
     for (const k in parsedFile) {
         process.env[k] = parsedFile[k];

@@ -124,7 +124,7 @@
     <div class="sticky-alerts"></div>
 
     <nav class="navbar navbar-expand-md fixed-top" ng-show="menuctrl.signedin">
-      <button class="btn" type="button" ng-click="menuctrl.toggleSidebar()"><i class="fa fa-bars" aria-hidden="true"></i></button>
+      <button class="btn" type="button" ng-click="menuctrl.toggleSidebar()"><i class="fas fa-bars" aria-hidden="true"></i></button>
       <a href="#" class="navbar-brand">
         <span translate lib="web">sitename</span>
       </a>
@@ -146,11 +146,11 @@
 
         <button class=" btn btn-action mr-5" type="button" ng-click="menuctrl.toggleDarkMode()"
           aria-label="Toggle dark mode" id="menudarkmode">
-          <i class="fa fa-moon" aria-hidden="true"></i>
+          <i class="fas fa-moon" aria-hidden="true"></i>
         </button>
         <button id="menutour" class="btn btn-action mr-5" type="button" ng-click="menuctrl.ListTours()"
           ng-show="menuctrl.WebSocketClientService.enable_web_tours" aria-label="Start tour">
-          <i class="fa fa-question" aria-hidden="true"></i>
+          <i class="fas fa-question" aria-hidden="true"></i>
         </button>
 
 
@@ -163,7 +163,7 @@
           ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.customers != null && menuctrl.customers.length > 1">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
             <span>{{menuctrl.customer.name || "No filter"}}</span>
-            <i class="fa fa-angle-down" aria-hidden="true"></i>
+            <i class="fas fa-angle-down" aria-hidden="true"></i>
           </button>
           <div class="dropdown-menu dropdown-menu-right w-250" aria-labelledby="navbar-dropdown-toggle-btn-1">
             <div class="row">
@@ -189,7 +189,7 @@
         <div class="dropdown with-arrow">
           <button class="btn" data-toggle="dropdown" type="button" id="navbar-dropdown-toggle-btn-1">
             Menu
-            <i class="fa fa-angle-down" aria-hidden="true"></i>
+            <i class="fas fa-angle-down" aria-hidden="true"></i>
           </button>
           <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1" id="">
 

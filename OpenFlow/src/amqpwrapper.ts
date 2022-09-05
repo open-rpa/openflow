@@ -17,7 +17,7 @@ export type QueueMessageOptions = {
     replyTo: string,
     consumerTag: string,
     routingKey: string,
-    exchange: string,
+    exchangename: string,
     priority: number
 }
 export type AssertQueue = {
@@ -98,6 +98,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.AssertQueueOptions.arguments = {};
             this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
         }
+        this.setMaxListeners(1500);
     }
     private timeout: NodeJS.Timeout = null;
     public queuemessagecounter: object = {};
@@ -375,13 +376,13 @@ export class amqpwrapper extends events.EventEmitter {
             const consumerTag: string = msg.fields.consumerTag;
             const routingKey: string = msg.fields.routingKey;
             const priority: number = (msg.properties.priority ? msg.properties.priority : 0);
-            const exchange: string = msg.fields.exchange;
+            const exchangename: string = msg.fields.exchange;
             const options: QueueMessageOptions = {
                 correlationId,
                 replyTo,
                 consumerTag,
                 routingKey,
-                exchange,
+                exchangename,
                 priority
             }
             const data: string = msg.content.toString();
@@ -495,11 +496,11 @@ export class amqpwrapper extends events.EventEmitter {
                 }
                 if (ismine) {
                     // Resend message, this time to the reply queue for the correct node (replyTo)
-                    Logger.instanse.warn("amqpwrapper", "Adddlx", "[" + options.exchange + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
+                    Logger.instanse.warn("amqpwrapper", "Adddlx", "[" + options.exchangename + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
                     // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
                     await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
                 } else {
-                    Logger.instanse.debug("amqpwrapper", "Adddlx", "[" + options.exchange + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
+                    Logger.instanse.debug("amqpwrapper", "Adddlx", "[" + options.exchangename + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
                 }
             } catch (error) {
                 Logger.instanse.error("amqpwrapper", "Adddlx", "Failed sending deadletter message to " + options.replyTo);
@@ -527,7 +528,7 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
             if (typeof msg !== "string") {
-                Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] Received command " + msg.command);
+                Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchangename + "] Received command " + msg.command);
                 switch (msg.command) {
                     case "clearcache":
                         Logger.DBHelper.clearCache("amqp broadcast");
@@ -535,7 +536,7 @@ export class amqpwrapper extends events.EventEmitter {
                     case "housekeeping":
                         // if (this.IsMyconsumerTag(options.consumerTag)) break;
                         if (msg.lastrun) {
-                            Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchange + "] " + msg.lastrun)
+                            Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchangename + "] " + msg.lastrun)
                             Message.lastHouseKeeping = new Date(msg.lastrun);
                         } else {
                             if (Message.lastHouseKeeping != null) {

@@ -26,6 +26,8 @@ export class Config {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
+        Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
+
         Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "true"));
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
@@ -161,6 +163,7 @@ export class Config {
         Config.mongodb_url = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
         Config.mongodb_db = Config.getEnv("mongodb_db", "openflow");
         Config.mongodb_minpoolsize = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
+        Config.mongodb_maxpoolsize = parseInt(Config.getEnv("mongodb_maxpoolsize", "25"));
 
         Config.skip_history_collections = Config.getEnv("skip_history_collections", "");
         Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
@@ -361,6 +364,7 @@ export class Config {
     public static mongodb_url: string = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
     public static mongodb_db: string = Config.getEnv("mongodb_db", "openflow");
     public static mongodb_minpoolsize: number = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
+    public static mongodb_maxpoolsize: number = parseInt(Config.getEnv("mongodb_maxpoolsize", "25"));
 
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
     public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count", "1000"));

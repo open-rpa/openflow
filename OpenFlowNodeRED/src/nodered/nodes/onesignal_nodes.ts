@@ -1,6 +1,5 @@
 import * as RED from "node-red";
 import { Red } from "node-red";
-import { Logger } from "../../Logger";
 import * as request from "request";
 import { NoderedUtil } from "@openiap/openflow-api";
 
@@ -99,12 +98,10 @@ export class create_notification {
                 },
                 (error, response, body) => {
                     if (!body.errors) {
-                        Logger.instanse.debug(body);
                         msg.payload = body;
                         this.node.status({});
                         this.node.send(msg);
                     } else {
-                        console.error('Error:', body.errors);
                         NoderedUtil.HandleError(this, body.errors, msg);
                     }
                 }

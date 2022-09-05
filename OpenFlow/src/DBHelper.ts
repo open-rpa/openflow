@@ -350,7 +350,7 @@ export class DBHelper {
     public async GetDisposableDomain(domain: string, parent: Span): Promise<Base> {
         await this.init();
         if (domain.indexOf("@") > -1) {
-            domain = domain.substr(domain.indexOf("@") + 1);
+            domain = domain.substring(domain.indexOf("@") + 1);
         }
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {

@@ -94,7 +94,7 @@ export class WebServer {
             this.message_queue_count.addCallback(this.update_message_queue_count.bind(this));
         }
         try {
-            Logger.instanse.silly("WebServer.configure::begin");
+            Logger.instanse.silly("WebServer", "configure", "begin");
             let server: http.Server = null;
             if (this.app === null) {
                 this.app = express();
@@ -107,13 +107,13 @@ export class WebServer {
                 const name = Config.getEnv("nodered_id", null);
                 if (!NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = name;
                 if (NoderedUtil.IsNullEmpty(name)) defaultLabels["name"] = hostname;
-                Logger.instanse.silly("WebServer.configure::configure register");
+                Logger.instanse.silly("WebServer", "configure", "configure register");
                 const loggerstream = {
                     write: function (message, encoding) {
-                        Logger.instanse.silly(message);
+                        Logger.instanse.silly("WebServer", "configure", message);
                     }
                 };
-                Logger.instanse.silly("WebServer.configure::setup express middleware");
+                Logger.instanse.silly("WebServer", "configure", "setup express middleware");
                 this.app.use(morgan('combined', { stream: loggerstream }));
                 this.app.use(compression());
                 this.app.use(express.urlencoded({ limit: '10mb', extended: true }))
@@ -133,7 +133,7 @@ export class WebServer {
                     done(null, user);
                 });
                 if (Config.tls_crt != '' && Config.tls_key != '') {
-                    Logger.instanse.silly("WebServer.configure::configure ssl");
+                    Logger.instanse.silly("WebServer", "configure", "configure ssl");
                     let options: any = {
                         cert: Config.tls_crt,
                         key: Config.tls_key
@@ -157,7 +157,7 @@ export class WebServer {
                     if (Config.tls_passphrase !== "") {
                         options.passphrase = Config.tls_passphrase;
                     }
-                    Logger.instanse.silly("WebServer.configure::create https server");
+                    Logger.instanse.silly("WebServer", "configure", "create https server");
                     server = https.createServer(options, this.app);
 
                     const redirapp = express();
@@ -169,14 +169,14 @@ export class WebServer {
                     })
                     // _http.listen(80);
                 } else {
-                    Logger.instanse.silly("WebServer.configure::create http server");
+                    Logger.instanse.silly("WebServer", "configure", "create http server");
                     server = http.createServer(this.app);
                 }
                 server.on("error", (error) => {
-                    Logger.instanse.error(error);
+                    Logger.instanse.error("WebServer", "onerror", error);
                 });
 
-                Logger.instanse.silly("WebServer.configure::configure nodered settings");
+                Logger.instanse.silly("WebServer", "configure", "configure nodered settings");
                 this.settings = new nodered_settings();
                 this.settings.functionExternalModules = Config.function_external_modules;
                 this.settings.editorTheme.codeEditor.lib = Config.codeeditor_lib;
@@ -275,7 +275,7 @@ export class WebServer {
                             } catch (error) {
                                 console.trace(error);
                                 console.error(error);
-                                Logger.instanse.error(error);
+                                Logger.instanse.silly("WebServer", "configure", error);
                             }
 
                         }
@@ -307,7 +307,7 @@ export class WebServer {
                 };
                 this.settings.adminAuth.strategy.autoLogin = true
 
-                Logger.instanse.silly("WebServer.configure::configure nodered storageModule");
+                Logger.instanse.silly("WebServer", "configure", "configure nodered storageModule");
                 this.settings.storageModule = new noderedcontribopenflowstorage(socket);
                 const n: noderednpmrc = await this.settings.storageModule._getnpmrc();
                 if (!NoderedUtil.IsNullUndefinded(n) && !NoderedUtil.IsNullUndefinded(n.catalogues)) {
@@ -321,9 +321,9 @@ export class WebServer {
                     } else {
                         this.settings.editorTheme.palette.catalogues = Config.noderedcatalogues.split(",");
                     }
-                    Logger.instanse.debug("WebServer.configure::Force nodered catalogues to be " + Config.noderedcatalogues);
+                    Logger.instanse.debug("WebServer", "configure", "Force nodered catalogues to be " + Config.noderedcatalogues);
                 } else {
-                    Logger.instanse.debug("WebServer.configure::Using default nodered catalogues as " + this.settings.editorTheme.palette.catalogues);
+                    Logger.instanse.debug("WebServer", "configure", "Using default nodered catalogues as " + this.settings.editorTheme.palette.catalogues);
                 }
                 this.settings.editorTheme.tours = Config.tours;
 
@@ -334,29 +334,7 @@ export class WebServer {
 
                 this.app.set('trust proxy', 1)
 
-                const events = require("@node-red/util").events;
-                const validateNodes = (e) => {
-                    if (e.id == "runtime-state" && e.payload == null) {
-                        setTimeout(() => {
-                            try {
-                                RED.nodes.eachNode(function (node) {
-                                    try {
-                                        RED.editor.validateNode(node)
-                                    } catch (error) {
-                                    }
-                                });
-                            } catch (error) {
-                            }
-                        }, 1000);
-                        events.off("runtime-event", validateNodes);
-                    }
-                }
-                events.on("runtime-event", validateNodes);
-                events.on("node-status", (e, e2, e3) => {
-                    // {id:"runtime-unsupported-version",type:"error",text:"message.id"}
-                });
-
-                Logger.instanse.debug("WebServer.configure::init nodered");
+                Logger.instanse.debug("WebServer", "configure", "WebServer.configure::init nodered");
                 // initialise the runtime with a server and settings
                 await (RED as any).init(server, this.settings);
 
@@ -373,16 +351,16 @@ export class WebServer {
                 });
 
                 if (Config.nodered_port > 0) {
-                    Logger.instanse.debug("WebServer.configure::server.listen on port " + Config.nodered_port);
+                    Logger.instanse.debug("WebServer", "configure", "server.listen on port " + Config.nodered_port);
                     server.listen(Config.nodered_port).on('error', function (error) {
-                        Logger.instanse.error(error);
+                        Logger.instanse.error("WebServer", "configure", error);
                         process.exit(404);
                     });
                 }
                 else {
-                    Logger.instanse.debug("WebServer.configure::server.listen on port " + Config.port);
+                    Logger.instanse.debug("WebServer", "configure", "server.listen on port " + Config.port);
                     server.listen(Config.port).on('error', function (error) {
-                        Logger.instanse.error(error);
+                        Logger.instanse.error("WebServer", "configure", error);
                         if (Config.NODE_ENV == "production") {
                             try {
                                 server.close();
@@ -409,14 +387,14 @@ export class WebServer {
             let hasErrors: boolean = true, errorCounter: number = 0, err: any;
             while (hasErrors) {
                 try {
-                    if (errorCounter > 0) Logger.instanse.warn("WebServer.configure::restarting nodered ...");
+                    if (errorCounter > 0) Logger.instanse.warn("WebServer", "configure", "restarting nodered ...");
                     RED.start();
                     hasErrors = false;
                 } catch (error) {
                     err = error;
                     errorCounter++;
                     hasErrors = true;
-                    Logger.instanse.error(error);
+                    Logger.instanse.error("WebServer", "configure", error);
                 }
                 if (errorCounter == 10) {
                     throw err;
@@ -427,7 +405,7 @@ export class WebServer {
             }
             return server;
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error("WebServer", "configure", error);
             if (Config.NODE_ENV == "production") {
                 process.exit(404);
             }
@@ -450,7 +428,7 @@ export class WebServer {
                 if (result[msg.command] == null) result[msg.command] = 0;
                 result[msg.command]++;
             } catch (error) {
-                Logger.instanse.error(error);
+                Logger.instanse.error("WebServer", "configure", error);
             }
         });
         const keys2 = Object.keys(result);

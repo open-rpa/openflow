@@ -5,7 +5,6 @@ import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as https from "https";
 import { Logger, promiseRetry } from "./Logger";
 import { Config } from "./Config";
-export const logger = Logger.configure();
 import { FileSystemCache } from "@openiap/openflow-api";
 
 // tslint:disable-next-line: class-name
@@ -100,14 +99,14 @@ export class noderedcontribauthsaml {
             if (roles.indexOf("nodered_users") !== -1 || roles.indexOf("nodered users") !== -1) { profile.permissions = "read"; }
             if (roles.indexOf("nodered_admins") !== -1 || roles.indexOf("nodered admins") !== -1) { profile.permissions = "*"; }
         } else {
-            logger.error("[auth] User has no roles");
+            Logger.instanse.debug("auth", "verify", "User has no roles");
         }
         profile.username = profile.nameID;
         if (this.customverify !== null && this.customverify !== undefined) {
             this.customverify(profile, (newprofile) => {
                 this._users[newprofile.nameID] = newprofile;
                 if (profile.permissions === undefined || profile.permissions === null) {
-                    logger.error("[auth] Permission denied after doing custom verify");
+                    Logger.instanse.error("auth", "verify", "Permission denied after doing custom verify");
                     return done("Permission denied", null);
                 }
                 done(null, newprofile);
@@ -115,7 +114,7 @@ export class noderedcontribauthsaml {
         } else {
             this._users[profile.nameID] = profile;
             if (profile.permissions === undefined || profile.permissions === null) {
-                logger.error("[auth] Permission denied (no custom verify)");
+                Logger.instanse.error("auth", "verify", "Permission denied (no custom verify)");
                 return done("Permission denied", null);
             }
             done(null, profile);

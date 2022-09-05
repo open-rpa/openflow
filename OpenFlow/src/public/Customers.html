@@ -14,12 +14,11 @@
     ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')">addcustomer</a>
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
-<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
-  <caption></caption>
+<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;" aria-label="List of customers">
   <thead class="thead-dark">
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>
-      <th ng-click="ctrl.ToggleOrder('dbusage')" class="dbusage"><b translate lib="web">dbusage</b></th>
+      <th ng-click="ctrl.ToggleOrder('dbusage')" class="dbusage" scope="col"><strong translate lib="web">dbusage</strong></th>
       <th class="w-150" ng-click="ctrl.ToggleOrder('_created')" scope="col"><strong translate lib="web">created</strong>
       </th>
       <th class="w-150" scope="col"></th>

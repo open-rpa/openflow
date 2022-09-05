@@ -59,6 +59,7 @@ export class WebSocketServer {
                     try {
                         socketObject.close()
                     } catch (error) {
+                        Logger.instanse.error("WebSocketServer", "connection", error);
                     }
                     return;
                 }
@@ -71,17 +72,22 @@ export class WebSocketServer {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
                     description: 'Total number of online websocket clients'
                 }) // "agent", "version"
+                let p_all = {};
                 WebSocketServer.p_all?.addCallback(res => {
-                    const p_all = {};
+                    let keys = Object.keys(p_all);
+                    keys.forEach(key => {
+                        p_all[key] = 0;
+                    });
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         try {
                             const cli = WebSocketServer._clients[i];
-                            if (cli.user != null) {
+                            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
                                 if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
-                                    if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
-                                        if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
-                                        p_all[cli.clientagent] += 1;
-                                    }
+                                    if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
+                                    p_all[cli.clientagent] += 1;
+                                } else {
+                                    if (NoderedUtil.IsNullUndefinded(p_all["unknown"])) p_all["unknown"] = 0;
+                                    p_all["unknown"] += 1;
                                 }
                             }
                         } catch (error) {
@@ -89,10 +95,13 @@ export class WebSocketServer {
                             Logger.instanse.error("WebSocketServer", "pingClients", error);
                         }
                     }
-
-                    const keys = Object.keys(p_all);
+                    keys = Object.keys(p_all);
                     keys.forEach(key => {
-                        res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
+                        if (p_all[key] > 0) {
+                            res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
+                        } else {
+                            res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
+                        }                        
                     });
                 });
                 WebSocketServer.websocket_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_queue", {
@@ -152,7 +161,6 @@ export class WebSocketServer {
                     });
                 });
             }
-            // setInterval(this.pingClients, 10000);
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
         } catch (error) {
             span?.recordException(error);
@@ -202,20 +210,20 @@ export class WebSocketServer {
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
                         span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.info("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
                     } else {
                         span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.info("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
                     }
                     cli.Close();
                 }
                 cli.ping(span);
                 if (!cli.connected() && cli.queuecount() == 0) {
                     if (cli.user != null) {
-                        Logger.instanse.info("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                     } else {
-                        Logger.instanse.info("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.clientagent);
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.clientagent);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
                     }
                     try {
@@ -228,7 +236,7 @@ export class WebSocketServer {
                 }
             }
             if (count !== WebSocketServer._clients.length) {
-                Logger.instanse.info("WebSocketServer", "pingClients", "new client count: " + WebSocketServer._clients.length);
+                Logger.instanse.debug("WebSocketServer", "pingClients", "new client count: " + WebSocketServer._clients.length);
                 span?.setAttribute("clientcount", WebSocketServer._clients.length)
             }
             const p_all = {};

@@ -6,8 +6,7 @@
   <a ng-href="#/EditForm" class="btn btn-info" translate lib="web">addform</a>
 </div>
 <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
-<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
-  <!-- <caption>List of workflow forms</caption> -->
+<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;" aria-label="List of workflow forms">
   <thead class="thead-dark">
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>

@@ -110,14 +110,14 @@ import { Crypt } from '../OpenFlow/src/Crypt';
 
 
         assert.ok(result, "Failed validating with the correct password");
-        await Config.db.DeleteOne(dummyuser._id, "users", this.rootToken, null);
+        await Config.db.DeleteOne(dummyuser._id, "users", false, this.rootToken, null);
 
         await assert.rejects(Logger.DBHelper.EnsureUser(this.rootToken, null, null, null, null, null, null));
     }
     @test async 'EnsureRole'() {
         var name = "dummytestrole" + NoderedUtil.GetUniqueIdentifier();
         var dummyrole = await Logger.DBHelper.EnsureRole(this.rootToken, name, null, null);
-        await Config.db.DeleteOne(dummyrole._id, "users", this.rootToken, null);
+        await Config.db.DeleteOne(dummyrole._id, "users", false, this.rootToken, null);
         await assert.rejects(Logger.DBHelper.EnsureRole(null, null, null, null));
     }
 }

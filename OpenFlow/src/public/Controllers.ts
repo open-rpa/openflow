@@ -255,11 +255,6 @@ export class MenuCtrl {
         }
     }
     async SelectCustomer(customer) {
-        // if (customer != null) {
-        //     console.debug("SelectCustomer " + customer.name, customer)
-        // } else {
-        //     console.debug("SelectCustomer null", customer)
-        // }
         try {
             this.customer = customer;
             if (customer != null) {
@@ -1164,9 +1159,14 @@ export class MenuCtrl {
                 id: '4'
             });
 
+
+            var nodered_multi_tenant_turns_off = "";
+            if (this.WebSocketClientService.multi_tenant) {
+                nodered_multi_tenant_turns_off = "The free version will stop after 24 hours and have limited amount of ram. ";
+            }
             tour.addStep({
                 title: 'Nodered',
-                text: `On the NodeRED page, you can start your personal NodeRED instance. The free version will stop after 24 hours and have limited amount of ram. This is where you can schedule robots, and install modules that allows easy integration to more than 3500 IT systems. This is also where you create workflow, that can involve humans using different channels like email, chat, voice or the forms you design in OpenFlow`,
+                text: `On the NodeRED page, you can start your personal NodeRED instance. ` + nodered_multi_tenant_turns_off + `This is where you can schedule robots, and install modules that allows easy integration to more than 3500 IT systems. This is also where you create workflow, that can involve humans using different channels like email, chat, voice or the forms you design in OpenFlow`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
@@ -2087,7 +2087,6 @@ export class LoginCtrl {
         try {
             console.debug("QRScannerHit");
             if (err) {
-                // console.error(err._message);
                 console.error(err);
                 return;
             }
@@ -2534,6 +2533,9 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                 (this.model as any).newpassword = "";
                 (this.model as any).sid = "";
                 (this.model as any).federationids = [];
+                this.model.validated = true;
+                this.model.emailvalidated = true;
+                this.model.formvalidated = true;
                 if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
                     this.model.customerid = WebSocketClient.instance.user.selectedcustomerid;
                 }
@@ -3225,9 +3227,6 @@ export class EditFormCtrl extends entityCtrl<Form> {
             // allready there
         }
         try {
-            console.log(this.model);
-            delete this.model.schema.changed
-            console.log(this.model);
             if (this.model._id) {
                 this.model = await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
             } else {
@@ -3548,10 +3547,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                         return;
                     }
                 }
-            } else {
-                // this.errormessage = "Model contains no form";
-                // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                // console.error(this.errormessage);
             }
             this.renderform();
         } else {
@@ -3689,7 +3684,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                                 if (item.data != null && item.data != undefined) {
                                     item.data.values = obj2;
                                     item.data.json = JSON.stringify(values);
-                                    // console.debug("Setting values for " + keys[i], JSON.stringify(obj));
                                 } else {
                                     item.values = values;
                                 }
@@ -3698,23 +3692,16 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                                 if (item.data != null && item.data != undefined) {
                                     item.data.values = values;
                                     item.data.json = JSON.stringify(values);
-                                    // console.debug("Setting values for " + keys[i], JSON.stringify(values));
                                 } else {
                                     item.values = values;
                                 }
                             }
-                            // if (item.data != null && item.data != undefined) {
-                            //     console.debug(keys[i], item.data);
-                            // } else {
-                            //     console.debug(keys[i], item);
-                            // }
                         }
                     }
 
                 }
             }
         }
-
         for (let i = 0; i < components.length; i++) {
             const item = components[i];
             if (item.type == "table") {
@@ -3763,31 +3750,25 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 let value = this.model.payload[this.form.formData[i].name];
                 if (value == undefined || value == null) { value = ""; }
                 if (value != "" || this.form.formData[i].type != "button") {
-                    // console.debug("0:" + this.form.formData[i].label + " -> " + value);
                     this.form.formData[i].userData = [value];
                 }
                 if (Array.isArray(value)) {
-                    // console.debug("1:" + this.form.formData[i].userData + " -> " + value);
                     this.form.formData[i].userData = value;
                 }
                 if (this.model.payload[this.form.formData[i].label] !== null && this.model.payload[this.form.formData[i].label] !== undefined) {
                     value = this.model.payload[this.form.formData[i].label];
                     if (value == undefined || value == null) { value = ""; }
                     if (this.form.formData[i].type != "button") {
-                        // console.debug("2:" + this.form.formData[i].label + " -> " + value);
                         this.form.formData[i].label = value;
                     } else if (value != "") {
-                        // console.debug("2button:" + this.form.formData[i].label + " -> " + value);
                         this.form.formData[i].label = value;
                     } else {
-                        // console.debug("skip " + this.form.formData[i].label);
                     }
                 }
                 if (this.model.values !== null && this.model.values !== undefined) {
                     if (this.model.values[this.form.formData[i].name] !== null && this.model.values[this.form.formData[i].name] !== undefined) {
                         value = this.model.values[this.form.formData[i].name];
                         if (value == undefined || value == null) { value = []; }
-                        // console.debug("3:" + this.form.formData[i].values + " -> " + value);
                         this.form.formData[i].values = value;
                     }
                 }
@@ -3810,10 +3791,8 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 return emptyStr;
             }
             setTimeout(() => {
-                console.debug("Attach buttons! 2");
                 $('button[type="button"]').each(function () {
                     const cur: any = $(this)[0];
-                    console.debug("set submit");
                     cur.type = "submit";
                 });
                 const click = function (evt) {
@@ -4213,9 +4192,6 @@ export class EntityCtrl extends entityCtrl<Base> {
                 }
                 return;
             }
-            else {
-                // console.debug(this.e.keyCode);
-            }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
                 this.adduser();
@@ -4224,7 +4200,6 @@ export class EntityCtrl extends entityCtrl<Base> {
     }
     async handlefilter(e) {
         this.e = e;
-        // console.debug(e.keyCode);
         let ids: string[];
         if (this.collection == "files") {
             ids = (this.model as any).metadata._acl.map(item => item._id);
@@ -5226,9 +5201,6 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 }
                 return;
             }
-            else {
-                // console.debug(this.e.keyCode);
-            }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
                 this.adduser();
@@ -5237,7 +5209,6 @@ export class CredentialCtrl extends entityCtrl<Base> {
     }
     async handlefilter(e) {
         this.e = e;
-        // console.debug(e.keyCode);
         let ids: string[];
         if (this.collection == "files") {
             ids = (this.model as any).metadata._acl.map(item => item._id);
@@ -5775,9 +5746,29 @@ export class CustomersCtrl extends entitiesCtrl<Provider> {
         this.collection = "users";
         this.skipcustomerfilter = true;
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, dbusage: 1 };
+        this.postloadData = this.processData;
+        if (this.userdata.data.CustomersCtrl) {
+            this.basequery = this.userdata.data.CustomersCtrl.basequery;
+            this.collection = this.userdata.data.CustomersCtrl.collection;
+            this.baseprojection = this.userdata.data.CustomersCtrl.baseprojection;
+            this.orderby = this.userdata.data.CustomersCtrl.orderby;
+            this.searchstring = this.userdata.data.CustomersCtrl.searchstring;
+            this.basequeryas = this.userdata.data.CustomersCtrl.basequeryas;
+        }
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.CustomersCtrl) this.userdata.data.CustomersCtrl = {};
+        this.userdata.data.CustomersCtrl.basequery = this.basequery;
+        this.userdata.data.CustomersCtrl.collection = this.collection;
+        this.userdata.data.CustomersCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.CustomersCtrl.orderby = this.orderby;
+        this.userdata.data.CustomersCtrl.searchstring = this.searchstring;
+        this.userdata.data.CustomersCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 export class CustomerCtrl extends entityCtrl<Customer> {
@@ -5879,6 +5870,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.errormessage = "";
+            if (!NoderedUtil.IsNullEmpty(this.newdomain)) this.adddomain();
             if (this.model._id) {
                 await NoderedUtil.EnsureCustomer({ customer: this.model });
                 this.$rootScope.$broadcast("menurefresh");
@@ -6207,6 +6199,27 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             if (this.model.vatnumber == null || this.model.vatnumber == "") this.model.vatnumber = this.model.country;
         }
     }
+    public newdomain: string = "";
+    deletedomain(domain) {
+        if ((this.model as any).domains === null || (this.model as any).domains === undefined) {
+            (this.model as any).domains = [];
+        }
+        (this.model as any).domains = (this.model as any).domains.filter(function (m: any): boolean { return m !== domain; });
+    }
+    adddomain() {
+        if ((this.model as any).domains === null || (this.model as any).domains === undefined) {
+            (this.model as any).domains = [];
+        }
+        var v = this.newdomain;
+        try {
+            v = JSON.parse(v);
+        } catch (error) {
+        }
+        (this.model as any).domains.push(v);
+        this.newdomain = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
 }
 
 
@@ -6526,9 +6539,6 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
-            }
-            else {
-                // console.debug(this.e.keyCode);
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {

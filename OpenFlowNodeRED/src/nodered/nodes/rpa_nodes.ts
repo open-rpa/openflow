@@ -2,7 +2,6 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, QueueMessage } from "@openiap/openflow-api";
-import { Logger } from "../../Logger";
 
 export interface Irpa_detector_node {
     queue: string;
@@ -45,7 +44,6 @@ export class rpa_detector_node {
     async connect() {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
-            Logger.instanse.info("track::rpa detector node in::connect");
 
             const result: any[] = await NoderedUtil.Query({
                 collectionname: 'openrpa', query: { _type: "detector", _id: this.config.queue },

@@ -2,7 +2,6 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { Crypt } from "../../nodeclient/Crypt";
 import { Config } from "../../Config";
-import { Logger } from "../../Logger";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "@openiap/openflow-api";
 import { Util } from "./Util";
 const pako = require('pako');
@@ -98,11 +97,6 @@ export class api_get_jwt {
             const result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg, priority);
             msg.jwt = result.jwt;
             msg.user = result.user;
-            if (result !== null && result !== undefined && result.user !== null && result.user !== undefined) {
-                Logger.instanse.debug("api_get_jwt: Created token as " + result.user.username);
-            } else {
-                Logger.instanse.debug("api_get_jwt: Created token failed ?");
-            }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
@@ -979,7 +973,7 @@ export class api_updatedocument {
                 const q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collectionname;
                 q.item = (updatedocument as any); q.jwt = jwt;
                 q.w = writeconcern; q.j = journal; q.query = (query as any);
-                const q2 = await NoderedUtil._UpdateOne(q, priority);
+                const q2 = await NoderedUtil._UpdateOne(q, priority, WebSocketClient.instance);
                 msg.payload = q2.result;
                 msg.opresult = q2.opresult;
             } else {

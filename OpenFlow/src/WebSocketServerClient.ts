@@ -5,7 +5,6 @@ import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper";
 import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
-import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { clientType } from "./Audit";
@@ -89,7 +88,7 @@ export class WebSocketServerClient {
         if (!NoderedUtil.IsNullUndefinded(req)) {
             this.remoteip = WebSocketServerClient.remoteip(req);
         }
-        Logger.instanse.info("WebSocketServerClient", "constructor", "new client " + this.id + " from " + this.remoteip);
+        Logger.instanse.debug("WebSocketServerClient", "constructor", "new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", this.open.bind(this));
         socketObject.on("message", this.message.bind(this)); // e: MessageEvent
         socketObject.on("error", this.error.bind(this));
@@ -134,10 +133,10 @@ export class WebSocketServerClient {
         this.CloseConsumers(null);
     }
     private open(e: Event): void {
-        Logger.instanse.info("WebSocketServerClient", "open", "Connection opened " + e + " " + this.id);
+        Logger.instanse.debug("WebSocketServerClient", "open", "Connection opened " + e + " " + this.id);
     }
     private close(e: CloseEvent): void {
-        Logger.instanse.info("WebSocketServerClient", "close", "Connection closed " + e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.debug("WebSocketServerClient", "close", "Connection closed " + e + " " + this.id + "/" + this.clientagent);
         this.Close();
         Config.db.removeListener("disconnected", this._dbdisconnected);
         Config.db.removeListener("connected", this._dbconnected);
@@ -225,6 +224,9 @@ export class WebSocketServerClient {
     public async Close(): Promise<void> {
         const span: Span = Logger.otel.startSpan("WebSocketServerClient.Close");
         try {
+            Config.db.removeListener("disconnected", this._dbdisconnected);
+            Config.db.removeListener("connected", this._dbconnected);
+
             await this.CloseConsumers(span);
             // await this.CloseStreams();
             if (this._socketObject != null) {
@@ -248,6 +250,15 @@ export class WebSocketServerClient {
             for (var i = 0; i < keys.length; i++) {
                 await this.UnWatch(keys[i], this.jwt);
             }
+            var keys = Object.keys(this.messageQueue);
+            for (var i = 0; i < keys.length; i++) {
+                delete this.messageQueue[keys[i]].cb;
+                delete this.messageQueue[keys[i]];
+            }
+            // this._receiveQueue
+            // this._sendQueue
+            // this._queues
+            // this._exchanges
         } catch (error) {
             span?.recordException(error);
             throw error;
@@ -529,7 +540,7 @@ export class WebSocketServerClient {
         q.correlationId = options.correlationId; q.queuename = queuename;
         q.consumerTag = options.consumerTag;
         q.routingkey = options.routingKey;
-        q.exchange = options.exchange;
+        q.exchangename = options.exchangename;
         let m: Message = Message.fromcommand("queuemessage");
         if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);

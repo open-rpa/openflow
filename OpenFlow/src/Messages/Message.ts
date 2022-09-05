@@ -7,7 +7,7 @@ import { Config } from "../Config";
 import { Audit, tokenType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectID, Cursor, Binary } from "mongodb";
+import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base } from "@openiap/openflow-api";
@@ -48,7 +48,7 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
 
 }
 
-const safeObjectID = (s: string | number | ObjectID) => ObjectID.isValid(s) ? new ObjectID(s) : null;
+const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 export class Message {
     public id: string;
     public replyto: string;
@@ -59,6 +59,7 @@ export class Message {
     public cb: any;
     public priority: number = 1;
     public options: QueueMessageOptions;
+    public tuser: TokenUser;
     public async QueueProcess(options: QueueMessageOptions, parent: Span): Promise<void> {
         let span: Span = undefined;
         try {
@@ -67,74 +68,76 @@ export class Message {
             span = Logger.otel.startSubSpan("QueueProcessMessage " + this.command, parent);
             span?.setAttribute("command", this.command);
             span?.setAttribute("id", this.id);
-            switch (this.command) {
-                case "listcollections":
-                    await this.ListCollections(span);
-                    break;
-                case "dropcollection":
-                    await this.DropCollection(span);
-                    break;
-                case "query":
-                    await this.Query(span);
-                    break;
-                case "getdocumentversion":
-                    await this.GetDocumentVersion(span);
-                    break;
-                case "aggregate":
-                    await this.Aggregate(span);
-                    break;
-                case "insertone":
-                    await this.InsertOne(span);
-                    break;
-                case "insertmany":
-                    await this.InsertMany(span);
-                    break;
-                case "updateone":
-                    await this.UpdateOne(span);
-                    break;
-                case "updatemany":
-                    await this.UpdateMany(span);
-                    break;
-                case "insertorupdateone":
-                    await this.InsertOrUpdateOne(span);
-                    break;
-                case "insertorupdatemany":
-                    await this.InsertOrUpdateMany(span);
-                    break;
-                case "deleteone":
-                    await this.DeleteOne(span);
-                    break;
-                case "deletemany":
-                    await this.DeleteMany(span);
-                    break;
-                case "ensurenoderedinstance":
-                    await this.EnsureNoderedInstance(span);
-                    break;
-                case "deletenoderedinstance":
-                    await this.DeleteNoderedInstance(span);
-                    break;
-                case "restartnoderedinstance":
-                    await this.RestartNoderedInstance(span);
-                    break;
-                case "deletenoderedpod":
-                    await this.DeleteNoderedPod(span);
-                    break;
-                case "getnoderedinstance":
-                    await this.GetNoderedInstance(span);
-                    break;
-                case "housekeeping":
-                    await this.Housekeeping(span);
-                    break;
-                case "updateworkitemqueue":
-                    await this.UpdateWorkitemQueue(span);
-                    break;
-                case "deleteworkitemqueue":
-                    await this.DeleteWorkitemQueue(span);
-                    break;
-                default:
-                    span?.recordException("Unknown command " + this.command);
-                    this.UnknownCommand();
-                    break;
+            if (await this.EnsureJWT(null)) {
+                switch (this.command) {
+                    case "listcollections":
+                        await this.ListCollections(span);
+                        break;
+                    case "dropcollection":
+                        await this.DropCollection(span);
+                        break;
+                    case "query":
+                        await this.Query(span);
+                        break;
+                    case "getdocumentversion":
+                        await this.GetDocumentVersion(span);
+                        break;
+                    case "aggregate":
+                        await this.Aggregate(span);
+                        break;
+                    case "insertone":
+                        await this.InsertOne(span);
+                        break;
+                    case "insertmany":
+                        await this.InsertMany(span);
+                        break;
+                    case "updateone":
+                        await this.UpdateOne(span);
+                        break;
+                    case "updatemany":
+                        await this.UpdateMany(span);
+                        break;
+                    case "insertorupdateone":
+                        await this.InsertOrUpdateOne(span);
+                        break;
+                    case "insertorupdatemany":
+                        await this.InsertOrUpdateMany(span);
+                        break;
+                    case "deleteone":
+                        await this.DeleteOne(span);
+                        break;
+                    case "deletemany":
+                        await this.DeleteMany(span);
+                        break;
+                    case "ensurenoderedinstance":
+                        await this.EnsureNoderedInstance(span);
+                        break;
+                    case "deletenoderedinstance":
+                        await this.DeleteNoderedInstance(span);
+                        break;
+                    case "restartnoderedinstance":
+                        await this.RestartNoderedInstance(span);
+                        break;
+                    case "deletenoderedpod":
+                        await this.DeleteNoderedPod(span);
+                        break;
+                    case "getnoderedinstance":
+                        await this.GetNoderedInstance(span);
+                        break;
+                    case "housekeeping":
+                        await this.Housekeeping(span);
+                        break;
+                    case "updateworkitemqueue":
+                        await this.UpdateWorkitemQueue(span);
+                        break;
+                    case "deleteworkitemqueue":
+                        await this.DeleteWorkitemQueue(span);
+                        break;
+                    default:
+                        span?.recordException("Unknown command " + this.command);
+                        this.UnknownCommand();
+                        break;
+                }
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
         } catch (error) {
@@ -175,7 +178,7 @@ export class Message {
         this.id = NoderedUtil.GetUniqueIdentifier();
     }
 
-    public EnsureJWT(cli: WebSocketServerClient): boolean {
+    public async EnsureJWT(cli: WebSocketServerClient): Promise<boolean> {
         if (!NoderedUtil.IsNullUndefinded(this.data)) {
             var obj: any = this.data;
             if (typeof obj == "string") obj = JSON.parse(obj);
@@ -184,12 +187,23 @@ export class Message {
                 this.data = JSON.stringify(obj);
             }
         }
-        if (NoderedUtil.IsNullEmpty(this.jwt)) this.jwt = cli.jwt;
+        if (!NoderedUtil.IsNullUndefinded(cli) && NoderedUtil.IsNullEmpty(this.jwt)) {
+            this.jwt = cli.jwt;
+        }
         if (NoderedUtil.IsNullEmpty(this.jwt)) {
             this.Reply("error");
             this.data = "{\"message\": \"Not signed in, and missing jwt\"}";
-            cli.Send(this);
+            cli?.Send(this);
             return false;
+        } else {
+            try {
+                this.tuser = User.assign(await Crypt.verityToken(this.jwt));
+            } catch (error) {
+                this.Reply("error");
+                this.data = "{\"message\": \"" + error.message ? error.message : error + "\"}";
+                cli?.Send(this);
+                return false;
+            }
         }
         return true;
     }
@@ -262,482 +276,302 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span?.setAttribute("username", cli.user.username);
             span?.setAttribute("command", command);
             span?.setAttribute("id", this.id);
-            switch (command) {
-                case "listcollections":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+            let process: boolean = true;
+            if (command != "signin" && command != "refreshtoken" && command != "error") {
+                if (!await this.EnsureJWT(cli)) {
+                    Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                    process = false;
+                    setTimeout(() => { cli.Close(); }, 500);
+                }
+            }
+            if (process) {
+                switch (command) {
+                    case "listcollections":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.ListCollections(span);
+                            cli.Send(this);
+                        }
                         break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.ListCollections(span);
+                    case "dropcollection":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.DropCollection(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "query":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.Query(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "getdocumentversion":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.GetDocumentVersion(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "aggregate":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.Aggregate(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "watch":
+                        await this.Watch(cli);
+                        break;
+                    case "unwatch":
+                        await this.UnWatch(cli);
+                        break;
+                    case "insertone":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.InsertOne(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "insertmany":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.InsertMany(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "updateone":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.UpdateOne(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "updatemany":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.UpdateMany(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "insertorupdateone":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.InsertOrUpdateOne(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "insertorupdatemany":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.InsertOrUpdateMany(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "deleteone":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.DeleteOne(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "deletemany":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.DeleteMany(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "signin":
+                        await this.Signin(cli, span);
+                        break;
+                    case "mapreduce":
+                        await this.MapReduce(cli);
+                        break;
+                    case "refreshtoken":
+                        break;
+                    case "error":
+                        // this.Ping(cli);
+                        break;
+                    case "registerqueue":
+                        await this.RegisterQueue(cli, span);
+                        break;
+                    case "registerexchange":
+                        await this.RegisterExchange(cli, span);
+                        break;
+                    case "queuemessage":
+                        await this.QueueMessage(cli, span);
+                        break;
+                    case "closequeue":
+                        await this.CloseQueue(cli, span);
+                        break;
+                    case "ensurenoderedinstance":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.EnsureNoderedInstance(span);
+                            cli.Send(this);
+                        }
+                        await this.ReloadUserToken(cli, span);
+                        break;
+                    case "deletenoderedinstance":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.DeleteNoderedInstance(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "restartnoderedinstance":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.RestartNoderedInstance(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "getkubenodelabels":
+                        await this.GetKubeNodeLabels(cli, span);
+                        break;
+                    case "getnoderedinstance":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.GetNoderedInstance(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "getnoderedinstancelog":
+                        await this.GetNoderedInstanceLog(cli, span);
+                        break;
+                    case "startnoderedinstance":
+                        await this.StartNoderedInstance(cli, span);
+                        break;
+                    case "stopnoderedinstance":
+                        await this.StopNoderedInstance(cli, span);
+                        break;
+                    case "deletenoderedpod":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.DeleteNoderedPod(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "savefile":
+                        await this.SaveFile(cli);
+                        break;
+                    case "getfile":
+                        await this.GetFile(cli, span);
+                        break;
+                    case "updatefile":
+                        await this.UpdateFile(cli);
+                        break;
+                    case "createworkflowinstance":
+                        await this.CreateWorkflowInstance(cli, span);
+                        break;
+                    case "stripeaddplan":
+                        await this.StripeAddPlan(cli, span);
+                        break;
+                    case "getnextinvoice":
+                        await this.GetNextInvoice(cli, span);
+                        break;
+                    case "stripecancelplan":
+                        await this.StripeCancelPlan(cli, span);
+                        break;
+                    case "ensurestripecustomer":
+                        this.Reply();
+                        this.Send(cli);
+                        break;
+                    case "stripemessage":
+                        await this.StripeMessage(cli);
+                        break;
+                    case "ensurecustomer":
+                        await this.EnsureCustomer(cli, span);
+                        break;
+                    case "selectcustomer":
+                        var user = await this.SelectCustomer(span);
+                        if (user != null) cli.user.selectedcustomerid = user.selectedcustomerid;
+                        this.ReloadUserToken(cli, span);
                         cli.Send(this);
-                    }
-                    break;
-                case "dropcollection":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.DropCollection(span);
+                    case "housekeeping":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.Housekeeping(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "addworkitemqueue":
+                        await this.AddWorkitemQueue(cli, span);
                         cli.Send(this);
-                    }
-                    break;
-                case "query":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.Query(span);
+                    case "getworkitemqueue":
+                        await this.GetWorkitemQueue(span);
                         cli.Send(this);
-                    }
-                    break;
-                case "getdocumentversion":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.GetDocumentVersion(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "aggregate":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.Aggregate(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "watch":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.Watch(cli);
-                    break;
-                case "unwatch":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.UnWatch(cli);
-                    break;
-                case "insertone":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.InsertOne(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "insertmany":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.InsertMany(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "updateone":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.UpdateOne(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "updatemany":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.UpdateMany(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "insertorupdateone":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.InsertOrUpdateOne(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "insertorupdatemany":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.InsertOrUpdateMany(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "deleteone":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.DeleteOne(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "deletemany":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.DeleteMany(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "signin":
-                    await this.Signin(cli, span);
-                    break;
-                case "mapreduce":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.MapReduce(cli);
-                    break;
-                case "refreshtoken":
-                    break;
-                case "error":
-                    // this.Ping(cli);
-                    break;
-                case "registerqueue":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.RegisterQueue(cli, span);
-                    break;
-                case "registerexchange":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.RegisterExchange(cli, span);
-                    break;
-                case "queuemessage":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.QueueMessage(cli, span);
-                    break;
-                case "closequeue":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.CloseQueue(cli, span);
-                    break;
-                case "ensurenoderedinstance":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.EnsureNoderedInstance(span);
-                        cli.Send(this);
-                    }
-                    await this.ReloadUserToken(cli, span);
-                    break;
-                case "deletenoderedinstance":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.DeleteNoderedInstance(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "restartnoderedinstance":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.RestartNoderedInstance(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "getkubenodelabels":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.GetKubeNodeLabels(cli, span);
-                    break;
-                case "getnoderedinstance":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.GetNoderedInstance(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "getnoderedinstancelog":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.GetNoderedInstanceLog(cli, span);
-                    break;
-                case "startnoderedinstance":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.StartNoderedInstance(cli, span);
-                    break;
-                case "stopnoderedinstance":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.StopNoderedInstance(cli, span);
-                    break;
-                case "deletenoderedpod":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.DeleteNoderedPod(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "savefile":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.SaveFile(cli);
-                    break;
-                case "getfile":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.GetFile(cli, span);
-                    break;
-                case "updatefile":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.UpdateFile(cli);
-                    break;
-                case "createworkflowinstance":
-                    if (!this.EnsureJWT(cli)) break;
-                    await this.CreateWorkflowInstance(cli, span);
-                    break;
-                case "stripeaddplan":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.StripeAddPlan(cli, span);
-                    break;
-                case "getnextinvoice":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.GetNextInvoice(cli, span);
-                    break;
-                case "stripecancelplan":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.StripeCancelPlan(cli, span);
-                    break;
-                case "ensurestripecustomer":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    this.Reply();
-                    this.Send(cli);
-                    break;
-                case "stripemessage":
-                    if (!this.EnsureJWT(cli)) break;
-                    await this.StripeMessage(cli);
-                    break;
-                case "ensurecustomer":
-                    await this.EnsureCustomer(cli, span);
-                    break;
-                case "selectcustomer":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    var user = await this.SelectCustomer(span);
-                    if (user != null) cli.user.selectedcustomerid = user.selectedcustomerid;
-                    this.ReloadUserToken(cli, span);
-                    cli.Send(this);
-                    break;
-                case "housekeeping":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.Housekeeping(span);
-                        cli.Send(this);
-                    }
-                    break;
-                case "addworkitemqueue":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.AddWorkitemQueue(cli, span);
-                    cli.Send(this);
-                    break;
-                case "getworkitemqueue":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.GetWorkitemQueue(span);
-                    cli.Send(this);
-                    break;
 
-                case "updateworkitemqueue":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                    case "updateworkitemqueue":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.UpdateWorkitemQueue(span);
+                            cli.Send(this);
+                        }
                         break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.UpdateWorkitemQueue(span);
+                    case "deleteworkitemqueue":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.DeleteWorkitemQueue(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "addworkitem":
+                        await this.AddWorkitem(span);
                         cli.Send(this);
-                    }
-                    break;
-                case "deleteworkitemqueue":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
-                    }
-                    if (Config.enable_openflow_amqp) {
-                        cli.Send(await QueueClient.SendForProcessing(this, this.priority));
-                    } else {
-                        await this.DeleteWorkitemQueue(span);
+                    case "addworkitems":
+                        await this.AddWorkitems(span);
                         cli.Send(this);
-                    }
-                    break;
-                case "addworkitem":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                         break;
-                    }
-                    await this.AddWorkitem(span);
-                    cli.Send(this);
-                    break;
-                case "addworkitems":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.AddWorkitems(span);
-                    cli.Send(this);
-                    break;
-                case "popworkitem":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.PopWorkitem(span);
-                    cli.Send(this);
-                    break;
-                case "updateworkitem":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.UpdateWorkitem(span);
-                    cli.Send(this);
-                    break;
-                case "deleteworkitem":
-                    if (!this.EnsureJWT(cli)) {
-                        Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        break;
-                    }
-                    await this.DeleteWorkitem(span);
-                    cli.Send(this);
-                    break;
-                default:
-                    if (command != "error") {
-                        span?.recordException("Unknown command " + command);
-                        this.UnknownCommand();
+                    case "popworkitem":
+                        await this.PopWorkitem(span);
                         cli.Send(this);
-                    } else {
-                        var b = true;
-                    }
-                    break;
+                        break;
+                    case "updateworkitem":
+                        await this.UpdateWorkitem(span);
+                        cli.Send(this);
+                        break;
+                    case "deleteworkitem":
+                        await this.DeleteWorkitem(span);
+                        cli.Send(this);
+                        break;
+                    default:
+                        if (command != "error") {
+                            span?.recordException("Unknown command " + command);
+                            this.UnknownCommand();
+                            cli.Send(this);
+                        } else {
+                            var b = true;
+                        }
+                        break;
+                }
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
@@ -755,9 +589,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.exchangename) || msg.exchangename.toLowerCase() == "openflow") {
                 throw new Error("Access denied");
             }
-            const jwt: string = msg.jwt || this.jwt;
+            const jwt: string = this.jwt;
             const rootjwt = Crypt.rootToken();
-            const tuser = await Crypt.verityToken(jwt);
+            const tuser = this.tuser;
             if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 let name = tuser.username.split("@").join("").split(".").join("");
                 name = name.toLowerCase();
@@ -820,7 +654,7 @@ export class Message {
         let msg: RegisterQueueMessage;
         try {
             msg = RegisterQueueMessage.assign(this.data);
-            const jwt: string = msg.jwt || this.jwt;
+            const jwt: string = this.jwt;
             const rootjwt = Crypt.rootToken();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 let error = new Error("Access denied");
@@ -830,7 +664,7 @@ export class Message {
 
             // ################################################################################################################
 
-            const tuser = await Crypt.verityToken(jwt);
+            const tuser = this.tuser;
             if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(msg.queuename)) {
                 // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
                 if (msg.queuename.length == 24) {
@@ -942,7 +776,13 @@ export class Message {
         let msg: QueueMessage
         try {
             msg = QueueMessage.assign(this.data);
-            const jwt: string = msg.jwt || this.jwt;
+            // Backward compatibility
+            // @ts-ignore
+            if (!NoderedUtil.IsNullEmpty(msg.exchange) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
+                // @ts-ignore
+                msg.exchangename = msg.exchange
+            }
+            const jwt: string = this.jwt;
             const rootjwt = Crypt.rootToken();
             if (!NoderedUtil.IsNullUndefinded(msg.data)) {
                 if (typeof msg.data == 'string') {
@@ -954,7 +794,7 @@ export class Message {
                     msg.data.jwt = jwt;
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(msg.exchange) && !Config.amqp_enabled_exchange) {
+            if (!NoderedUtil.IsNullEmpty(msg.exchangename) && !Config.amqp_enabled_exchange) {
                 let error = new Error("AMQP exchange is not enabled on this OpenFlow");
                 Logger.instanse.error("Message", "QueueMessage", error);
                 throw error;
@@ -975,19 +815,19 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.exchange) && msg.exchange.toLowerCase() == "openflow") {
+            } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename.toLowerCase() == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto.toLowerCase() == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchange)) {
+            } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 Logger.instanse.error("Message", "QueueMessage", new Error("queuename or exchange must be given"));
                 throw new Error("queuename or exchange must be given");
             }
 
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
-                const tuser = await Crypt.verityToken(jwt);
+                const tuser = this.tuser;
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
                     // Queue is for me
@@ -1033,28 +873,28 @@ export class Message {
                     }
                 }
             }
-            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchange)) {
-                const tuser = await Crypt.verityToken(jwt);
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
+                const tuser = this.tuser;
                 let allowed: boolean = false;
-                if (tuser._id == msg.exchange) {
+                if (tuser._id == msg.exchangename) {
                     // Queue is for me
                     allowed = true;
                 } else if (tuser.roles != null) {
                     // Queue is for a role i am a member of.
-                    const isrole = tuser.roles.filter(x => x._id == msg.exchange);
+                    const isrole = tuser.roles.filter(x => x._id == msg.exchangename);
                     if (isrole.length > 0) allowed = true;
                 }
                 if (!allowed) {
-                    let mq = await Logger.DBHelper.FindExchangeByName(msg.exchange, rootjwt, parent);
+                    let mq = await Logger.DBHelper.FindExchangeByName(msg.exchangename, rootjwt, parent);
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
-                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing invoke permission on exchange object`);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
                                 throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchange} or access denied, missing read permission on exchange object`);
+                                let error = new Error(`[${tuser.name}] Unknown exchange ${msg.exchangename} or access denied, missing read permission on exchange object`);
                                 throw error;
                             }
 
@@ -1084,13 +924,13 @@ export class Message {
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
-                await amqpwrapper.Instance().send(msg.exchange, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey);
+                await amqpwrapper.Instance().send(msg.exchangename, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey);
             } else {
                 if (msg.queuename === msg.replyto) {
                     throw new Error("Cannot send reply to self queuename: " + msg.queuename + " correlationId: " + msg.correlationId);
                 }
                 const sendthis = msg.data;
-                await amqpwrapper.Instance().sendWithReplyTo(msg.exchange, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
+                await amqpwrapper.Instance().sendWithReplyTo(msg.exchangename, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey);
             }
         } catch (error) {
             await handleError(cli, error);
@@ -1111,8 +951,8 @@ export class Message {
         let msg: CloseQueueMessage
         try {
             msg = CloseQueueMessage.assign(this.data);
-            const jwt: string = msg.jwt || this.jwt;
-            const tuser = await Crypt.verityToken(jwt);
+            const jwt: string = this.jwt;
+            const tuser = this.tuser;
             await cli.CloseConsumer(tuser, msg.queuename, parent);
         } catch (error) {
             await handleError(cli, error);
@@ -1188,11 +1028,11 @@ export class Message {
                 span?.setAttribute("cache size", keys.length + 1);
                 msg.result = result;
             }
-            const _tuser = await Crypt.verityToken(this.jwt);
+            const _tuser = this.tuser;
             if (Config.enable_entity_restriction && !_tuser.HasRoleId(WellknownIds.admins)) {
                 await Config.db.loadEntityRestrictions(span);
                 if (Config.db.EntityRestrictions.length > 1) {
-                    const tuser = await Crypt.verityToken(this.jwt);
+                    const tuser = this.tuser;
                     const authorized = Config.db.EntityRestrictions.filter(x => x.IsAuthorized(tuser));
                     const allall = authorized.filter(x => x.collection == "");
                     if (allall.length == 0) {
@@ -1665,9 +1505,9 @@ export class Message {
                 await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
             } else if (cli.user?.dblocked == true) {
-                Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
+                Logger.instanse.warn("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
             } else if (tuser != null) {
-                Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in");
+                Logger.instanse.debug("Message", "DoSign", tuser.username + " successfully signed in");
                 // let's turn down the audit logging
                 // await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 Logger.DBHelper.UpdateHeartbeat(cli);
@@ -1724,21 +1564,12 @@ export class Message {
 
                     if (cli?.clientagent == "openrpa" && user.dblocked == true) {
                         // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        Logger.instanse.error("Message", "Signin", user.username + " is dblocked");
+                        // Logger.instanse.error("Message", "Signin", user.username + " is dblocked");
+                        span?.addEvent("User dblocked, decline login");
                         // Dillema ....
                         // If we send an error or empy yser, the robot will spam new tabs 
-                        // If we just close the connection the user will not know what is wrong ...                    
-                        msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
-                        msg.jwt = undefined;
-                        msg.user = undefined;
-                        // Stall a little, to avoid spam
-                        await new Promise(resolve => { setTimeout(resolve, 5000) });
-                        // 
-                        cli.Close();
-                        return;
-                        // setTimeout(() => {
-                        //     cli.Close();
-                        // }, 500);
+                        // If we just close the connection the user will not know what is wrong ...
+                        throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
                     }
 
                     if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
@@ -1850,7 +1681,7 @@ export class Message {
                         msg.impersonate = undefined;
                         impostor = undefined;
                     }
-                    Logger.instanse.info("Message", "Signin", tuser.username + " successfully signed in");
+                    Logger.instanse.debug("Message", "Signin", tuser.username + " successfully signed in");
                     span?.setAttribute("name", tuser.name);
                     span?.setAttribute("username", tuser.username);
                     if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
@@ -1939,7 +1770,7 @@ export class Message {
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
-                        Logger.instanse.info("Message", "Signin", tuser.username + " successfully impersonated");
+                        Logger.instanse.debug("Message", "Signin", tuser.username + " successfully impersonated");
                         await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
@@ -1959,7 +1790,7 @@ export class Message {
                         user.device = msg.device;
                     }
                     if (msg.validate_only !== true) {
-                        Logger.instanse.info("Message", "Signin", tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
+                        Logger.instanse.debug("Message", "Signin", tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
                         if (cli) cli.jwt = msg.jwt;
                         if (cli) cli.user = user;
                         if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -1993,8 +1824,12 @@ export class Message {
                             UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
                         }
                     }
-                    span?.addEvent("Update user using update document");
-                    await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    var keys = Object.keys(UpdateDoc.$set);
+                    if (keys.length > 4 || UpdateDoc.$unset) {
+                        // ping will handle this, if no new information needs to be added
+                        span?.addEvent("Update user using update document");
+                        await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    }
                     span?.addEvent("memoryCache.delete users" + user._id);
                     Logger.DBHelper.memoryCache.del("users" + user._id);
                     if (NoderedUtil.IsNullEmpty(tuser.impostor)) {
@@ -2026,21 +1861,11 @@ export class Message {
                 } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
                     span?.addEvent("User dblocked, decline login");
                     // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
+                    // Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
                     // Dillema ....
                     // If we send an error or empy yser, the robot will spam new tabs 
-                    // If we just close the connection the user will not know what is wrong ...                    
-                    msg.error = "User is dblocked, please login to openflow and buy more storage and try again";
-                    msg.jwt = undefined;
-                    msg.user = undefined;
-                    // Stall a little, to avoid spam
-                    span?.addEvent("Stall for 5 seconds to avoid spam");
-                    await new Promise(resolve => { setTimeout(resolve, 5000) });
-                    // 
-                    cli.Close();
-                    // setTimeout(() => {
-                    //     cli.Close();
-                    // }, 500);
+                    // If we just close the connection the user will not know what is wrong ...
+                    throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
             try {
@@ -2095,7 +1920,7 @@ export class Message {
         try {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = EnsureNoderedInstanceMessage.assign(this.data);
-            const _tuser = await Crypt.verityToken(this.jwt);
+            const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.EnsureNoderedInstance(this.jwt, _tuser, msg._id, instancename, false, span);
         } catch (error) {
@@ -2120,7 +1945,7 @@ export class Message {
         try {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = DeleteNoderedInstanceMessage.assign(this.data);
-            const _tuser = await Crypt.verityToken(this.jwt);
+            const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.DeleteNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
         } catch (error) {
@@ -2145,7 +1970,7 @@ export class Message {
         try {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = DeleteNoderedPodMessage.assign(this.data);
-            const _tuser = await Crypt.verityToken(this.jwt);
+            const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.DeleteNoderedPod(this.jwt, _tuser, msg._id, instancename, msg.instancename, span);
         } catch (error) {
@@ -2170,7 +1995,7 @@ export class Message {
         try {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = RestartNoderedInstanceMessage.assign(this.data);
-            const _tuser = await Crypt.verityToken(this.jwt);
+            const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.RestartNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
         } catch (error) {
@@ -2219,7 +2044,7 @@ export class Message {
         try {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetNoderedInstanceMessage.assign(this.data);
-            const _tuser = await Crypt.verityToken(this.jwt);
+            const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             msg.results = await Logger.nodereddriver.GetNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
         } catch (error) {
@@ -2244,7 +2069,7 @@ export class Message {
         try {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetNoderedInstanceLogMessage.assign(this.data);
-            const _tuser = await Crypt.verityToken(this.jwt);
+            const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             msg.result = await Logger.nodereddriver.GetNoderedInstanceLog(this.jwt, _tuser, msg._id, instancename, msg.instancename, span);
         } catch (error) {
@@ -2470,7 +2295,7 @@ export class Message {
         Logger.otel.endSpan(span);
         this.Send(cli);
     }
-    private async filescount(files: Cursor<any>): Promise<number> {
+    private async filescount(files: FindCursor<GridFSFile>): Promise<number> {
         return new Promise<number>(async (resolve, reject) => {
             files.count((error, result) => {
                 if (error) return reject(error);
@@ -2478,8 +2303,8 @@ export class Message {
             });
         });
     }
-    private async filesnext(files: Cursor<any>): Promise<any> {
-        return new Promise<number>(async (resolve, reject) => {
+    private async filesnext(files: FindCursor<GridFSFile>): Promise<GridFSFile> {
+        return new Promise<GridFSFile>(async (resolve, reject) => {
             files.next((error, result) => {
                 if (error) return reject(error);
                 resolve(result);
@@ -2495,7 +2320,8 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
             const bucket = new GridFSBucket(Config.db.db);
-            const q = { $or: [{ _id: msg.id }, { _id: safeObjectID(msg.id) }] };
+            const q: Filter<GridFSFile> = {};
+            q._id = safeObjectID(msg.id);
             const files = bucket.find(q);
             const count = await this.filescount(files);
             if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
@@ -2507,7 +2333,7 @@ export class Message {
             (msg.metadata as any).filename = file.metadata.filename;
             (msg.metadata as any).path = file.metadata.path;
 
-            const user: TokenUser = await Crypt.verityToken(msg.jwt);
+            const user: TokenUser = this.tuser;
             msg.metadata._modifiedby = user.name;
             msg.metadata._modifiedbyid = user._id;
             msg.metadata._modified = new Date(new Date().toISOString());;
@@ -2551,11 +2377,10 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            const tuser = await Crypt.verityToken(msg.jwt);
+            const tuser = this.tuser;
             msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
             let workflow: any = null;
             if (NoderedUtil.IsNullEmpty(msg.queue)) {
-                const user: any = null;
                 const res = await Config.db.query({ query: { "_id": msg.workflowid }, top: 1, collectionname: "workflow", jwt: msg.jwt }, span);
                 if (res.length != 1) throw new Error("Unknown workflow id " + msg.workflowid);
                 workflow = res[0];
@@ -3451,6 +3276,9 @@ export class Message {
                     customer = customers[0];
                 }
             }
+            if (!cli.user.HasRoleId(WellknownIds.admins)) {
+                delete msg.customer.domains;
+            }
             if (customer == null) {
                 if (!NoderedUtil.IsNullEmpty(user.customerid) && !user.HasRoleName("resellers")) {
                     throw new Error("Access denied creating customer");
@@ -3493,6 +3321,9 @@ export class Message {
                 customer.customattr3 = msg.customer.customattr3;
                 customer.customattr4 = msg.customer.customattr4;
                 customer.customattr5 = msg.customer.customattr5;
+                if (!NoderedUtil.IsNullUndefinded(msg.customer.domains)) {
+                    customer.domains = msg.customer.domains;
+                }
 
                 msg.customer = customer;
                 if (!NoderedUtil.IsNullEmpty(customer.vatnumber)) msg.customer.vatnumber = msg.customer.vatnumber.toUpperCase();
@@ -3501,6 +3332,11 @@ export class Message {
             let tax_exempt: string = "none";
             if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(msg.customer.vattype) || NoderedUtil.IsNullEmpty(msg.customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
+            }
+            if (!NoderedUtil.IsNullUndefinded(customer.domains)) {
+                for (var i = 0; i < customer.domains.length; i++) {
+                    customer.domains[i] = customer.domains[i].toLowerCase();
+                }
             }
 
             // @ts-ignore
@@ -3664,11 +3500,14 @@ export class Message {
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
-            customeradmins.AddMember(user);
+            if (!cli.user.HasRoleId(WellknownIds.admins)) {
+                customeradmins.AddMember(user);
+            }
+
             customeradmins.AddMember(global_customer_admins);
             if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
                 const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
-                if (usercustomer != null) {
+                if (usercustomer != null && !cli.user.HasRoleId(WellknownIds.admins)) {
                     const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, true, span);
                     if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
                 }
@@ -3683,7 +3522,7 @@ export class Message {
             Base.removeRight(customerusers, customeradmins._id, [Rights.delete]);
             customerusers.AddMember(customeradmins);
             if (NoderedUtil.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
-                customerusers.AddMember(cli.user);
+                if (!cli.user.HasRoleId(WellknownIds.admins)) customerusers.AddMember(cli.user);
             }
             await Logger.DBHelper.Save(customerusers, rootjwt, span);
 
@@ -3822,6 +3661,7 @@ export class Message {
                     if (Config.multi_tenant) {
                         if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                             if (!NoderedUtil.IsNullEmpty(user.customerid)) {
+                                // @ts-ignore
                                 var customers: Customer[] = await Config.db.db.collection("users").find({ "_type": "customer", "_id": user.customerid }).toArray();
                                 if (customers.length > 0 && !NoderedUtil.IsNullEmpty(customers[0].subscriptionid)) {
                                     doensure = true;
@@ -3880,7 +3720,7 @@ export class Message {
         //                     { $set: { "_acl": item._acl } });
         //             }
         //             if ((ui % 500 == 0)) {
-        //                 Logger.instanse.info("Housekeeping", "_Housekeeping", "Processed " + ui + " items so far, and updated " + updatecount + " items.");
+        //                 Logger.instanse. info("Housekeeping", "_Housekeeping", "Processed " + ui + " items so far, and updated " + updatecount + " items.");
         //             }
         //         }
         //     } catch (error) {
@@ -4197,18 +4037,17 @@ export class Message {
                 if (usercount.length > 0) {
                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
-                let cursor: Cursor<any>;
+                let cursor: FindCursor<any>;
                 if (Config.NODE_ENV == "production") {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } });
                 } else {
+                    if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
+                        cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                    } else {
+                        cursor = Config.db.db.collection("users").find({ "_type": "user" })
+                    }
                     // While debugging, also update users who has not been online the last 24 hours
-                    cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
                 }
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user" })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", dblocked: true })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 23815993 } })
-                // const cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 10000 } })
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;
                     index++;
@@ -4361,7 +4200,8 @@ export class Message {
                 // {
                 //     "$match": { config: { $not: { $size: 0 } } }
                 // }
-                const cursor = await Config.db.db.collection("users").aggregate(pipe)
+                const cursor = await Config.db.db.collection("users").aggregate(pipe);
+                // @ts-ignore
                 let resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Database Usage" }).toArray();
                 if (resources.length > 0) {
                     let resource: Resource = resources[0];
@@ -4375,13 +4215,13 @@ export class Message {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
                                 }
                             } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                                 }
                             }
                         } else if (config.product.customerassign != "metered") {
@@ -4390,13 +4230,13 @@ export class Message {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
                                 }
                             } else if (c.dbusage <= quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
                                     Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
+                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                                 }
                             }
                         } else if (config.product.customerassign == "metered") {
@@ -4413,7 +4253,7 @@ export class Message {
                             }
                             if (c.dblocked || !c.dblocked) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } });
+                                await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                             }
                         }
                         // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
@@ -4464,7 +4304,7 @@ export class Message {
                 var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
                 if (customer == null) msg.customerid = null;
             }
-            user = User.assign(await Crypt.verityToken(this.jwt));
+            user = this.tuser;
             if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
 
             if (NoderedUtil.IsNullEmpty(msg.customerid)) {
@@ -4503,7 +4343,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: TokenUser = this.tuser;
 
             msg = AddWorkitemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
@@ -4521,7 +4361,7 @@ export class Message {
 
 
             var wi: Workitem = new Workitem(); wi._type = "workitem";
-            wi._id = new ObjectID().toHexString();
+            wi._id = new ObjectId().toHexString();
             wi._acl = wiq._acl;
             wi.wiq = wiq.name;
             wi.wiqid = wiq._id;
@@ -4692,7 +4532,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: TokenUser = this.tuser;
             let isRelevant: boolean = false;
 
             let end: number = new Date().getTime();
@@ -4717,7 +4557,7 @@ export class Message {
             for (let i = 0; i < msg.items.length; i++) {
                 let item = msg.items[i];
                 let wi: Workitem = new Workitem(); wi._type = "workitem";
-                wi._id = new ObjectID().toHexString();
+                wi._id = new ObjectId().toHexString();
                 wi._acl = wiq._acl;
                 wi.wiq = wiq.name;
                 wi.wiqid = wiq._id;
@@ -4845,7 +4685,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: TokenUser = this.tuser;
 
             let retry: boolean = false;
 
@@ -5036,7 +4876,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: TokenUser = this.tuser;
 
             msg = PopWorkitemMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
@@ -5052,27 +4892,53 @@ export class Message {
             }
             if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
-            // query: { wiqid: wiq._id, "_type": "workitem", state: { "$in": ["new", "pending"] } },
-            var workitems = await Config.db.query<Workitem>({
-                query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
-                orderby: { "priority": 1 },
-                collectionname: "workitems", jwt
-            }, parent);
+            let workitems: Workitem[] = null;
+            do {
+                workitems = await Config.db.query<Workitem>({
+                    query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
+                    orderby: { "priority": 1 },
+                    collectionname: "workitems", jwt, top: 1
+                }, parent);
+                if (workitems.length > 0) {
+                    const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                    let _wi = workitems[0];
+                    _wi.lastrun = new Date(new Date().toISOString());
 
-            if (workitems.length > 0) {
-                var wi = workitems[0];
-                if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
-                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-                wi.state = "processing";
-                wi.userid = user._id;
-                wi.username = user.name;
-                wi.lastrun = new Date(new Date().toISOString());
-                wi.nextrun = null;
-                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
-                wi = await Config.db._UpdateOne<Workitem>(null, wi, "workitems", 1, true, jwt, parent);
-                msg.result = wi;
-            }
+                    if (NoderedUtil.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
+                    if (typeof workitems[0].payload !== 'object') UpdateDoc["$set"]["payload"] = { "value": workitems[0].payload };
+                    UpdateDoc["$set"]["state"] = "processing";
+                    UpdateDoc["$set"]["userid"] = user._id;
+                    UpdateDoc["$set"]["username"] = user.name;
+                    UpdateDoc["$set"]["lastrun"] = _wi.lastrun;
+                    UpdateDoc["$unset"]["nextrun"] = "";
+                    if (NoderedUtil.IsNullEmpty(workitems[0].priority)) UpdateDoc["$set"]["priority"] = 2;
+
+                    var result: any = null;
+                    try {
+                        result = await Config.db._UpdateOne({
+                            "_id": workitems[0]._id,
+                            "state": workitems[0].state,
+                            "userid": workitems[0].userid,
+                            "username": workitems[0].username,
+                        }, UpdateDoc, "workitems", 1, true, Crypt.rootToken(), null)
+
+                        if (NoderedUtil.IsNullEmpty(_wi.retries)) _wi.retries = 0;
+                        if (typeof _wi.payload !== 'object') _wi.payload = { "value": _wi.payload };
+                        _wi.state = "processing";
+                        _wi.userid = user._id;
+                        _wi.username = user.name;
+                        _wi.nextrun = null;
+                        if (NoderedUtil.IsNullEmpty(_wi.priority)) _wi.priority = 2;
+
+                        msg.result = _wi;
+                    } catch (error) {
+                        Logger.instanse.warn("Message", "PopWorkitem", (error.message ? error.message : error));
+                    }
+                }
+            } while (workitems.length > 0 && msg.result == null);
+
+
+
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5095,7 +4961,7 @@ export class Message {
         try {
             const rootjwt = Crypt.rootToken();
             const jwt = this.jwt;
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: TokenUser = this.tuser;
 
             msg = DeleteWorkitemMessage.assign(this.data);
 
@@ -5151,7 +5017,7 @@ export class Message {
             if (queues.length > 0) {
                 throw new Error("Work item queue with name " + msg.name + " already exists");
             }
-            user = User.assign(await Crypt.verityToken(this.jwt));
+            user = this.tuser;
 
             var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
             const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
@@ -5255,7 +5121,7 @@ export class Message {
                 if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
                 wiq = queues[0];
             }
-            user = User.assign(await Crypt.verityToken(this.jwt));
+            user = this.tuser;
 
             if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
             wiq.name = msg.name;
@@ -5322,7 +5188,7 @@ export class Message {
                 if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
                 wiq = queues[0];
             }
-            user = User.assign(Crypt.verityToken(this.jwt));
+            user = this.tuser;
 
             if (msg.purge) {
                 await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, jwt, parent);
