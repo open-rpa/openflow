@@ -37,7 +37,10 @@ import { Logger } from '../OpenFlow/src/Logger';
         try {
             console.log("Creating client " + i);
             var websocket = new WebSocketClient(null, "wss://pc.openiap.io", true);
-            websocket.agent = "test-cli";
+            let randomNum = crypto.randomInt(1, 5)
+            websocket.agent = "openrpa";
+            if (randomNum == 1) websocket.agent = "nodered";
+            if (randomNum == 3) websocket.agent = "webapp";
             await websocket.Connect();
             if (NoderedUtil.IsNullEmpty(this.jwt)) {
                 var signin = await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser", websocket });
@@ -47,12 +50,18 @@ import { Logger } from '../OpenFlow/src/Logger';
             }
             this.clients.push(websocket);
             console.log("Client " + i + " connected and signed in");
-            const randomNum = crypto.randomInt(1, 10) + 2;
+            randomNum = crypto.randomInt(1, 50) + 15;
             setInterval(() => {
-                NoderedUtil.Query({ jwt: this.jwt, query: { "type": "workitem", "query": { "status": "new" } }, collectionname: "workitem", websocket });
+                if (websocket.agent = "openrpa") {
+                    NoderedUtil.Query({ jwt: this.jwt, query: { "type": "workflow" }, collectionname: "openrpa", websocket });
+                } else if (websocket.agent = "nodered") {
+                    NoderedUtil.Query({ jwt: this.jwt, query: { "type": "flow" }, collectionname: "nodered", websocket });
+                } else {
+                    NoderedUtil.Query({ jwt: this.jwt, query: {}, collectionname: "entities", websocket });
+                }
             }, 1000 * randomNum)
         } catch (error) {
-            console.error(error);
+            console.error(error.message ? error.message : error);
         }
     }
 
@@ -61,7 +70,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     async 'crud connection load test'() {
         await this.createandconnect(0);
         var Promises: Promise<any>[] = [];
-        for (var i = 0; i < 1000; i++) {
+        for (var i = 0; i < 500; i++) {
             Promises.push(this.createandconnect(i));
             if (i && i % 100 == 0) {
                 await Promise.all(Promises.map(p => p.catch(e => e)))
@@ -71,4 +80,5 @@ import { Logger } from '../OpenFlow/src/Logger';
         await this.sleep(1000 * 60 * 30);
     }
 }
+// cd \code\openflow | node_modules\.bin\_mocha 'test/**/loadtest.test.ts'
 // cls | ./node_modules/.bin/_mocha 'test/**/loadtest.test.ts'
