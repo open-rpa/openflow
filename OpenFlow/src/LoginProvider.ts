@@ -510,7 +510,10 @@ export class LoginProvider {
                         Logger.instanse.debug("LoginProvider", "/login", "User signed in, with key " + key);
                         this.redirect(res, "/");
                     } else {
-                        res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                        try {
+                            res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                        } catch (error) {
+                        }
                         Logger.instanse.debug("LoginProvider", "/login", "User not signed in, redirect to /login");
                         this.redirect(res, "/login");
                     }
