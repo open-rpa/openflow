@@ -973,7 +973,7 @@ export class api_updatedocument {
                 const q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collectionname;
                 q.item = (updatedocument as any); q.jwt = jwt;
                 q.w = writeconcern; q.j = journal; q.query = (query as any);
-                const q2 = await NoderedUtil._UpdateOne(q, priority);
+                const q2 = await NoderedUtil._UpdateOne(q, priority, WebSocketClient.instance);
                 msg.payload = q2.result;
                 msg.opresult = q2.opresult;
             } else {
