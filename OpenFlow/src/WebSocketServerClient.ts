@@ -88,7 +88,7 @@ export class WebSocketServerClient {
         if (!NoderedUtil.IsNullUndefinded(req)) {
             this.remoteip = WebSocketServerClient.remoteip(req);
         }
-        Logger.instanse.info("WebSocketServerClient", "constructor", "new client " + this.id + " from " + this.remoteip);
+        Logger.instanse.debug("WebSocketServerClient", "constructor", "new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", this.open.bind(this));
         socketObject.on("message", this.message.bind(this)); // e: MessageEvent
         socketObject.on("error", this.error.bind(this));
@@ -133,10 +133,10 @@ export class WebSocketServerClient {
         this.CloseConsumers(null);
     }
     private open(e: Event): void {
-        Logger.instanse.info("WebSocketServerClient", "open", "Connection opened " + e + " " + this.id);
+        Logger.instanse.debug("WebSocketServerClient", "open", "Connection opened " + e + " " + this.id);
     }
     private close(e: CloseEvent): void {
-        Logger.instanse.info("WebSocketServerClient", "close", "Connection closed " + e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.debug("WebSocketServerClient", "close", "Connection closed " + e + " " + this.id + "/" + this.clientagent);
         this.Close();
         Config.db.removeListener("disconnected", this._dbdisconnected);
         Config.db.removeListener("connected", this._dbconnected);

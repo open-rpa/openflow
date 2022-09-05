@@ -210,20 +210,20 @@ export class WebSocketServer {
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
                         span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.info("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
                     } else {
                         span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.info("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
                     }
                     cli.Close();
                 }
                 cli.ping(span);
                 if (!cli.connected() && cli.queuecount() == 0) {
                     if (cli.user != null) {
-                        Logger.instanse.info("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                     } else {
-                        Logger.instanse.info("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.clientagent);
+                        Logger.instanse.debug("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.clientagent);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
                     }
                     try {
@@ -236,7 +236,7 @@ export class WebSocketServer {
                 }
             }
             if (count !== WebSocketServer._clients.length) {
-                Logger.instanse.info("WebSocketServer", "pingClients", "new client count: " + WebSocketServer._clients.length);
+                Logger.instanse.debug("WebSocketServer", "pingClients", "new client count: " + WebSocketServer._clients.length);
                 span?.setAttribute("clientcount", WebSocketServer._clients.length)
             }
             const p_all = {};

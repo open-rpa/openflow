@@ -1505,9 +1505,9 @@ export class Message {
                 await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
             } else if (cli.user?.dblocked == true) {
-                Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
+                Logger.instanse.warn("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
             } else if (tuser != null) {
-                Logger.instanse.info("Message", "DoSign", tuser.username + " successfully signed in");
+                Logger.instanse.debug("Message", "DoSign", tuser.username + " successfully signed in");
                 // let's turn down the audit logging
                 // await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 Logger.DBHelper.UpdateHeartbeat(cli);
@@ -1564,7 +1564,7 @@ export class Message {
 
                     if (cli?.clientagent == "openrpa" && user.dblocked == true) {
                         // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        Logger.instanse.error("Message", "Signin", user.username + " is dblocked");
+                        // Logger.instanse.error("Message", "Signin", user.username + " is dblocked");
                         span?.addEvent("User dblocked, decline login");
                         // Dillema ....
                         // If we send an error or empy yser, the robot will spam new tabs 
@@ -1681,7 +1681,7 @@ export class Message {
                         msg.impersonate = undefined;
                         impostor = undefined;
                     }
-                    Logger.instanse.info("Message", "Signin", tuser.username + " successfully signed in");
+                    Logger.instanse.debug("Message", "Signin", tuser.username + " successfully signed in");
                     span?.setAttribute("name", tuser.name);
                     span?.setAttribute("username", tuser.username);
                     if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
@@ -1770,7 +1770,7 @@ export class Message {
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
-                        Logger.instanse.info("Message", "Signin", tuser.username + " successfully impersonated");
+                        Logger.instanse.debug("Message", "Signin", tuser.username + " successfully impersonated");
                         await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
@@ -1790,7 +1790,7 @@ export class Message {
                         user.device = msg.device;
                     }
                     if (msg.validate_only !== true) {
-                        Logger.instanse.info("Message", "Signin", tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
+                        Logger.instanse.debug("Message", "Signin", tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
                         if (cli) cli.jwt = msg.jwt;
                         if (cli) cli.user = user;
                         if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -1857,7 +1857,7 @@ export class Message {
                 } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
                     span?.addEvent("User dblocked, decline login");
                     // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
+                    // Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
                     // Dillema ....
                     // If we send an error or empy yser, the robot will spam new tabs 
                     // If we just close the connection the user will not know what is wrong ...
@@ -3716,7 +3716,7 @@ export class Message {
         //                     { $set: { "_acl": item._acl } });
         //             }
         //             if ((ui % 500 == 0)) {
-        //                 Logger.instanse.info("Housekeeping", "_Housekeeping", "Processed " + ui + " items so far, and updated " + updatecount + " items.");
+        //                 Logger.instanse. info("Housekeeping", "_Housekeeping", "Processed " + ui + " items so far, and updated " + updatecount + " items.");
         //             }
         //         }
         //     } catch (error) {
