@@ -1824,8 +1824,12 @@ export class Message {
                             UpdateDoc.$set["_lastpowershellclientversion"] = cli.clientversion;
                         }
                     }
-                    span?.addEvent("Update user using update document");
-                    await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    var keys = Object.keys(UpdateDoc.$set);
+                    if (keys.length > 4) {
+                        // ping will handle this, if no new information needs to be added
+                        span?.addEvent("Update user using update document");
+                        await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
+                    }
                     span?.addEvent("memoryCache.delete users" + user._id);
                     Logger.DBHelper.memoryCache.del("users" + user._id);
                     if (NoderedUtil.IsNullEmpty(tuser.impostor)) {
