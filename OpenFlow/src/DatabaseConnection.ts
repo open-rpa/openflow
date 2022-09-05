@@ -66,6 +66,7 @@ export class DatabaseConnection extends events.EventEmitter {
         super();
         this._dbname = dbname;
         this.mongodburl = mongodburl;
+        this.setMaxListeners(1000);
         if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
