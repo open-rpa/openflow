@@ -1,6 +1,7 @@
 var wtf = require('wtfnode');
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
+const crypto = require('crypto');
 require("dotenv").config({ path: env }); // , debug: false 
 import { AddWorkitem, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
 import { suite, test, timeout } from '@testdeck/mocha';
@@ -46,14 +47,19 @@ import { Logger } from '../OpenFlow/src/Logger';
             }
             this.clients.push(websocket);
             console.log("Client " + i + " connected and signed in");
+            const randomNum = crypto.randomInt(1, 10) + 2;
+            setInterval(() => {
+                NoderedUtil.Query({ jwt: this.jwt, query: { "type": "workitem", "query": { "status": "new" } }, collectionname: "workitem", websocket });
+            }, 1000 * randomNum)
         } catch (error) {
             console.error(error);
         }
     }
 
     @timeout(6000000)
-    // @test
+    @test
     async 'crud connection load test'() {
+        await this.createandconnect(0);
         var Promises: Promise<any>[] = [];
         for (var i = 0; i < 1000; i++) {
             Promises.push(this.createandconnect(i));
@@ -62,7 +68,7 @@ import { Logger } from '../OpenFlow/src/Logger';
                 Promises = [];
             }
         }
-        await this.sleep(60000);
+        await this.sleep(1000 * 60 * 30);
     }
 }
 // cls | ./node_modules/.bin/_mocha 'test/**/loadtest.test.ts'
