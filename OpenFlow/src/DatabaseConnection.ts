@@ -2253,6 +2253,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
                             Logger.otel.endSpan(mongodbspan);
                             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: q.collectionname });
+                            Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
                         } catch (error) {
                             var msg: string = error.message;
                             if (msg.startsWith("After applying the update, the (immutable) field '_id' was found")) {
@@ -2302,6 +2303,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateOne", span);
                     q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
+                    Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
                 }
@@ -2397,7 +2399,6 @@ export class DatabaseConnection extends events.EventEmitter {
             } catch (error) {
                 throw error;
             }
-            Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
             return q;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "UpdateOne", error);
