@@ -98,7 +98,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.AssertQueueOptions.arguments = {};
             this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
         }
-        this.setMaxListeners(1000);
+        this.setMaxListeners(1500);
     }
     private timeout: NodeJS.Timeout = null;
     public queuemessagecounter: object = {};
