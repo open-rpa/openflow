@@ -210,6 +210,8 @@ export class dockerdriver implements i_nodered_driver {
     }
     public async GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
+        const rootjwt = Crypt.rootToken()
+        const rootuser = TokenUser.From(Crypt.rootUser());
         try {
             const noderedresource: any = await Config.db.GetOne({ "collectionname": "config", "query": { "name": "Nodered Instance", "_type": "resource" } }, span);
             let runtime: number = noderedresource?.defaultmetadata?.runtime_hours;
@@ -241,7 +243,7 @@ export class dockerdriver implements i_nodered_driver {
                         const diffhours = a / (1000 * 60 * 60);
                         if (billed != "true" && diffhours > runtime) {
                             Logger.instanse.warn("dockerdriver", "GetNoderedInstance", "[" + tokenUser.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
-                            await this.DeleteNoderedInstance(jwt, tokenUser, _id, name, span);
+                            await this.DeleteNoderedInstance(rootjwt, rootuser, _id, name, span);
                             deleted = true;
                         }
                     }
