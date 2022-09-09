@@ -1,4 +1,4 @@
-import { NoderedUser, NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { NoderedUser, NoderedUtil, ResourceUsage, TokenUser } from "@openiap/openflow-api";
 import { i_nodered_driver } from "./commoninterfaces";
 import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/api";
@@ -80,9 +80,22 @@ export class dockerdriver implements i_nodered_driver {
             let nodered_image = Config.nodered_images[0].image;
             if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
 
+            let hasbilling: boolean = false;
+            let assigned: ResourceUsage[] = await Config.db.db.collection("config")
+                .find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray() as any;
+            if (assigned.length > 0) {
+                let usage: ResourceUsage = assigned[0];
+                if (usage.quantity > 0 && !NoderedUtil.IsNullEmpty(usage.siid)) {
+                    hasbilling = true;
+                }
+            }
+
+
             const Labels = {
                 "com.docker.compose.project": Config.namespace,
-                "com.docker.compose.service": Config.namespace
+                "com.docker.compose.service": Config.namespace,
+                "userid": _id,
+                "billed": hasbilling.toString(),
             };
             let NetworkingConfig: Dockerode.EndpointsConfig = undefined;
             let HostConfig: Dockerode.HostConfig = undefined;
@@ -198,6 +211,15 @@ export class dockerdriver implements i_nodered_driver {
     public async GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         try {
+            const noderedresource: any = await Config.db.GetOne({ "collectionname": "config", "query": { "name": "Nodered Instance", "_type": "resource" } }, span);
+            let runtime: number = noderedresource?.defaultmetadata?.runtime_hours;
+            if (NoderedUtil.IsNullUndefinded(runtime)) {
+                // If nodered resource does not exists, dont turn off nodereds
+                runtime = 0;
+                // If nodered resource does exists, but have no default, use 24 hours
+                if (!NoderedUtil.IsNullUndefinded(noderedresource)) runtime = 24;
+            }
+
             span?.addEvent("init Docker()");
             const docker = new Docker();
             span?.addEvent("listContainers()");
@@ -208,50 +230,39 @@ export class dockerdriver implements i_nodered_driver {
                 var Created = new Date(item.Created * 1000);
                 item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
                 item.status = { phase: item.State }
-
-
-                // const itemname = item.metadata.name;
-                // const billed = item.metadata.labels.billed;
-                // const image = item.spec.containers[0].image
-                // const userid = item.metadata.labels.userid;
-                // const image = item.Image;
-                // const date = new Date();
-                // const a: number = (date as any) - (Created as any);
-                // // const diffminutes = a / (1000 * 60);
-                // const diffhours = a / (1000 * 60 * 60);
-                // if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
-                //     try {
-                //         if (billed != "true" && diffhours > 24) {
-                //             Logger.instanse.debug("dockerdriver", "GetNoderedInstance", "[" + tokenUser.username + "] Remove un billed nodered instance " + itemname + " that has been running for " + diffhours + " hours");
-                //             await this.DeleteNoderedInstance(jwt, tokenUser, _id, name, true, span);
-                //         }
-                //     } catch (error) {
-                //     }
-                // } else if (image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) {
-                //     if (billed != "true" && diffhours > 24) {
-                //         console . debug("unbilled " + name + " with no userid, should be removed, it has been running for " + diffhours + " hours");
-                //     } else {
-                //         console . debug("unbilled " + name + " with no userid, has been running for " + diffhours + " hours");
-                //     }
-                // }
-
-                if (item.Names[0] == "/" + name) {
-                    span?.addEvent("getContainer(" + item.Id + ")");
-                    const container = docker.getContainer(item.Id);
-                    span?.addEvent("stats()");
-                    var stats = await container.stats({ stream: false });
-                    let cpu_usage: 0;
-                    let memory: 0;
-                    let memorylimit: 0;
-                    if (stats && stats.cpu_stats && stats.cpu_stats.cpu_usage && stats.cpu_stats.cpu_usage.usage_in_usermode) cpu_usage = stats.cpu_stats.cpu_usage.usage_in_usermode;
-                    if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
-                    if (stats && stats.memory_stats && stats.memory_stats.limit) memorylimit = stats.memory_stats.limit;
-                    item.metrics = {
-                        cpu: parseFloat((cpu_usage / 1024 / 1024).toString()).toFixed(2) + "n",
-                        memory: parseFloat((memory / 1024 / 1024).toString()).toFixed(2) + "Mi",
-                        memorylimit: parseFloat((memorylimit / 1024 / 1024).toString()).toFixed(2) + "Mi"
-                    };
-                    result.push(item);
+                const image = item.Image;
+                const userid = item.Labels["userid"];
+                const billed = item.Labels["billed"];
+                let deleted: boolean = false;
+                if ((image.indexOf("openflownodered") > -1 || image.indexOf("openiap/nodered") > -1) && !NoderedUtil.IsNullEmpty(userid)) {
+                    if (!NoderedUtil.IsNullUndefinded(noderedresource) && runtime > 0) {
+                        const date = new Date();
+                        const a: number = (date as any) - (Created as any);
+                        const diffhours = a / (1000 * 60 * 60);
+                        if (billed != "true" && diffhours > runtime) {
+                            Logger.instanse.warn("dockerdriver", "GetNoderedInstance", "[" + tokenUser.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
+                            await this.DeleteNoderedInstance(jwt, tokenUser, _id, name, span);
+                            deleted = true;
+                        }
+                    }
+                    if (item.Names[0] == "/" + name && deleted == false) {
+                        span?.addEvent("getContainer(" + item.Id + ")");
+                        const container = docker.getContainer(item.Id);
+                        span?.addEvent("stats()");
+                        var stats = await container.stats({ stream: false });
+                        let cpu_usage: 0;
+                        let memory: 0;
+                        let memorylimit: 0;
+                        if (stats && stats.cpu_stats && stats.cpu_stats.cpu_usage && stats.cpu_stats.cpu_usage.usage_in_usermode) cpu_usage = stats.cpu_stats.cpu_usage.usage_in_usermode;
+                        if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
+                        if (stats && stats.memory_stats && stats.memory_stats.limit) memorylimit = stats.memory_stats.limit;
+                        item.metrics = {
+                            cpu: parseFloat((cpu_usage / 1024 / 1024).toString()).toFixed(2) + "n",
+                            memory: parseFloat((memory / 1024 / 1024).toString()).toFixed(2) + "Mi",
+                            memorylimit: parseFloat((memorylimit / 1024 / 1024).toString()).toFixed(2) + "Mi"
+                        };
+                        result.push(item);
+                    }
                 }
             }
             return result;

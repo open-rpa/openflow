@@ -217,9 +217,11 @@ export class Logger {
             try {
                 if (_driver != null) {
                     this.nodereddriver = new _driver.kubedriver();
-                    if (!this.nodereddriver.detect()) {
-                        this.nodereddriver = null;
-                    }
+                } else {
+                    this.nodereddriver = new dockerdriver();
+                }
+                if (!this.nodereddriver.detect()) {
+                    this.nodereddriver = null;
                 }
             } catch (error) {
                 this.nodereddriver = null;
