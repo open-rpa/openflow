@@ -2981,7 +2981,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
             if (this.showrunning && this.collection == "openrpa_instances") {
                 this.basequery = { "state": { "$in": ["idle", "running"] } };
             } else if (this.showpending && this.collection == "config") {
-                this.basequery = { "siid": { "$exists": false }, "_type": "resourceusage" };
+                this.basequery = { "$or": [{ "siid": { "$exists": false } }, { "siid": null }], "_type": "resourceusage" };
             } else {
                 this.basequery = {};
             }
