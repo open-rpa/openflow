@@ -1162,7 +1162,7 @@ export class MenuCtrl {
 
             var nodered_multi_tenant_turns_off = "";
             if (this.WebSocketClientService.multi_tenant) {
-                nodered_multi_tenant_turns_off = "The free version will stop after 24 hours and have limited amount of ram. ";
+                nodered_multi_tenant_turns_off = "The free version will stop after a few hours hours and have limited amount of ram. ";
             }
             tour.addStep({
                 title: 'Nodered',
