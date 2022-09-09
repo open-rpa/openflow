@@ -2822,7 +2822,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (userdocs.length > 0 && !Config.cleanup_on_delete_customer && !recursive) {
                             // @ts-ignore
                             let defaulttest = userdocs.filter(x => x._id != doc.users && x._id != doc.admins && x._id != doc.userid)
-                            if (defaulttest.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                            if (defaulttest.length > 0) {
+                                throw new Error("Access Denied, cannot delete customer with active user or roles (" + defaulttest[0].name + "/" + defaulttest[0]._id + ")");
+                            }
                         }
                         if (Config.cleanup_on_delete_customer || recursive) {
                             Logger.instanse.warn("DatabaseConnection", "DeleteOne", "[" + user.username + "] Cleaning up after up after company " + doc.name);
@@ -2852,7 +2854,9 @@ export class DatabaseConnection extends events.EventEmitter {
                             await this.DeleteOne(userdocs[i]._id, "users", recursive, jwt, span);
                         }
                     } else {
-                        if (userdocs.length > 0) throw new Error("Access Denied, cannot delete customer with active user or roles");
+                        if (userdocs.length > 0) {
+                            throw new Error("Access Denied, cannot delete customer with active user or roles (" + userdocs[0].name + "/" + userdocs[0]._id + ")");
+                        }
                     }
                 }
 
