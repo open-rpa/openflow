@@ -1925,6 +1925,9 @@ export class Message {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             const _tuser = this.tuser;
+            if (!_tuser.HasRoleId(WellknownIds.personal_nodered_users)) {
+                throw new Error("User does not have permission to create nodered instances");
+            }
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.EnsureNoderedInstance(this.jwt, _tuser, msg._id, instancename, false, span);
         } catch (error) {
@@ -2000,6 +2003,9 @@ export class Message {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const _tuser = this.tuser;
+            if (!_tuser.HasRoleId(WellknownIds.personal_nodered_users)) {
+                throw new Error("User does not have permission to create nodered instances");
+            }
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.RestartNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
         } catch (error) {
