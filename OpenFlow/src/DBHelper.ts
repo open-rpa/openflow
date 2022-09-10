@@ -653,45 +653,26 @@ export class DBHelper {
         cli.user._heartbeat = dt; cli.user.lastseen = dt;
         if (cli.clientagent == "openrpa") {
             cli.user._rpaheartbeat = dt;
-            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-            //     { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()) } },
-            //     Config.prometheus_measure_onlineuser, null);
             return { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()) } };
         }
         if (cli.clientagent == "nodered") {
             cli.user._noderedheartbeat = dt;
-            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-            //     { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()) } },
-            //     Config.prometheus_measure_onlineuser, null);
             return { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()) } };
         }
         if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
             (cli.user as any)._webheartbeat = dt;
-            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-            //     { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()) } },
-            //     Config.prometheus_measure_onlineuser, null);
             return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()) } };
         }
         if (cli.clientagent == "powershell") {
             cli.user._powershellheartbeat = dt;
-            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-            //     { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()) } },
-            //     Config.prometheus_measure_onlineuser, null);
             return { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()) } };
         }
         if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
             (cli.user as any)._webheartbeat = dt;
             (cli.user as any)._mobilheartbeat = dt;
-            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-            //     { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()) } },
-            //     Config.prometheus_measure_onlineuser, null);
             return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()) } };
         }
         else {
-            // Should proberly turn this a little down, so we dont update all online users every 10th second
-            // Config.db.synRawUpdateOne("users", { _id: cli.user._id },
-            //     { $set: updatedoc, },
-            //     Config.prometheus_measure_onlineuser, null);
             return { $set: updatedoc };
         }
     }

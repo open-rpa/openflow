@@ -1881,28 +1881,6 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return result;
     }
-    synRawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean, cb: any) {
-        let ot_end: any = null;
-        if (measure) {
-            ot_end = Logger.otel.startTimer();
-        }
-        Config.db.db.collection(collection).updateOne(query, updatedoc).catch(err => {
-            if (measure) Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: collection });
-            Logger.instanse.error("DatabaseConnection", "synRawUpdateOne", err);
-            if (cb) cb(err, null);
-        }).then((result) => {
-            if (measure) Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: collection });
-            if (cb) cb(null, result);
-        });
-    }
-    async rawUpdateOne(collection: string, query: any, updatedoc: any, measure: boolean) {
-        let ot_end: any = null;
-        if (measure) {
-            ot_end = Logger.otel.startTimer();
-        }
-        await Config.db.db.collection(collection).updateOne(query, updatedoc);
-        if (measure) Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: "users" });
-    }
     /**
      * Update entity in database
      * @param  {T} item Item to update

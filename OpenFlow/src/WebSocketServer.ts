@@ -92,7 +92,7 @@ export class WebSocketServer {
                             }
                         } catch (error) {
                             span?.recordException(error);
-                            Logger.instanse.error("WebSocketServer", "pingClients", error);
+                            Logger.instanse.error("WebSocketServer", "observeClients", error);
                         }
                     }
                     keys = Object.keys(p_all);
