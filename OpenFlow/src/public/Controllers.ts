@@ -7359,3 +7359,58 @@ export class MailHistCtrl extends entityCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
+export class WebsocketClientsCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("WebsocketClientsCtrl");
+        this.basequery = { _type: "websocketclient" };
+        this.collection = "websocketclients";
+        // this.preloadData = () => {
+        //     NoderedUtil.CustomCommand({ "command": "dumpwebsocketclients" });
+        // };
+        this.postloadData = this.processData;
+        this.skipcustomerfilter = true;
+        if (this.userdata.data.WebsocketClientsCtrl) {
+            this.basequery = this.userdata.data.WebsocketClientsCtrl.basequery;
+            this.collection = this.userdata.data.WebsocketClientsCtrl.collection;
+            this.baseprojection = this.userdata.data.WebsocketClientsCtrl.baseprojection;
+            this.orderby = this.userdata.data.WebsocketClientsCtrl.orderby;
+            this.searchstring = this.userdata.data.WebsocketClientsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.WebsocketClientsCtrl.basequeryas;
+        }
+
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.WebsocketClientsCtrl) this.userdata.data.WebsocketClientsCtrl = {};
+        this.userdata.data.WebsocketClientsCtrl.basequery = this.basequery;
+        this.userdata.data.WebsocketClientsCtrl.collection = this.collection;
+        this.userdata.data.WebsocketClientsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.WebsocketClientsCtrl.orderby = this.orderby;
+        this.userdata.data.WebsocketClientsCtrl.searchstring = this.searchstring;
+        this.userdata.data.WebsocketClientsCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DumpClients(): Promise<void> {
+        await NoderedUtil.CustomCommand({ "command": "dumpwebsocketclients" });
+        await new Promise(resolve => { setTimeout(resolve, 1000) });
+        this.loadData();
+    }
+    async KillClient(id): Promise<void> {
+        await NoderedUtil.CustomCommand({ "command": "killwebsocketclient", id });
+        this.loadData();
+    }
+
+}

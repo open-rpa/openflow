@@ -19,7 +19,7 @@ import { OAuthProvider } from "../OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import { QueueClient } from "../QueueClient";
-import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
+import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, CustomCommandMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 const pako = require('pako');
 const got = require("got");
 
@@ -560,6 +560,10 @@ export class Message {
                         break;
                     case "deleteworkitem":
                         await this.DeleteWorkitem(span);
+                        cli.Send(this);
+                        break;
+                    case "customcommand":
+                        await this.CustomCommand(span);
                         cli.Send(this);
                         break;
                     default:
@@ -5211,6 +5215,44 @@ export class Message {
             if (wiq.usersrole) {
                 await Config.db.DeleteOne(wiq.usersrole, "users", false, jwt, parent);
             }
+        } catch (error) {
+            await handleError(null, error);
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) {
+                msg.error = (error.message ? error.message : error);
+            }
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            await handleError(null, error);
+        }
+    }
+    async CustomCommand(parent: Span): Promise<void> {
+        let user: TokenUser = null;
+        this.Reply();
+        let msg: CustomCommandMessage;
+        try {
+            const rootjwt = Crypt.rootToken();
+            const jwt = this.jwt;
+            const user: TokenUser = this.tuser;
+
+            msg = CustomCommandMessage.assign(this.data);
+            switch (msg.command) {
+                case "dumpwebsocketclients":
+                    if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                    await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, jwt, parent);
+                    amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", 1);
+                    break;
+                case "killwebsocketclient":
+                    if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                    amqpwrapper.Instance().send("openflow", "", { "command": "killwebsocketclient", "id": msg.id }, 10000, null, "", 1);
+                    break;
+                default:
+                    msg.error = "Unknown custom command";
+            }
+
         } catch (error) {
             await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
