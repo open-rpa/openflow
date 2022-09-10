@@ -35,6 +35,7 @@
       <th ng-click="ctrl.ToggleOrder('id')"><strong translate lib="web">id</strong></th>
       <th ng-click="ctrl.ToggleOrder('api')"><strong translate lib="web">api</strong></th>
       <th ng-click="ctrl.ToggleOrder('clientagent')"><strong translate lib="web">agent</strong></th>
+      <th ng-click="ctrl.ToggleOrder('created')"><strong translate lib="web">created</strong></th>
       <th ng-click="ctrl.ToggleOrder('lastheartbeat')"><strong translate lib="web">heartbeat</strong></th>
       <th ng-click="ctrl.ToggleOrder('remoteip')"><strong translate lib="web">ip</strong></th>
       <th></th>
@@ -47,9 +48,12 @@
       <td class="text-truncate">{{model.api}}</td>
       <td class="text-truncate">{{model.clientagent}}</td>
       <td>
+        <timesince ng-model="model.created" />
+      </td>
+      <td>
         <timesince ng-model="model.lastheartbeat" />
       </td>
-      <td class="text-truncate">{{model.remoteip}}</td>
+      <td class="text-truncate"><a ng-href="https://www.iplocation.net/?query={{model.remoteip}}" target="_blank">{{model.remoteip}}</a></td>
       <td>
         <a href ng-click="ctrl.KillClient(model.id)" class="btn" ng-disabled="ctrl.loading==true"><em
             class="fas fa-trash"></em></a>

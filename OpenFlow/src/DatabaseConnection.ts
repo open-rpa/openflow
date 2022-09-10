@@ -970,7 +970,11 @@ export class DatabaseConnection extends events.EventEmitter {
             arr = await _pipe.toArray();
             mongodbspan?.setAttribute("results", arr.length);
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
+            if (Config.otel_trace_mongodb_per_users) {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname, username: user.username });
+            } else {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, { collection: collectionname });
+            }
             if (decrypt) for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
             DatabaseConnection.traversejsondecode(arr);
             Logger.instanse.debug("DatabaseConnection", "query", "[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
@@ -1197,7 +1201,13 @@ export class DatabaseConnection extends events.EventEmitter {
             const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
             mongodbspan?.setAttribute("results", items.length);
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
+
+            if (Config.otel_trace_mongodb_per_users) {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname, username: user.username });
+            } else {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, { collection: collectionname });
+            }
+
             DatabaseConnection.traversejsondecode(items);
             Logger.instanse.debug("DatabaseConnection", "aggregate", "[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
             Logger.instanse.silly("DatabaseConnection", "aggregate", aggregatesjson);
@@ -1545,7 +1555,12 @@ export class DatabaseConnection extends events.EventEmitter {
             // @ts-ignore
             const result: InsertOneResult<T> = await this.db.collection(collectionname).insertOne(item, options);
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
+            if (Config.otel_trace_mongodb_per_users) {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname, username: user.username });
+            } else {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, { collection: collectionname });
+            }
+
             // @ts-ignore
             item._id = result.insertedId;
             if (collectionname === "users" && item._type === "user") {
@@ -1645,7 +1660,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                 await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
                 Logger.otel.endSpan(mongodbspan);
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
+                if (Config.otel_trace_mongodb_per_users) {
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname, username: user.username });
+                } else {
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, { collection: collectionname });
+                }                    
                 // DBHelper.cached_roles = [];
                 if (item._type === "role") {
                     const r: Role = (item as any);
@@ -1821,7 +1840,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     const mongodbspan_inner: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
                     tempresult = tempresult.concat(bulkInsert.execute())
                     Logger.otel.endSpan(mongodbspan_inner);
-                    Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
+                    if (Config.otel_trace_mongodb_per_users) {
+                        Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insertmany, { collection: collectionname, username: user.username });
+                    } else {
+                        Logger.otel.endTimer(ot_end_inner, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
+                    }
                     bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp()
                 }
             }
@@ -1829,7 +1852,11 @@ export class DatabaseConnection extends events.EventEmitter {
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.bulkexecute", span);
             tempresult = tempresult.concat(bulkInsert.execute())
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
+            if (Config.otel_trace_mongodb_per_users) {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, { collection: collectionname, username: user.username });
+            } else {
+                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, { collection: collectionname });
+            }            
 
             for (let y = 0; y < items.length; y++) {
                 let item = items[y];
@@ -1858,8 +1885,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     const mongodbspan_inner2: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                     await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
                     Logger.otel.endSpan(mongodbspan_inner2);
-                    Logger.otel.endTimer(ot_end_inner2, DatabaseConnection.mongodb_replace, { collection: collectionname });
-                    // DBHelper.cached_roles = [];
+                    if (Config.otel_trace_mongodb_per_users) {
+                        Logger.otel.endTimer(ot_end_inner2, DatabaseConnection.mongodb_replace, { collection: collectionname, username: user.username });
+                    } else {
+                        Logger.otel.endTimer(ot_end_inner2, DatabaseConnection.mongodb_replace, { collection: collectionname });
+                    }                    
                 }
                 if (collectionname === "config" && item._type === "oauthclient") {
                     if (user.HasRoleName("admins")) {
@@ -2254,7 +2284,11 @@ export class DatabaseConnection extends events.EventEmitter {
                         const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                         q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
                         Logger.otel.endSpan(mongodbspan);
-                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
+                        if (Config.otel_trace_mongodb_per_users) {
+                            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname, username: user.username });
+                        } else {
+                            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
+                        }                        
                         if ((q.opresult && q.opresult.matchedCount == 0) && (q.w != 0)) {
                             throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
                         }
@@ -2283,7 +2317,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
                     Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
                     Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
+                    if (Config.otel_trace_mongodb_per_users) {
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname, username: user.username });
+                    } else {
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, { collection: q.collectionname });
+                    }                    
                 }
                 if (!DatabaseConnection.usemetadata(q.collectionname)) {
                     q.item = this.decryptentity(q.item);
@@ -2774,7 +2812,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deleteOne", span);
                     await this._DeleteFile(id);
                     Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+                    if (Config.otel_trace_mongodb_per_users) {
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname, username: user.username });
+                    } else {
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+                    }                    
                     return;
                 } else {
                     throw Error("item not found, or Access Denied");
@@ -2869,7 +2911,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deleteOne", span);
                 await this.db.collection(collectionname).deleteOne({ _id: doc._id });
                 Logger.otel.endSpan(mongodbspan);
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+                if (Config.otel_trace_mongodb_per_users) {
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname, username: user.username });
+                } else {
+                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, { collection: collectionname });
+                }                    
                 if (collectionname == "users" && doc._type == "user") {
                     const names: string[] = [];
                     names.push(doc.name + "noderedadmins"); names.push(doc.name + "noderedusers"); names.push(doc.name + "nodered api users")
@@ -3035,7 +3081,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     } catch (error) {
                     }
                     Logger.otel.endSpan(_mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                    if (Config.otel_trace_mongodb_per_users) {
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname, username: user.username });
+                    } else {
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                    }                    
                 }
                 Logger.instanse.verbose("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "] deleted " + deletecounter + " files in database");
                 return deletecounter;
@@ -3101,7 +3151,11 @@ export class DatabaseConnection extends events.EventEmitter {
                             Logger.instanse.verbose("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "] Deleting " + bulkRemove.addToOperationsList.length + " items from " + collectionname);
                             const ot_end = Logger.otel.startTimer();
                             bulkRemove.execute()
-                            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                            if (Config.otel_trace_mongodb_per_users) {
+                                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname, username: user.username });
+                            } else {
+                                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, { collection: collectionname });
+                            }                    
                             bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
                         }
                     }

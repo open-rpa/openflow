@@ -649,28 +649,33 @@ export class DBHelper {
     }
     public async UpdateHeartbeat(cli: WebSocketServerClient): Promise<any> {
         const dt = new Date(new Date().toISOString());
-        const updatedoc = { _heartbeat: dt, lastseen: dt };
+        const updatedoc = { _heartbeat: dt, lastseen: dt, clientagent: cli.clientagent, clientversion: cli.clientagent, remoteip: cli.remoteip };
         cli.user._heartbeat = dt; cli.user.lastseen = dt;
         if (cli.clientagent == "openrpa") {
             cli.user._rpaheartbeat = dt;
-            return { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()) } };
+            return { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()), _lastopenrpaclientversion: cli.clientversion } };
         }
         if (cli.clientagent == "nodered") {
             cli.user._noderedheartbeat = dt;
-            return { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()) } };
+            return { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()), _lastnoderedclientversion: cli.clientversion } };
         }
         if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
             (cli.user as any)._webheartbeat = dt;
-            return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()) } };
+            return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion } };
         }
         if (cli.clientagent == "powershell") {
             cli.user._powershellheartbeat = dt;
-            return { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()) } };
+            return { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()), _lastpowershellclientversion: cli.clientversion } };
         }
         if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
             (cli.user as any)._webheartbeat = dt;
             (cli.user as any)._mobilheartbeat = dt;
-            return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _mobilheartbeat: new Date(new Date().toISOString()) } };
+            return {
+                $set: {
+                    ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion
+                    , _mobilheartbeat: new Date(new Date().toISOString()), _lastmobilclientversion: cli.clientversion
+                }
+            };
         }
         else {
             return { $set: updatedoc };

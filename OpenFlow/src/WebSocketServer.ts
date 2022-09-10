@@ -187,6 +187,7 @@ export class WebSocketServer {
             c._exchanges = cli._exchanges;
             c._queues = cli._queues;
             c.lastheartbeat = cli.lastheartbeat;
+            c.created = cli.created;
             c.remoteip = cli.remoteip;
             c.user = cli.user;
             c.username = cli.username;

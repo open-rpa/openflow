@@ -50,6 +50,7 @@ export class WebSocketServerClient {
     public remoteip: string;
     public clientagent: clientType;
     public clientversion: string;
+    public created: Date = new Date();
     public lastheartbeat: Date = new Date();
     public lastheartbeatstr: string = new Date().toISOString();
     public lastheartbeatsec: string = "0";
