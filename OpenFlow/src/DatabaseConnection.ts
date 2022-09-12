@@ -1398,6 +1398,13 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
                 let user2: User = item as any;
+                if (item._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
+                    user2.username = user2.username.toLowerCase();
+                }
+                if (item._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
+                    throw new Error("Username is mandatory for users")
+                }
+
                 if (NoderedUtil.IsNullEmpty(user2.customerid)) {
                     if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
                         customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
