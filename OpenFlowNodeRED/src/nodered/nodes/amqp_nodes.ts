@@ -362,6 +362,7 @@ export class amqp_acknowledgment_node {
                 const data: any = {};
                 data.payload = msg.payload;
                 data.jwt = msg.jwt;
+                data._msgid = msg._msgid;
                 msg.amqpacknowledgment(true, data);
             }
             this.node.send(msg);
