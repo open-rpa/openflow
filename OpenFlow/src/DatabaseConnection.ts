@@ -1734,14 +1734,15 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
                 item = this.encryptentity(item) as T;
+                var user2: User = item as any;
 
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-                    (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
+                    user2.passwordhash = await Crypt.hash((item as any).newpassword);
                     delete (item as any).newpassword;
                 }
                 if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                     if ((item._type === "user" || item._type === "role") &&
-                        (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
+                        (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf(user2.username) > -1)) {
                         if (this.WellknownIdsArray.indexOf(item._id) == -1) {
                             if (item._type == "role" && item.name == "administrator") {
                                 // temp, allow this
@@ -1751,6 +1752,13 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
+                    if (item._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
+                        user2.username = user2.username.toLowerCase();
+                    }
+                    if (item._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
+                        throw new Error("Username is mandatory for users")
+                    }
+
                     if (item._type === "role") {
                         const r: Role = item as any;
                         if (r.members.length > 0) {
@@ -1974,6 +1982,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     let user2: User = q.item as any;
                     if (this.WellknownIdsArray.indexOf(q.item._id) > -1) {
                         delete user2.customerid;
+                    }
+                    if (user2._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
+                        user2.username = user2.username.toLowerCase();
+                    }
+                    if (user2._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
+                        throw new Error("Username is mandatory for users")
                     }
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                         // User can update, just not created ?
