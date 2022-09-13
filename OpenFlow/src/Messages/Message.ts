@@ -3656,6 +3656,7 @@ export class Message {
             return;
         }
         Message.lastHouseKeeping = new Date();
+        this.tuser = User.assign(Crypt.rootUser());
         const jwt: string = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
