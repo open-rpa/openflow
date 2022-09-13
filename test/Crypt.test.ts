@@ -8,6 +8,7 @@ import assert = require('assert');
 import { Logger } from '../OpenFlow/src/Logger';
 import { User } from '@openiap/openflow-api';
 import { Crypt } from '../OpenFlow/src/Crypt';
+import { OAuthProvider } from '../OpenFlow/src/OAuthProvider';
 @suite class crypt_test {
     private testUser: User;
     @timeout(10000)
@@ -21,6 +22,10 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     }
     async after() {
         await Logger.shutdown();
+    }
+    @test async 'TestGenerateKeys'() {
+        let jwks = await OAuthProvider.generatekeys();
+        assert.ok(jwks, "Failed generating keys");
     }
     @timeout(10000)
     @test async 'ValidatePassword'() {
