@@ -1925,7 +1925,7 @@ export class Message {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = EnsureNoderedInstanceMessage.assign(this.data);
             const _tuser = this.tuser;
-            if (!_tuser.HasRoleId(WellknownIds.personal_nodered_users)) {
+            if (!_tuser.HasRoleId(WellknownIds.admins) && !_tuser.HasRoleId(WellknownIds.personal_nodered_users)) {
                 throw new Error("User does not have permission to create nodered instances");
             }
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -2003,7 +2003,7 @@ export class Message {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = RestartNoderedInstanceMessage.assign(this.data);
             const _tuser = this.tuser;
-            if (!_tuser.HasRoleId(WellknownIds.personal_nodered_users)) {
+            if (!_tuser.HasRoleId(WellknownIds.admins) && !_tuser.HasRoleId(WellknownIds.personal_nodered_users)) {
                 throw new Error("User does not have permission to create nodered instances");
             }
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
@@ -3685,11 +3685,12 @@ export class Message {
                         doensure = true;
                     }
                     if (doensure) {
-                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "EnsureNoderedInstance not " + user.name);
+                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "EnsureNoderedInstance for " + user.name);
                         var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
                         ensuremsg._id = user._id;
                         var msg: Message = new Message(); msg.jwt = jwt;
                         msg.data = JSON.stringify(ensuremsg);
+                        msg.tuser = this.tuser;
                         await msg.EnsureNoderedInstance(span);
                     }
                 }
