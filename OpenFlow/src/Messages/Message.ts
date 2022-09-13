@@ -4054,7 +4054,8 @@ export class Message {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } });
                 } else {
                     if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
-                        cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                        // cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                        cursor = Config.db.db.collection("users").find({ "_type": "user", "dblocked": true })
                     } else {
                         cursor = Config.db.db.collection("users").find({ "_type": "user" })
                     }
