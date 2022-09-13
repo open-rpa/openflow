@@ -354,7 +354,13 @@ export class WebServer {
                     Logger.instanse.debug("WebServer", "configure", "server.listen on port " + Config.nodered_port);
                     server.listen(Config.nodered_port).on('error', function (error) {
                         Logger.instanse.error("WebServer", "configure", error);
-                        process.exit(404);
+                        if (Config.NODE_ENV == "production") {
+                            try {
+                                server.close();
+                            } catch (error) {
+                            }
+                            process.exit(404);
+                        }
                     });
                 }
                 else {
@@ -368,7 +374,6 @@ export class WebServer {
                             }
                             process.exit(404);
                         }
-
                     });
                 }
 

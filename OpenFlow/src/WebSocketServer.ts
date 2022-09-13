@@ -1,10 +1,11 @@
+import * as os from "os";
 import * as http from "http";
 import * as WebSocket from "ws";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
-import { SigninMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { SigninMessage, NoderedUtil, TokenUser, Base } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Histogram, Counter, Observable } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
@@ -92,7 +93,7 @@ export class WebSocketServer {
                             }
                         } catch (error) {
                             span?.recordException(error);
-                            Logger.instanse.error("WebSocketServer", "pingClients", error);
+                            Logger.instanse.error("WebSocketServer", "observeClients", error);
                         }
                     }
                     keys = Object.keys(p_all);
@@ -170,6 +171,30 @@ export class WebSocketServer {
             Logger.otel.endSpan(span);
         }
 
+    }
+    public static async DumpClients(): Promise<void> {
+        const jwt = Crypt.rootToken();
+        const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+        const clients: Base[] = [];
+        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+            const cli: WebSocketServerClient = WebSocketServer._clients[i];
+            var c: any = {};
+            c._type = "websocketclient";
+            c.api = hostname;
+            c.id = cli.id;
+            c.clientagent = cli.clientagent;
+            c.clientversion = cli.clientversion;
+            c._exchanges = cli._exchanges;
+            c._queues = cli._queues;
+            c.lastheartbeat = cli.lastheartbeat;
+            c.created = cli.created;
+            c.remoteip = cli.remoteip;
+            c.user = cli.user;
+            c.username = cli.username;
+            c.watches = cli.watches;
+            clients.push(c);
+        }
+        Config.db.InsertMany(clients, "websocketclients", 1, false, jwt, null)
     }
     private static lastUserUpdate = Date.now();
     private static async pingClients(): Promise<void> {

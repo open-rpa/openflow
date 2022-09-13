@@ -2,24 +2,28 @@
   <h1 translate lib="web">nodered</h1>
 </div>
 
-<form class="form-horizontal" role="form" autocomplete="off" ng-hide="ctrl.showjson==true">
+<form class="form-horizontal" role="form" autocomplete="off" >
   <section>
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
         <button type="button" class="btn " ng-click="ctrl.GetNoderedInstance()">Reload</button>
         <button type="button" class="btn"
+          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"
           ng-click="!(ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)') || ctrl.EnsureNoderedInstance()"
           ng-class="{disabled: !(ctrl.instance==null || ctrl.instancestatus == 'pending deletion (Running)')}">Create
           Nodered </button>
         <button type="button" class="btn"
+          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"
           ng-click="!(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)') || ctrl.EnsureNoderedInstance()"
           ng-class="{disabled: !(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)')}">Ensure
           Nodered </button>
         <button type="button" class="btn btn-secondary"
+          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"
           ng-click="!(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending') || ctrl.RestartNoderedInstance()"
           ng-class="{disabled: !(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)' && ctrl.instancestatus != 'Pending')}">Restart
           Nodered</button>
         <button type="button" class="btn btn-danger"
+          ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"
           ng-click="!(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)') || ctrl.DeleteNoderedInstance()"
           ng-class="{disabled: !(ctrl.instance!=null && ctrl.instancestatus != 'pending deletion (Running)')}">Delete
           Nodered</button>
@@ -94,7 +98,7 @@
 <div ng-show="ctrl.messages != ''"" class=" alert alert-primary" role="alert">
   <pre>{{ctrl.messages}}</pre>
 </div>
-<section>
+<section ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
   <div class="row" ng-show="menuctrl.WebSocketClientService.multi_tenant == false || menuctrl.hasrole('admins')">
     <label class="col-sm-4 control-label"><span translate lib="web">autocreate</span>: </label>
     <div class="col-sm-1">
@@ -658,7 +662,7 @@
     </div>
   </div>
 </section>
-<section>
+<section ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
   <div class="form-group">
     <div class="col-sm-offset-3 col-sm-9">
       <button type="button" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web"
@@ -671,8 +675,8 @@
 <small ng-show="menuctrl.WebSocketClientService.stripe_api_key == 'pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99' || 
 menuctrl.WebSocketClientService.stripe_api_key == 'pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI'"><em
     style="color: gray;">
-    Free nodered instances will be shutdown after 24 hours. Create a customer, and add billing information, in order to
-    buy the option to get more RAM for a nodered that will not stop after 24 hours.
+    Free nodered instances will be shutdown after 8 hours. Create a customer, and add billing information, in order to
+    buy the option to get more RAM for a nodered that will not stop after 8 hours.
   </em></small>
 <br />
 <br />

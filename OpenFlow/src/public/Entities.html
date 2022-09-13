@@ -16,17 +16,16 @@
   <div class=" col-md-6 text-right" id="entitiestools">
     <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
     <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
-    ng-show="menuctrl.WebSocketClientService.multi_tenant">
-  <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
-      all</span></label>
-    <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
+      ng-show="menuctrl.WebSocketClientService.multi_tenant">
+    <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
+        all</span></label>
     <span ng-show="ctrl.collection == 'openrpa_instances'">
-      <input type="checkbox" id="checkbox-1" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
-      <label for="checkbox-1"><span translate lib="web">running</span></label>
+      <input type="checkbox" id="checkbox-2" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
+      <label for="checkbox-2"><span translate lib="web">running</span></label>
     </span>
     <span ng-show="ctrl.collection == 'config'">
-      <input type="checkbox" id="checkbox-1" ng-model="ctrl.showpending" ng-change="ctrl.loadData()">
-      <label for="checkbox-1"><span translate lib="web">pending</span></label>
+      <input type="checkbox" id="checkbox-3" ng-model="ctrl.showpending" ng-change="ctrl.loadData()">
+      <label for="checkbox-3"><span translate lib="web">pending</span></label>
     </span>
 
     <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"

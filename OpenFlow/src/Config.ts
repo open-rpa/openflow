@@ -216,6 +216,7 @@ export class Config {
         Config.otel_trace_dashboardauth = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
         Config.otel_trace_include_query = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
         Config.otel_trace_connection_ips = Config.parseBoolean(Config.getEnv("otel_trace_connection_ips", "false"));
+        Config.otel_trace_mongodb_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_per_users", "false"));
     
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
@@ -417,6 +418,7 @@ export class Config {
     public static otel_trace_dashboardauth: boolean = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
     public static otel_trace_include_query: boolean = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
     public static otel_trace_connection_ips: boolean = Config.parseBoolean(Config.getEnv("otel_trace_connection_ips", "false"));
+    public static otel_trace_mongodb_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_per_users", "false"));
     
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");

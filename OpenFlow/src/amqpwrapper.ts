@@ -7,6 +7,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import * as events from "events";
 import { Message } from "./Messages/Message";
+import { WebSocketServerClient } from "./WebSocketServerClient";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -555,6 +556,18 @@ export class amqpwrapper extends events.EventEmitter {
                         }
                         process.exit(404);
                         // process.kill(process.pid, "SIGINT");
+                        break;
+                    case "dumpwebsocketclients":
+                        WebSocketServer.DumpClients();
+                        break;
+                    case "killwebsocketclient":
+                        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+                            const cli: WebSocketServerClient = WebSocketServer._clients[i];
+                            if (cli.id == msg.id) {
+                                Logger.instanse.warn("amqpwrapper", "killwebsocketclient", "Killing websocket client " + msg.id);
+                                cli.Close();
+                            }
+                        }
                         break;
                     default:
                         Logger.instanse.error("amqpwrapper", "AddOFExchange", new Error("[OF] Received unknown command: " + msg.command));
