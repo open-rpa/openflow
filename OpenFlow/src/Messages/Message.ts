@@ -3685,7 +3685,7 @@ export class Message {
                         doensure = true;
                     }
                     if (doensure) {
-                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "EnsureNoderedInstance for " + user.name);
+                        Logger.instanse.info("Housekeeping", "_Housekeeping", "EnsureNoderedInstance for " + user.name);
                         var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
                         ensuremsg._id = user._id;
                         var msg: Message = new Message(); msg.jwt = jwt;
