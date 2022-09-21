@@ -286,7 +286,7 @@ export class amqpwrapper extends events.EventEmitter {
                     if (this.channel != null) {
                         if (exc[0].queue) await this.channel.cancel(exc[0].queue.consumerTag);
                     }
-                    this.exchanges = this.exchanges.filter(q => q.queue.consumerTag != queue.consumerTag);
+                    this.exchanges = this.exchanges.filter(q => q.queue?.consumerTag != queue.consumerTag);
                 }
                 var q = this.queues.filter(x => x.consumerTag == queue.consumerTag);
                 if (q.length > 0) {
@@ -522,59 +522,63 @@ export class amqpwrapper extends events.EventEmitter {
         if (!Config.enable_openflow_amqp) return;
         await this.AddExchangeConsumer(Crypt.rootUser(), "openflow", "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             ack();
-            if (typeof msg === "string" || msg instanceof String) {
-                try {
-                    msg = JSON.parse((msg as any));
-                } catch (error) {
+            try {
+                if (typeof msg === "string" || msg instanceof String) {
+                    try {
+                        msg = JSON.parse((msg as any));
+                    } catch (error) {
+                    }
                 }
-            }
-            if (typeof msg !== "string") {
-                Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchangename + "] Received command " + msg.command);
-                switch (msg.command) {
-                    case "clearcache":
-                        Logger.DBHelper.clearCache("amqp broadcast");
-                        break;
-                    case "housekeeping":
-                        // if (this.IsMyconsumerTag(options.consumerTag)) break;
-                        if (msg.lastrun) {
-                            Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchangename + "] " + msg.lastrun)
-                            Message.lastHouseKeeping = new Date(msg.lastrun);
-                        } else {
-                            if (Message.lastHouseKeeping != null) {
-                                amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
+                if (typeof msg !== "string") {
+                    Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchangename + "] Received command " + msg.command);
+                    switch (msg.command) {
+                        case "clearcache":
+                            Logger.DBHelper.clearCache("amqp broadcast");
+                            break;
+                        case "housekeeping":
+                            // if (this.IsMyconsumerTag(options.consumerTag)) break;
+                            if (msg.lastrun) {
+                                Logger.instanse.debug("amqpwrapper", "AddOFExchange", "[" + options.exchangename + "] " + msg.lastrun)
+                                Message.lastHouseKeeping = new Date(msg.lastrun);
+                            } else {
+                                if (Message.lastHouseKeeping != null) {
+                                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
+                                }
                             }
-                        }
-                        break;
-                    case "shutdown":
-                        try {
-                            await Config.db.shutdown();
-                            await Logger.otel.shutdown();
-                            await Logger.License.shutdown()
-                            // await Auth.shutdown();
-                        } catch (error) {
-                            Logger.instanse.error("amqpwrapper", "AddOFExchange", error);
-                        }
-                        process.exit(404);
-                        // process.kill(process.pid, "SIGINT");
-                        break;
-                    case "dumpwebsocketclients":
-                        WebSocketServer.DumpClients();
-                        break;
-                    case "killwebsocketclient":
-                        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
-                            const cli: WebSocketServerClient = WebSocketServer._clients[i];
-                            if (cli.id == msg.id) {
-                                Logger.instanse.warn("amqpwrapper", "killwebsocketclient", "Killing websocket client " + msg.id);
-                                cli.Close();
+                            break;
+                        case "shutdown":
+                            try {
+                                await Config.db.shutdown();
+                                await Logger.otel.shutdown();
+                                await Logger.License.shutdown()
+                                // await Auth.shutdown();
+                            } catch (error) {
+                                Logger.instanse.error("amqpwrapper", "AddOFExchange", error);
                             }
-                        }
-                        break;
-                    default:
-                        Logger.instanse.error("amqpwrapper", "AddOFExchange", new Error("[OF] Received unknown command: " + msg.command));
-                        break;
+                            process.exit(404);
+                            // process.kill(process.pid, "SIGINT");
+                            break;
+                        case "dumpwebsocketclients":
+                            WebSocketServer.DumpClients();
+                            break;
+                        case "killwebsocketclient":
+                            for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+                                const cli: WebSocketServerClient = WebSocketServer._clients[i];
+                                if (cli.id == msg.id) {
+                                    Logger.instanse.warn("amqpwrapper", "killwebsocketclient", "Killing websocket client " + msg.id);
+                                    cli.Close();
+                                }
+                            }
+                            break;
+                        default:
+                            Logger.instanse.error("amqpwrapper", "AddOFExchange", new Error("[OF] Received unknown command: " + msg.command));
+                            break;
+                    }
+                } else {
+                    Logger.instanse.verbose("amqpwrapper", "AddOFExchange", "Received string message: " + JSON.stringify(msg));
                 }
-            } else {
-                Logger.instanse.verbose("amqpwrapper", "AddOFExchange", "Received string message: " + JSON.stringify(msg));
+            } catch (error) {
+                Logger.instanse.error("amqpwrapper", "AddOFExchange", error);
             }
             done();
         }, parent);
