@@ -95,7 +95,7 @@ export class WebSocketClientService {
                 this.customer = null;
                 if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
                     const customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", "$or": [{ "_id": WebSocketClient.instance.user.selectedcustomerid }, { "_id": WebSocketClient.instance.user.customerid }] } });
-                    if (customers.length > 0 && (WebSocketClient.instance.user.selectedcustomerid != null)) {
+                    if (customers && customers.length > 0 && (WebSocketClient.instance.user.selectedcustomerid != null)) {
                         if (WebSocketClient.instance.user.selectedcustomerid != null) {
                             for (let cust of customers)
                                 if (cust._id == WebSocketClient.instance.user.selectedcustomerid) this.customer = cust;
