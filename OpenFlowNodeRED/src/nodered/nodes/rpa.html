@@ -76,6 +76,10 @@ Active everytime a trigger gets triggered on a robot.
         <input type="checkbox" id="node-input-killallexisting" style="width: auto;">
     </div>
     <div class="form-row">
+        <label><i class="fa fa-tag"></i> Static queue name</label>
+        <input type="text" id="node-input-queuename" style="width: auto;">
+    </div>
+    <div class="form-row">
         <label ><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Node name">
     </div>
@@ -102,6 +106,7 @@ killallexisting is only aviable for robots version >=1.3.1<br>
             workflow: { value: "" },
             killexisting: { value: false },
             killallexisting: { value: false },
+            queuename: { value: "" },            
             name: { value: "" }
         },
         inputs: 1,
