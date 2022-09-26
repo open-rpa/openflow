@@ -72,8 +72,8 @@ export class MenuCtrl {
         "api",
         "userdata"
     ];
-    public customer: Base;
-    public customers: Base[];
+    public customer: Customer;
+    public customers: Customer[];
     public allowclick: boolean = true;
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -204,6 +204,15 @@ export class MenuCtrl {
             return true;
         }
         const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
+        return (hits.length == 1)
+    }
+    showmanagecustomer() {
+        if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) return false;
+        if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) return false;
+        if (!this.WebSocketClientService.multi_tenant) return false;
+        if (this.customer == null || this.customers == null) return false;
+        if (this.customers.length != 1) return false;
+        const hits = WebSocketClient.instance.user.roles.filter(member => member._id == this.customer.admins);
         return (hits.length == 1)
     }
     hascordova() {
