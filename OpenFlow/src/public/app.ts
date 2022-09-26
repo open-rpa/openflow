@@ -143,7 +143,8 @@ module openflow {
                 .when('/WebsocketClients', { templateUrl: 'WebsocketClients.html', controller: WebsocketClientsCtrl, controllerAs: 'ctrl' })
                 // .when('/WebsocketClients/:id', { templateUrl: 'WebsocketClients.html', controller: WebsocketClientsCtrl, controllerAs: 'ctrl' })
 
-
+                .when('/MailHists', { templateUrl: 'MailHists.html', controller: MailHistsCtrl, controllerAs: 'ctrl' })
+                .when('/MailHist/:id', { templateUrl: 'MailHist.html', controller: MailHistCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }
