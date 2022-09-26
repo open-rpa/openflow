@@ -173,28 +173,33 @@ export class WebSocketServer {
 
     }
     public static async DumpClients(): Promise<void> {
-        const jwt = Crypt.rootToken();
-        const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
-        const clients: Base[] = [];
-        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
-            const cli: WebSocketServerClient = WebSocketServer._clients[i];
-            var c: any = {};
-            c._type = "websocketclient";
-            c.api = hostname;
-            c.id = cli.id;
-            c.clientagent = cli.clientagent;
-            c.clientversion = cli.clientversion;
-            c._exchanges = cli._exchanges;
-            c._queues = cli._queues;
-            c.lastheartbeat = cli.lastheartbeat;
-            c.created = cli.created;
-            c.remoteip = cli.remoteip;
-            c.user = cli.user;
-            c.username = cli.username;
-            c.watches = cli.watches;
-            clients.push(c);
+        try {
+            const jwt = Crypt.rootToken();
+            const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            const clients: Base[] = [];
+            for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+                const cli: WebSocketServerClient = WebSocketServer._clients[i];
+                var c: any = {};
+                c._type = "websocketclient";
+                c.api = hostname;
+                c.id = cli.id;
+                c.clientagent = cli.clientagent;
+                c.clientversion = cli.clientversion;
+                c._exchanges = cli._exchanges;
+                c._queues = cli._queues;
+                c.lastheartbeat = cli.lastheartbeat;
+                c.created = cli.created;
+                c.remoteip = cli.remoteip;
+                c.user = cli.user;
+                c.username = cli.username;
+                c.watches = cli.watches;
+                clients.push(c);
+            }
+            Logger.instanse.info("WebSocketServer", "DumpClients", "Insert " + clients.length + " clients");
+            await Config.db.InsertMany(clients, "websocketclients", 1, false, jwt, null)
+        } catch (error) {
+            Logger.instanse.error("WebSocketServer", "DumpClients", error);
         }
-        Config.db.InsertMany(clients, "websocketclients", 1, false, jwt, null)
     }
     private static lastUserUpdate = Date.now();
     private static async pingClients(): Promise<void> {

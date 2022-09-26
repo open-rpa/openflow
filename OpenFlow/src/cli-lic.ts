@@ -75,6 +75,7 @@ try {
         template,
         data: data
     });
+    Logger.usecolors = false;
     Logger.instanse.info("cli-lic", "", Buffer.from(licenseFileContent).toString('base64'));
     process.exit();
 } catch (error) {
