@@ -1406,6 +1406,7 @@ export class Message {
             if (msg.collectionname == "mq") {
                 if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
                 var doc = await Config.db.getbyid(msg.id, "mq", msg.jwt, false, span);
+                if (doc == null) throw new Error("item not found, or Access Denied");
                 if (doc._type == "workitemqueue") {
                     throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
                 }
