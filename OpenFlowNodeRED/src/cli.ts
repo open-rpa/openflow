@@ -91,7 +91,7 @@ function getToken(): Promise<string> {
             } catch (error) {
                 let closemsg: any = (error.message ? error.message : error);
                 Logger.instanse.error("cli", "", error);
-                socket.close(1000, closemsg);
+                if (socket != null) socket.close(1000, closemsg);
                 reject(closemsg);
                 socket = null;
             }
@@ -137,7 +137,7 @@ async function doit() {
                     let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
                     parsedFile.jwt = jwt;
                     fs.writeFileSync(envfilepathname, envfile.stringify(parsedFile));
-                    WebSocketClient.instance.close(1000, "done");
+                    WebSocketClient.instance?.close(1000, "done");
                 }
                 loadenv();
                 await pm2start({
