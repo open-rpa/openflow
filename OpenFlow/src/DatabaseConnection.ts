@@ -357,11 +357,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!NoderedUtil.IsNullUndefinded(item)) {
                         _type = item._type;
 
-                        if (collectionname == "mq") {
+                        if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
                             // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                             await Logger.DBHelper.memoryCache.del("mq" + item._id);
-                            if (_type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + item.name);
-                            if (_type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + item.name);
+                            if (_type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + item.name.toLowerCase());
+                            if (_type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + item.name.toLowerCase());
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                             Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
@@ -1383,6 +1383,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
                 delete (item as any).newpassword;
             }
+            if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
+                if (item._type == "exchange") item.name = item.name.toLowerCase();
+                if (item._type == "queue") item.name = item.name.toLowerCase();
+            }
             if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                 if ((item._type === "user" || item._type === "role") &&
                     (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
@@ -1739,6 +1743,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
                     user2.passwordhash = await Crypt.hash((item as any).newpassword);
                     delete (item as any).newpassword;
+                }
+                if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
+                    if (item._type == "exchange") item.name = item.name.toLowerCase();
+                    if (item._type == "queue") item.name = item.name.toLowerCase();
                 }
                 if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                     if ((item._type === "user" || item._type === "role") &&
@@ -2237,6 +2245,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                     if (q.collectionname === "mq") {
+                        if (!NoderedUtil.IsNullEmpty(q.item.name)) {
+                            if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
+                            if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
+                        }
                         if (Config.enable_openflow_amqp && !Config.supports_watch) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } else if (!Config.supports_watch) {

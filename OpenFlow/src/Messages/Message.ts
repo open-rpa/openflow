@@ -660,6 +660,7 @@ export class Message {
             msg = RegisterQueueMessage.assign(this.data);
             const jwt: string = this.jwt;
             const rootjwt = Crypt.rootToken();
+            if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 let error = new Error("Access denied");
                 Logger.instanse.error("Message", "RegisterQueue", error);
@@ -703,7 +704,6 @@ export class Message {
                     if (msg.queuename.length == 24) { msg.queuename += "1"; }
                 }
             }
-
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
@@ -816,13 +816,16 @@ export class Message {
                     msg.replyto = "";
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
+            if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
+            if (!NoderedUtil.IsNullEmpty(msg.exchangename)) msg.exchangename = msg.exchangename.toLowerCase();
+            if (!NoderedUtil.IsNullEmpty(msg.replyto)) msg.replyto = msg.replyto.toLowerCase();
+            if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename.toLowerCase() == "openflow") {
+            } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto.toLowerCase() == "openflow") {
+            } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
