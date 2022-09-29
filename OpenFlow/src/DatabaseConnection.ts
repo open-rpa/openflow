@@ -3321,13 +3321,33 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         });
         if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
-            if (!NoderedUtil.IsNullEmpty(item.name)) {
-                var name: string = item.name.toLowerCase();
-                name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
-                (item as any)._searchnames = name.split(" ");
-                (item as any)._searchnames.push(name);
-                if (name != item.name.toLowerCase()) (item as any)._searchnames.push(item.name.toLowerCase());
+            var _searchnames = [];
+            var _searchname = "";
+            for (var i = 0; i < Config.text_index_name_fields.length; i++) {
+                var field = Config.text_index_name_fields[i];
+                if (Array.isArray(item[field])) {
+                    for (var y = 0; y < item[field].length; y++) {
+                        if (!NoderedUtil.IsNullEmpty(item[field][y])) {
+                            var name: string = item[field][y].toLowerCase();
+                            name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
+                            _searchnames = _searchnames.concat(name.split(" "));
+                            _searchnames.push(name);
+                            if (name != item[field][y].toLowerCase()) (item as any)._searchnames.push(item[field][y].toLowerCase());
+                        }
+                    }
+                } else {
+                    if (!NoderedUtil.IsNullEmpty(item[field])) {
+                        var name: string = item[field].toLowerCase();
+                        name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
+                        if (field == "name") _searchname = name.toLowerCase();
+                        _searchnames = _searchnames.concat(name.split(" "));
+                        _searchnames.push(name);
+                        if (name != item[field].toLowerCase()) (item as any)._searchnames.push(item[field].toLowerCase());
+                    }
+                }
             }
+            (item as any)._searchnames = _searchnames;
+            (item as any)._searchname = _searchname;
         }
         return item;
     }
