@@ -3332,7 +3332,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
                             _searchnames = _searchnames.concat(name.split(" "));
                             _searchnames.push(name);
-                            if (name != item[field][y].toLowerCase()) (item as any)._searchnames.push(item[field][y].toLowerCase());
+                            if (name != item[field][y].toLowerCase()) _searchnames.push(item[field][y].toLowerCase());
                         }
                     }
                 } else {
@@ -3342,7 +3342,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (field == "name") _searchname = name.toLowerCase();
                         _searchnames = _searchnames.concat(name.split(" "));
                         _searchnames.push(name);
-                        if (name != item[field].toLowerCase()) (item as any)._searchnames.push(item[field].toLowerCase());
+                        if (name != item[field].toLowerCase()) _searchnames.push(item[field].toLowerCase());
                     }
                 }
             }
