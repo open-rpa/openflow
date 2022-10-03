@@ -135,6 +135,7 @@ export interface Irpa_workflow_node {
     workflow: string;
     killexisting: boolean;
     killallexisting: boolean;
+    queuename: string;
     name: string;
 }
 export class rpa_workflow_node {
@@ -179,6 +180,7 @@ export class rpa_workflow_node {
             this.node.status({ fill: "blue", shape: "dot", text: "Connecting..." });
             // this.localqueue = this.uid;
             this.localqueue = await NoderedUtil.RegisterQueue({
+                queuename: this.config.queuename,
                 callback: (msg: QueueMessage, ack: any) => {
                 this.OnMessage(msg, ack);
                 }, closedcallback: (msg) => {
@@ -205,6 +207,7 @@ export class rpa_workflow_node {
                 delete msg.data;
             }
             if (msg.payload.data) {
+                if (msg.payload.command == "output") console.log("out " + msg.payload.data);
                 msg = msg.payload;
                 msg.payload = msg.data;
                 delete msg.data;
@@ -221,7 +224,7 @@ export class rpa_workflow_node {
             let command = data.command;
             if (command == undefined && data.data != null && data.data.command != null) { command = data.data.command; }
             if (correlationId != null && rpa_workflow_node.messages[correlationId] != null) {
-                result = rpa_workflow_node.messages[correlationId];
+                result = { ...rpa_workflow_node.messages[correlationId] };
                 if (command == "invokecompleted" || command == "invokefailed" || command == "invokeaborted" || command == "error" || command == "timeout") {
                     delete rpa_workflow_node.messages[correlationId];
                 }
@@ -230,6 +233,7 @@ export class rpa_workflow_node {
             }
             if (!NoderedUtil.IsNullEmpty(command) && command.indexOf("invoke") > -1) command = command.substring(6);
             result.command = command;
+            // result._msgid = NoderedUtil.GetUniqueIdentifier();
             if (command == "completed") {
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
@@ -256,12 +260,13 @@ export class rpa_workflow_node {
                 this.node.send([null, result, result]);
             }
             else {
-                this.node.status({ fill: "blue", shape: "dot", text: command + "  " + this.localqueue });
+                if (command != "output") this.node.status({ fill: "blue", shape: "dot", text: command + "  " + this.localqueue });
                 result.payload = data.payload;
                 if (data.user != null) result.user = data.user;
                 if (data.jwt != null && NoderedUtil.IsNullUndefinded(result.jwt)) result.jwt = data.jwt;
                 if (result.payload == null || result.payload == undefined) { result.payload = {}; }
                 result.id = correlationId;
+                if (command != "success") console.log("snd " + result.payload);
                 this.node.send([null, result]);
             }
             ack();

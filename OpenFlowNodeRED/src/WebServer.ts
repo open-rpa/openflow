@@ -91,7 +91,7 @@ export class WebServer {
             this.message_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_message_queue_count", {
                 description: 'Total number messages waiting on reply from client'
             })
-            this.message_queue_count.addCallback(this.update_message_queue_count.bind(this));
+            if (this.message_queue_count) this.message_queue_count.addCallback(this.update_message_queue_count.bind(this));
         }
         try {
             Logger.instanse.silly("WebServer", "configure", "begin");

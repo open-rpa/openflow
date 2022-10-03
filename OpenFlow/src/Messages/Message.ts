@@ -660,6 +660,7 @@ export class Message {
             msg = RegisterQueueMessage.assign(this.data);
             const jwt: string = this.jwt;
             const rootjwt = Crypt.rootToken();
+            if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 let error = new Error("Access denied");
                 Logger.instanse.error("Message", "RegisterQueue", error);
@@ -703,7 +704,6 @@ export class Message {
                     if (msg.queuename.length == 24) { msg.queuename += "1"; }
                 }
             }
-
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
@@ -816,13 +816,16 @@ export class Message {
                     msg.replyto = "";
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
+            if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
+            if (!NoderedUtil.IsNullEmpty(msg.exchangename)) msg.exchangename = msg.exchangename.toLowerCase();
+            if (!NoderedUtil.IsNullEmpty(msg.replyto)) msg.replyto = msg.replyto.toLowerCase();
+            if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename.toLowerCase() == "openflow") {
+            } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto.toLowerCase() == "openflow") {
+            } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto == "openflow") {
                 Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
                 throw new Error("Access denied");
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
@@ -1403,6 +1406,7 @@ export class Message {
             if (msg.collectionname == "mq") {
                 if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
                 var doc = await Config.db.getbyid(msg.id, "mq", msg.jwt, false, span);
+                if (doc == null) throw new Error("item not found, or Access Denied");
                 if (doc._type == "workitemqueue") {
                     throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
                 }
@@ -1829,7 +1833,7 @@ export class Message {
                         }
                     }
                     var keys = Object.keys(UpdateDoc.$set);
-                    if (keys.length > 4 || UpdateDoc.$unset) {
+                    if (keys.length > 4 || UpdateDoc.$unset || NoderedUtil.IsNullEmpty(user.lastseen)) {
                         // ping will handle this, if no new information needs to be added
                         span?.addEvent("Update user using update document");
                         await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
@@ -4054,7 +4058,8 @@ export class Message {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } });
                 } else {
                     if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
-                        cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                        // cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                        cursor = Config.db.db.collection("users").find({ "_type": "user", "dblocked": true })
                     } else {
                         cursor = Config.db.db.collection("users").find({ "_type": "user" })
                     }

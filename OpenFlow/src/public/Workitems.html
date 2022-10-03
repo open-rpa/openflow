@@ -17,30 +17,30 @@
     <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
     <!-- <em class="fas fa-cog" ng-show="ctrl.loading!=true" title="I spin, while loading data"></em> -->
     <a class="btn" href ng-click="ctrl.loadData()" title="Reload current data">
-      Reload
+      <span translate lib="web">reload</span>
     </a>
     <a class="btn" href ng-click="ctrl.SetState('New')" ng-class="{'btn-primary': ctrl.basequery['state'] == 'new'}"
       title="Show only new Workitemss">
-      New
+      <span translate lib="web">new</span>
     </a>
     <a class="btn" href ng-click="ctrl.SetState('Successful')" title="Show only successfully completed Workitems"
       ng-class="{'btn-primary': ctrl.basequery['state'] == 'successful'}">
-      Successful
+      <span translate lib="web">successful</span>
     </a>
     <a class="btn " href ng-click="ctrl.SetState('Failed')" title="Show only failed Workitems"
       ng-class="{'btn-primary': ctrl.basequery['state'] == 'failed'}">
-      Failed
+      <span translate lib="web">failed</span>
     </a>
     <a class="btn" href ng-click="ctrl.SetState('Processing')" title="Show only Workitems currently being processd"
       ng-class="{'btn-primary': ctrl.basequery['state'] == 'processing'}">
-      Processing
+      <span translate lib="web">processing</span>
     </a>
     <!-- <a class="btn" href ng-click="ctrl.SetState('Retry')" ng-class="{'btn-primary': ctrl.basequery['state'] == 'retry'}">
       Retry
     </a> -->
     <a class="btn" ng-href="#/Workitems" ng-show="ctrl.queue != ''" ng-click="ctrl.SetState('')"
       title="clear filters and show all status and Workitem queues">
-      All
+      <span translate lib="web">all</span>
     </a>
     <a ng-href="#/Workitem" class="btn btn-info"
       title="Add new Workitem to selected queue"><em class="fas fa-plus"></em></a>

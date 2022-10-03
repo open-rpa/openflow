@@ -72,8 +72,8 @@ export class MenuCtrl {
         "api",
         "userdata"
     ];
-    public customer: Base;
-    public customers: Base[];
+    public customer: Customer;
+    public customers: Customer[];
     public allowclick: boolean = true;
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -135,12 +135,13 @@ export class MenuCtrl {
             } else {
                 this.customer = this.WebSocketClientService.customer;
                 this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
-                if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+
+                if (this.customers && !NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
                     if (this.customers.filter(x => x._id == this.user.selectedcustomerid).length == 0) {
                         this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.selectedcustomerid } })).concat(this.customers);
                     }
                 }
-                if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+                if (this.customers && !NoderedUtil.IsNullEmpty(this.user.customerid)) {
                     if (this.customers.filter(x => x._id == this.user.customerid).length == 0) {
                         this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.customerid } })).concat(this.customers);
                     }
@@ -170,17 +171,17 @@ export class MenuCtrl {
             if (event && data) { }
             this.customer = this.WebSocketClientService.customer;
             this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
-            if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+            if (this.customers && !NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
                 if (this.customers.filter(x => x._id == this.user.selectedcustomerid).length == 0) {
                     this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.selectedcustomerid } })).concat(this.customers);
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+            if (this.customers && !NoderedUtil.IsNullEmpty(this.user.customerid)) {
                 if (this.customers.filter(x => x._id == this.user.customerid).length == 0) {
                     this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.customerid } })).concat(this.customers);
                 }
             }
-            if (this.customers.length > 0) {
+            if (this.customers && this.customers.length > 0) {
                 for (let cust of this.customers)
                     if (cust._id == this.user.selectedcustomerid) this.customer = cust;
 
@@ -203,6 +204,15 @@ export class MenuCtrl {
             return true;
         }
         const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
+        return (hits.length == 1)
+    }
+    showmanagecustomer() {
+        if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) return false;
+        if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) return false;
+        if (!this.WebSocketClientService.multi_tenant) return false;
+        if (this.customer == null || this.customers == null) return false;
+        if (this.customers.length != 1) return false;
+        const hits = WebSocketClient.instance.user.roles.filter(member => member._id == this.customer.admins);
         return (hits.length == 1)
     }
     hascordova() {

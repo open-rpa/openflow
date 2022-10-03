@@ -1,7 +1,7 @@
 FROM node:lts-alpine
 EXPOSE 80
 EXPOSE 5859
-
+RUN apk add --no-cache git
 WORKDIR /data
 # # alpine
 # RUN addgroup -S openiapuser && adduser -S openiapuser -G openiapuser \

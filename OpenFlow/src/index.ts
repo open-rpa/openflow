@@ -6,7 +6,7 @@ import { WebServer } from "./WebServer";
 import { WebSocketServer } from "./WebSocketServer";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Crypt } from "./Crypt";
-import { Config } from "./Config";
+import { Config, dbConfig } from "./Config";
 import { amqpwrapper } from "./amqpwrapper";
 import { WellknownIds, Role, Rights, User, Base, NoderedUtil } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
@@ -73,6 +73,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
     try {
         Logger.instanse.info("index", "initDatabase", "Begin validating builtin roles");
         const jwt: string = Crypt.rootToken();
+        Config.dbConfig = await dbConfig.Load(jwt, span);
         const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
         const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, null, span);
@@ -110,6 +111,29 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Base.addRight(users, users._id, "users", [Rights.read]);
         }
         await Logger.DBHelper.Save(users, jwt, span);
+
+        var config: Base = await Config.db.GetOne({ query: { "_type": "config" }, collectionname: "config", jwt }, span);
+        if (config == null) {
+            config = new Base();
+            config._type = "config";
+            config.name = "Config override";
+        }
+
+        Logger.instanse.info("index", "initDatabase", "db version: " + Config.dbConfig.version);
+        if (Config.dbConfig.compare("1.4.25") == -1) {
+            // Fix queue and exchange names from before 1.4.25 where names would be saved without converting to lowercase
+            var cursor = await Config.db.db.collection("mq").find({ "$or": [{ "_type": "exchange" }, { "_type": "queue" }] });
+            for await (const u of cursor) {
+                if (u.name != u.name.toLowerCase()) {
+                    await Config.db.db.collection("mq").updateOne({ "_id": u._id }, { "$set": { "name": u.name.toLowerCase() } });
+                }
+            }
+        }
+
+
+        if (Config.dbConfig.needsupdate) {
+            await Config.dbConfig.Save(jwt, span);
+        }
 
 
         const personal_nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);

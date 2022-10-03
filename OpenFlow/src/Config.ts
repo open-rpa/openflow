@@ -3,9 +3,46 @@ import * as fs from "fs";
 import * as path from "path";
 import { DatabaseConnection } from "./DatabaseConnection";
 // import { Logger } from "./Logger";
-import { NoderedUtil } from "@openiap/openflow-api";
+import { Base, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
 import { promiseRetry } from "./Logger";
+import { Span } from "@opentelemetry/api";
+
+export class dbConfig extends Base {
+    constructor() {
+        super();
+        this._type = "customer";
+        this.name = "Base configuration";
+        this.version = "0.0.1";
+    }
+    public version: string;
+    public needsupdate: boolean;
+    public updatedat: Date;
+    public async Save(jwt: string, parent: Span): Promise<void> {
+        if (this.needsupdate = true) {
+            this.updatedat = new Date(new Date().toISOString());
+            this.needsupdate = false;
+            this.version = Config.version;
+        }
+        Base.addRight(this, WellknownIds.admins, "admins", [Rights.full_control]);
+        if (NoderedUtil.IsNullEmpty(this._id)) await Config.db.InsertOne(this, "config", 1, true, jwt, parent);
+        if (!NoderedUtil.IsNullEmpty(this._id)) await Config.db._UpdateOne(null, this, "config", 1, true, jwt, parent);
+    }
+    public compare(version: string): number {
+        return this.version.localeCompare(version, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    public static async Load(jwt: string, parent: Span): Promise<dbConfig> {
+        var conf: dbConfig = await Config.db.GetOne({ query: { "_type": "config" }, collectionname: "config", jwt }, parent);
+        if (conf == null) { conf = new dbConfig(); }
+        conf = Object.assign(new dbConfig(), conf);
+        conf.needsupdate = false;
+        if (conf.compare(Config.version) == -1) {
+            conf.needsupdate = true;
+        }
+        return conf;
+    }
+}
 export class Config {
+    public static dbConfig: dbConfig;
     public static getversion(): string {
         let versionfile: string = path.join(__dirname, "VERSION");
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
@@ -75,6 +112,7 @@ export class Config {
 
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
         Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
+        Config.text_index_name_fields = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
 
         Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
         Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
@@ -217,8 +255,15 @@ export class Config {
         Config.otel_trace_include_query = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
         Config.otel_trace_connection_ips = Config.parseBoolean(Config.getEnv("otel_trace_connection_ips", "false"));
         Config.otel_trace_mongodb_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_per_users", "false"));
+        Config.otel_trace_mongodb_query_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
+        Config.otel_trace_mongodb_aggregate_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_aggregate_per_users", "false"));
+        Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
+        Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
+        Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
     
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
+    }
+    public static load_drom_db(): void {
     }
     public static unittesting: boolean = false;
     public static db: DatabaseConnection = null;
@@ -275,6 +320,7 @@ export class Config {
 
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
+    public static text_index_name_fields: string[] = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
@@ -419,7 +465,11 @@ export class Config {
     public static otel_trace_include_query: boolean = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
     public static otel_trace_connection_ips: boolean = Config.parseBoolean(Config.getEnv("otel_trace_connection_ips", "false"));
     public static otel_trace_mongodb_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_per_users", "false"));
-    
+    public static otel_trace_mongodb_query_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
+    public static otel_trace_mongodb_aggregate_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_aggregate_per_users", "false"));
+    public static otel_trace_mongodb_insert_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
+    public static otel_trace_mongodb_update_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
+    public static otel_trace_mongodb_delete_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 

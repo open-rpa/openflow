@@ -61,10 +61,11 @@
             "program": "${workspaceRoot}/OpenFlowNodeRED/src/index.ts",
             "request": "launch",
             "showAsyncStacks": true,
-            // "runtimeArgs": [
-            //     "--nolazy",
-            //     "--trace-warnings"
-            // ],
+            "runtimeArgs": [
+                "--nolazy",
+                "--trace-warnings",
+                "--preserve-symlinks"
+            ],
             "trace": true,
             "runtimeExecutable": null,
             "sourceMaps": true,

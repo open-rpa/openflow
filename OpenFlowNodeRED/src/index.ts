@@ -138,8 +138,8 @@ let server: http.Server = null;
                 }
                 const result = await NoderedUtil.SigninWithToken({ jwt, websocket: socket });
                 Logger.instanse.info("index", "", "signed in as " + result.user.name + " with id " + result.user._id);
-                WebSocketClient.instance.user = result.user;
-                WebSocketClient.instance.jwt = result.jwt;
+                socket.user = result.user;
+                socket.jwt = result.jwt;
                 if (!NoderedUtil.IsNullEmpty(result.openflow_uniqueid)) {
                     Config.openflow_uniqueid = result.openflow_uniqueid;
                     Logger.otel.setdefaultlabels();

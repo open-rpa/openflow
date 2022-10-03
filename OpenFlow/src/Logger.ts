@@ -49,6 +49,8 @@ export class Logger {
         let Green = Console.Reset + Console.Bright + Console.FgGreen;
         let dt = new Date();
         if (cls == "cli" || cls == "cli-lic" || cls == "cliutil") cls = "";
+        if (NoderedUtil.IsNullEmpty(cls)) cls = "";
+        if (typeof cls !== 'string') { try { cls = (cls as object).toString(); } catch { cls = "unknown"; } }
         let prefix = "";
         let color = Cyan;
         if (lvl == level.Debug) color = Blue;
