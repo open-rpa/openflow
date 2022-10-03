@@ -1,6 +1,6 @@
 import { MongoClient, ObjectId, Db, Binary, GridFSBucket, ChangeStream, MongoClientOptions, AggregateOptions, InsertOneOptions, InsertOneResult, UpdateOptions } from "mongodb";
 import { Crypt } from "./Crypt";
-import { Config } from "./Config";
+import { Config, dbConfig } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
 import { ObservableUpDownCounter, Histogram } from "@opentelemetry/api-metrics"
@@ -422,7 +422,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (collectionname === "config" && _type === "oauthclient") {
                             setTimeout(() => OAuthProvider.LoadClients(), 1000);
                         }
-
+                        if (collectionname === "config" && _type === "config") {
+                            await dbConfig.Reload(Crypt.rootToken(), span);
+                        }
                     }
                     let doContinue: boolean = false;
                     if (WebSocketServer._clients)
