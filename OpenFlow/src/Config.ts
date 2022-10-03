@@ -3,9 +3,46 @@ import * as fs from "fs";
 import * as path from "path";
 import { DatabaseConnection } from "./DatabaseConnection";
 // import { Logger } from "./Logger";
-import { NoderedUtil } from "@openiap/openflow-api";
+import { Base, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
 import { promiseRetry } from "./Logger";
+import { Span } from "@opentelemetry/api";
+
+export class dbConfig extends Base {
+    constructor() {
+        super();
+        this._type = "customer";
+        this.name = "Base configuration";
+        this.version = "0.0.1";
+    }
+    public version: string;
+    public needsupdate: boolean;
+    public updatedat: Date;
+    public async Save(jwt: string, parent: Span): Promise<void> {
+        if (this.needsupdate = true) {
+            this.updatedat = new Date(new Date().toISOString());
+            this.needsupdate = false;
+            this.version = Config.version;
+        }
+        Base.addRight(this, WellknownIds.admins, "admins", [Rights.full_control]);
+        if (NoderedUtil.IsNullEmpty(this._id)) await Config.db.InsertOne(this, "config", 1, true, jwt, parent);
+        if (!NoderedUtil.IsNullEmpty(this._id)) await Config.db._UpdateOne(null, this, "config", 1, true, jwt, parent);
+    }
+    public compare(version: string): number {
+        return this.version.localeCompare(version, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    public static async Load(jwt: string, parent: Span): Promise<dbConfig> {
+        var conf: dbConfig = await Config.db.GetOne({ query: { "_type": "config" }, collectionname: "config", jwt }, parent);
+        if (conf == null) { conf = new dbConfig(); }
+        conf = Object.assign(new dbConfig(), conf);
+        conf.needsupdate = false;
+        if (conf.compare(Config.version) == -1) {
+            conf.needsupdate = true;
+        }
+        return conf;
+    }
+}
 export class Config {
+    public static dbConfig: dbConfig;
     public static getversion(): string {
         let versionfile: string = path.join(__dirname, "VERSION");
         if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
@@ -225,6 +262,8 @@ export class Config {
         Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
     
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
+    }
+    public static load_drom_db(): void {
     }
     public static unittesting: boolean = false;
     public static db: DatabaseConnection = null;
