@@ -2,7 +2,7 @@ import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
 import * as path from "path";
 import { DatabaseConnection } from "./DatabaseConnection";
-// import { Logger } from "./Logger";
+import { Logger } from "./Logger";
 import { Base, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
 import { promiseRetry } from "./Logger";
 import { Span } from "@opentelemetry/api";
@@ -17,6 +17,44 @@ export class dbConfig extends Base {
     public version: string;
     public needsupdate: boolean;
     public updatedat: Date;
+
+    public allow_personal_nodered: boolean;
+    public amqp_enabled_exchange: boolean;
+    public log_with_trace: boolean;
+    public log_with_colors: boolean;
+    public log_cache: boolean;
+    public log_amqp: boolean;
+    public log_login_provider: boolean;
+    public log_websocket: boolean;
+    public log_oauth: boolean;
+    public log_webserver: boolean;
+    public log_database: boolean;
+    public log_grafana: boolean;
+    public log_housekeeping: boolean;
+    public log_otel: boolean;
+    public otel_debug_log: boolean;
+    public otel_warn_log: boolean;
+    public otel_err_log: boolean;
+    public log_information: boolean;
+    public log_debug: boolean;
+    public log_verbose: boolean;
+    public log_silly: boolean;
+
+    public amqp_allow_replyto_empty_queuename: boolean;
+    public enable_web_tours: boolean;
+    public enable_nodered_tours: boolean;
+    public housekeeping_skip_collections: string;
+
+    public ensure_indexes: boolean;
+    public text_index_name_fields: string[];
+
+    public auto_create_users: boolean;
+    public auto_create_user_from_jwt: boolean;
+    public auto_create_domains: string[];
+    public persist_user_impersonation: boolean;
+    public ping_clients_interval: number;
+
+
     public async Save(jwt: string, parent: Span): Promise<void> {
         if (this.needsupdate = true) {
             this.updatedat = new Date(new Date().toISOString());
@@ -38,7 +76,58 @@ export class dbConfig extends Base {
         if (conf.compare(Config.version) == -1) {
             conf.needsupdate = true;
         }
+        Config.log_with_trace = Config.parseBoolean(conf.log_with_trace ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
+
+        if (!NoderedUtil.IsNullEmpty(conf.auto_create_users)) Config.auto_create_users = Config.parseBoolean(conf.auto_create_users);
+        if (!NoderedUtil.IsNullEmpty(conf.allow_personal_nodered)) Config.allow_personal_nodered = Config.parseBoolean(conf.allow_personal_nodered);
+        if (!NoderedUtil.IsNullEmpty(conf.amqp_enabled_exchange)) Config.amqp_enabled_exchange = Config.parseBoolean(conf.amqp_enabled_exchange);
+
+        Logger.instanse.info("Config", "Load", "db version: " + Config.dbConfig.version);
+
+        Config.log_with_trace = Config.parseBoolean(conf.log_with_trace ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
+        Config.log_with_colors = Config.parseBoolean(conf.log_with_colors ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
+        Config.log_cache = Config.parseBoolean(conf.log_cache ? conf.log_cache : Config.getEnv("log_cache", "true"));
+        Config.log_amqp = Config.parseBoolean(conf.log_amqp ? conf.log_amqp : Config.getEnv("log_amqp", "true"));
+        Config.log_login_provider = Config.parseBoolean(conf.log_login_provider ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
+        Config.log_websocket = Config.parseBoolean(conf.log_websocket ? conf.log_websocket : Config.getEnv("log_websocket", "false"));
+        Config.log_oauth = Config.parseBoolean(conf.log_oauth ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
+        Config.log_webserver = Config.parseBoolean(conf.log_webserver ? conf.log_webserver : Config.getEnv("log_webserver", "false"));
+        Config.log_database = Config.parseBoolean(conf.log_database ? conf.log_database : Config.getEnv("log_database", "false"));
+        Config.log_grafana = Config.parseBoolean(conf.log_grafana ? conf.log_grafana : Config.getEnv("log_grafana", "false"));
+        Config.log_housekeeping = Config.parseBoolean(conf.log_housekeeping ? conf.log_housekeeping : Config.getEnv("log_housekeeping", "false"));
+        Config.log_otel = Config.parseBoolean(conf.log_otel ? conf.log_otel : Config.getEnv("log_otel", "false"));
+        Config.otel_debug_log = Config.parseBoolean(conf.otel_debug_log ? conf.otel_debug_log : Config.getEnv("otel_debug_log", "false"));
+        Config.otel_warn_log = Config.parseBoolean(conf.otel_warn_log ? conf.otel_warn_log : Config.getEnv("otel_warn_log", "false"));
+        Config.otel_err_log = Config.parseBoolean(conf.otel_err_log ? conf.otel_err_log : Config.getEnv("otel_err_log", "false"));
+        Config.log_information = Config.parseBoolean(conf.log_information ? conf.log_information : Config.getEnv("log_information", "true"));
+        Config.log_debug = Config.parseBoolean(conf.log_debug ? conf.log_debug : Config.getEnv("log_debug", "false"));
+        Config.log_verbose = Config.parseBoolean(conf.log_verbose ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
+        Config.log_silly = Config.parseBoolean(conf.log_silly ? conf.log_silly : Config.getEnv("log_silly", "false"));
+
+        Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(conf.amqp_allow_replyto_empty_queuename ? conf.amqp_allow_replyto_empty_queuename : Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
+        Config.enable_web_tours = Config.parseBoolean(conf.enable_web_tours ? conf.enable_web_tours : Config.getEnv("enable_web_tours", "true"));
+        Config.enable_nodered_tours = Config.parseBoolean(conf.enable_nodered_tours ? conf.enable_nodered_tours : Config.getEnv("enable_nodered_tours", "true"));
+        Config.housekeeping_skip_collections = conf.housekeeping_skip_collections ? conf.housekeeping_skip_collections : Config.getEnv("housekeeping_skip_collections", "");
+
+
+        Config.ensure_indexes = Config.parseBoolean(conf.ensure_indexes ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
+        // @ts-ignore
+        Config.text_index_name_fields = Config.parseArray(conf.text_index_name_fields ? conf.text_index_name_fields : Config.getEnv("text_index_name_fields", "name,_names"))
+        Config.auto_create_users = Config.parseBoolean(conf.auto_create_users ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
+
+        Config.auto_create_user_from_jwt = Config.parseBoolean(conf.auto_create_user_from_jwt ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
+        Config.auto_create_user_from_jwt = Config.parseBoolean(conf.auto_create_user_from_jwt ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
+        // @ts-ignore
+        Config.auto_create_domains = Config.parseArray(conf.auto_create_domains ? conf.auto_create_domains : Config.getEnv("auto_create_domains", ""))
+        Config.persist_user_impersonation = Config.parseBoolean(conf.persist_user_impersonation ? conf.persist_user_impersonation : Config.getEnv("persist_user_impersonation", "true"))
+        // @ts-ignore
+        Config.ping_clients_interval = parseInt(conf.ping_clients_interval ? conf.ping_clients_interval : Config.getEnv("ping_clients_interval", (10000).toString()))
+
+        Logger.reload();
         return conf;
+    }
+    public static async Reload(jwt: string, parent: Span): Promise<void> {
+        Config.dbConfig = await dbConfig.Load(jwt, parent);
     }
 }
 export class Config {

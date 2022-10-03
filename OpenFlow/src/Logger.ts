@@ -140,8 +140,7 @@ export class Logger {
         if (Config.db != null) await Config.db.shutdown();
         await Logger.otel.shutdown();
     }
-    static configure(skipotel: boolean, skiplic: boolean): void {
-        Logger.DBHelper = new DBHelper();
+    public static reload() {
         Logger.log_with_trace = Config.log_with_trace;
         Logger.usecolors = Config.log_with_colors;
         // if (Config.NODE_ENV == "development") Logger.log_with_trace = true;
@@ -156,13 +155,13 @@ export class Logger {
         if (Config.log_grafana) Logger.enabled["grafana-proxy"] = level.Verbose;
         if (Config.log_housekeeping) Logger.enabled["Housekeeping"] = level.Verbose;
         if (Config.log_otel) Logger.enabled["otel"] = level.Verbose;
-
-
-
-
         if (Config.otel_debug_log) Logger.enabled["WebSocketServerClient"] = level.Verbose;
         if (Config.otel_warn_log) Logger.enabled["WebSocketServerClient"] = level.Warning;
         if (Config.otel_err_log) Logger.enabled["WebSocketServerClient"] = level.Error;
+    }
+    static configure(skipotel: boolean, skiplic: boolean): void {
+        Logger.DBHelper = new DBHelper();
+        Logger.reload() 
 
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {

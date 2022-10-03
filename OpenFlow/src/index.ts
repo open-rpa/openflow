@@ -119,7 +119,6 @@ async function initDatabase(parent: Span): Promise<boolean> {
             config.name = "Config override";
         }
 
-        Logger.instanse.info("index", "initDatabase", "db version: " + Config.dbConfig.version);
         if (Config.dbConfig.compare("1.4.25") == -1) {
             // Fix queue and exchange names from before 1.4.25 where names would be saved without converting to lowercase
             var cursor = await Config.db.db.collection("mq").find({ "$or": [{ "_type": "exchange" }, { "_type": "queue" }] });
