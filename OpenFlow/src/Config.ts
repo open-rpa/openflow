@@ -82,7 +82,7 @@ export class dbConfig extends Base {
         if (!NoderedUtil.IsNullEmpty(conf.allow_personal_nodered)) Config.allow_personal_nodered = Config.parseBoolean(conf.allow_personal_nodered);
         if (!NoderedUtil.IsNullEmpty(conf.amqp_enabled_exchange)) Config.amqp_enabled_exchange = Config.parseBoolean(conf.amqp_enabled_exchange);
 
-        Logger.instanse.info("Config", "Load", "db version: " + Config.dbConfig.version);
+        Logger.instanse.info("Config", "Load", "db version: " + conf.version);
 
         Config.log_with_trace = Config.parseBoolean(conf.log_with_trace ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(conf.log_with_colors ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
