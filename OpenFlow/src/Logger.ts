@@ -144,6 +144,7 @@ export class Logger {
         Logger.log_with_trace = Config.log_with_trace;
         Logger.usecolors = Config.log_with_colors;
         // if (Config.NODE_ENV == "development") Logger.log_with_trace = true;
+        Logger.enabled = {};
         if (Config.log_cache) Logger.enabled["DBHelper"] = level.Verbose;
         if (Config.log_amqp) Logger.enabled["amqpwrapper"] = level.Verbose;
         if (Config.log_login_provider) Logger.enabled["LoginProvider"] = level.Verbose;
