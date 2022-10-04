@@ -10,7 +10,7 @@ import { Span } from "@opentelemetry/api";
 export class dbConfig extends Base {
     constructor() {
         super();
-        this._type = "customer";
+        this._type = "config";
         this.name = "Base configuration";
         this.version = "0.0.1";
     }
@@ -54,6 +54,16 @@ export class dbConfig extends Base {
     public persist_user_impersonation: boolean;
     public ping_clients_interval: number;
 
+    public otel_trace_pingclients: boolean;
+    public otel_trace_dashboardauth: boolean;
+    public otel_trace_include_query: boolean;
+    public otel_trace_connection_ips: boolean;
+    public otel_trace_mongodb_per_users: boolean;
+    public otel_trace_mongodb_query_per_users: boolean;
+    public otel_trace_mongodb_aggregate_per_users: boolean;
+    public otel_trace_mongodb_insert_per_users: boolean;
+    public otel_trace_mongodb_update_per_users: boolean;
+    public otel_trace_mongodb_delete_per_users: boolean;
 
     public async Save(jwt: string, parent: Span): Promise<void> {
         if (this.needsupdate = true) {
@@ -122,6 +132,17 @@ export class dbConfig extends Base {
         Config.persist_user_impersonation = Config.parseBoolean(conf.persist_user_impersonation ? conf.persist_user_impersonation : Config.getEnv("persist_user_impersonation", "true"))
         // @ts-ignore
         Config.ping_clients_interval = parseInt(conf.ping_clients_interval ? conf.ping_clients_interval : Config.getEnv("ping_clients_interval", (10000).toString()))
+
+        Config.otel_trace_pingclients = Config.parseBoolean(conf.ping_clients_interval ? conf.ping_clients_interval : Config.getEnv("otel_trace_pingclients", "false"));
+        Config.otel_trace_dashboardauth = Config.parseBoolean(conf.otel_trace_dashboardauth ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
+        Config.otel_trace_include_query = Config.parseBoolean(conf.otel_trace_include_query ? conf.otel_trace_include_query : Config.getEnv("otel_trace_include_query", "false"));
+        Config.otel_trace_connection_ips = Config.parseBoolean(conf.otel_trace_connection_ips ? conf.otel_trace_connection_ips : Config.getEnv("otel_trace_connection_ips", "false"));
+        Config.otel_trace_mongodb_per_users = Config.parseBoolean(conf.otel_trace_mongodb_per_users ? conf.otel_trace_mongodb_per_users : Config.getEnv("otel_trace_mongodb_per_users", "false"));
+        Config.otel_trace_mongodb_query_per_users = Config.parseBoolean(conf.otel_trace_mongodb_query_per_users ? conf.otel_trace_mongodb_query_per_users : Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
+        Config.otel_trace_mongodb_aggregate_per_users = Config.parseBoolean(conf.otel_trace_mongodb_aggregate_per_users ? conf.otel_trace_mongodb_aggregate_per_users : Config.getEnv("otel_trace_mongodb_aggregate_per_users", "false"));
+        Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(conf.otel_trace_mongodb_insert_per_users ? conf.otel_trace_mongodb_insert_per_users : Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
+        Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(conf.otel_trace_mongodb_update_per_users ? conf.otel_trace_mongodb_update_per_users : Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
+        Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(conf.otel_trace_mongodb_delete_per_users ? conf.otel_trace_mongodb_delete_per_users : Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
 
         Logger.reload();
         return conf;

@@ -42,6 +42,13 @@
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>
+    <div class="form-group" ng-show="menuctrl.hasrole('admins') && ctrl.model.remoteip != '' && ctrl.model.remoteip != null && ctrl.model.remoteip != undefined">
+        <label for="remoteip" class="col-sm-2 control-label" translate lib="web">remoteip</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.remoteip" class="form-control input-md"
+                ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
     <div class="form-group" ng-show="menuctrl.hasrole('admins') && (ctrl.model.dblocked == true || ctrl.model.dblocked == false)">
         <label for="dblocked" class="col-sm-2 control-label" translate lib="web">dblocked</label>
         <div class="col-sm-4">
