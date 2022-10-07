@@ -322,6 +322,7 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     registerGlobalWatch(collectionname: string, parent: Span) {
         if (!this.registerGlobalWatches) return;
+        if (collectionname == "cvr") return;
         const span: Span = Logger.otel.startSubSpan("registerGlobalWatch", parent);
         try {
             span?.setAttribute("collectionname", collectionname);
@@ -354,6 +355,15 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (collectionname == "config" && NoderedUtil.IsNullUndefinded(item)) {
                         item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
                     }
+                    // if (next.operationType == 'delete' && collectionname == "users") {
+                    //     item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
+                    //     if (!NoderedUtil.IsNullUndefinded(item)) {
+                    //         if (!NoderedUtil.IsNullEmpty(item.username)) await Logger.DBHelper.memoryCache.del("username_" + item.username);
+                    //         await Logger.DBHelper.memoryCache.del("users" + _id);
+                    //         await Logger.DBHelper.memoryCache.del("userroles_" + _id);
+                    //         if (item._type == "role") await Logger.DBHelper.memoryCache.del("rolename_" + item.username);
+                    //     }
+                    // }
                     if (!NoderedUtil.IsNullUndefinded(item)) {
                         _type = item._type;
 
@@ -1662,11 +1672,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (item._type === "role") {
                     const r: Role = (item as any);
                     if (r.members.length > 0) {
-                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } else if (!Config.supports_watch) {
+                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                            // we clear all since we might have cached tons of userrole mappings
                             Logger.DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
-                        }
+                        } else if (Config.enable_openflow_amqp) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        } 
                     }
                 }
             }
@@ -1772,11 +1783,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (item._type === "role") {
                         const r: Role = item as any;
                         if (r.members.length > 0) {
-                            if (Config.enable_openflow_amqp && !Config.supports_watch) {
-                                amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                            } else if (!Config.supports_watch) {
+                            if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                                // we clear all since we might have cached tons of userrole mappings
                                 Logger.DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
-                            }
+                            } else if (Config.enable_openflow_amqp) {
+                                amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                            } 
                         }
                     }
                 }
@@ -2240,22 +2252,24 @@ export class DatabaseConnection extends events.EventEmitter {
                         // DBHelper.cached_roles = [];
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
-                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } else if (!Config.supports_watch) {
+                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
                             Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
-                        }
+                        } else if (Config.enable_openflow_amqp) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        } 
                     }
                     if (q.collectionname === "mq") {
                         if (!NoderedUtil.IsNullEmpty(q.item.name)) {
                             if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
                             if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
                         }
-                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                            await Logger.DBHelper.memoryCache.del("mq" + q.item._id);
+                            if (q.item._type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + q.item.name);
+                            if (q.item._type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + q.item.name);
+                        } else if (Config.enable_openflow_amqp) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } else if (!Config.supports_watch) {
-                            Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
-                        }
+                        } 
                     }
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         try {
@@ -2907,6 +2921,21 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "users", false, jwt, span);
                     }
+                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                        // @ts-ignore
+                        if (!NoderedUtil.IsNullEmpty(doc.username)) {
+                            // @ts-ignore
+                            await Logger.DBHelper.memoryCache.del("username_" + doc.username);
+                            // @ts-ignore
+                            await Logger.DBHelper.memoryCache.del("federation_" + doc.username);
+                        }
+                        await Logger.DBHelper.memoryCache.del("users" + doc._id);
+                        await Logger.DBHelper.memoryCache.del("userroles_" + doc._id);
+
+                    } else if (Config.enable_openflow_amqp) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    } 
+
                     if (Config.cleanup_on_delete_user || recursive) {
                         let skip_collections = [];
                         if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
@@ -2944,18 +2973,24 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if (collectionname == "users" && doc._type == "role") {
-                    if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                        // we clear all since we might have cached tons of userrole mappings
+                        Logger.DBHelper.clearCache("deleted role " + doc.name);
+                        // await Logger.DBHelper.memoryCache.del("users" + doc._id);
+                        // await Logger.DBHelper.memoryCache.del("rolename_" + doc.name);
+                        // await Logger.DBHelper.memoryCache.del("allroles");
+                    } else if (Config.enable_openflow_amqp) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    } else if (!Config.supports_watch) {
-                        Logger.DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
-                    }
+                    } 
                 }
                 if (collectionname === "mq") {
-                    if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                        await Logger.DBHelper.memoryCache.del("mq" + doc._id);
+                        if (doc._type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + doc.name);
+                        if (doc._type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + doc.name);
+                    } else if (Config.enable_openflow_amqp) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    } else if (!Config.supports_watch) {
-                        Logger.DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
-                    }
+                    } 
                 }
                 if (collectionname === "config" && doc._type === "provider" && !Config.supports_watch) {
                     await Logger.DBHelper.ClearProviders();
