@@ -5,7 +5,7 @@ import { nodered_settings } from "./nodered_settings";
 import { Config } from "./Config";
 import { WebSocketClient, NoderedUtil, Base } from "@openiap/openflow-api";
 import * as nodered from "node-red";
-import { FileSystemCache } from "@openiap/openflow-api";
+import { FileSystemCache } from "./file-system-cache";
 import { servicename } from "./nodeclient/cliutil";
 import { pm2restart } from "./nodeclient/pm2util";
 import { Logger } from "./Logger";
@@ -964,7 +964,7 @@ export class noderedcontribopenflowstorage {
                 Logger.instanse.info("storage", "onupdate", "check for exit exitprocess: " + exitprocess + " update: " + update + " " + new Date().toLocaleTimeString());
 
                 if (exitprocess && Config.auto_restart_when_needed) {
-                    if (NoderedUtil.isDocker()) {
+                    if (noderedcontribopenflowstorage.isDocker()) {
                         Logger.instanse.info("storage", "onupdate", "Running as docker, just quit process, kubernetes will start a new version");
                         this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Running as docker, just quit process, kubernetes will start a new version");
                         process.exit(1);
@@ -1042,7 +1042,7 @@ export class noderedcontribopenflowstorage {
                 }
             }
             if (exitprocess && Config.auto_restart_when_needed) {
-                if (NoderedUtil.isDocker()) {
+                if (noderedcontribopenflowstorage.isDocker()) {
                     Logger.instanse.info("storage", "saveSettings", "Running as docker, just quit process, kubernetes will start a new version");
                     process.exit(1);
                 } else {
@@ -1139,6 +1139,30 @@ export class noderedcontribopenflowstorage {
             Logger.instanse.error("storage", "getLibraryEntry", error);
         }
         return null;
+    }
+    static hasDockerEnv(): boolean {
+        try {
+            const fs = require('fs');
+            fs.statSync('/.dockerenv');
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    static hasDockerCGroup() {
+        try {
+            const fs = require('fs');
+            if (fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker')) return true;
+            return fs.readFileSync('/proc/self/cgroup', 'utf8').includes('/kubepods');
+        } catch (_) {
+            return false;
+        }
+    }
+    private static _isDocker: boolean = null;
+    public static isDocker(): boolean {
+        if (noderedcontribopenflowstorage._isDocker != null) return noderedcontribopenflowstorage._isDocker;
+        noderedcontribopenflowstorage._isDocker = noderedcontribopenflowstorage.hasDockerEnv() || noderedcontribopenflowstorage.hasDockerCGroup();
+        return false;
     }
 
 }

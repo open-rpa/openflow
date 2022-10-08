@@ -1,12 +1,19 @@
+import fs = require('fs');
+// import path = require('path');
+import pako = require('pako');
+
+
 var wtf = require('wtfnode');
 const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 require("dotenv").config({ path: env }); // , debug: false 
-import { AddWorkitem, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
+import { AddWorkitem, MessageWorkitemFile, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
 import { suite, test, timeout } from '@testdeck/mocha';
 import assert = require('assert');
 import { Config } from '../OpenFlow/src/Config';
 import { Logger } from '../OpenFlow/src/Logger';
+
+// C:\code\openflow-api
 
 @suite class workitemqueue {
     private socket: WebSocketClient = null;
@@ -70,6 +77,23 @@ import { Logger } from '../OpenFlow/src/Logger';
         await NoderedUtil.UpdateWorkitem({ _id: item._id, state: "successful" });
 
         // await NoderedUtil.UpdateWorkitem({ _id: item._id, state: "successful" });
+    }
+    public static async CreateWorkitemFilesArray(files: string[], compressed: boolean): Promise<MessageWorkitemFile[]> {
+        var result: MessageWorkitemFile[] = [];
+        for (var i = 0; i < files.length; i++) {
+            let file: MessageWorkitemFile = new MessageWorkitemFile();
+            file.filename = path.basename(files[i]);
+            if (fs.existsSync(files[i])) {
+                if (compressed) {
+                    file.compressed = true;
+                    file.file = Buffer.from(pako.deflate(fs.readFileSync(files[i], null))).toString('base64');
+                } else {
+                    file.file = fs.readFileSync(files[i], { encoding: 'base64' });
+                }
+                result.push(file);
+            } else { throw new Error("File not found " + files[i]) }
+        }
+        return result;
     }
     @timeout(10000)
     @test async 'basic workitem test with files'() {

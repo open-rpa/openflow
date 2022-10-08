@@ -92,6 +92,16 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.strictEqual(items.length, 5, "Root did not find any files");
     }
     @timeout(5000)
+    @test async 'count'() {
+        var usercount = await Config.db.count({ collectionname: "users", query: { "_type": "user" }, jwt: this.rootToken }, null);
+        assert.notDeepStrictEqual(usercount, null);
+        assert.notStrictEqual(usercount, 0);
+        var rolecount = await Config.db.count({ collectionname: "users", query: { "_type": "role" }, jwt: this.rootToken }, null);
+        assert.notDeepStrictEqual(rolecount, null);
+        assert.notStrictEqual(rolecount, 0);
+        assert.notStrictEqual(usercount, rolecount);
+    }
+    @timeout(5000)
     @test async 'GetDocumentVersion'() {
         let item = new Base(); item.name = "item version 0";
         item = await Config.db.InsertOne(item, "entities", 1, true, this.userToken, null);

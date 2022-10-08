@@ -17,6 +17,7 @@ export class Config {
     public static reload(): void {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
+        Config.enable_file_cache = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
 
@@ -99,6 +100,7 @@ export class Config {
     public static version: string = Config.getversion();
     public static unittesting: boolean = false;
     public static logpath: string = Config.getEnv("logpath", __dirname);
+    public static enable_file_cache: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
     public static log_with_trace: boolean = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
     public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
