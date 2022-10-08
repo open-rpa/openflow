@@ -2964,7 +2964,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             for (let i = 0; i < collections.length; i++) {
                                 let collection = collections[i];
                                 // var res = await this.DeleteMany(query, null, collection.name, null, jwt, span);
-                                var res = await this.DeleteMany({}, null, collection.name, doc._id, jwt, span);
+                                var res = await this.DeleteMany({}, null, collection.name, doc._id, false, jwt, span);
                                 Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after company " + doc.name);
                             }
                             // }
@@ -3049,7 +3049,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 continue;
                             }
                             let startTime = new Date();
-                            var res = await this.DeleteMany({ "$or": [{ "_createdbyid": doc._id }, { "_modifiedbyid": doc._id }] }, null, collection.name, doc._id, jwt, span);
+                            var res = await this.DeleteMany({ "$or": [{ "_createdbyid": doc._id }, { "_modifiedbyid": doc._id }] }, null, collection.name, doc._id, false, jwt, span);
                             // @ts-ignore
                             var timeDiff = ((new Date()) - startTime); //in ms
                             Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after user " + doc.name + " (" + timeDiff + "ms)");
@@ -3108,7 +3108,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteMany(query: string | any, ids: string[], collectionname: string, queryas: string, jwt: string, parent: Span): Promise<number> {
+    async DeleteMany(query: string | any, ids: string[], collectionname: string, queryas: string, recursive: boolean, jwt: string, parent: Span): Promise<number> {
         if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
@@ -3201,6 +3201,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 Logger.instanse.verbose("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "] deleted " + deletecounter + " files in database");
                 return deletecounter;
+            } else if (recursive && !NoderedUtil.IsNullUndefinded(ids) && ids.length > 0) {
+                for (let i = 0; i < ids.length; i++) {
+                    await this.DeleteOne(ids[i], collectionname, recursive, jwt, span);
+                }
+                return ids.length;
             } else {
                 let bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp();
                 let bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
