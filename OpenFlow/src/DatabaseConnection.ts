@@ -1,7 +1,7 @@
 import { MongoClient, ObjectId, Db, Binary, GridFSBucket, ChangeStream, MongoClientOptions, AggregateOptions, InsertOneOptions, InsertOneResult, UpdateOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config, dbConfig } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions, CountOptions } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
 import { ObservableUpDownCounter, Histogram } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
@@ -46,6 +46,7 @@ export class DatabaseConnection extends events.EventEmitter {
     private _dbname: string;
     // public static ot_mongodb_query_count: Counter;
     public static mongodb_query: Histogram;
+    public static mongodb_count: Histogram;    
     public static mongodb_aggregate: Histogram;
     public static mongodb_insert: Histogram;
     public static mongodb_insertmany: Histogram;
@@ -73,6 +74,9 @@ export class DatabaseConnection extends events.EventEmitter {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createHistogram('openflow_mongodb_query_seconds', {
                 description: 'Duration for mongodb queries', valueType: 1, unit: 's'
             });
+            DatabaseConnection.mongodb_count = Logger.otel.meter.createHistogram('openflow_mongodb_count_seconds', {
+                description: 'Duration for mongodb counts', valueType: 1, unit: 's'
+            });            
             // valueType: ValueType.DOUBLE
             DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createHistogram('openflow_mongodb_aggregate_seconds', {
                 description: 'Duration for mongodb aggregates', valueType: 1, unit: 's'
@@ -985,6 +989,99 @@ export class DatabaseConnection extends events.EventEmitter {
             return arr;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "query", "[" + collectionname + "] query error " + (error.message ? error.message : error));
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+
+    /**
+     * Send a query to the database.
+     * @param {any} query MongoDB Query
+     * @param {string} collectionname What collection to query
+     * @param {string} jwt JWT of user who is making the query, to limit results based on permissions
+     * @returns Promise<T[]> Array of results
+     */
+    // tslint:disable-next-line: max-line-length
+    async count(options: CountOptions, parent: Span): Promise<number> {
+        let { query, collectionname, jwt, queryas } = Object.assign({
+        }, options);
+        const span: Span = Logger.otel.startSubSpan("db.count", parent);
+        let _query: Object = {};
+        try {
+            await this.connect(span);
+            if (query !== null && query !== undefined) {
+                span?.addEvent("parse query");
+                let json: any = query;
+                if (typeof json !== 'string' && !(json instanceof String)) {
+                    json = JSON.stringify(json, (key, value) => {
+                        if (value instanceof RegExp)
+                            return ("__REGEXP " + value.toString());
+                        else
+                            return value;
+                    });
+                }
+                query = JSON.parse(json, (key, value) => {
+                    if (typeof value === 'string' && value.match(isoDatePattern)) {
+                        return new Date(value); // isostring, so cast to js date
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
+                        const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                        return new RegExp(m[1], m[2] || "");
+                    } else
+                        return value; // leave any other value as-is
+                });
+                if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
+            }
+            if (NoderedUtil.IsNullUndefinded(query)) {
+                throw new Error("Query is mandatory");
+            }
+            const keys: string[] = Object.keys(query);
+            for (let key of keys) {
+                if (key === "_id") {
+                    const id: string = query._id;
+                    const safeid = safeObjectID(id);
+                    if (safeid !== null && safeid !== undefined) {
+                        delete query._id;
+                        query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    }
+                }
+            }
+            span?.addEvent("verityToken");
+            const user: TokenUser = await Crypt.verityToken(jwt);
+
+            span?.addEvent("getbasequery");
+            if (collectionname === "files") { collectionname = "fs.files"; }
+            if (DatabaseConnection.usemetadata(collectionname)) {
+                let impersonationquery;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.read], span);
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read]), impersonationquery] };
+                } else {
+                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read])] };
+                }
+            } else {
+                let impersonationquery: any;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.read], span)
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read]), impersonationquery] };
+                } else {
+                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read])] };
+                }
+            }
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
+            const ot_end = Logger.otel.startTimer();
+            const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
+            // @ts-ignore
+            let result = await this.db.collection(collectionname).countDocuments(_query);
+            mongodbspan?.setAttribute("results", result);
+            Logger.otel.endSpan(mongodbspan);
+            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
+            Logger.instanse.debug("DatabaseConnection", "count", "[" + user.username + "][" + collectionname + "] count gave " + result + " results ");
+            return result;
+        } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "count", "[" + collectionname + "] count error " + (error.message ? error.message : error));
             span?.recordException(error);
             throw error;
         } finally {
@@ -3364,12 +3461,22 @@ export class DatabaseConnection extends events.EventEmitter {
                 var field = Config.text_index_name_fields[i];
                 if (Array.isArray(item[field])) {
                     for (var y = 0; y < item[field].length; y++) {
-                        if (!NoderedUtil.IsNullEmpty(item[field][y])) {
-                            var name: string = item[field][y].toLowerCase();
-                            name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
-                            _searchnames = _searchnames.concat(name.split(" "));
-                            _searchnames.push(name);
-                            if (name != item[field][y].toLowerCase()) _searchnames.push(item[field][y].toLowerCase());
+                        try {
+                            if (!NoderedUtil.IsNullEmpty(item[field][y])) {
+                                var name: string = item[field][y].toLowerCase();
+                                name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
+                                _searchnames = _searchnames.concat(name.split(" "));
+                                _searchnames.push(name);
+                                if (name != item[field][y].toLowerCase()) _searchnames.push(item[field][y].toLowerCase());
+                            }
+                        } catch (error) {
+                            Logger.instanse.error("DatabaseConnection", "ensureResource", error);
+                            if (item[field] && item[field][y]) {
+                                console.log(field + "/" + y, item[field][y]);
+                            } else {
+                                console.log(field, item[field]);
+                            }
+
                         }
                     }
                 } else {
@@ -4087,10 +4194,12 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return false;
     }
-    static otel_label(collectionname: string, user: TokenUser | User, action: "query" | "aggregate" | "insert" | "insertmany" | "update" | "updatemany" | "replace" | "delete" | "deletemany") {
+    static otel_label(collectionname: string, user: TokenUser | User, action: "query" | "count" | "aggregate" | "insert" | "insertmany" | "update" | "updatemany" | "replace" | "delete" | "deletemany") {
         if (Config.otel_trace_mongodb_per_users) {
             return { collection: collectionname, username: user.username };
         } else if (Config.otel_trace_mongodb_query_per_users && action == "query") {
+            return { collection: collectionname, username: user.username };
+        } else if (Config.otel_trace_mongodb_count_per_users && action == "count") {
             return { collection: collectionname, username: user.username };
         } else if (Config.otel_trace_mongodb_aggregate_per_users && action == "aggregate") {
             return { collection: collectionname, username: user.username };
