@@ -5,7 +5,7 @@ import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as https from "https";
 import { Logger, promiseRetry } from "./Logger";
 import { Config } from "./Config";
-import { FileSystemCache } from "@openiap/openflow-api";
+import { FileSystemCache } from "./file-system-cache";
 
 // tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {

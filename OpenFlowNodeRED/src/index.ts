@@ -6,7 +6,7 @@ import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
-import { FileSystemCache } from "@openiap/openflow-api";
+import { FileSystemCache } from "./file-system-cache";
 Logger.configure(false);
 Logger.instanse.info("index", "", "starting openflow nodered");
 
@@ -109,7 +109,17 @@ let server: http.Server = null;
                 }
             }
         }
-        socket.setCacheFolder(Config.logpath);
+        if (Config.enable_file_cache) {
+            // socket.setCacheFolder(Config.logpath);
+            try {
+                const fileCache = require('./file-system-cache');
+                const path = require('path');
+                socket.messageStore = new fileCache.FileSystemCache(path.join(Config.logpath, '.openflowapicache'));
+            } catch (error) {
+                Logger.instanse.error("index", "enable_file_cache", error);
+            }
+
+        }
         socket.agent = "nodered";
         socket.version = Config.version;
         Logger.instanse.info("index", "", "VERSION: " + Config.version);

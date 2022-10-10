@@ -1,7 +1,7 @@
 import { MongoClient, ObjectId, Db, Binary, GridFSBucket, ChangeStream, MongoClientOptions, AggregateOptions, InsertOneOptions, InsertOneResult, UpdateOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config, dbConfig } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions, CountOptions } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
 import { ObservableUpDownCounter, Histogram } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
@@ -46,6 +46,7 @@ export class DatabaseConnection extends events.EventEmitter {
     private _dbname: string;
     // public static ot_mongodb_query_count: Counter;
     public static mongodb_query: Histogram;
+    public static mongodb_count: Histogram;    
     public static mongodb_aggregate: Histogram;
     public static mongodb_insert: Histogram;
     public static mongodb_insertmany: Histogram;
@@ -73,6 +74,9 @@ export class DatabaseConnection extends events.EventEmitter {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createHistogram('openflow_mongodb_query_seconds', {
                 description: 'Duration for mongodb queries', valueType: 1, unit: 's'
             });
+            DatabaseConnection.mongodb_count = Logger.otel.meter.createHistogram('openflow_mongodb_count_seconds', {
+                description: 'Duration for mongodb counts', valueType: 1, unit: 's'
+            });            
             // valueType: ValueType.DOUBLE
             DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createHistogram('openflow_mongodb_aggregate_seconds', {
                 description: 'Duration for mongodb aggregates', valueType: 1, unit: 's'
@@ -322,6 +326,7 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     registerGlobalWatch(collectionname: string, parent: Span) {
         if (!this.registerGlobalWatches) return;
+        if (collectionname == "cvr") return;
         const span: Span = Logger.otel.startSubSpan("registerGlobalWatch", parent);
         try {
             span?.setAttribute("collectionname", collectionname);
@@ -354,6 +359,15 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (collectionname == "config" && NoderedUtil.IsNullUndefinded(item)) {
                         item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
                     }
+                    // if (next.operationType == 'delete' && collectionname == "users") {
+                    //     item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
+                    //     if (!NoderedUtil.IsNullUndefinded(item)) {
+                    //         if (!NoderedUtil.IsNullEmpty(item.username)) await Logger.DBHelper.memoryCache.del("username_" + item.username);
+                    //         await Logger.DBHelper.memoryCache.del("users" + _id);
+                    //         await Logger.DBHelper.memoryCache.del("userroles_" + _id);
+                    //         if (item._type == "role") await Logger.DBHelper.memoryCache.del("rolename_" + item.username);
+                    //     }
+                    // }
                     if (!NoderedUtil.IsNullUndefinded(item)) {
                         _type = item._type;
 
@@ -975,6 +989,99 @@ export class DatabaseConnection extends events.EventEmitter {
             return arr;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "query", "[" + collectionname + "] query error " + (error.message ? error.message : error));
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+
+    /**
+     * Send a query to the database.
+     * @param {any} query MongoDB Query
+     * @param {string} collectionname What collection to query
+     * @param {string} jwt JWT of user who is making the query, to limit results based on permissions
+     * @returns Promise<T[]> Array of results
+     */
+    // tslint:disable-next-line: max-line-length
+    async count(options: CountOptions, parent: Span): Promise<number> {
+        let { query, collectionname, jwt, queryas } = Object.assign({
+        }, options);
+        const span: Span = Logger.otel.startSubSpan("db.count", parent);
+        let _query: Object = {};
+        try {
+            await this.connect(span);
+            if (query !== null && query !== undefined) {
+                span?.addEvent("parse query");
+                let json: any = query;
+                if (typeof json !== 'string' && !(json instanceof String)) {
+                    json = JSON.stringify(json, (key, value) => {
+                        if (value instanceof RegExp)
+                            return ("__REGEXP " + value.toString());
+                        else
+                            return value;
+                    });
+                }
+                query = JSON.parse(json, (key, value) => {
+                    if (typeof value === 'string' && value.match(isoDatePattern)) {
+                        return new Date(value); // isostring, so cast to js date
+                    } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
+                        const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                        return new RegExp(m[1], m[2] || "");
+                    } else
+                        return value; // leave any other value as-is
+                });
+                if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
+            }
+            if (NoderedUtil.IsNullUndefinded(query)) {
+                throw new Error("Query is mandatory");
+            }
+            const keys: string[] = Object.keys(query);
+            for (let key of keys) {
+                if (key === "_id") {
+                    const id: string = query._id;
+                    const safeid = safeObjectID(id);
+                    if (safeid !== null && safeid !== undefined) {
+                        delete query._id;
+                        query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    }
+                }
+            }
+            span?.addEvent("verityToken");
+            const user: TokenUser = await Crypt.verityToken(jwt);
+
+            span?.addEvent("getbasequery");
+            if (collectionname === "files") { collectionname = "fs.files"; }
+            if (DatabaseConnection.usemetadata(collectionname)) {
+                let impersonationquery;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.read], span);
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read]), impersonationquery] };
+                } else {
+                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read])] };
+                }
+            } else {
+                let impersonationquery: any;
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.read], span)
+                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read]), impersonationquery] };
+                } else {
+                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read])] };
+                }
+            }
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
+            const ot_end = Logger.otel.startTimer();
+            const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
+            // @ts-ignore
+            let result = await this.db.collection(collectionname).countDocuments(_query);
+            mongodbspan?.setAttribute("results", result);
+            Logger.otel.endSpan(mongodbspan);
+            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
+            Logger.instanse.debug("DatabaseConnection", "count", "[" + user.username + "][" + collectionname + "] count gave " + result + " results ");
+            return result;
+        } catch (error) {
+            Logger.instanse.error("DatabaseConnection", "count", "[" + collectionname + "] count error " + (error.message ? error.message : error));
             span?.recordException(error);
             throw error;
         } finally {
@@ -1662,11 +1769,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (item._type === "role") {
                     const r: Role = (item as any);
                     if (r.members.length > 0) {
-                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } else if (!Config.supports_watch) {
+                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                            // we clear all since we might have cached tons of userrole mappings
                             Logger.DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
-                        }
+                        } else if (Config.enable_openflow_amqp) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        } 
                     }
                 }
             }
@@ -1772,11 +1880,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (item._type === "role") {
                         const r: Role = item as any;
                         if (r.members.length > 0) {
-                            if (Config.enable_openflow_amqp && !Config.supports_watch) {
-                                amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                            } else if (!Config.supports_watch) {
+                            if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                                // we clear all since we might have cached tons of userrole mappings
                                 Logger.DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
-                            }
+                            } else if (Config.enable_openflow_amqp) {
+                                amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                            } 
                         }
                     }
                 }
@@ -2240,22 +2349,24 @@ export class DatabaseConnection extends events.EventEmitter {
                         // DBHelper.cached_roles = [];
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
-                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } else if (!Config.supports_watch) {
+                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
                             Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
-                        }
+                        } else if (Config.enable_openflow_amqp) {
+                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                        } 
                     }
                     if (q.collectionname === "mq") {
                         if (!NoderedUtil.IsNullEmpty(q.item.name)) {
                             if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
                             if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
                         }
-                        if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                            await Logger.DBHelper.memoryCache.del("mq" + q.item._id);
+                            if (q.item._type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + q.item.name);
+                            if (q.item._type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + q.item.name);
+                        } else if (Config.enable_openflow_amqp) {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } else if (!Config.supports_watch) {
-                            Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
-                        }
+                        } 
                     }
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         try {
@@ -2853,7 +2964,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             for (let i = 0; i < collections.length; i++) {
                                 let collection = collections[i];
                                 // var res = await this.DeleteMany(query, null, collection.name, null, jwt, span);
-                                var res = await this.DeleteMany({}, null, collection.name, doc._id, jwt, span);
+                                var res = await this.DeleteMany({}, null, collection.name, doc._id, false, jwt, span);
                                 Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after company " + doc.name);
                             }
                             // }
@@ -2907,6 +3018,21 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "users", false, jwt, span);
                     }
+                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                        // @ts-ignore
+                        if (!NoderedUtil.IsNullEmpty(doc.username)) {
+                            // @ts-ignore
+                            await Logger.DBHelper.memoryCache.del("username_" + doc.username);
+                            // @ts-ignore
+                            await Logger.DBHelper.memoryCache.del("federation_" + doc.username);
+                        }
+                        await Logger.DBHelper.memoryCache.del("users" + doc._id);
+                        await Logger.DBHelper.memoryCache.del("userroles_" + doc._id);
+
+                    } else if (Config.enable_openflow_amqp) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    } 
+
                     if (Config.cleanup_on_delete_user || recursive) {
                         let skip_collections = [];
                         if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
@@ -2923,7 +3049,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 continue;
                             }
                             let startTime = new Date();
-                            var res = await this.DeleteMany({ "$or": [{ "_createdbyid": doc._id }, { "_modifiedbyid": doc._id }] }, null, collection.name, doc._id, jwt, span);
+                            var res = await this.DeleteMany({ "$or": [{ "_createdbyid": doc._id }, { "_modifiedbyid": doc._id }] }, null, collection.name, doc._id, false, jwt, span);
                             // @ts-ignore
                             var timeDiff = ((new Date()) - startTime); //in ms
                             Logger.instanse.info("DatabaseConnection", "DeleteOne", "[" + user.username + "][" + collection.name + "] Deleted " + res + " items from " + collection.name + " cleaning up after user " + doc.name + " (" + timeDiff + "ms)");
@@ -2944,18 +3070,24 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if (collectionname == "users" && doc._type == "role") {
-                    if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                        // we clear all since we might have cached tons of userrole mappings
+                        Logger.DBHelper.clearCache("deleted role " + doc.name);
+                        // await Logger.DBHelper.memoryCache.del("users" + doc._id);
+                        // await Logger.DBHelper.memoryCache.del("rolename_" + doc.name);
+                        // await Logger.DBHelper.memoryCache.del("allroles");
+                    } else if (Config.enable_openflow_amqp) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    } else if (!Config.supports_watch) {
-                        Logger.DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
-                    }
+                    } 
                 }
                 if (collectionname === "mq") {
-                    if (Config.enable_openflow_amqp && !Config.supports_watch) {
+                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                        await Logger.DBHelper.memoryCache.del("mq" + doc._id);
+                        if (doc._type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + doc.name);
+                        if (doc._type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + doc.name);
+                    } else if (Config.enable_openflow_amqp) {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    } else if (!Config.supports_watch) {
-                        Logger.DBHelper.clearCache("deleteone in " + collectionname + " collection for a " + doc._type + " object");
-                    }
+                    } 
                 }
                 if (collectionname === "config" && doc._type === "provider" && !Config.supports_watch) {
                     await Logger.DBHelper.ClearProviders();
@@ -2976,7 +3108,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteMany(query: string | any, ids: string[], collectionname: string, queryas: string, jwt: string, parent: Span): Promise<number> {
+    async DeleteMany(query: string | any, ids: string[], collectionname: string, queryas: string, recursive: boolean, jwt: string, parent: Span): Promise<number> {
         if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
@@ -3069,6 +3201,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 Logger.instanse.verbose("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "] deleted " + deletecounter + " files in database");
                 return deletecounter;
+            } else if (recursive && !NoderedUtil.IsNullUndefinded(ids) && ids.length > 0) {
+                for (let i = 0; i < ids.length; i++) {
+                    await this.DeleteOne(ids[i], collectionname, recursive, jwt, span);
+                }
+                return ids.length;
             } else {
                 let bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp();
                 let bulkRemove = this.db.collection(collectionname).initializeUnorderedBulkOp()
@@ -3329,12 +3466,22 @@ export class DatabaseConnection extends events.EventEmitter {
                 var field = Config.text_index_name_fields[i];
                 if (Array.isArray(item[field])) {
                     for (var y = 0; y < item[field].length; y++) {
-                        if (!NoderedUtil.IsNullEmpty(item[field][y])) {
-                            var name: string = item[field][y].toLowerCase();
-                            name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
-                            _searchnames = _searchnames.concat(name.split(" "));
-                            _searchnames.push(name);
-                            if (name != item[field][y].toLowerCase()) _searchnames.push(item[field][y].toLowerCase());
+                        try {
+                            if (!NoderedUtil.IsNullEmpty(item[field][y])) {
+                                var name: string = item[field][y].toLowerCase();
+                                name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
+                                _searchnames = _searchnames.concat(name.split(" "));
+                                _searchnames.push(name);
+                                if (name != item[field][y].toLowerCase()) _searchnames.push(item[field][y].toLowerCase());
+                            }
+                        } catch (error) {
+                            Logger.instanse.error("DatabaseConnection", "ensureResource", error);
+                            if (item[field] && item[field][y]) {
+                                console.log(field + "/" + y, item[field][y]);
+                            } else {
+                                console.log(field, item[field]);
+                            }
+
                         }
                     }
                 } else {
@@ -4052,10 +4199,12 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return false;
     }
-    static otel_label(collectionname: string, user: TokenUser | User, action: "query" | "aggregate" | "insert" | "insertmany" | "update" | "updatemany" | "replace" | "delete" | "deletemany") {
+    static otel_label(collectionname: string, user: TokenUser | User, action: "query" | "count" | "aggregate" | "insert" | "insertmany" | "update" | "updatemany" | "replace" | "delete" | "deletemany") {
         if (Config.otel_trace_mongodb_per_users) {
             return { collection: collectionname, username: user.username };
         } else if (Config.otel_trace_mongodb_query_per_users && action == "query") {
+            return { collection: collectionname, username: user.username };
+        } else if (Config.otel_trace_mongodb_count_per_users && action == "count") {
             return { collection: collectionname, username: user.username };
         } else if (Config.otel_trace_mongodb_aggregate_per_users && action == "aggregate") {
             return { collection: collectionname, username: user.username };

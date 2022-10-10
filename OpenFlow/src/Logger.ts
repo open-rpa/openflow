@@ -3,6 +3,7 @@ import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
 import { dockerdriver } from "./dockerdriver";
 import { DBHelper } from './DBHelper';
+const fs = require('fs');
 const path = require('path');
 
 const MAX_RETRIES_DEFAULT = 5
@@ -160,6 +161,37 @@ export class Logger {
         if (Config.otel_warn_log) Logger.enabled["WebSocketServerClient"] = level.Warning;
         if (Config.otel_err_log) Logger.enabled["WebSocketServerClient"] = level.Error;
     }
+    static hasDockerEnv(): boolean {
+        try {
+            fs.statSync('/.dockerenv');
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    static hasDockerCGroup() {
+        try {
+            if (fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker')) return true;
+            return fs.readFileSync('/proc/self/cgroup', 'utf8').includes('/kubepods');
+        } catch (_) {
+            return false;
+        }
+    }
+    private static _isDocker: boolean = null;
+    public static isDocker(): boolean {
+        if (Logger._isDocker != null) return Logger._isDocker;
+        Logger._isDocker = Logger.hasDockerEnv() || Logger.hasDockerCGroup();
+        return false;
+    }
+    private static _isKubernetes: boolean = null;
+    public static isKubernetes(): boolean {
+        if (Logger._isKubernetes != null) return Logger._isKubernetes;
+        if (!Logger.isDocker()) { Logger._isKubernetes = false; return false; }
+        if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) { Logger._isKubernetes = false; return false; }
+        Logger._isKubernetes = true;
+        return true;
+    }
+
     static configure(skipotel: boolean, skiplic: boolean): void {
         Logger.DBHelper = new DBHelper();
         Logger.reload() 
@@ -197,7 +229,7 @@ export class Logger {
         }
 
         this.nodereddriver = null;
-        if (!NoderedUtil.isKubernetes() && NoderedUtil.isDocker()) {
+        if (!Logger.isKubernetes() && Logger.isDocker()) {
             if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
                 try {
                     this.nodereddriver = new dockerdriver();

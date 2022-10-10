@@ -10,7 +10,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, EnsureNoderedInstanceMessage, DeleteNoderedInstanceMessage, DeleteNoderedPodMessage, RestartNoderedInstanceMessage, GetNoderedInstanceMessage, GetNoderedInstanceLogMessage, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -78,6 +78,9 @@ export class Message {
                         break;
                     case "query":
                         await this.Query(span);
+                        break;
+                    case "count":
+                        await this.Count(span);
                         break;
                     case "getdocumentversion":
                         await this.GetDocumentVersion(span);
@@ -307,6 +310,14 @@ export class Message {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority));
                         } else {
                             await this.Query(span);
+                            cli.Send(this);
+                        }
+                        break;
+                    case "count":
+                        if (Config.enable_openflow_amqp) {
+                            cli.Send(await QueueClient.SendForProcessing(this, this.priority));
+                        } else {
+                            await this.Count(span);
                             cli.Send(this);
                         }
                         break;
@@ -1118,6 +1129,36 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
+    private async Count(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.Count", parent);
+        this.Reply();
+        let msg: CountMessage
+        try {
+            msg = CountMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                span?.recordException("Access denied, not signed in")
+                msg.error = "Access denied, not signed in";
+            } else {
+                const { query, collectionname, jwt, queryas } = msg;
+                msg.result = await Config.db.count({ query, collectionname, jwt, queryas }, span);
+            }
+            delete msg.query;
+        } catch (error) {
+            await handleError(null, error);
+            span?.recordException(error)
+            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
+        }
+        try {
+            this.data = JSON.stringify(msg);
+        } catch (error) {
+            this.data = "";
+            span?.recordException(error)
+            await handleError(null, error);
+        }
+        Logger.otel.endSpan(span);
+    }
     private async GetDocumentVersion(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.GetDocumentVersion", parent);
         this.Reply();
@@ -1433,7 +1474,7 @@ export class Message {
         try {
             msg = DeleteManyMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, null, msg.jwt, span);
+            msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, null, msg.recursive, msg.jwt, span);
             delete msg.ids;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -5161,7 +5202,7 @@ export class Message {
             msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
 
             if (msg.purge) {
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, jwt, parent);
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
                 }
@@ -5169,7 +5210,7 @@ export class Message {
                 if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, jwt, parent);
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
             }
         } catch (error) {
             await handleError(null, error);
@@ -5208,7 +5249,7 @@ export class Message {
             user = this.tuser;
 
             if (msg.purge) {
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, jwt, parent);
+                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
                     items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
@@ -5216,7 +5257,7 @@ export class Message {
                 if (items.length > 0) {
                     throw new Error("Failed purging workitemqueue " + wiq.name);
                 }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, jwt, parent);
+                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
             } else {
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
@@ -5255,7 +5296,7 @@ export class Message {
             switch (msg.command) {
                 case "dumpwebsocketclients":
                     if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
-                    await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, jwt, parent);
+                    await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, false, jwt, parent);
                     amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", 1);
                     break;
                 case "killwebsocketclient":
