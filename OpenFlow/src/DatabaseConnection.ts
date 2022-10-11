@@ -2108,6 +2108,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (user2._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
                         throw new Error("Username is mandatory for users")
                     }
+                    if (user2._type === "user" && user._id == user2._id && user2.disabled) {
+                        throw new Error("Cannot disable yourself")
+                    }
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                         // User can update, just not created ?
                         // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
