@@ -2287,7 +2287,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         console.debug("UsersCtrl");
         this.basequery = { _type: "user" };
         this.collection = "users";
-        this.searchfields = ["name", "username"];
+        this.searchfields = ["name", "username", "federationids", "federationids.id"];
         this.postloadData = this.processData;
         if (this.userdata.data.UsersCtrl) {
             this.basequery = this.userdata.data.UsersCtrl.basequery;
