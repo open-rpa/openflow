@@ -22,8 +22,6 @@
 
 <div class="col-sm-12 text-right">
   <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
-  <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
-    ng-show="menuctrl.WebSocketClientService.multi_tenant">
     <a href ng-click="ctrl.loadData()" class="btn btn-info" translate lib="web">reload</a>
     <a href ng-click="ctrl.DumpClients()" class="btn btn-info" translate lib="web">Dump</a>
 </div>
