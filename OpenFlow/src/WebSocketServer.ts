@@ -228,6 +228,19 @@ export class WebSocketServer {
                                 cli.Close();
                             }
                         }
+                    } else {
+                        const now = new Date();
+                        const seconds = (now.getTime() - cli.created.getTime()) / 1000;
+                        if (seconds >= Config.client_signin_timeout) {
+                            if (cli.user != null) {
+                                span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.warn("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                            } else {
+                                span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.warn("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                            }
+                            cli.Close();
+                        }
                     }
                 } catch (error) {
                     span?.recordException(error);

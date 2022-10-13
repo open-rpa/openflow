@@ -261,6 +261,7 @@ export class WebSocketServerClient {
             // this._queues
             // this._exchanges
         } catch (error) {
+            Logger.instanse.error("WebSocketServerClient", "Close", error);
             span?.recordException(error);
             throw error;
         } finally {

@@ -277,6 +277,8 @@ export class Config {
         Config.socket_error_rate_limit_duration = parseInt(Config.getEnv("socket_error_rate_limit_duration", "2"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
+        Config.client_signin_timeout = parseInt(Config.getEnv("client_signin_timeout", "120"));
+
 
         Config.expected_max_roles = parseInt(Config.getEnv("expected_max_roles", "4000"));
         Config.decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
@@ -486,6 +488,7 @@ export class Config {
     public static socket_error_rate_limit_duration: number = parseInt(Config.getEnv("socket_error_rate_limit_duration", "1"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
+    public static client_signin_timeout: number = parseInt(Config.getEnv("client_signin_timeout", "120"));
 
     public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "20000"));
     public static decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
