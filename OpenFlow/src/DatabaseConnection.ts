@@ -3484,17 +3484,21 @@ export class DatabaseConnection extends events.EventEmitter {
                             } else {
                                 console.log(field, item[field]);
                             }
-
                         }
                     }
                 } else {
                     if (!NoderedUtil.IsNullEmpty(item[field])) {
-                        var name: string = item[field].toLowerCase();
-                        name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
-                        if (field == "name") _searchname = name.toLowerCase();
-                        _searchnames = _searchnames.concat(name.split(" "));
-                        _searchnames.push(name);
-                        if (name != item[field].toLowerCase()) _searchnames.push(item[field].toLowerCase());
+                        try {
+                            var name: string = item[field].toLowerCase();
+                            name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
+                            if (field == "name") _searchname = name.toLowerCase();
+                            _searchnames = _searchnames.concat(name.split(" "));
+                            _searchnames.push(name);
+                            if (name != item[field].toLowerCase()) _searchnames.push(item[field].toLowerCase());
+                        } catch (error) {
+                            Logger.instanse.error("DatabaseConnection", "ensureResource", error);
+                            console.log(field, item[field]);
+                        }
                     }
                 }
             }
