@@ -218,7 +218,7 @@ export class WebServer {
                         var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
                         msg.collectionname = "webpushsubscriptions"; msg.jwt = jwt;
                         msg.item = subscription;
-                        msg.uniqeness = "userid,_type,host";
+                        msg.uniqeness = "userid,_type,host,endpoint";
 
                         await Config.db._InsertOrUpdateOne(msg, null);
                         Logger.instanse.info("WebServer", "wapid", "Registered webpush subscription for " + tuser.name);
