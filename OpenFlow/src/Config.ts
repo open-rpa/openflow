@@ -325,6 +325,9 @@ export class Config {
         Config.aes_secret = Config.getEnv("aes_secret", "");
         Config.signing_crt = Config.getEnv("signing_crt", "");
         Config.singing_key = Config.getEnv("singing_key", "");
+        Config.wapid_mail = Config.getEnv("wapid_mail", "");
+        Config.wapid_pub = Config.getEnv("wapid_pub", "");
+        Config.wapid_key = Config.getEnv("wapid_key", "");
         Config.shorttoken_expires_in = Config.getEnv("shorttoken_expires_in", "5m");
         Config.longtoken_expires_in = Config.getEnv("longtoken_expires_in", "365d");
         Config.downloadtoken_expires_in = Config.getEnv("downloadtoken_expires_in", "15m");
@@ -537,6 +540,10 @@ export class Config {
     public static aes_secret: string = Config.getEnv("aes_secret", "");
     public static signing_crt: string = Config.getEnv("signing_crt", "");
     public static singing_key: string = Config.getEnv("singing_key", "");
+    public static wapid_mail: string = Config.getEnv("wapid_mail", "");
+    public static wapid_pub: string = Config.getEnv("wapid_pub", "");
+    public static wapid_key: string = Config.getEnv("wapid_key", "");
+
     public static shorttoken_expires_in: string = Config.getEnv("shorttoken_expires_in", "5m");
     public static longtoken_expires_in: string = Config.getEnv("longtoken_expires_in", "365d");
     public static downloadtoken_expires_in: string = Config.getEnv("downloadtoken_expires_in", "15m");

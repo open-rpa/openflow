@@ -1880,3 +1880,94 @@ you can set filename using msg.filename<br>
         },
     });
 </script>
+Command
+
+<script type="text/x-red" data-template-name="api custom">
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Command</label>
+        <input type="hidden" id="node-input-commandtype">
+        <input style="width:70%" type="text" id="node-input-command">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Payload</label>
+        <input type="hidden" id="node-input-payloadtype">
+        <input style="width:70%" type="text" id="node-input-payload">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Id</label>
+        <input type="hidden" id="node-input-commandidtype">
+        <input style="width:70%" type="text" id="node-input-commandid">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Command Name</label>
+        <input type="hidden" id="node-input-commandtype">
+        <input style="width:70%" type="text" id="node-input-command">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api custom">
+    <p>Do openflow custom <br>
+    </p>
+</script>
+<script type="text/javascript">
+    // https://fontawesome.com/v4.7/icon/list
+    RED.nodes.registerType('api custom', {
+        category: 'api',
+        color: "#E9967A",
+        paletteLabel: 'custom',
+        icon: "font-awesome/fa-list",
+        defaults: {
+            name: { value: "" },
+            command: { value: "command", validate: validate("commandtype"), required: true },
+            commandtype: { value: "msg", required: true },
+            payload: { value: "payload", validate: validate("payloadtype"), required: true },
+            payloadtype: { value: "msg", required: true },
+            commandid: { value: "commandid", validate: validate("commandidtype"), required: true },
+            commandidtype: { value: "msg", required: true },
+            command: { value: "command", validate: validate("commandtype"), required: true },
+            commandtype: { value: "msg", required: true },
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "custom";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            if (this.commandtype === null) $("#node-input-commandtype").val('msg');
+            if (this.commandtype === 'val') $("#node-input-commandtype").val('str');
+            $("#node-input-command").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-commandtype"),
+                types: ['msg', 'str']
+            });
+            if (this.payloadtype === null) $("#node-input-payloadtype").val('msg');
+            if (this.payloadtype === 'val') $("#node-input-payloadtype").val('str');
+            $("#node-input-payload").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-payloadtype"),
+                types: ['msg', 'str']
+            });
+            if (this.commandidtype === null) $("#node-input-commandidtype").val('msg');
+            if (this.commandidtype === 'val') $("#node-input-commandidtype").val('str');
+            $("#node-input-commandid").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-commandidtype"),
+                types: ['msg', 'str']
+            });
+            if (this.commandtype === null) $("#node-input-commandtype").val('msg');
+            if (this.commandtype === 'val') $("#node-input-commandtype").val('str');
+            $("#node-input-command").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-commandtype"),
+                types: ['msg', 'str']
+            });
+        }
+
+    });
+</script>

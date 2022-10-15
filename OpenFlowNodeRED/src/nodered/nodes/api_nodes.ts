@@ -1512,3 +1512,46 @@ export class housekeeping {
     onclose() {
     }
 }
+
+
+
+export interface Icustom {
+    name: string;
+    payload: string;
+}
+export class custom {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Icustom) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+
+            const command: any = await Util.EvaluateNodeProperty<string>(this, msg, "command");
+            const commandname: any = await Util.EvaluateNodeProperty<string>(this, msg, "commandname");
+            const commandid: any = await Util.EvaluateNodeProperty<string>(this, msg, "commandid");
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Send " + command });
+            var result = await NoderedUtil.CustomCommand({ command, data: msg.payload, id: commandid, name: commandname });
+
+            if (this.config.payload == null) {
+                Util.SetMessageProperty(msg, this.config.payload, result);
+            }
+
+            msg.payload = result;
+            this.node.send(msg);
+            this.node.status({ fill: "green", shape: "dot", text: "Complete" });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    onclose() {
+    }
+}

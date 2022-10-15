@@ -86,6 +86,7 @@
     "request": "^2.88.2",
     "saml20": "^0.1.14",
     "samlp": "^6.0.2",
+    "web-push": "^3.5.0",
     "ws": "^8.8.1"
   },
   "devDependencies": {

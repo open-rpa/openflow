@@ -11,12 +11,13 @@ import * as morgan from "morgan";
 import { SamlProvider } from "./SamlProvider";
 import { LoginProvider } from "./LoginProvider";
 import { Config } from "./Config";
-import { NoderedUtil } from "@openiap/openflow-api";
+import { InsertOrUpdateOneMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import * as url from "url";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebSocketServerClient } from "./WebSocketServerClient";
+import { Crypt } from "./Crypt";
 var _hostname = "";
 
 
@@ -49,6 +50,7 @@ export class WebServer {
     public static app: express.Express;
     public static BaseRateLimiter: any;
     public static server: http.Server = null;
+    public static webpush = require('web-push');
     public static async isBlocked(req: express.Request): Promise<boolean> {
         try {
             var remoteip = LoginProvider.remoteip(req);
@@ -101,7 +103,7 @@ export class WebServer {
             this.app.use(async (req, res, next) => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = WebSocketServerClient.remoteip(req);
-                    Logger.instanse.error("WebServer", "setCORSHeaders", remoteip + " is blocked");
+                    Logger.instanse.error("WebServer", "configure", remoteip + " is blocked");
                     try {
                         res.status(429).json({ "message": "ip blocked" });
                     } catch (error) {
@@ -144,7 +146,7 @@ export class WebServer {
 
             // Add headers
             this.app.use(function (req, res, next) {
-                Logger.instanse.verbose('WebServer', 'setCORSHeaders', "add for " + req.originalUrl);
+                Logger.instanse.verbose('WebServer', 'configure', "add for " + req.originalUrl);
                 // const origin: string = (req.headers.origin as any);
                 // if (NoderedUtil.IsNullEmpty(origin)) {
                 //     res.header('Access-Control-Allow-Origin', '*');
@@ -184,6 +186,42 @@ export class WebServer {
                 // Pass to next layer of middleware
                 next();
             });
+
+            // https://www.section.io/engineering-education/push-notification-in-nodejs-using-service-worker/
+            // https://github.com/mercymeave/code-space/tree/main/push-notifications/client
+
+            // https://swina.github.io/2019/02/vue-service-worker-for-webpush-notifications/
+
+            //setting vapid keys details
+            if (!NoderedUtil.IsNullEmpty(Config.wapid_pub) && !NoderedUtil.IsNullEmpty(Config.wapid_key)) {
+                var mail = Config.wapid_mail;
+                if (NoderedUtil.IsNullEmpty(mail)) mail = "me@email.com"
+                this.webpush.setVapidDetails('mailto:' + mail, Config.wapid_pub, Config.wapid_key);
+                this.app.post('/subscribe', async (req, res) => {
+                    //get push subscription object from the request
+                    const subscription = req.body;
+
+                    if (NoderedUtil.IsNullUndefinded(subscription) && NoderedUtil.IsNullEmpty(subscription.jwt)) return res.status(500).json({ "error": "no subscription" });
+                    const jwt = subscription.jwt;
+                    const tuser: TokenUser = await Crypt.verityToken(jwt);
+                    if (NoderedUtil.IsNullUndefinded(tuser)) return res.status(500).json({ "error": "no subscription" });
+                    delete subscription.jwt;
+                    if (NoderedUtil.IsNullEmpty(subscription._type)) subscription._type = "unknown";
+                    subscription.userid = tuser._id;
+                    subscription.name = tuser.name;
+                    var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
+                    msg.collectionname = "webpushsubscriptions"; msg.jwt = jwt;
+                    msg.item = subscription;
+                    msg.uniqeness = "endpoint,userid,_type";
+
+                    await Config.db._InsertOrUpdateOne(msg, null);
+                    delete subscription.userid;
+                    delete subscription.name;
+                    delete subscription._type;
+                    res.status(201).json({})
+                })
+            }
+
             span?.addEvent("Configure LoginProvider");
             await LoginProvider.configure(this.app, baseurl);
             try {

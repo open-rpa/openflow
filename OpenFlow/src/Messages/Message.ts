@@ -20,6 +20,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "../Logger";
 import { QueueClient } from "../QueueClient";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, CustomCommandMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
+import { WebServer } from "../WebServer";
 const pako = require('pako');
 const got = require("got");
 
@@ -1557,9 +1558,6 @@ export class Message {
                 Logger.instanse.warn("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
             } else if (tuser != null) {
                 Logger.instanse.debug("Message", "DoSign", tuser.username + " successfully signed in");
-                // let's turn down the audit logging
-                // await Audit.LoginSuccess(tuser, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                Logger.DBHelper.UpdateHeartbeat(cli);
             }
         } catch (error) {
             Logger.instanse.error("Message", "DoSign", error);
@@ -1737,6 +1735,15 @@ export class Message {
                         // await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                     } else {
                         await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                        if (cli.clientagent != user._lastclientagent || cli.clientversion != user._lastclientversion) {
+                            if (msg.validate_only !== true) {
+                                cli.user = user;
+                                const UpdateDoc: any = await Logger.DBHelper.UpdateHeartbeat(cli);
+                                if (UpdateDoc != null) {
+                                    var res2 = await Config.db._UpdateOne({ _id: tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), null);
+                                }
+                            }
+                        }
                     }
                     const userid: string = user._id;
                     span?.setAttribute("name", tuser.name);
@@ -5302,6 +5309,18 @@ export class Message {
                 case "killwebsocketclient":
                     if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
                     amqpwrapper.Instance().send("openflow", "", { "command": "killwebsocketclient", "id": msg.id }, 10000, null, "", 1);
+                    break;
+                case "webpushmessage":
+                    // @ts-ignore
+                    var data = msg.data;
+                    var wpuser = await Config.db.GetOne<User>({ query: { _id: msg.id }, collectionname: "users", jwt }, parent);
+                    if (wpuser == null) break;
+                    var subscription = await Config.db.GetOne<User>({ query: { userid: msg.id }, collectionname: "webpushsubscriptions", jwt: rootjwt }, parent);
+                    if (subscription == null) break;
+                    const payload = JSON.stringify(data);
+                    WebServer.webpush.sendNotification(subscription, payload)
+                        .then(() => Logger.instanse.info("Message", "webpushmessage", "send wep push message to " + wpuser.name + " with payload " + payload))
+                        .catch(err => Logger.instanse.error("Message", "webpushmessage", err));
                     break;
                 default:
                     msg.error = "Unknown custom command";
