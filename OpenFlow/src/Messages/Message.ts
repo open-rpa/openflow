@@ -5313,14 +5313,23 @@ export class Message {
                 case "webpushmessage":
                     // @ts-ignore
                     var data = msg.data;
+                    var host = data.host;
+                    var _type = data._type;
                     var wpuser = await Config.db.GetOne<User>({ query: { _id: msg.id }, collectionname: "users", jwt }, parent);
                     if (wpuser == null) break;
-                    var subscription = await Config.db.GetOne<User>({ query: { userid: msg.id }, collectionname: "webpushsubscriptions", jwt: rootjwt }, parent);
-                    if (subscription == null) break;
+                    var query: any = { userid: msg.id }
+                    if (!NoderedUtil.IsNullEmpty(host)) query.host = host;
+                    if (!NoderedUtil.IsNullEmpty(_type)) query._type = _type;
+                    // var subscription = await Config.db.GetOne<User>({ query, collectionname: "webpushsubscriptions", jwt: rootjwt }, parent);
+                    var subscriptions = await Config.db.query<User>({ query, collectionname: "webpushsubscriptions", jwt: rootjwt }, parent);
+                    if (subscriptions == null || subscriptions.length == 0) break;
                     const payload = JSON.stringify(data);
-                    WebServer.webpush.sendNotification(subscription, payload)
-                        .then(() => Logger.instanse.info("Message", "webpushmessage", "send wep push message to " + wpuser.name + " with payload " + payload))
-                        .catch(err => Logger.instanse.error("Message", "webpushmessage", err));
+                    for (var i = 0; i < subscriptions.length; i++) {
+                        var subscription = subscriptions[i];
+                        WebServer.webpush.sendNotification(subscription, payload)
+                            .then(() => Logger.instanse.info("Message", "webpushmessage", "send wep push message to " + wpuser.name + " with payload " + payload))
+                            .catch(err => Logger.instanse.error("Message", "webpushmessage", err));
+                    }
                     break;
                 default:
                     msg.error = "Unknown custom command";

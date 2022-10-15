@@ -197,28 +197,39 @@ export class WebServer {
                 var mail = Config.wapid_mail;
                 if (NoderedUtil.IsNullEmpty(mail)) mail = "me@email.com"
                 this.webpush.setVapidDetails('mailto:' + mail, Config.wapid_pub, Config.wapid_key);
-                this.app.post('/subscribe', async (req, res) => {
-                    //get push subscription object from the request
-                    const subscription = req.body;
+                this.app.post('/webpushsubscribe', async (req, res) => {
+                    try {
+                        const subscription = req.body;
 
-                    if (NoderedUtil.IsNullUndefinded(subscription) && NoderedUtil.IsNullEmpty(subscription.jwt)) return res.status(500).json({ "error": "no subscription" });
-                    const jwt = subscription.jwt;
-                    const tuser: TokenUser = await Crypt.verityToken(jwt);
-                    if (NoderedUtil.IsNullUndefinded(tuser)) return res.status(500).json({ "error": "no subscription" });
-                    delete subscription.jwt;
-                    if (NoderedUtil.IsNullEmpty(subscription._type)) subscription._type = "unknown";
-                    subscription.userid = tuser._id;
-                    subscription.name = tuser.name;
-                    var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
-                    msg.collectionname = "webpushsubscriptions"; msg.jwt = jwt;
-                    msg.item = subscription;
-                    msg.uniqeness = "endpoint,userid,_type";
+                        if (NoderedUtil.IsNullUndefinded(subscription) && NoderedUtil.IsNullEmpty(subscription.jwt)) {
+                            Logger.instanse.error("WebServer", "wapid", "Received invalid subscription request");
+                            return res.status(500).json({ "error": "no subscription" });
+                        }
+                        const jwt = subscription.jwt;
+                        const tuser: TokenUser = await Crypt.verityToken(jwt);
+                        if (NoderedUtil.IsNullUndefinded(tuser)) {
+                            Logger.instanse.error("WebServer", "wapid", "jwt is invalid");
+                            return res.status(500).json({ "error": "no subscription" });
+                        }
+                        delete subscription.jwt;
+                        if (NoderedUtil.IsNullEmpty(subscription._type)) subscription._type = "unknown";
+                        subscription.userid = tuser._id;
+                        subscription.name = tuser.name + " " + subscription._type + " " + subscription.host;
+                        var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
+                        msg.collectionname = "webpushsubscriptions"; msg.jwt = jwt;
+                        msg.item = subscription;
+                        msg.uniqeness = "userid,_type,host";
 
-                    await Config.db._InsertOrUpdateOne(msg, null);
-                    delete subscription.userid;
-                    delete subscription.name;
-                    delete subscription._type;
-                    res.status(201).json({})
+                        await Config.db._InsertOrUpdateOne(msg, null);
+                        Logger.instanse.info("WebServer", "wapid", "Registered webpush subscription for " + tuser.name);
+                        res.status(201).json({})
+                    } catch (error) {
+                        Logger.instanse.error("WebServer", "wapid", error);
+                        try {
+                            return res.status(500).json({ "error": error.message ? error.message : error });
+                        } catch (error) {
+                        }
+                    }
                 })
             }
 
