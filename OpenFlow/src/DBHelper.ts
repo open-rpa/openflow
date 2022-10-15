@@ -648,8 +648,9 @@ export class DBHelper {
         }
     }
     public async UpdateHeartbeat(cli: WebSocketServerClient): Promise<any> {
+        if (NoderedUtil.IsNullUndefinded(cli) || NoderedUtil.IsNullUndefinded(cli.user)) return null;
         const dt = new Date(new Date().toISOString());
-        const updatedoc = { _heartbeat: dt, lastseen: dt, clientagent: cli.clientagent, clientversion: cli.clientagent, remoteip: cli.remoteip };
+        const updatedoc = { _heartbeat: dt, lastseen: dt, clientagent: cli.clientagent, clientversion: cli.clientversion, remoteip: cli.remoteip };
         cli.user._heartbeat = dt; cli.user.lastseen = dt;
         if (cli.clientagent == "openrpa") {
             cli.user._rpaheartbeat = dt;
