@@ -372,10 +372,14 @@ export class DatabaseConnection extends events.EventEmitter {
                             await Logger.DBHelper.memoryCache.del("mq" + item._id);
                             if (_type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + item.name.toLowerCase());
                             if (_type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + item.name.toLowerCase());
-                            if (_type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id);
+                            if (Config.cache_store_type != "redis" && Config.cache_store_type == "mongodb") {
+                                if (_type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id);
+                            }
                         }
                         if (collectionname == "workitems" && _type == "workitem") {
-                            await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid);
+                            if (Config.cache_store_type != "redis" && Config.cache_store_type == "mongodb") {
+                                await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid);
+                            }
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                             Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
