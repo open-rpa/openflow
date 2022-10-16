@@ -395,7 +395,8 @@ export class Account {
         return this.user;
     }
     static async findAccount(ctx: KoaContextWithOIDC, id, test): Promise<any> {
-        let acc = await Logger.DBHelper.memoryCache.get("oidc" + id);
+        var key = ("oidc_" + id).toString();
+        let acc = await Logger.DBHelper.memoryCache.get(key);
         if (acc == null) {
             acc = await Logger.DBHelper.FindById(id, undefined, undefined);
         }
@@ -414,8 +415,8 @@ export class Account {
                 }
             }
             (tuser as any).role = role;
-            Logger.DBHelper.memoryCache.set("oidc" + tuser._id, tuser);
-            // DBHelper.DeleteKey("user" + tuser._id);
+            var key = ("oidc_" + tuser._id).toString();
+            Logger.DBHelper.memoryCache.set(key, tuser);
             var res = new Account(tuser._id, tuser);
             return res;
         } catch (error) {

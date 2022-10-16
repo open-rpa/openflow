@@ -830,8 +830,8 @@ export class LoginProvider {
                         return res.end(JSON.stringify({ id }));
                     }
                     const code = NoderedUtil.GetUniqueIdentifier();
-
-                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                    var key = ("forgotpass_" + id).toString();
+                    let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
                         Logger.instanse.info("LoginProvider", "/forgotpassword", `Add forgotpass if ${id} with code ${code} for ${email}`);
                         return { id, email, code };
                     });
@@ -848,7 +848,8 @@ export class LoginProvider {
                     const code: string = req.body.code.trim();
                     const id: string = req.body.id;
 
-                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                    var key = ("forgotpass_" + id).toString();
+                    let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
                         return null;
                     });
                     if (item == null || item.id != id || item.code != code) {
@@ -866,7 +867,8 @@ export class LoginProvider {
                     const id: string = req.body.id;
                     const password: string = req.body.password;
 
-                    let item = await Logger.DBHelper.memoryCache.wrap("forgotpass" + id, () => {
+                    var key = ("forgotpass_" + id).toString();
+                    let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
                         Logger.instanse.debug("DBHelper", "FindById", "Add forgotpass : " + id);
                         return null;
                     });

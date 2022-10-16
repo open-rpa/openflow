@@ -1887,10 +1887,10 @@ export class Message {
                         await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), span)
                     }
                     span?.addEvent("memoryCache.delete users" + user._id);
-                    Logger.DBHelper.memoryCache.del("users" + user._id);
+                    Logger.DBHelper.UserRoleUpdate(user, false);
                     if (NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        Logger.DBHelper.UserRoleUpdate(tuser as any, false);
                         span?.addEvent("memoryCache.delete users" + tuser.impostor);
-                        Logger.DBHelper.memoryCache.del("users" + tuser.impostor);
                     }
                 }
             } catch (error) {

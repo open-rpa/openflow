@@ -355,34 +355,29 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (collectionname == "config" && NoderedUtil.IsNullUndefinded(item)) {
                         item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
                     }
-                    // if (next.operationType == 'delete' && collectionname == "users") {
-                    //     item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
-                    //     if (!NoderedUtil.IsNullUndefinded(item)) {
-                    //         if (!NoderedUtil.IsNullEmpty(item.username)) await Logger.DBHelper.memoryCache.del("username_" + item.username);
-                    //         await Logger.DBHelper.memoryCache.del("users" + _id);
-                    //         await Logger.DBHelper.memoryCache.del("userroles_" + _id);
-                    //         if (item._type == "role") await Logger.DBHelper.memoryCache.del("rolename_" + item.username);
-                    //     }
-                    // }
+                    // 
+                    if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
+                        if (next.operationType == 'delete' && collectionname == "users") {
+                            item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
+                            if (!NoderedUtil.IsNullUndefinded(item)) {
+                                await Logger.DBHelper.UserRoleUpdate(item, true);
+                            }
+                        }
+                    }
                     if (!NoderedUtil.IsNullUndefinded(item)) {
                         _type = item._type;
 
-                        if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
-                            // DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
-                            await Logger.DBHelper.memoryCache.del("mq" + item._id);
-                            if (_type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + item.name.toLowerCase());
-                            if (_type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + item.name.toLowerCase());
-                            if (Config.cache_store_type != "redis" && Config.cache_store_type == "mongodb") {
-                                if (_type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id);
-                            }
+                        if (collectionname == "mq") {
+                            if (_type == "queue") await Logger.DBHelper.QueueUpdate(item._id, item.name, true);
+                            if (_type == "exchange") await Logger.DBHelper.ExchangeUpdate(item._id, item.name, true);
+                            if (_type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id, true);
                         }
                         if (collectionname == "workitems" && _type == "workitem") {
-                            if (Config.cache_store_type != "redis" && Config.cache_store_type == "mongodb") {
-                                await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid);
-                            }
+                            await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid, true);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
-                            Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            // Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
+                            await Logger.DBHelper.UserRoleUpdate(item, true);
 
                             if (_type == "user" && item.disabled == true) {
                                 for (let i = 0; i < WebSocketServer._clients.length; i++) {
@@ -400,23 +395,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                         WebSocketServer._clients[i].Close();
                                     }
                                 }
-                            }
-                            // await DBHelper.memoryCache.del("users" + item._id);
-                            // if (_type == "role") {
-                            //     var role: Role = item as Role;
-                            //     await DBHelper.memoryCache.del("rolename_" + item.name);
-                            //     // this.WellknownIdsArray.indexOf(item._id) == -1
-                            //     if (!NoderedUtil.IsNullUndefinded(role.members) && role.members.length > 0 && item._id != WellknownIds.users) {
-                            //         for (let i = 0; i < role.members.length; i++) {
-                            //             let member = role.members[i];
-                            //             await DBHelper.memoryCache.del("users" + member._id);
-                            //             await DBHelper.memoryCache.del("username_" + member.name);
-                            //             await DBHelper.memoryCache.del("rolename_" + member.name);
-                            //         }
-                            //     }
-                            // } else {
-                            //     await DBHelper.memoryCache.del("username_" + item.name);
-                            // }
+                            }                            
                         }
                         if (collectionname == "config" && (_type == "restriction" || _type == "resource")) {
                             Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
@@ -1496,10 +1475,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
                 delete (item as any).newpassword;
             }
-            if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
+            if (collectionname == "mq") {
                 if (item._type == "exchange") item.name = item.name.toLowerCase();
                 if (item._type == "queue") item.name = item.name.toLowerCase();
-                if (item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id);
             }
             // @ts-ignore
             if (collectionname == "workitems" && item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid);
@@ -1650,7 +1628,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
-                Logger.DBHelper.clearCache("check for dublicates");
+                Logger.DBHelper.UserRoleUpdate(item, false);
                 const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
                 if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
             }
@@ -1658,7 +1636,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const r: Role = (item as any);
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
-                Logger.DBHelper.clearCache("check for dublicates");
+                Logger.DBHelper.UserRoleUpdate(item, false);
                 const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
@@ -1777,18 +1755,25 @@ export class DatabaseConnection extends events.EventEmitter {
                 await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, DatabaseConnection.otel_label(collectionname, user, "replace"));
-                // DBHelper.cached_roles = [];
-                if (item._type === "role") {
-                    const r: Role = (item as any);
-                    if (r.members.length > 0) {
-                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                            // we clear all since we might have cached tons of userrole mappings
-                            Logger.DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
-                        } else if (Config.enable_openflow_amqp) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } 
-                    }
-                }
+                // if (item._type === "role") {
+                //     const r: Role = (item as any);
+                //     if (r.members.length > 0) {
+                //         if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                //             // we clear all since we might have cached tons of userrole mappings
+                //             Logger.DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
+                //         } else if (Config.enable_openflow_amqp) {
+                //             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                //         } 
+                //     }
+                // }
+            }
+            if (collectionname === "users") {
+                await Logger.DBHelper.UserRoleUpdate(item, false);
+            }
+            if (collectionname === "mq") {
+                if (item._type == "queue") await Logger.DBHelper.QueueUpdate(item._id, item.name, false);
+                if (item._type == "exchange") await Logger.DBHelper.ExchangeUpdate(item._id, item.name, false);
+                if (item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id, false);
             }
             if (collectionname === "config" && item._type === "oauthclient") {
                 if (user.HasRoleName("admins")) {
@@ -1894,18 +1879,18 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (item._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
                         throw new Error("Username is mandatory for users")
                     }
-
-                    if (item._type === "role") {
-                        const r: Role = item as any;
-                        if (r.members.length > 0) {
-                            if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                                // we clear all since we might have cached tons of userrole mappings
-                                Logger.DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
-                            } else if (Config.enable_openflow_amqp) {
-                                amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                            } 
-                        }
-                    }
+                    await Logger.DBHelper.UserRoleUpdate(item, false);
+                    // if (item._type === "role") {
+                    //     const r: Role = item as any;
+                    //     if (r.members.length > 0) {
+                    //         if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                    //             // we clear all since we might have cached tons of userrole mappings
+                    //             Logger.DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
+                    //         } else if (Config.enable_openflow_amqp) {
+                    //             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    //         } 
+                    //     }
+                    // }
                 }
                 item._version = 0;
                 if (item._id != null) {
@@ -2019,7 +2004,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 span?.addEvent("traversejsondecode");
                 DatabaseConnection.traversejsondecode(item);
             }
-            if (hadWorkitemQueue) await Logger.DBHelper.WorkitemQueueUpdate(null);
+            if (hadWorkitemQueue) await Logger.DBHelper.WorkitemQueueUpdate(null, false);
             result = items;
             Logger.instanse.verbose("DatabaseConnection", "InsertMany", "[" + user.username + "][" + collectionname + "] inserted " + counter + " items in database");
         } catch (error) {
@@ -2100,6 +2085,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (!DatabaseConnection.hasAuthorization(user, original, Rights.update)) {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
+                }
+
+                if(q.collectionname == "users") {
+                    await Logger.DBHelper.UserRoleUpdate(original, false);
                 }
 
                 if (q.collectionname === "users" && !NoderedUtil.IsNullEmpty(q.item._type) && !NoderedUtil.IsNullEmpty(q.item.name)) {
@@ -2370,26 +2359,21 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item = await this.Cleanmembers(q.item as any, original);
                         // DBHelper.cached_roles = [];
                     }
-                    if (q.item._type === "role" && q.collectionname === "users") {
-                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                            Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
-                        } else if (Config.enable_openflow_amqp) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } 
-                    }
+                    // if (q.item._type === "role" && q.collectionname === "users") {
+                    //     if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                    //         Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
+                    //     } else if (Config.enable_openflow_amqp) {
+                    //         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    //     } 
+                    // }
                     if (q.collectionname === "mq") {
-                        if (q.item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(q.item._id);
+                        if (q.item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(q.item._id, false);
                         if (!NoderedUtil.IsNullEmpty(q.item.name)) {
                             if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
                             if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
                         }
-                        if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                            await Logger.DBHelper.memoryCache.del("mq" + q.item._id);
-                            if (q.item._type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + q.item.name);
-                            if (q.item._type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + q.item.name);
-                        } else if (Config.enable_openflow_amqp) {
-                            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                        } 
+                        if (q.item._type == "queue") await Logger.DBHelper.QueueUpdate(q.item._id, q.item.name, false);
+                        if (q.item._type == "exchange") await Logger.DBHelper.ExchangeUpdate(q.item._id, q.item.name, false);
                     }
                     // @ts-ignore
                     if (q.collectionname == "workitems" && q.item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(q.item.wiqid);
@@ -2462,6 +2446,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (q.collectionname === "config" && q.item._type === "restriction") {
                     this.EntityRestrictions = null;
+                }
+                if(q.collectionname == "users") {
+                    await Logger.DBHelper.UserRoleUpdate(original, false);
                 }
                 if (q.collectionname === "config" && q.item._type === "provider" && !Config.supports_watch) {
                     await Logger.DBHelper.ClearProviders();
@@ -3044,20 +3031,20 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "users", false, jwt, span);
                     }
-                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                        // @ts-ignore
-                        if (!NoderedUtil.IsNullEmpty(doc.username)) {
-                            // @ts-ignore
-                            await Logger.DBHelper.memoryCache.del("username_" + doc.username);
-                            // @ts-ignore
-                            await Logger.DBHelper.memoryCache.del("federation_" + doc.username);
-                        }
-                        await Logger.DBHelper.memoryCache.del("users" + doc._id);
-                        await Logger.DBHelper.memoryCache.del("userroles_" + doc._id);
+                    // if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                    //     // @ts-ignore
+                    //     if (!NoderedUtil.IsNullEmpty(doc.username)) {
+                    //         // @ts-ignore
+                    //         await Logger.DBHelper.memoryCache.del("username_" + doc.username);
+                    //         // @ts-ignore
+                    //         await Logger.DBHelper.memoryCache.del("federation_" + doc.username);
+                    //     }
+                    //     await Logger.DBHelper.memoryCache.del("users" + doc._id);
+                    //     await Logger.DBHelper.memoryCache.del("userroles_" + doc._id);
 
-                    } else if (Config.enable_openflow_amqp) {
-                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    } 
+                    // } else if (Config.enable_openflow_amqp) {
+                    //     amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                    // } 
 
                     if (Config.cleanup_on_delete_user || recursive) {
                         let skip_collections = [];
@@ -3095,26 +3082,24 @@ export class DatabaseConnection extends events.EventEmitter {
                         this.DeleteOne(r._id, "config", false, jwt, span);
                     }
                 }
-                if (collectionname == "users" && doc._type == "role") {
-                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                        // we clear all since we might have cached tons of userrole mappings
-                        Logger.DBHelper.clearCache("deleted role " + doc.name);
-                        // await Logger.DBHelper.memoryCache.del("users" + doc._id);
-                        // await Logger.DBHelper.memoryCache.del("rolename_" + doc.name);
-                        // await Logger.DBHelper.memoryCache.del("allroles");
-                    } else if (Config.enable_openflow_amqp) {
-                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    } 
+                if(collectionname == "users") {
+                    await Logger.DBHelper.UserRoleUpdate(doc, false);
                 }
+                // if (collectionname == "users" && doc._type == "role") {
+                //     if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
+                //         // we clear all since we might have cached tons of userrole mappings
+                //         Logger.DBHelper.clearCache("deleted role " + doc.name);
+                //         // await Logger.DBHelper.memoryCache.del("users" + doc._id);
+                //         // await Logger.DBHelper.memoryCache.del("rolename_" + doc.name);
+                //         // await Logger.DBHelper.memoryCache.del("allroles");
+                //     } else if (Config.enable_openflow_amqp) {
+                //         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
+                //     } 
+                // }
                 if (collectionname === "mq") {
-                    if (doc._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(doc._id);
-                    if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                        await Logger.DBHelper.memoryCache.del("mq" + doc._id);
-                        if (doc._type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + doc.name);
-                        if (doc._type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + doc.name);
-                    } else if (Config.enable_openflow_amqp) {
-                        amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    } 
+                    if (doc._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(doc._id, false);
+                    if (doc._type == "queue") await Logger.DBHelper.QueueUpdate(doc._id, doc.name, false);
+                    if (doc._type == "exchange") await Logger.DBHelper.ExchangeUpdate(doc._id, doc.name, false);
                 }
                 // @ts-ignore
                 if (collectionname == "workitems" && doc._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(doc.wiqid);
