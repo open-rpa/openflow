@@ -32,6 +32,7 @@ export class dbConfig extends Base {
     public log_grafana: boolean;
     public log_housekeeping: boolean;
     public log_otel: boolean;
+    public log_blocked_ips: boolean;
     public otel_debug_log: boolean;
     public otel_warn_log: boolean;
     public otel_err_log: boolean;
@@ -87,7 +88,7 @@ export class dbConfig extends Base {
         if (conf.compare(Config.version) == -1) {
             conf.needsupdate = true;
         }
-        Config.log_with_trace = Config.parseBoolean(conf.log_with_trace ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
+        Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
 
         if (!NoderedUtil.IsNullEmpty(conf.auto_create_users)) Config.auto_create_users = Config.parseBoolean(conf.auto_create_users);
         if (!NoderedUtil.IsNullEmpty(conf.allow_personal_nodered)) Config.allow_personal_nodered = Config.parseBoolean(conf.allow_personal_nodered);
@@ -95,56 +96,57 @@ export class dbConfig extends Base {
 
         Logger.instanse.info("Config", "Load", "db version: " + conf.version);
 
-        Config.log_with_trace = Config.parseBoolean(conf.log_with_trace ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
-        Config.log_with_colors = Config.parseBoolean(conf.log_with_colors ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
-        Config.log_cache = Config.parseBoolean(conf.log_cache ? conf.log_cache : Config.getEnv("log_cache", "false"));
-        Config.log_amqp = Config.parseBoolean(conf.log_amqp ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
-        Config.log_login_provider = Config.parseBoolean(conf.log_login_provider ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
-        Config.log_websocket = Config.parseBoolean(conf.log_websocket ? conf.log_websocket : Config.getEnv("log_websocket", "false"));
-        Config.log_oauth = Config.parseBoolean(conf.log_oauth ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
-        Config.log_webserver = Config.parseBoolean(conf.log_webserver ? conf.log_webserver : Config.getEnv("log_webserver", "false"));
-        Config.log_database = Config.parseBoolean(conf.log_database ? conf.log_database : Config.getEnv("log_database", "false"));
-        Config.log_grafana = Config.parseBoolean(conf.log_grafana ? conf.log_grafana : Config.getEnv("log_grafana", "false"));
-        Config.log_housekeeping = Config.parseBoolean(conf.log_housekeeping ? conf.log_housekeeping : Config.getEnv("log_housekeeping", "false"));
-        Config.log_otel = Config.parseBoolean(conf.log_otel ? conf.log_otel : Config.getEnv("log_otel", "false"));
-        Config.otel_debug_log = Config.parseBoolean(conf.otel_debug_log ? conf.otel_debug_log : Config.getEnv("otel_debug_log", "false"));
-        Config.otel_warn_log = Config.parseBoolean(conf.otel_warn_log ? conf.otel_warn_log : Config.getEnv("otel_warn_log", "false"));
-        Config.otel_err_log = Config.parseBoolean(conf.otel_err_log ? conf.otel_err_log : Config.getEnv("otel_err_log", "false"));
-        Config.log_information = Config.parseBoolean(conf.log_information ? conf.log_information : Config.getEnv("log_information", "true"));
-        Config.log_debug = Config.parseBoolean(conf.log_debug ? conf.log_debug : Config.getEnv("log_debug", "false"));
-        Config.log_verbose = Config.parseBoolean(conf.log_verbose ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
-        Config.log_silly = Config.parseBoolean(conf.log_silly ? conf.log_silly : Config.getEnv("log_silly", "false"));
+        Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
+        Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
+        Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
+        Config.log_amqp = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_amqp) ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
+        Config.log_login_provider = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_login_provider) ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
+        Config.log_websocket = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_websocket) ? conf.log_websocket : Config.getEnv("log_websocket", "false"));
+        Config.log_oauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_oauth) ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
+        Config.log_webserver = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_webserver) ? conf.log_webserver : Config.getEnv("log_webserver", "false"));
+        Config.log_database = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_database) ? conf.log_database : Config.getEnv("log_database", "false"));
+        Config.log_grafana = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_grafana) ? conf.log_grafana : Config.getEnv("log_grafana", "false"));
+        Config.log_housekeeping = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_housekeeping) ? conf.log_housekeeping : Config.getEnv("log_housekeeping", "false"));
+        Config.log_otel = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_otel) ? conf.log_otel : Config.getEnv("log_otel", "false"));
+        Config.log_blocked_ips = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_blocked_ips) ? conf.log_blocked_ips : Config.getEnv("log_blocked_ips", "true"));
+        Config.otel_debug_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_debug_log) ? conf.otel_debug_log : Config.getEnv("otel_debug_log", "false"));
+        Config.otel_warn_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_warn_log) ? conf.otel_warn_log : Config.getEnv("otel_warn_log", "false"));
+        Config.otel_err_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_err_log) ? conf.otel_err_log : Config.getEnv("otel_err_log", "false"));
+        Config.log_information = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_information) ? conf.log_information : Config.getEnv("log_information", "true"));
+        Config.log_debug = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_debug) ? conf.log_debug : Config.getEnv("log_debug", "false"));
+        Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
+        Config.log_silly = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_silly) ? conf.log_silly : Config.getEnv("log_silly", "false"));
 
-        Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(conf.amqp_allow_replyto_empty_queuename ? conf.amqp_allow_replyto_empty_queuename : Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
-        Config.enable_web_tours = Config.parseBoolean(conf.enable_web_tours ? conf.enable_web_tours : Config.getEnv("enable_web_tours", "true"));
-        Config.enable_nodered_tours = Config.parseBoolean(conf.enable_nodered_tours ? conf.enable_nodered_tours : Config.getEnv("enable_nodered_tours", "true"));
-        Config.housekeeping_skip_collections = conf.housekeeping_skip_collections ? conf.housekeeping_skip_collections : Config.getEnv("housekeeping_skip_collections", "");
+        Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.amqp_allow_replyto_empty_queuename) ? conf.amqp_allow_replyto_empty_queuename : Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
+        Config.enable_web_tours = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_web_tours) ? conf.enable_web_tours : Config.getEnv("enable_web_tours", "true"));
+        Config.enable_nodered_tours = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_nodered_tours) ? conf.enable_nodered_tours : Config.getEnv("enable_nodered_tours", "true"));
+        Config.housekeeping_skip_collections = !NoderedUtil.IsNullEmpty(conf.housekeeping_skip_collections) ? conf.housekeeping_skip_collections : Config.getEnv("housekeeping_skip_collections", "");
 
 
-        Config.ensure_indexes = Config.parseBoolean(conf.ensure_indexes ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
+        Config.ensure_indexes = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ensure_indexes) ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
         // @ts-ignore
-        Config.text_index_name_fields = Config.parseArray(conf.text_index_name_fields ? conf.text_index_name_fields : Config.getEnv("text_index_name_fields", "name,_names"))
-        Config.auto_create_users = Config.parseBoolean(conf.auto_create_users ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
+        Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields : Config.getEnv("text_index_name_fields", "name,_names"))
+        Config.auto_create_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_users) ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
 
-        Config.auto_create_user_from_jwt = Config.parseBoolean(conf.auto_create_user_from_jwt ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
-        Config.auto_create_user_from_jwt = Config.parseBoolean(conf.auto_create_user_from_jwt ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
+        Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
+        Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
         // @ts-ignore
-        Config.auto_create_domains = Config.parseArray(conf.auto_create_domains ? conf.auto_create_domains : Config.getEnv("auto_create_domains", ""))
-        Config.persist_user_impersonation = Config.parseBoolean(conf.persist_user_impersonation ? conf.persist_user_impersonation : Config.getEnv("persist_user_impersonation", "true"))
+        Config.auto_create_domains = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.auto_create_domains) ? conf.auto_create_domains : Config.getEnv("auto_create_domains", ""))
+        Config.persist_user_impersonation = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.persist_user_impersonation) ? conf.persist_user_impersonation : Config.getEnv("persist_user_impersonation", "true"))
         // @ts-ignore
-        Config.ping_clients_interval = parseInt(conf.ping_clients_interval ? conf.ping_clients_interval : Config.getEnv("ping_clients_interval", (10000).toString()))
+        Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("ping_clients_interval", (10000).toString()))
 
-        Config.otel_trace_pingclients = Config.parseBoolean(conf.ping_clients_interval ? conf.ping_clients_interval : Config.getEnv("otel_trace_pingclients", "false"));
-        Config.otel_trace_dashboardauth = Config.parseBoolean(conf.otel_trace_dashboardauth ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
-        Config.otel_trace_include_query = Config.parseBoolean(conf.otel_trace_include_query ? conf.otel_trace_include_query : Config.getEnv("otel_trace_include_query", "false"));
-        Config.otel_trace_connection_ips = Config.parseBoolean(conf.otel_trace_connection_ips ? conf.otel_trace_connection_ips : Config.getEnv("otel_trace_connection_ips", "false"));
-        Config.otel_trace_mongodb_per_users = Config.parseBoolean(conf.otel_trace_mongodb_per_users ? conf.otel_trace_mongodb_per_users : Config.getEnv("otel_trace_mongodb_per_users", "false"));
-        Config.otel_trace_mongodb_query_per_users = Config.parseBoolean(conf.otel_trace_mongodb_query_per_users ? conf.otel_trace_mongodb_query_per_users : Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
-        Config.otel_trace_mongodb_count_per_users = Config.parseBoolean(conf.otel_trace_mongodb_count_per_users ? conf.otel_trace_mongodb_count_per_users : Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
-        Config.otel_trace_mongodb_aggregate_per_users = Config.parseBoolean(conf.otel_trace_mongodb_aggregate_per_users ? conf.otel_trace_mongodb_aggregate_per_users : Config.getEnv("otel_trace_mongodb_aggregate_per_users", "false"));
-        Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(conf.otel_trace_mongodb_insert_per_users ? conf.otel_trace_mongodb_insert_per_users : Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
-        Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(conf.otel_trace_mongodb_update_per_users ? conf.otel_trace_mongodb_update_per_users : Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
-        Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(conf.otel_trace_mongodb_delete_per_users ? conf.otel_trace_mongodb_delete_per_users : Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
+        Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("otel_trace_pingclients", "false"));
+        Config.otel_trace_dashboardauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_dashboardauth) ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
+        Config.otel_trace_include_query = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_include_query) ? conf.otel_trace_include_query : Config.getEnv("otel_trace_include_query", "false"));
+        Config.otel_trace_connection_ips = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_connection_ips) ? conf.otel_trace_connection_ips : Config.getEnv("otel_trace_connection_ips", "false"));
+        Config.otel_trace_mongodb_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_per_users) ? conf.otel_trace_mongodb_per_users : Config.getEnv("otel_trace_mongodb_per_users", "false"));
+        Config.otel_trace_mongodb_query_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_query_per_users) ? conf.otel_trace_mongodb_query_per_users : Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
+        Config.otel_trace_mongodb_count_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_count_per_users) ? conf.otel_trace_mongodb_count_per_users : Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
+        Config.otel_trace_mongodb_aggregate_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_aggregate_per_users) ? conf.otel_trace_mongodb_aggregate_per_users : Config.getEnv("otel_trace_mongodb_aggregate_per_users", "false"));
+        Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_insert_per_users) ? conf.otel_trace_mongodb_insert_per_users : Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
+        Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_update_per_users) ? conf.otel_trace_mongodb_update_per_users : Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
+        Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_delete_per_users) ? conf.otel_trace_mongodb_delete_per_users : Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
 
         Logger.reload();
         return conf;
@@ -187,6 +189,7 @@ export class Config {
         Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
         Config.log_housekeeping = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
         Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
+        Config.log_blocked_ips = Config.parseBoolean(Config.getEnv("log_blocked_ips", "true"));
         Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
         Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
         Config.log_verbose = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
@@ -400,6 +403,7 @@ export class Config {
     public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
     public static log_housekeeping: boolean = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
     public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel", "false"));
+    public static log_blocked_ips: boolean = Config.parseBoolean(Config.getEnv("log_blocked_ips", "true"));
     public static log_information: boolean = Config.parseBoolean(Config.getEnv("log_information", "true"));
     public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
     public static log_verbose: boolean = Config.parseBoolean(Config.getEnv("log_verbose", "false"));

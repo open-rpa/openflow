@@ -56,7 +56,7 @@ export class WebSocketServer {
 
                 if (await WebServer.isBlocked(req)) {
                     remoteip = WebSocketServerClient.remoteip(req);
-                    Logger.instanse.error("WebSocketServer", "connection", remoteip + " is blocked");
+                    if (Config.log_blocked_ips || Config.log_websocket) Logger.instanse.error("WebSocketServer", "connection", remoteip + " is blocked");
                     try {
                         socketObject.close()
                     } catch (error) {
