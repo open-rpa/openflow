@@ -85,6 +85,7 @@ let server: http.Server = null;
         const userjson = await backupStore.get<string>(nodereduser_filename, null);
         const socket: WebSocketClient = new WebSocketClient(Logger.instanse, Config.api_ws_url);
         if (!NoderedUtil.IsNullEmpty(flowjson) && Config.allow_start_from_cache) {
+            Logger.instanse.info("index", "", "Start using cached workflow");
             server = await WebServer.configure(socket);
             const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
             Logger.instanse.info("index", "", "listening on " + baseurl);
@@ -129,8 +130,10 @@ let server: http.Server = null;
         });
         socket.events.on("onclose", async () => {
         });
+        Logger.instanse.info("index", "", "Connecting to " + Config.api_ws_url);
         socket.events.on("onopen", async () => {
             try {
+                Logger.instanse.info("index", "", "Connected to " + Config.api_ws_url);
                 let jwt: string = "";
                 if (Config.jwt !== "") {
                     jwt = Config.jwt;
