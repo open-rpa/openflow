@@ -97,8 +97,8 @@ export class dbConfig extends Base {
 
         Config.log_with_trace = Config.parseBoolean(conf.log_with_trace ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(conf.log_with_colors ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
-        Config.log_cache = Config.parseBoolean(conf.log_cache ? conf.log_cache : Config.getEnv("log_cache", "true"));
-        Config.log_amqp = Config.parseBoolean(conf.log_amqp ? conf.log_amqp : Config.getEnv("log_amqp", "true"));
+        Config.log_cache = Config.parseBoolean(conf.log_cache ? conf.log_cache : Config.getEnv("log_cache", "false"));
+        Config.log_amqp = Config.parseBoolean(conf.log_amqp ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
         Config.log_login_provider = Config.parseBoolean(conf.log_login_provider ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
         Config.log_websocket = Config.parseBoolean(conf.log_websocket ? conf.log_websocket : Config.getEnv("log_websocket", "false"));
         Config.log_oauth = Config.parseBoolean(conf.log_oauth ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
@@ -177,8 +177,8 @@ export class Config {
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
 
-        Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "true"));
-        Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
+        Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "false"));
+        Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
         Config.log_websocket = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
         Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
@@ -390,7 +390,7 @@ export class Config {
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
-    public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "true"));
+    public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
     public static log_with_trace: boolean = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
     public static log_websocket: boolean = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
