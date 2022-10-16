@@ -1,5 +1,5 @@
 import { Crypt } from "./Crypt";
-import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser } from "@openiap/openflow-api";
+import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Observable } from '@opentelemetry/api-metrics';
@@ -529,6 +529,81 @@ export class DBHelper {
             });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return Role.assign(item);
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async WorkitemQueueUpdate(wiqid: string) {
+        await this.DeleteKey("pushablequeues");
+        if (NoderedUtil.IsNullEmpty(wiqid)) return;
+        await this.DeleteKey("pendingworkitems_" + wiqid);
+    }
+    public async GetPushableQueues(parent: Span): Promise<WorkitemQueue[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
+        try {
+            let items = await this.memoryCache.wrap("pushablequeues", () => {
+                Logger.instanse.debug("DBHelper", "GetPushableQueues", "Add pushable queues");
+                return Config.db.query<WorkitemQueue>({
+                    query: {
+                        "$or": [
+                            { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
+                            { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
+                    }, collectionname: "mq", jwt: Crypt.rootToken()
+                }, span);
+            });
+            return items;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async HasPendingWorkitemsCount(wiqid: string, parent: Span): Promise<number> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.HasPendingWorkitemsCount", parent);
+        try {
+            let cached: boolean = true;
+            let count = await this.memoryCache.wrap("pendingworkitems_" + wiqid, () => {
+                Logger.instanse.debug("DBHelper", "HasPendingWorkitemsCount", "Saving pending workitems count for wiqid " + wiqid);
+                cached = false;
+                return Config.db.count({
+                    query: {
+                        "$or": [
+                            { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
+                            { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
+                    }, collectionname: "mq", jwt: Crypt.rootToken()
+                }, span);
+            });
+            // found in cache, so return -1
+            if (cached) return -1;
+            return count;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async GetPendingWorkitemsCount(wiqid: string, parent: Span): Promise<number> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
+        try {
+            let count = await this.memoryCache.wrap("pendingworkitems_" + wiqid, () => {
+                Logger.instanse.debug("DBHelper", "GetPendingWorkitemsCount", "Saving pending workitems count for wiqid " + wiqid);
+                return Config.db.count({
+                    query: {
+                        "$or": [
+                            { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
+                            { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
+                    }, collectionname: "mq", jwt: Crypt.rootToken()
+                }, span);
+            });
+            return count;
         } catch (error) {
             span?.recordException(error);
             throw error;

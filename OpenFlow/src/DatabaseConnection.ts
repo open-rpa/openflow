@@ -214,17 +214,13 @@ export class DatabaseConnection extends events.EventEmitter {
             const jwt = Crypt.rootToken();
             const collectionname = "workitems";
             let ot_end = Logger.otel.startTimer();
-            const cursor = await this.db.collection("mq").find({
-                "$or": [
-                    { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
-                    { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
-            })
-            for await (const wiq of cursor) {
-                if (ot_end != null) {
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label("mq", Crypt.rootUser(), "aggregate"));
-                    ot_end = null;
-                }
-                // const payload = await this.db.collection("workitems").findOne({ "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } });
+
+            var queues = await Logger.DBHelper.GetPushableQueues(null);
+
+            for (var i = 0; i < queues.length; i++) {
+                const wiq = queues[i];
+                const count = await Logger.DBHelper.HasPendingWorkitemsCount(wiq._id, null);
+                if (count < 1) continue;
                 const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
                 const payload = await this.GetOne({ jwt, collectionname, query }, null);
                 if (payload == null) continue;
@@ -376,6 +372,10 @@ export class DatabaseConnection extends events.EventEmitter {
                             await Logger.DBHelper.memoryCache.del("mq" + item._id);
                             if (_type == "exchange") await Logger.DBHelper.memoryCache.del("exchangename_" + item.name.toLowerCase());
                             if (_type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + item.name.toLowerCase());
+                            if (_type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id);
+                        }
+                        if (collectionname == "workitems" && _type == "workitem") {
+                            await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid);
                         }
                         if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                             Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
@@ -1495,7 +1495,15 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
                 if (item._type == "exchange") item.name = item.name.toLowerCase();
                 if (item._type == "queue") item.name = item.name.toLowerCase();
+                if (item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id);
             }
+            // @ts-ignore
+            if (collectionname == "workitems" && item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid);
+            // @ts-ignore
+            if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
+            // @ts-ignore
+            if (collectionname == "workitems" && ["failed", "successful", "retry", "processing"].indexOf(item.state) == -1) item.state = "failed";
+
             if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                 if ((item._type === "user" || item._type === "role") &&
                     (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf((item as any).username) > -1)) {
@@ -1822,6 +1830,7 @@ export class DatabaseConnection extends events.EventEmitter {
             let date = new Date()
             date.setMonth(date.getMonth() - 1);
             let tempresult: any[] = [];
+            let hadWorkitemQueue = false;
             for (let i = 0; i < items.length; i++) {
                 let item = this.ensureResource(items[i], collectionname);
                 DatabaseConnection.traversejsonencode(item);
@@ -1857,7 +1866,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
                     if (item._type == "exchange") item.name = item.name.toLowerCase();
                     if (item._type == "queue") item.name = item.name.toLowerCase();
+                    if (item._type == "workitemqueue") hadWorkitemQueue = true
                 }
+                // @ts-ignore
+                if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
+                // @ts-ignore
+                if (collectionname == "workitems" && ["failed", "successful", "retry", "processing"].indexOf(item.state) == -1) item.state = "failed";
                 if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                     if ((item._type === "user" || item._type === "role") &&
                         (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf(user2.username) > -1)) {
@@ -2001,6 +2015,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 span?.addEvent("traversejsondecode");
                 DatabaseConnection.traversejsondecode(item);
             }
+            if (hadWorkitemQueue) await Logger.DBHelper.WorkitemQueueUpdate(null);
             result = items;
             Logger.instanse.verbose("DatabaseConnection", "InsertMany", "[" + user.username + "][" + collectionname + "] inserted " + counter + " items in database");
         } catch (error) {
@@ -2359,6 +2374,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         } 
                     }
                     if (q.collectionname === "mq") {
+                        if (q.item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(q.item._id);
                         if (!NoderedUtil.IsNullEmpty(q.item.name)) {
                             if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
                             if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
@@ -2371,6 +2387,9 @@ export class DatabaseConnection extends events.EventEmitter {
                             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                         } 
                     }
+                    // @ts-ignore
+                    if (q.collectionname == "workitems" && q.item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(q.item.wiqid);
+
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         try {
                             const ot_end = Logger.otel.startTimer();
@@ -3084,6 +3103,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     } 
                 }
                 if (collectionname === "mq") {
+                    if (doc._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(doc._id);
                     if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
                         await Logger.DBHelper.memoryCache.del("mq" + doc._id);
                         if (doc._type == "queue") await Logger.DBHelper.memoryCache.del("queuename_" + doc.name);
@@ -3092,6 +3112,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
                     } 
                 }
+                // @ts-ignore
+                if (collectionname == "workitems" && doc._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(doc.wiqid);
+
                 if (collectionname === "config" && doc._type === "provider" && !Config.supports_watch) {
                     await Logger.DBHelper.ClearProviders();
                     // await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
