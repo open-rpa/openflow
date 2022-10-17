@@ -6842,7 +6842,7 @@ export class ResourceCtrl extends entityCtrl<Resource> {
 
 export class WorkitemsCtrl extends entitiesCtrl<Base> {
     public queue: string = "";
-    public workitemqueues: Base[];
+    public workitemqueues: Base[] = [];
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -6876,8 +6876,12 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
             this.basequery["wiq"] = this.queue;
         }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } });
-            this.workitemqueues.unshift({ "name": "" } as any)
+            // this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } });
+            NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } }).then((result) => {
+                this.workitemqueues = result;
+                this.workitemqueues.unshift({ "name": "" } as any)
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            });
             this.loadData();
         });
     }
@@ -7223,6 +7227,10 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         try {
             var model: any = this.model;
             this.loading = true;
+            if (model.success_wiq == null) model.success_wiq = "";
+            if (model.success_wiqid == null) model.success_wiqid = "";
+            if (model.failed_wiq == null) model.failed_wiq = "";
+            if (model.failed_wiqid == null) model.failed_wiqid = "";
             try {
                 if (NoderedUtil.IsNullEmpty(this.model._id)) {
                     const q: AddWorkitemQueueMessage = new AddWorkitemQueueMessage();
