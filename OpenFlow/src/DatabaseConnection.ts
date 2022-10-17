@@ -4109,6 +4109,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 // }
                                 break;
                             case "workitems":
+                                if (indexnames.indexOf("_acl") === -1) {
+                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                }
                                 if (indexnames.indexOf("_type_1_wiq_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1_wiq_1", { "_type": 1, "wiq": 1 }, null, span)
                                 }
