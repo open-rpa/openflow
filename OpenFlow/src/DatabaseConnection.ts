@@ -1725,15 +1725,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                 );
                                 doupdate = true;
                             }
-                            await Logger.DBHelper.DeleteKey("users" + customers[i].users);
-
+                            await Logger.DBHelper.UserRoleUpdate(customers[i], false);
                         }
                         if (doupdate) {
                             await this.db.collection("users").updateOne(
                                 { _id: item._id },
                                 userupdate
                             );
-                            await Logger.DBHelper.DeleteKey("users" + user2._id);
+                            await Logger.DBHelper.UserRoleUpdate(user2, false);
                         }
                     }
                 }
@@ -1743,9 +1742,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         { _id: customer.users },
                         { "$push": { members: new Rolemember(item.name, item._id) } }
                     );
-                    await Logger.DBHelper.DeleteKey("users" + customer.users);
+                    await Logger.DBHelper.UserRoleUpdateId(customer.users, false);
                 }
-                await Logger.DBHelper.DeleteKey("users" + WellknownIds.users);
+                await Logger.DBHelper.UserRoleUpdateId(WellknownIds.users, false);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);
@@ -1982,7 +1981,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         { _id: WellknownIds.users },
                         { "$push": { members: new Rolemember(item.name, item._id) } }
                     );
-                    await Logger.DBHelper.DeleteKey("users" + WellknownIds.users);
+                    await Logger.DBHelper.UserRoleUpdateId(WellknownIds.users, false);
 
                     const user2: TokenUser = item as any;
                     await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
@@ -2500,7 +2499,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                     );
                                     doupdate = true;
                                 }
-                                await Logger.DBHelper.DeleteKey("users" + customers[i].users);
+                                await Logger.DBHelper.UserRoleUpdateId(customers[i].users, false);
 
                             }
                             if (doupdate) {
@@ -2508,7 +2507,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                     { _id: q.item._id },
                                     userupdate
                                 );
-                                await Logger.DBHelper.DeleteKey("users" + user2._id);
+                                await Logger.DBHelper.UserRoleUpdate(user2, false);
                             }
                         }
                     }
@@ -2522,10 +2521,10 @@ export class DatabaseConnection extends events.EventEmitter {
                             custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
                             custusers.AddMember(q.item);
                             await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
-                            await Logger.DBHelper.DeleteKey("users" + q.item._id);
+                            await Logger.DBHelper.UserRoleUpdate(q.item, false);
                         }
                     } else {
-                        await Logger.DBHelper.DeleteKey("users" + q.item._id);
+                        await Logger.DBHelper.UserRoleUpdate(q.item, false);
                     }
                     await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
@@ -2869,7 +2868,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let res = await this.InsertMany<T>(insert, collectionname, w, j, jwt, span);
                 result = result.concat(res);
             }
-            Logger.instanse.info("DatabaseConnection", "InsertOrUpdateMany", "[" + user.username + "][" + collectionname + "] inserted " + insert.length + " items and updated " + update.length + " items in database");
+            Logger.instanse.debug("DatabaseConnection", "InsertOrUpdateMany", "[" + user.username + "][" + collectionname + "] inserted " + insert.length + " items and updated " + update.length + " items in database");
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "InsertOrUpdateMany", error);
             span?.recordException(error);

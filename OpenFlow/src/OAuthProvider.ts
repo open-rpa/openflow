@@ -368,7 +368,7 @@ export class OAuthProvider {
 
 export class Account {
     constructor(public accountId: string, public user: TokenUser) {
-        Logger.DBHelper.DeleteKey("users" + accountId);
+        Logger.DBHelper.UserRoleUpdateId(accountId, false);
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
         // node-bb username hack

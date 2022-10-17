@@ -635,7 +635,7 @@ export class Message {
                     const q = new Base(); q._type = "exchange";
                     q.name = msg.exchangename;
                     const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
-                    await Logger.DBHelper.DeleteKey("exchange" + msg.exchangename);
+                    await Logger.DBHelper.ExchangeUpdate(q._id, q.name, false);
                 }
 
             }
@@ -3638,15 +3638,13 @@ export class Message {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     }
     sleep(ms) {
-        return new Promise(resolve => {
-            setTimeout(resolve, ms)
-        })
+        return new Promise(resolve => { setTimeout(resolve, ms) })
     }
     public async ReloadUserToken(cli: WebSocketServerClient, parent: Span) {
         if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
-        Logger.DBHelper.DeleteKey("users" + cli.user._id);
+        await Logger.DBHelper.UserRoleUpdate(cli.user, false);
         cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;

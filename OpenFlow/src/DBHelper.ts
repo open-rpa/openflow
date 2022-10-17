@@ -113,13 +113,17 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            var key = ("user_" + _id).toString().toLowerCase();
+            var key = ("users_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => {
                 Logger.instanse.debug("DBHelper", "FindById", "Add user to cache : " + _id);
                 return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
             });
             this.ensureotel();
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (NoderedUtil.IsNullUndefinded(item)) {
+                Logger.instanse.debug("DBHelper", "FindById", "No user matches " + _id);
+                return null;
+            }
+            Logger.instanse.silly("DBHelper", "FindById", "Return user " + _id + " " + item.formvalidated);
             var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
             return res2;
         } catch (error) {
@@ -320,7 +324,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            var key = ("users" + _id).toString().toLowerCase();
+            var key = ("users_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => {
                 if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
                 Logger.instanse.debug("DBHelper", "FindRoleById", "Add role to cache : " + _id);
@@ -548,23 +552,30 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public async UserRoleUpdate(userrole: Base, watch: boolean) {
+    public async UserRoleUpdateId(id: string, watch: boolean) {
+        if (!NoderedUtil.IsNullEmpty(id)) return;
+        var u = new Base(); u._id = id;
+        return this.UserRoleUpdate(u, watch);
+    }
+    public doClear(watch: boolean) {
         var doit: boolean = false;
-        if (NoderedUtil.IsNullUndefinded(userrole)) return;
         if (watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
             doit = true;
-        } else if (!watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            Config.enable_openflow_amqp
+        } else if (!watch && (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb")) {
             doit = true;
-        }
-        if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
+        } else if (Config.enable_openflow_amqp) {
             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
             return;
         }
-        if (!doit) return;
+        return doit;
+    }
+    public async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean) {
+        if (NoderedUtil.IsNullUndefinded(userrole)) return;
+        if (!this.doClear(watch)) return;
         if (userrole._type == "user") {
+            Logger.instanse.debug("DBHelper", "UserRoleUpdate", "Remove user from cache : " + userrole._id);
             let u: User = userrole as any;
-            if (!NoderedUtil.IsNullEmpty(u._id)) await Logger.DBHelper.memoryCache.del(("users" + u._id).toString());
+            if (!NoderedUtil.IsNullEmpty(u._id)) await Logger.DBHelper.memoryCache.del(("users_" + u._id).toString());
             if (!NoderedUtil.IsNullEmpty(u.username)) await Logger.DBHelper.memoryCache.del(("username_" + u.username).toString());
             if (!NoderedUtil.IsNullEmpty(u.email)) await Logger.DBHelper.memoryCache.del(("username_" + u.email).toString());
             if (!NoderedUtil.IsNullEmpty(u._id)) await Logger.DBHelper.memoryCache.del(("userroles_" + u._id).toString());
@@ -582,60 +593,27 @@ export class DBHelper {
             await Logger.DBHelper.memoryCache.del("allroles");
         } else if (userrole._type == "role") {
             let r: Role = userrole as any;
-            if (!NoderedUtil.IsNullEmpty(r._id)) await Logger.DBHelper.memoryCache.del(("users" + r._id).toString());
+            if (!NoderedUtil.IsNullEmpty(r._id)) await Logger.DBHelper.memoryCache.del(("users_" + r._id).toString());
             if (!NoderedUtil.IsNullEmpty(r.name)) await Logger.DBHelper.memoryCache.del(("rolename_" + r.name).toString());
             await Logger.DBHelper.memoryCache.del("allroles");
         } else if (userrole._type == "customer") {
-            if (!NoderedUtil.IsNullEmpty(userrole._id)) await Logger.DBHelper.memoryCache.del(("users" + userrole._id).toString());
+            if (!NoderedUtil.IsNullEmpty(userrole._id)) await Logger.DBHelper.memoryCache.del(("users_" + userrole._id).toString());
         }
 
     }
     public async QueueUpdate(_id: string, name: string, watch: boolean) {
-        var doit: boolean = false;
-        if (watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            doit = true;
-        } else if (!watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            Config.enable_openflow_amqp
-            doit = true;
-        }
-        if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-            return;
-        }
-        if (!doit) return;
+        if (!this.doClear(watch)) return;
         if (!NoderedUtil.IsNullEmpty(name)) await Logger.DBHelper.memoryCache.del(("queuename_" + name).toString());
         if (!NoderedUtil.IsNullEmpty(_id)) await Logger.DBHelper.memoryCache.del(("mq_" + _id).toString());
         // this.clearCache("workitemqueue_" + wiqid);
     }
     public async ExchangeUpdate(_id: string, name: string, watch: boolean) {
-        var doit: boolean = false;
-        if (watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            doit = true;
-        } else if (!watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            Config.enable_openflow_amqp
-            doit = true;
-        }
-        if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-            return;
-        }
-        if (!doit) return;
+        if (!this.doClear(watch)) return;
         if (!NoderedUtil.IsNullEmpty(name)) await Logger.DBHelper.memoryCache.del(("exchangename_" + name).toString());
         if (!NoderedUtil.IsNullEmpty(_id)) await Logger.DBHelper.memoryCache.del(("mq_" + _id).toString());
     }
     public async WorkitemQueueUpdate(wiqid: string, watch: boolean) {
-        var doit: boolean = false;
-        if (watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            doit = true;
-        } else if (!watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            Config.enable_openflow_amqp
-            doit = true;
-        }
-        if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-            return;
-        }
-        if (!doit) return;
+        if (!this.doClear(watch)) return;
         await this.DeleteKey("pushablequeues");
         if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid);
     }
