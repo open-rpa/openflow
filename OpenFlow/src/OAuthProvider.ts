@@ -398,7 +398,7 @@ export class Account {
         var key = ("oidc_" + id).toString();
         let acc = await Logger.DBHelper.memoryCache.get(key);
         if (acc == null) {
-            acc = await Logger.DBHelper.FindById(id, undefined, undefined);
+            acc = await Logger.DBHelper.FindById(id, undefined);
         }
         var res = new Account(id, TokenUser.From(acc))
         return res;

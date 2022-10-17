@@ -127,7 +127,7 @@ export class dockerdriver implements i_nodered_driver {
             if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
             if (!api_ws_url.endsWith("/")) api_ws_url += "/";
 
-            const nodereduser = await Logger.DBHelper.FindById(_id, jwt, span);
+            const nodereduser = await Logger.DBHelper.FindById(_id, span);
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 

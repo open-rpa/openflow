@@ -639,7 +639,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         (ace.rights as any) = b;
                     }
                     if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
-                        let _user = await Logger.DBHelper.FindById(ace._id, null, span);
+                        let _user = await Logger.DBHelper.FindById(ace._id, span);
                         if (NoderedUtil.IsNullUndefinded(_user)) {
                             const ot_end = Logger.otel.startTimer();
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);

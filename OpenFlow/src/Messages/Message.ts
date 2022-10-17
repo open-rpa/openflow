@@ -729,7 +729,7 @@ export class Message {
                     }
                 }
                 if (!allowed && msg.queuename.length == 24) {
-                    let mq = await Logger.DBHelper.FindById(msg.queuename, rootjwt, parent);
+                    let mq = await Logger.DBHelper.FindById(msg.queuename, parent);
                     if (mq != null) {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
@@ -857,7 +857,7 @@ export class Message {
                     if (isrole.length > 0) allowed = true;
                 }
                 if (!allowed && msg.queuename.length == 24) {
-                    let mq = await Logger.DBHelper.FindById(msg.queuename, rootjwt, parent);
+                    let mq = await Logger.DBHelper.FindById(msg.queuename, parent);
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
@@ -1527,7 +1527,7 @@ export class Message {
             } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
                 tuser = await Crypt.verityToken(cli.jwt);
                 const impostor: string = tuser.impostor;
-                cli.user = await Logger.DBHelper.FindById(cli.user._id, undefined, span);
+                cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
                 if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 tuser = TokenUser.From(cli.user);
                 tuser.impostor = impostor;
@@ -1597,7 +1597,7 @@ export class Message {
                             user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
                         } else {
                             span?.addEvent("token valid, lookup id " + tuser._id);
-                            user = await Logger.DBHelper.FindById(tuser._id, msg.jwt, span);
+                            user = await Logger.DBHelper.FindById(tuser._id, span);
                         }
                     } else {
                         span?.addEvent("Failed resolving token");
@@ -1716,7 +1716,7 @@ export class Message {
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
                         span?.addEvent("looking up impersonated user " + impostor);
-                        user = await Logger.DBHelper.FindById(impostor, Crypt.rootToken(), span);
+                        user = await Logger.DBHelper.FindById(impostor, span);
                         if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                         user.impersonating = undefined;
                         if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {

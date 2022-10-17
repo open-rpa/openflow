@@ -137,7 +137,7 @@ export class Crypt {
         }
         if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id) && o.data._id != WellknownIds.root) {
             var id = o.data._id;
-            o.data = await Logger.DBHelper.FindById(o.data._id, token, null);
+            o.data = await Logger.DBHelper.FindById(o.data._id, null);
             if (NoderedUtil.IsNullUndefinded(o) || NoderedUtil.IsNullUndefinded(o.data)) {
                 throw new Error("Token signature valid, but unable to find user with id " + id);
             }

@@ -108,7 +108,7 @@ export class DBHelper {
             })
         }
     }
-    public async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
+    public async FindById(_id: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
@@ -728,7 +728,7 @@ export class DBHelper {
         try {
             span?.addEvent("FindByUsernameOrId");
             Logger.instanse.verbose("DBHelper", "EnsureUser", `FindById ${name} ${id}`);
-            let user = await this.FindById(id, null, span);
+            let user = await this.FindById(id, span);
             if (user == null) {
                 Logger.instanse.verbose("DBHelper", "EnsureUser", `FindByUsername ${username}`);
                 user = await this.FindByUsername(username, null, span);

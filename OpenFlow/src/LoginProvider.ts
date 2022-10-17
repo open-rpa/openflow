@@ -142,7 +142,7 @@ export class LoginProvider {
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             if (typeof userid !== 'string') userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
-            const _user = await Logger.DBHelper.FindById(userid, null, null);
+            const _user = await Logger.DBHelper.FindById(userid, null);
             if (_user == null) {
                 Logger.instanse.error("LoginProvider", "deserializeUser", "Failed locating user " + userid);
                 done(null, null);
@@ -256,7 +256,7 @@ export class LoginProvider {
                 res.setHeader("Content-Type", "application/json");
                 if (req.user) {
                     Logger.instanse.debug("LoginProvider", "/user", "return user " + req.user._id);
-                    const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                    const user: User = await Logger.DBHelper.FindById(req.user._id, span);
                     user.validated = true;
                     if (Config.validate_user_form != "") {
                         if (!user.formvalidated) user.validated = false;
@@ -448,7 +448,7 @@ export class LoginProvider {
                     if (Config.validate_user_form != "") {
                         try {
                             var tuser = await await Crypt.verityToken(exists.jwt);
-                            var user = await Logger.DBHelper.FindById(tuser._id, exists.jwt, span);
+                            var user = await Logger.DBHelper.FindById(tuser._id, span);
                             if (user.validated == true) {
                                 await Logger.DBHelper.RemoveRequestTokenID(key, span);
                                 Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
@@ -493,7 +493,7 @@ export class LoginProvider {
 
                 if (!NoderedUtil.IsNullEmpty(key)) {
                     if (req.user) {
-                        const user: User = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                        const user: User = await Logger.DBHelper.FindById(req.user._id, span);
                         var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                         if (!NoderedUtil.IsNullUndefinded(exists)) {
                             Logger.instanse.debug("LoginProvider", "/login", "adding jwt for request token " + key);
@@ -522,7 +522,7 @@ export class LoginProvider {
                 let tuser: TokenUser;
                 if (req.user) {
                     await Logger.DBHelper.UserRoleUpdate(req.user, false);
-                    user = await Logger.DBHelper.FindById(req.user._id, undefined, span);
+                    user = await Logger.DBHelper.FindById(req.user._id, span);
                     user.validated = true;
                     if (Config.validate_user_form != "") {
                         if (!user.formvalidated) user.validated = false;
@@ -644,7 +644,7 @@ export class LoginProvider {
                 span?.setAttribute("remoteip", LoginProvider.remoteip(req));
                 if (req.user) {
                     var u: User = req.user;
-                    if (!NoderedUtil.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, Crypt.rootToken(), span);
+                    if (!NoderedUtil.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, span);
                     var tuser: TokenUser = TokenUser.From(u);
                     if (req.body && req.body.data) {
                         if (!tuser.formvalidated || tuser.formvalidated) {
