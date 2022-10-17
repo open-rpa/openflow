@@ -180,6 +180,7 @@ export class WebSocketServer {
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
                 var c: any = {};
+                c.name = (cli.username + "/" + cli.clientagent + "/" + cli.id).trim();
                 c._type = "websocketclient";
                 c.api = hostname;
                 c.id = cli.id;
