@@ -232,7 +232,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             data: { "workitem": payload }
                         }
 
-                        Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to robot queue " + wiq.workflowid);
+                        Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to robot queue " + wiq.robotqueue);
                         let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
                         if (expiration < 500) expiration = 500;
                         await amqpwrapper.Instance().send(null, wiq.robotqueue, robotpayload, expiration, null, null, 2);
