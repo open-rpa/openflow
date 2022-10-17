@@ -213,10 +213,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (this.queuemonitoringpaused) return;
             const jwt = Crypt.rootToken();
             const collectionname = "workitems";
-            let ot_end = Logger.otel.startTimer();
-
             var queues = await Logger.DBHelper.GetPushableQueues(null);
-
             for (var i = 0; i < queues.length; i++) {
                 const wiq = queues[i];
                 const count = await Logger.DBHelper.HasPendingWorkitemsCount(wiq._id, null);
@@ -248,7 +245,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
-            if (ot_end != null) Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label("mq", Crypt.rootUser(), "aggregate"));
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "queuemonitoring", error);
         }
