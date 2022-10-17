@@ -112,12 +112,12 @@ export class MenuCtrl {
             this.customer = this.WebSocketClientService.customer;
 
             this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
-            if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+            if (this.customers != null && !NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
                 if (this.customers.filter(x => x._id == this.user.selectedcustomerid).length == 0) {
                     this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.selectedcustomerid } })).concat(this.customers);
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+            if (this.customers != null && !NoderedUtil.IsNullEmpty(this.user.customerid)) {
                 if (this.customers.filter(x => x._id == this.user.customerid).length == 0) {
                     this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.customerid } })).concat(this.customers);
                 }
