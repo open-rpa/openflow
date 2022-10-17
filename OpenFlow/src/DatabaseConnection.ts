@@ -61,7 +61,6 @@ export class DatabaseConnection extends events.EventEmitter {
 
     public registerGlobalWatches: boolean = true;
     public queuemonitoringhandle: NodeJS.Timeout = null;
-    public queuemonitoringpaused: boolean = false;
     public queuemonitoringlastrun: Date = new Date();
     constructor(mongodburl: string, dbname: string, registerGlobalWatches: boolean) {
         super();
@@ -205,18 +204,39 @@ export class DatabaseConnection extends events.EventEmitter {
         this.emit("connected");
     }
     public ensureQueueMonitoring() {
-        if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
-            this.queuemonitoringpaused = false;
-            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-        } else if (this.queuemonitoringhandle != null && !Config.workitem_queue_monitoring_enabled) {
-            clearTimeout(this.queuemonitoringhandle);
+        if (Config.workitem_queue_monitoring_enabled) {
+            if (this.queuemonitoringhandle == null) {
+                this.queuemonitoringhandle = setInterval(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+                // this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+                // } else {
+                //     Logger.instanse.warn("DatabaseConnection", "ensureQueueMonitoring", "queue monitoring restarted, clearing handle " + this.queuemonitoringhandle);
+                //     try {
+                //         clearTimeout(this.queuemonitoringhandle);
+                //     } catch (error) {
+                //     }
+                //     this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+                //     Logger.instanse.warn("DatabaseConnection", "ensureQueueMonitoring", "queue monitoring restarted, enabled: " +
+                //         Config.workitem_queue_monitoring_enabled + " handle: " + this.queuemonitoringhandle);
+            }
+        } else if (this.queuemonitoringhandle != null) {
+            Logger.instanse.warn("DatabaseConnection", "ensureQueueMonitoring", "queue monitoring stopeed, clearing enabled: " +
+                Config.workitem_queue_monitoring_enabled + " handle: " + this.queuemonitoringhandle);
+            try {
+                clearInterval(this.queuemonitoringhandle);
+                // clearTimeout(this.queuemonitoringhandle);
+            } catch (error) {
+            }
             this.queuemonitoringhandle = null;
+        } else {
+            Logger.instanse.warn("DatabaseConnection", "ensureQueueMonitoring", "queue monitoring not started enabled: " +
+                Config.workitem_queue_monitoring_enabled + " handle: " + this.queuemonitoringhandle);
         }
     }
     async queuemonitoring() {
         try {
-            if (!this.isConnected == true) return;
-            if (this.queuemonitoringpaused) return;
+            if (!this.isConnected == true) {
+                return;
+            }
             const jwt = Crypt.rootToken();
             const collectionname = "workitems";
             var queues = await Logger.DBHelper.GetPushableQueues(null);
@@ -229,14 +249,15 @@ export class DatabaseConnection extends events.EventEmitter {
                 // const payload = await this.GetOne({ jwt, collectionname, query }, null);
                 // if (payload == null) continue;
                 var queueid = "";
-                if (wiq.robotqueue != null && wiq.workflowid != null) {
+                if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
                     if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
                         queueid = wiq.robotqueue.toLowerCase();
                     }
                 }
-                if (wiq.amqpqueue != null) {
+                if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
                     queueid = wiq.amqpqueue.toLowerCase();
                 }
+                if (NoderedUtil.IsNullEmpty(queueid)) return;
                 for (var _cid = 0; _cid < WebSocketServer._clients.length; _cid++) {
                     const client = WebSocketServer._clients[_cid];
                     if (NoderedUtil.IsNullUndefinded(client.user)) continue;
@@ -244,7 +265,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     var sendit = false;
                     for (var q = 0; client._queues.length > q; q++) {
                         var queue = client._queues[q];
-                        if (queue.queuename == wiq.robotqueue) {
+                        if (queue.queuename == queueid) {
                             sendit = true;
                             break;
                         }
@@ -271,8 +292,8 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error("DatabaseConnection", "queuemonitoring", error);
         }
         finally {
-            this.queuemonitoringhandle = null;
-            this.ensureQueueMonitoring();
+            // this.queuemonitoringhandle = null;
+            // this.ensureQueueMonitoring();
         }
     }
     registerGlobalWatch(collectionname: string, parent: Span) {
