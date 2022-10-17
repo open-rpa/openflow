@@ -6980,6 +6980,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                 this.workitemqueues.unshift({ "name": "" } as any)
                 this.model = new Workitem();
                 this.model.retries = 0;
+                this.model.state = "new";
                 this.model.payload = {};
                 if (this.userdata.data && this.userdata.data.WorkitemsCtrl) this.model.wiq = this.userdata.data.WorkitemsCtrl.queue;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }

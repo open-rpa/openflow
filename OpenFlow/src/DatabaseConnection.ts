@@ -259,6 +259,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 data: { "workitem": payload }
                             }
                         }
+                        Logger.instanse.debug("DatabaseConnection", "queuemonitoring", "Send workitem payload to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim());
                         client.Queue(JSON.stringify(sendthis), queueid, {} as any)
                     }
                 }
@@ -1435,7 +1436,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // @ts-ignore
             if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
             // @ts-ignore
-            if (collectionname == "workitems" && ["failed", "successful", "retry", "processing"].indexOf(item.state) == -1) item.state = "failed";
+            if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
 
             if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                 if ((item._type === "user" || item._type === "role") &&
@@ -1810,7 +1811,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 // @ts-ignore
                 if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
                 // @ts-ignore
-                if (collectionname == "workitems" && ["failed", "successful", "retry", "processing"].indexOf(item.state) == -1) item.state = "failed";
+                if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
                 if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                     if ((item._type === "user" || item._type === "role") &&
                         (this.WellknownNamesArray.indexOf(item.name) > -1 || this.WellknownNamesArray.indexOf(user2.username) > -1)) {
