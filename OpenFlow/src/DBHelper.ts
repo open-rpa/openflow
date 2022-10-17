@@ -485,6 +485,12 @@ export class DBHelper {
                 let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
                 if (hasusers.length == 0) {
                     user.roles.push(new Rolemember("users", WellknownIds.users));
+                    Logger.instanse.debug("DBHelper", "DecorateWithRoles", user.name + " missing from users, adding it");
+                    await Config.db.db.collection("users").updateOne(
+                        { _id: WellknownIds.users },
+                        { "$push": { members: new Rolemember(user.name, user._id) } }
+                    );
+
                 }
                 return user;
             }
@@ -605,17 +611,19 @@ export class DBHelper {
     }
     public async QueueUpdate(_id: string, name: string, watch: boolean) {
         if (!this.doClear(watch)) return;
+        Logger.instanse.debug("DBHelper", "QueueUpdate", "Clear queue cache : " + name + " " + _id);
         if (!NoderedUtil.IsNullEmpty(name)) await Logger.DBHelper.memoryCache.del(("queuename_" + name).toString());
         if (!NoderedUtil.IsNullEmpty(_id)) await Logger.DBHelper.memoryCache.del(("mq_" + _id).toString());
-        // this.clearCache("workitemqueue_" + wiqid);
     }
     public async ExchangeUpdate(_id: string, name: string, watch: boolean) {
         if (!this.doClear(watch)) return;
+        Logger.instanse.debug("DBHelper", "ExchangeUpdate", "Clear exchange cache : " + name + " " + _id);
         if (!NoderedUtil.IsNullEmpty(name)) await Logger.DBHelper.memoryCache.del(("exchangename_" + name).toString());
         if (!NoderedUtil.IsNullEmpty(_id)) await Logger.DBHelper.memoryCache.del(("mq_" + _id).toString());
     }
     public async WorkitemQueueUpdate(wiqid: string, watch: boolean) {
         if (!this.doClear(watch)) return;
+        Logger.instanse.debug("DBHelper", "WorkitemQueueUpdate", "Clear workitem queue cache : " + wiqid);
         await this.DeleteKey("pushablequeues");
         if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid);
     }
@@ -641,33 +649,6 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public async HasPendingWorkitemsCount(wiqid: string, parent: Span): Promise<number> {
-        await this.init();
-        const span: Span = Logger.otel.startSubSpan("dbhelper.HasPendingWorkitemsCount", parent);
-        try {
-            let cached: boolean = true;
-            var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
-            let count = await this.memoryCache.wrap(key, () => {
-                Logger.instanse.debug("DBHelper", "HasPendingWorkitemsCount", "Saving pending workitems count for wiqid " + wiqid);
-                cached = false;
-                return Config.db.count({
-                    query: {
-                        "$or": [
-                            { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
-                            { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
-                    }, collectionname: "mq", jwt: Crypt.rootToken()
-                }, span);
-            });
-            // found in cache, so return -1
-            if (cached) return -1;
-            return count;
-        } catch (error) {
-            span?.recordException(error);
-            throw error;
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-    }
     public async GetPendingWorkitemsCount(wiqid: string, parent: Span): Promise<number> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
@@ -675,12 +656,10 @@ export class DBHelper {
             var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
             let count = await this.memoryCache.wrap(key, () => {
                 Logger.instanse.debug("DBHelper", "GetPendingWorkitemsCount", "Saving pending workitems count for wiqid " + wiqid);
+                // TODO: skip nextrun ? or accept neextrun will always be based of cache TTL or substract the TTL ?
+                const query = { "wiqid": wiqid, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
                 return Config.db.count({
-                    query: {
-                        "$or": [
-                            { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
-                            { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
-                    }, collectionname: "mq", jwt: Crypt.rootToken()
+                    query, collectionname: "workitems", jwt: Crypt.rootToken()
                 }, span);
             });
             return count;

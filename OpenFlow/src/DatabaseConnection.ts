@@ -220,34 +220,46 @@ export class DatabaseConnection extends events.EventEmitter {
             const jwt = Crypt.rootToken();
             const collectionname = "workitems";
             var queues = await Logger.DBHelper.GetPushableQueues(null);
-            for (var i = 0; i < queues.length; i++) {
-                const wiq = queues[i];
-                const count = await Logger.DBHelper.HasPendingWorkitemsCount(wiq._id, null);
+            for (var _wiq = 0; _wiq < queues.length; _wiq++) {
+                const wiq = queues[_wiq];
+                const count = await Logger.DBHelper.GetPendingWorkitemsCount(wiq._id, null);
                 if (count < 1) continue;
                 const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
-                const payload = await this.GetOne({ jwt, collectionname, query }, null);
-                if (payload == null) continue;
+                var payload = null;
+                // const payload = await this.GetOne({ jwt, collectionname, query }, null);
+                // if (payload == null) continue;
+                var queueid = "";
                 if (wiq.robotqueue != null && wiq.workflowid != null) {
                     if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
-                        const robotpayload = {
-                            command: "invoke",
-                            workflowid: wiq.workflowid,
-                            data: { "workitem": payload }
-                        }
-
-                        Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to robot queue " + wiq.robotqueue);
-                        let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
-                        if (expiration < 500) expiration = 500;
-                        await amqpwrapper.Instance().send(null, wiq.robotqueue, robotpayload, expiration, null, null, 2);
+                        queueid = wiq.robotqueue.toLowerCase();
                     }
-
                 }
                 if (wiq.amqpqueue != null) {
-                    if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue) && wiq.amqpqueue.toLowerCase() != "(empty)") {
-                        Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to amqp queue " + wiq.amqpqueue);
-                        let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
-                        if (expiration < 500) expiration = 500;
-                        await amqpwrapper.Instance().send(null, wiq.amqpqueue, payload, expiration, null, null, 2);
+                    queueid = wiq.amqpqueue.toLowerCase();
+                }
+                for (var _cid = 0; _cid < WebSocketServer._clients.length; _cid++) {
+                    const client = WebSocketServer._clients[_cid];
+                    if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+
+                    var sendit = false;
+                    for (var q = 0; client._queues.length > q; q++) {
+                        var queue = client._queues[q];
+                        if (queue.queuename == wiq.robotqueue) {
+                            sendit = true;
+                            break;
+                        }
+                    }
+                    if (sendit) {
+                        if (payload == null) payload = await this.GetOne({ jwt, collectionname, query }, null);
+                        var sendthis = payload;
+                        if (client.clientagent == "openrpa") {
+                            sendthis = {
+                                command: "invoke",
+                                workflowid: wiq.workflowid,
+                                data: { "workitem": payload }
+                            }
+                        }
+                        client.Queue(JSON.stringify(sendthis), queueid, {} as any)
                     }
                 }
             }
@@ -2314,7 +2326,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (q.item._type == "exchange") await Logger.DBHelper.ExchangeUpdate(q.item._id, q.item.name, false);
                     }
                     // @ts-ignore
-                    if (q.collectionname == "workitems" && q.item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(q.item.wiqid);
+                    if (q.collectionname == "workitems" && q.item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(q.item.wiqid, false);
 
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         try {
@@ -3040,7 +3052,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (doc._type == "exchange") await Logger.DBHelper.ExchangeUpdate(doc._id, doc.name, false);
                 }
                 // @ts-ignore
-                if (collectionname == "workitems" && doc._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(doc.wiqid);
+                if (collectionname == "workitems" && doc._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(doc.wiqid, false);
 
                 if (collectionname === "config" && doc._type === "provider" && !Config.supports_watch) {
                     await Logger.DBHelper.ClearProviders();
