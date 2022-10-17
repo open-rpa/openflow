@@ -210,22 +210,30 @@ export class WebSocketServer {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
                 try {
                     if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-                        const payload = Crypt.decryptToken(cli.jwt);
-                        const clockTimestamp = Math.floor(Date.now() / 1000);
-                        if ((payload.exp - clockTimestamp) < 60) {
-                            Logger.instanse.debug("WebSocketServer", "pingClients", "Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
-                            const tuser: TokenUser = await Message.DoSignin(cli, null);
-                            if (tuser != null) {
-                                span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
-                                const l: SigninMessage = new SigninMessage();
-                                cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                                l.jwt = cli.jwt;
-                                l.user = tuser;
-                                const m: Message = new Message(); m.command = "refreshtoken";
-                                m.data = JSON.stringify(l);
-                                cli.Send(m);
-                            } else {
-                                cli.Close();
+                        try {
+                            const payload = Crypt.decryptToken(cli.jwt);
+                            const clockTimestamp = Math.floor(Date.now() / 1000);
+                            if ((payload.exp - clockTimestamp) < 60) {
+                                Logger.instanse.debug("WebSocketServer", "pingClients", "Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                                const tuser: TokenUser = await Message.DoSignin(cli, null);
+                                if (tuser != null) {
+                                    span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                                    const l: SigninMessage = new SigninMessage();
+                                    cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                                    l.jwt = cli.jwt;
+                                    l.user = tuser;
+                                    const m: Message = new Message(); m.command = "refreshtoken";
+                                    m.data = JSON.stringify(l);
+                                    cli.Send(m);
+                                } else {
+                                    cli.Close();
+                                }
+                            }
+                        } catch (error) {
+                            Logger.instanse.error("WebSocketServer", "pingClients", error);
+                            try {
+                                if (cli != null) cli.Close();
+                            } catch (error) {                                
                             }
                         }
                     } else {
