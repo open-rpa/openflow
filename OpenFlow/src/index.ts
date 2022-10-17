@@ -437,7 +437,7 @@ var server: http.Server = null;
             process.exit(404);
         }
         WebServer.Listen();
-        Config.db.queuemonitoring();
+        Config.db.ensureQueueMonitoring();
 
     } catch (error) {
         span?.recordException(error);

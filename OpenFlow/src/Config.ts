@@ -40,6 +40,8 @@ export class dbConfig extends Base {
     public log_debug: boolean;
     public log_verbose: boolean;
     public log_silly: boolean;
+    public workitem_queue_monitoring_interval: number;
+    public workitem_queue_monitoring_enabled: boolean;
 
     public amqp_allow_replyto_empty_queuename: boolean;
     public enable_web_tours: boolean;
@@ -116,6 +118,9 @@ export class dbConfig extends Base {
         Config.log_debug = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_debug) ? conf.log_debug : Config.getEnv("log_debug", "false"));
         Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
         Config.log_silly = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_silly) ? conf.log_silly : Config.getEnv("log_silly", "false"));
+
+        Config.workitem_queue_monitoring_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_interval) ? conf.workitem_queue_monitoring_interval.toString() : Config.getEnv("workitem_queue_monitoring_interval", "30000"));
+        Config.workitem_queue_monitoring_enabled = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_enabled) ? conf.workitem_queue_monitoring_enabled : Config.getEnv("workitem_queue_monitoring_enabled", "true"));
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.amqp_allow_replyto_empty_queuename) ? conf.amqp_allow_replyto_empty_queuename : Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
         Config.enable_web_tours = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_web_tours) ? conf.enable_web_tours : Config.getEnv("enable_web_tours", "true"));
@@ -235,7 +240,7 @@ export class Config {
         Config.persist_user_impersonation = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
         Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
         Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
-        Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "true"));
+        Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
         Config.auto_create_personal_noderedapi_group = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
         Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
@@ -451,7 +456,7 @@ export class Config {
     public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
 
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
-    public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "true"));
+    public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
     public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
     public static auto_create_personal_noderedapi_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
     public static force_add_admins: boolean = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));

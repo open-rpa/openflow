@@ -199,13 +199,19 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
         }
-        if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
-            this.queuemonitoringpaused = false;
-            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-        }
+        this.ensureQueueMonitoring();
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
+    }
+    public ensureQueueMonitoring() {
+        if (this.queuemonitoringhandle == null && Config.workitem_queue_monitoring_enabled) {
+            this.queuemonitoringpaused = false;
+            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+        } else if (this.queuemonitoringhandle != null && !Config.workitem_queue_monitoring_enabled) {
+            clearTimeout(this.queuemonitoringhandle);
+            this.queuemonitoringhandle = null;
+        }
     }
     async queuemonitoring() {
         try {
@@ -249,71 +255,7 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error("DatabaseConnection", "queuemonitoring", error);
         }
         finally {
-            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-        }
-    }
-    async queuemonitoring_old() {
-        try {
-            if (!this.isConnected == true) return;
-            if (this.queuemonitoringpaused) return;
-            const jwt = Crypt.rootToken();
-            var pipeline: any[] = [];
-            pipeline.push({ "$match": { state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } } });
-            pipeline.push({ "$group": { _id: "$wiq", "count": { "$sum": 1 } } });
-            pipeline.push({ "$match": { "count": { $gte: 1 } } });
-            pipeline.push({
-                "$graphLookup":
-                {
-                    from: 'mq',
-                    startWith: '$_id',
-                    connectFromField: '_id',
-                    connectToField: 'name',
-                    as: 'queue',
-                    maxDepth: 0,
-                    restrictSearchWithMatch: {
-                        "$or": [
-                            { robotqueue: { "$exists": true, $ne: null } },
-                            { amqpqueue: { "$exists": true, $ne: null } }
-                        ]
-                    }
-                },
-            });
-            pipeline.push({ "$match": { "queue": { $size: 1 } } });
-
-            var results: any[] = await this.aggregate(pipeline, "workitems", jwt, null, null);
-            this.queuemonitoringlastrun = new Date();
-            if (results.length > 0) Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] found " + results.length + " queues with pending workitems");
-            for (var i = 0; i < results.length; i++) {
-                if (results[i].count > 0 && results[i].queue.length > 0) {
-                    const wiq: WorkitemQueue = results[i].queue[0];
-                    const payload = {
-                        command: "invoke",
-                        workflowid: wiq.workflowid,
-                        data: { payload: {} }
-                    }
-                    if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
-                        if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
-                            Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to robot queue " + wiq.workflowid);
-                            let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
-                            if (expiration < 500) expiration = 500;
-                            await amqpwrapper.Instance().send(null, wiq.robotqueue, payload, expiration, null, null, 2);
-                        }
-                    }
-                    if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
-                        if (wiq.amqpqueue.toLowerCase() != "(empty)") {
-                            Logger.instanse.verbose("DatabaseConnection", "queuemonitoring", "[workitems] Send invoke message to amqp queue " + wiq.amqpqueue);
-                            let expiration = (Config.amqp_requeue_time / 2, 10) | 0;
-                            if (expiration < 500) expiration = 500;
-                            await amqpwrapper.Instance().send(null, wiq.amqpqueue, payload, expiration, null, null, 2);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            Logger.instanse.error("DatabaseConnection", "queuemonitoring", error);
-        }
-        finally {
-            this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+            this.ensureQueueMonitoring();
         }
     }
     registerGlobalWatch(collectionname: string, parent: Span) {
