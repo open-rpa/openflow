@@ -379,7 +379,7 @@ export class MenuCtrl {
                 id: '0'
             });
 
-            if (this.WebSocketClientService.multi_tenant && this.customer == null && this.customers.length == 0) this.NewFeaturesTour.addStep({
+            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length == 0) this.NewFeaturesTour.addStep({
                 title: 'Enable multi tenancy',
                 text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
                 attachTo: {

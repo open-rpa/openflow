@@ -941,10 +941,10 @@ export class DatabaseConnection extends events.EventEmitter {
             arr = await _pipe.toArray();
             mongodbspan?.setAttribute("results", arr.length);
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
             if (decrypt) for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
             DatabaseConnection.traversejsondecode(arr);
-            Logger.instanse.debug("DatabaseConnection", "query", "[" + user.username + "][" + collectionname + "] query gave " + arr.length + " results ");
+            Logger.instanse.debug("DatabaseConnection", "query", "[" + user.username + "][" + collectionname + "][" + timestr + "] query gave " + arr.length + " results ");
             return arr;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "query", "[" + collectionname + "] query error " + (error.message ? error.message : error));
@@ -1036,8 +1036,8 @@ export class DatabaseConnection extends events.EventEmitter {
             let result = await this.db.collection(collectionname).countDocuments(_query);
             mongodbspan?.setAttribute("results", result);
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
-            Logger.instanse.debug("DatabaseConnection", "count", "[" + user.username + "][" + collectionname + "] count gave " + result + " results ");
+            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
+            Logger.instanse.debug("DatabaseConnection", "count", "[" + user.username + "][" + collectionname + "][" + timestr + "] count gave " + result + " results ");
             return result;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "count", "[" + collectionname + "] count error " + (error.message ? error.message : error));
@@ -1262,10 +1262,10 @@ export class DatabaseConnection extends events.EventEmitter {
             mongodbspan?.setAttribute("results", items.length);
             Logger.otel.endSpan(mongodbspan);
 
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
+            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
 
             DatabaseConnection.traversejsondecode(items);
-            Logger.instanse.debug("DatabaseConnection", "aggregate", "[" + user.username + "][" + collectionname + "] aggregate gave " + items.length + " results ");
+            Logger.instanse.debug("DatabaseConnection", "aggregate", "[" + user.username + "][" + collectionname + "][" + timestr + "] aggregate gave " + items.length + " results ");
             Logger.instanse.silly("DatabaseConnection", "aggregate", aggregatesjson);
             return items;
         } catch (error) {
@@ -1629,7 +1629,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // @ts-ignore
             const result: InsertOneResult<T> = await this.db.collection(collectionname).insertOne(item, options);
             Logger.otel.endSpan(mongodbspan);
-            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, DatabaseConnection.otel_label(collectionname, user, "insert"));
+            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, DatabaseConnection.otel_label(collectionname, user, "insert"));
 
             // @ts-ignore
             item._id = result.insertedId;
@@ -1764,7 +1764,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             span?.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
-            Logger.instanse.debug("DatabaseConnection", "InsertOne", "[" + user.username + "][" + collectionname + "] inserted " + item.name);
+            Logger.instanse.debug("DatabaseConnection", "InsertOne", "[" + user.username + "][" + collectionname + "][" + timestr + "] inserted " + item.name);
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "InsertOne", error);
             span?.recordException(error);
@@ -2370,8 +2370,8 @@ export class DatabaseConnection extends events.EventEmitter {
                             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.replaceOne", span);
                             q.opresult = await this.db.collection(q.collectionname).replaceOne(_query, q.item, options);
                             Logger.otel.endSpan(mongodbspan);
-                            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, DatabaseConnection.otel_label(q.collectionname, user, "replace"));
-                            Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "] updated " + q.item.name);
+                            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, DatabaseConnection.otel_label(q.collectionname, user, "replace"));
+                            Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "][" + timestr + "] updated " + q.item.name);
                         } catch (error) {
                             var msg: string = error.message;
                             if (msg.startsWith("After applying the update, the (immutable) field '_id' was found")) {
@@ -2421,9 +2421,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.updateOne", span);
                     q.opresult = await this.db.collection(q.collectionname).updateOne(_query, q.item, options);
-                    Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "] updated " + q.opresult.modifiedCount + " items");
                     Logger.otel.endSpan(mongodbspan);
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, DatabaseConnection.otel_label(q.collectionname, user, "update"));
+                    let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, DatabaseConnection.otel_label(q.collectionname, user, "update"));
+                    Logger.instanse.debug("DatabaseConnection", "UpdateOne", "[" + user.username + "][" + q.collectionname + "][" + timestr + "] updated " + q.opresult.modifiedCount + " items");
                 }
                 if (!DatabaseConnection.usemetadata(q.collectionname)) {
                     q.item = this.decryptentity(q.item);
@@ -3187,8 +3187,8 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 let deletecounter = 0;
                 Logger.otel.endSpan(mongodbspan);
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
-                Logger.instanse.debug("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "] Deleting multiple files in database");
+                let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+                Logger.instanse.debug("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "][" + timestr + "] Deleting multiple files in database");
                 for await (const c of cursor) {
                     deletecounter++;
                     const ot_end = Logger.otel.startTimer();
