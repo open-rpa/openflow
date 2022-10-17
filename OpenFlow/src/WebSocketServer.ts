@@ -180,7 +180,6 @@ export class WebSocketServer {
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
                 var c: any = {};
-                c.name = (cli.username + "/" + cli.clientagent + "/" + cli.id).trim();
                 c._type = "websocketclient";
                 c.api = hostname;
                 c.id = cli.id;
@@ -194,6 +193,10 @@ export class WebSocketServer {
                 c.user = cli.user;
                 c.username = cli.username;
                 c.watches = cli.watches;
+                if (NoderedUtil.IsNullEmpty(c.username)) c.username = "";
+                if (NoderedUtil.IsNullEmpty(c.clientagent)) c.clientagent = "";
+                if (NoderedUtil.IsNullEmpty(c.id)) c.id = "";
+                c.name = (c.username + "/" + c.clientagent + "/" + c.id).trim();
                 clients.push(c);
             }
             Logger.instanse.info("WebSocketServer", "DumpClients", "Insert " + clients.length + " clients");
