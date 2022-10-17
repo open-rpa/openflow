@@ -260,7 +260,10 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                         Logger.instanse.debug("DatabaseConnection", "queuemonitoring", "Send workitem payload to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim());
-                        client.Queue(JSON.stringify(sendthis), queueid, {} as any)
+                        try {
+                            await client.Queue(JSON.stringify(sendthis), queueid, {} as any)
+                        } catch (error) {
+                        }
                     }
                 }
             }
@@ -1771,6 +1774,7 @@ export class DatabaseConnection extends events.EventEmitter {
             date.setMonth(date.getMonth() - 1);
             let tempresult: any[] = [];
             let hadWorkitemQueue = false;
+            let wiqids = [];
             for (let i = 0; i < items.length; i++) {
                 let item = this.ensureResource(items[i], collectionname);
                 DatabaseConnection.traversejsonencode(item);
@@ -1806,10 +1810,15 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
                     if (item._type == "exchange") item.name = item.name.toLowerCase();
                     if (item._type == "queue") item.name = item.name.toLowerCase();
-                    if (item._type == "workitemqueue") hadWorkitemQueue = true
+                    if (item._type == "workitemqueue") { hadWorkitemQueue = true; wiqids.push(item._id); }
                 }
-                // @ts-ignore
-                if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
+                if (collectionname == "workitems" && item._type == "workitem") {
+                    // @ts-ignore
+                    if (NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
+                    hadWorkitemQueue = true;
+                    // @ts-ignore
+                    if (item.hasOwnProperty("wiqid")) wiqids.push(item.wiqid);
+                }
                 // @ts-ignore
                 if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
                 if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
@@ -1955,7 +1964,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 span?.addEvent("traversejsondecode");
                 DatabaseConnection.traversejsondecode(item);
             }
-            if (hadWorkitemQueue) await Logger.DBHelper.WorkitemQueueUpdate(null, false);
+            if (hadWorkitemQueue) {
+                if (wiqids.length == 0) await Logger.DBHelper.WorkitemQueueUpdate(null, false);
+                for (var i = 0; i < wiqids.length; i++) {
+                    await Logger.DBHelper.WorkitemQueueUpdate(wiqids[i], false);
+                }
+            }
             result = items;
             Logger.instanse.verbose("DatabaseConnection", "InsertMany", "[" + user.username + "][" + collectionname + "] inserted " + counter + " items in database");
         } catch (error) {
