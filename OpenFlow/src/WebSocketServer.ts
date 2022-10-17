@@ -234,8 +234,8 @@ export class WebSocketServer {
                                 }
                             }
                         } catch (error) {
-                            Logger.instanse.error("WebSocketServer", "pingClients", error);
                             try {
+                                Logger.instanse.debug("WebSocketServer", "pingClients", cli.id + "/" + cli.user?.name + "/" + cli.clientagent + " ERROR: " + (error.message || error));
                                 if (cli != null) cli.Close();
                             } catch (error) {                                
                             }
