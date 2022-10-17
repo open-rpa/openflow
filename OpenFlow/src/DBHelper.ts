@@ -563,9 +563,11 @@ export class DBHelper {
             doit = true;
         } else if (!watch && (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb")) {
             doit = true;
-        } else if (Config.enable_openflow_amqp) {
+        }
+        if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
+            Logger.instanse.debug("DBHelper", "doClear", "Send clearcache command");
             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-            return;
+            return false;
         }
         return doit;
     }
