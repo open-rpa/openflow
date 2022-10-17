@@ -255,6 +255,7 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error("DatabaseConnection", "queuemonitoring", error);
         }
         finally {
+            this.queuemonitoringhandle = null;
             this.ensureQueueMonitoring();
         }
     }
