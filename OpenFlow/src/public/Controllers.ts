@@ -7443,6 +7443,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public watchid: string = "";
     public timeout: string = (60 * 1000).toString(); // 1 min;
     public lines: string = "100";
+    public paused: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7472,6 +7473,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
             var test = await NoderedUtil.RegisterExchange({
                 algorithm: "fanout", exchangename: "openflow_logs", callback: (data: QueueMessage, ack: any) => {
                     ack();
+                    if (this.paused) return;
                     const { lvl, cls, func, message, host } = data.data;
                     var lines = parseInt(this.lines);
                     // if messages has more than 1000 rows, then remove the last 500 rows
