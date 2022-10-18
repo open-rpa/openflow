@@ -7433,3 +7433,77 @@ export class WebsocketClientsCtrl extends entitiesCtrl<Base> {
     }
 
 }
+
+
+export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
+    public arguments: any;
+    public users: TokenUser[];
+    public user: TokenUser;
+    public messages: string[] = [];
+    public queuename: string = "";
+    public timeout: string = (60 * 1000).toString(); // 1 min;
+    public lines: string = "25";
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("ConsoleCtrl");
+        this.collection = "config";
+        this.basequery = { "_type": "config" }
+        this.messages = [];
+        WebSocketClientService.onSignedin(async (_user: TokenUser) => {
+            await this.RegisterQueue();
+            this.loadData();
+            this.$scope.$on('signin', (event, data) => {
+                this.RegisterQueue();
+                this.loadData();
+            });
+        });
+    }
+    async RegisterQueue() {
+        try {
+            var test = await NoderedUtil.RegisterExchange({
+                algorithm: "fanout", exchangename: "openflow_logs", callback: (data: QueueMessage, ack: any) => {
+                    ack();
+                    const { lvl, cls, func, message, host } = data.data;
+                    var lines = parseInt(this.lines);
+                    // if messages has more than 1000 rows, then remove the last 500 rows
+                    if (this.messages.length >= lines) this.messages.splice(lines - 1);
+                    this.messages.unshift(`[${host}][${cls}][${func}] ${message}`);
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }, closedcallback: (msg) => {
+                    this.queuename = "";
+                    console.debug("rabbitmq disconnected, start reconnect")
+                    setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
+            });
+            console.debug("test: ", test);
+            // console.debug("queuename: " + this.queuename);
+        } catch (error) {
+            this.queuename = "";
+            console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
+            setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+        }
+    }
+    async submit(): Promise<void> {
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+            } else {
+                await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+            }
+            // this.$location.path("/Providers");
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+}

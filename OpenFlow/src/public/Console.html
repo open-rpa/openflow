@@ -1,0 +1,41 @@
+<div class="row">
+    <div class="col">
+        <input type="checkbox" ng-checked="ctrl.model.log_cache"
+        ng-click="ctrl.model.log_cache = !ctrl.model.log_cache; ctrl.submit()" value="1" id="ctrl.model.log_cache" />cache
+        <input type="checkbox" ng-checked="ctrl.model.log_amqp"
+        ng-click="ctrl.model.log_amqp = !ctrl.model.log_amqp; ctrl.submit()" value="1" id="ctrl.model.log_amqp" />amqp
+        <input type="checkbox" ng-checked="ctrl.model.log_websocket"
+        ng-click="ctrl.model.log_websocket = !ctrl.model.log_websocket; ctrl.submit()" value="1" id="ctrl.model.log_websocket" />websocket
+        <input type="checkbox" ng-checked="ctrl.model.log_webserver"
+        ng-click="ctrl.model.log_webserver = !ctrl.model.log_webserver; ctrl.submit()" value="1" id="ctrl.model.log_webserver" />webserver
+        <input type="checkbox" ng-checked="ctrl.model.log_oauth"
+        ng-click="ctrl.model.log_oauth = !ctrl.model.log_oauth; ctrl.submit()" value="1" id="ctrl.model.log_oauth" />oauth
+        <input type="checkbox" ng-checked="ctrl.model.log_database"
+        ng-click="ctrl.model.log_database = !ctrl.model.log_database; ctrl.submit()" value="1" id="ctrl.model.log_database" />database
+        <input type="checkbox" ng-checked="ctrl.model.log_database_queries"
+        ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()" value="1" id="ctrl.model.log_database_queries" />database queries
+        <input type="checkbox" ng-checked="ctrl.model.log_grafana"
+        ng-click="ctrl.model.log_grafana = !ctrl.model.log_grafana; ctrl.submit()" value="1" id="ctrl.model.log_grafana" />grafana
+        <input type="checkbox" ng-checked="ctrl.model.log_housekeeping"
+        ng-click="ctrl.model.log_housekeeping = !ctrl.model.log_housekeeping; ctrl.submit()" value="1" id="ctrl.model.log_housekeeping" />housekeeping
+        <input type="checkbox" ng-checked="ctrl.model.log_otel"
+        ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()" value="1" id="ctrl.model.log_otel" />otel
+        <input type="checkbox" ng-checked="ctrl.model.log_blocked_ips"
+        ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()" value="1" id="ctrl.model.log_blocked_ips" />blocked_ips
+        <select ng-model="ctrl.lines" ng-disabled="ctrl.loading==true">
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+            <option value="500">500</option>
+        </select><br>
+        <input type="checkbox" ng-checked="ctrl.model.log_debug"
+        ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" value="1" id="ctrl.model.log_debug" />debug
+        <input type="checkbox" ng-checked="ctrl.model.log_verbose"
+        ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()" value="1" id="ctrl.model.log_verbose" />verbose
+        <input type="checkbox" ng-checked="ctrl.model.log_silly"
+        ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()" value="1" id="ctrl.model.log_silly" />silly
+    </div>
+</div>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<pre>{{ ctrl.messages.join('\n') }}</pre>
