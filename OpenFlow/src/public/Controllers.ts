@@ -7440,7 +7440,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public users: TokenUser[];
     public user: TokenUser;
     public messages: string[] = [];
-    public queuename: string = "";
+    public watchid: string = "";
     public timeout: string = (60 * 1000).toString(); // 1 min;
     public lines: string = "25";
     constructor(
@@ -7479,15 +7479,22 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
                     this.messages.unshift(`[${host}][${cls}][${func}] ${message}`);
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }, closedcallback: (msg) => {
-                    this.queuename = "";
                     console.debug("rabbitmq disconnected, start reconnect")
                     setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
                 }
             });
-            console.debug("test: ", test);
+            if (!NoderedUtil.IsNullEmpty(this.watchid)) {
+                await NoderedUtil.UnWatch({ id: this.watchid });
+            }
+            this.watchid = await NoderedUtil.Watch({
+                aggregates: [{ "$match": { "fullDocument._type": "config" } }], collectionname: "config", callback: (data) => {
+                    console.log(data);
+                    this.loadData();
+                }
+            })
+            // console.debug("test: ", test);
             // console.debug("queuename: " + this.queuename);
         } catch (error) {
-            this.queuename = "";
             console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
             setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
         }

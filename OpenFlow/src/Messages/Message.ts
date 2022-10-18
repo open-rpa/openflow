@@ -38,7 +38,7 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
         var message = error.message ? error.message : error;
         try {
-            message = "[" + cli.id + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
+            message = "[" + cli.id + "/" + cli.remoteip + "] " + (error.message ? error.message : error);
             if (!NoderedUtil.IsNullEmpty(cli.username)) {
                 message = "[" + cli.username + "/" + cli.clientagent + "/" + cli.id + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
             }
@@ -1603,6 +1603,10 @@ export class Message {
             let type: tokenType = "local";
             try {
                 msg = SigninMessage.assign(this.data);
+                if (cli != null) {
+                    if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
+                    if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+                }
                 let originialjwt = msg.jwt;
                 let tuser: TokenUser = null;
                 let user: User = null;
@@ -1612,7 +1616,6 @@ export class Message {
                     try {
                         tuser = await Crypt.verityToken(msg.jwt);
                     } catch (error) {
-                        Logger.instanse.error("Message", "Signin", "verityToken failed for client/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " " + error.message ? error.message : error);
                         throw error;
                     }
                     let _id = tuser._id;
@@ -1703,11 +1706,12 @@ export class Message {
                             }
                         }
                     } catch (error) {
-                        if (error.message == "jwt expired") {
-                            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "failed", clientagent: msg.clientagent });
-                        }
-                        var errmessage = "[" + cli.id + "/" + msg.clientagent + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
-                        Logger.instanse.error("Message", "Signin", errmessage);
+                        throw error
+                        // if (error.message == "jwt expired") {
+                        //     Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "failed", clientagent: msg.clientagent });
+                        // }
+                        // var errmessage = "[" + cli.id + "/" + msg.clientagent + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
+                        // Logger.instanse.error("Message", "Signin", errmessage);
                     }
                     if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         user = User.user;
