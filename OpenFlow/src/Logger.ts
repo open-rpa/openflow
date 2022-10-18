@@ -79,7 +79,7 @@ export class Logger {
             if (Config.log_to_exchange) {
                 if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
                 if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
-                    amqpwrapper.Instance().send("openflow_logs", "", { lvl, cls, func, message, host: Logger._hostname }, 10000, null, "", 1);
+                    amqpwrapper.Instance().send("openflow_logs", "", { lvl, cls, func, message, host: Logger._hostname }, 500, null, "", 1);
                 }
             }
         }
