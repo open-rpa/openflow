@@ -922,7 +922,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (!top) { top = 500; }
             if (!skip) { skip = 0; }
-            if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "query", "Query: " + JSON.stringify(_query));
+            if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "query", "Query: " + JSON.stringify(query));
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             span?.setAttribute("top", top);
