@@ -1,8 +1,11 @@
+import * as os from "os";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
 import { dockerdriver } from "./dockerdriver";
 import { DBHelper } from './DBHelper';
+import { amqpexchange, amqpwrapper } from "./amqpwrapper";
+import { Crypt } from "./Crypt";
 const fs = require('fs');
 const path = require('path');
 
@@ -38,6 +41,7 @@ export class Logger {
     public static log_with_trace: boolean = false;
     public static enabled: any = {}
     public static usecolors: boolean = true;
+    private static _hostname: string = "";
 
     public prefix(lvl: level, cls: string, func: string, message: string | unknown): string {
         let White = Console.Reset + Console.Bright + Console.FgWhite;
@@ -69,9 +73,14 @@ export class Logger {
                 prefix = Green +
                     dts.padEnd(13, " ") + White + "[" + darkYellow + cls.padEnd(21) + White + "][" + darkYellow + func + White + "] ";
                 if (spaces > 0) prefix += "".padEnd(spaces, " ");
-
             } else {
                 prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "] ").padEnd(60, " ");
+            }
+            if (Config.log_to_exchange) {
+                if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+                if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
+                    amqpwrapper.Instance().send("openflow_logs", "", { lvl, cls, func, message, host: Logger._hostname }, 10000, null, "", 1);
+                }
             }
         }
         if (Logger.usecolors) {

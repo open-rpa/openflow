@@ -103,7 +103,7 @@ export class WebServer {
             this.app.use(async (req, res, next) => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = WebSocketServerClient.remoteip(req);
-                    if (Config.log_blocked_ips || Config.log_webserver) Logger.instanse.error("WebServer", "configure", remoteip + " is blocked");
+                    if (Config.log_blocked_ips) Logger.instanse.error("WebServer", "configure", remoteip + " is blocked");
                     try {
                         res.status(429).json({ "message": "ip blocked" });
                     } catch (error) {
@@ -135,7 +135,7 @@ export class WebServer {
             this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = LoginProvider.remoteip(req);
-                    if (Config.log_blocked_ips || Config.log_webserver) Logger.instanse.error("WebServer", "/ipblock", remoteip + " is blocked");
+                    if (Config.log_blocked_ips) Logger.instanse.error("WebServer", "/ipblock", remoteip + " is blocked");
                     res.statusCode = 401;
                     res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
                     res.end('Unauthorized');

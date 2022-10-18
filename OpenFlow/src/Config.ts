@@ -29,6 +29,7 @@ export class dbConfig extends Base {
     public log_oauth: boolean;
     public log_webserver: boolean;
     public log_database: boolean;
+    public log_database_queries: boolean;
     public log_grafana: boolean;
     public log_housekeeping: boolean;
     public log_otel: boolean;
@@ -40,6 +41,7 @@ export class dbConfig extends Base {
     public log_debug: boolean;
     public log_verbose: boolean;
     public log_silly: boolean;
+    public log_to_exchange: boolean;
     public workitem_queue_monitoring_interval: number;
     public workitem_queue_monitoring_enabled: boolean;
 
@@ -107,6 +109,7 @@ export class dbConfig extends Base {
         Config.log_oauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_oauth) ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
         Config.log_webserver = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_webserver) ? conf.log_webserver : Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_database) ? conf.log_database : Config.getEnv("log_database", "false"));
+        Config.log_database_queries = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_database_queries) ? conf.log_database_queries : Config.getEnv("log_database_queries", "false"));
         Config.log_grafana = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_grafana) ? conf.log_grafana : Config.getEnv("log_grafana", "false"));
         Config.log_housekeeping = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_housekeeping) ? conf.log_housekeeping : Config.getEnv("log_housekeeping", "false"));
         Config.log_otel = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_otel) ? conf.log_otel : Config.getEnv("log_otel", "false"));
@@ -118,6 +121,7 @@ export class dbConfig extends Base {
         Config.log_debug = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_debug) ? conf.log_debug : Config.getEnv("log_debug", "false"));
         Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
         Config.log_silly = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_silly) ? conf.log_silly : Config.getEnv("log_silly", "false"));
+        Config.log_to_exchange = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_to_exchange) ? conf.log_to_exchange : Config.getEnv("log_to_exchange", "false"));
 
         Config.workitem_queue_monitoring_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_interval) ? conf.workitem_queue_monitoring_interval.toString() : Config.getEnv("workitem_queue_monitoring_interval", "10000"));
         Config.workitem_queue_monitoring_enabled = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_enabled) ? conf.workitem_queue_monitoring_enabled : Config.getEnv("workitem_queue_monitoring_enabled", "true"));
@@ -191,6 +195,7 @@ export class Config {
         Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
         Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
+        Config.log_database_queries = Config.parseBoolean(Config.getEnv("log_database_queries", "false"));
         Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
         Config.log_housekeeping = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
         Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
@@ -199,6 +204,7 @@ export class Config {
         Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
         Config.log_verbose = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
         Config.log_silly = Config.parseBoolean(Config.getEnv("log_silly", "false"));
+        Config.log_to_exchange = Config.parseBoolean(Config.getEnv("log_to_exchange", "false"));
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -405,6 +411,7 @@ export class Config {
     public static log_oauth: boolean = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
     public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
     public static log_database: boolean = Config.parseBoolean(Config.getEnv("log_database", "false"));
+    public static log_database_queries: boolean = Config.parseBoolean(Config.getEnv("log_database_queries", "false"));
     public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
     public static log_housekeeping: boolean = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
     public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel", "false"));
@@ -413,6 +420,7 @@ export class Config {
     public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
     public static log_verbose: boolean = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
     public static log_silly: boolean = Config.parseBoolean(Config.getEnv("log_silly", "false"));
+    public static log_to_exchange: boolean = Config.parseBoolean(Config.getEnv("log_to_exchange", "false"));    
 
     public static amqp_allow_replyto_empty_queuename: boolean = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 

@@ -56,7 +56,7 @@ export class WebSocketServer {
 
                 if (await WebServer.isBlocked(req)) {
                     remoteip = WebSocketServerClient.remoteip(req);
-                    if (Config.log_blocked_ips || Config.log_websocket) Logger.instanse.error("WebSocketServer", "connection", remoteip + " is blocked");
+                    if (Config.log_blocked_ips) Logger.instanse.error("WebSocketServer", "connection", remoteip + " is blocked");
                     try {
                         socketObject.close()
                     } catch (error) {
@@ -246,10 +246,10 @@ export class WebSocketServer {
                         if (seconds >= Config.client_signin_timeout) {
                             if (cli.user != null) {
                                 span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
-                                Logger.instanse.warn("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.debug("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
                             } else {
                                 span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
-                                Logger.instanse.warn("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.debug("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
                             }
                             cli.Close();
                         }

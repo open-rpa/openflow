@@ -36,7 +36,15 @@ async function handleError(cli: WebSocketServerClient, error: Error) {
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors))
             WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
-        Logger.instanse.error("Message", "handleError", error.message ? error.message : error);
+        var message = error.message ? error.message : error;
+        try {
+            message = "[" + cli.id + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
+            if (!NoderedUtil.IsNullEmpty(cli.username)) {
+                message = "[" + cli.username + "/" + cli.clientagent + "/" + cli.id + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
+            }
+        } catch (error) {
+        }
+        Logger.instanse.error("Message", "handleError", message);
     } catch (error) {
         if (error.consumedPoints) {
             let username: string = "Unknown";
@@ -630,6 +638,12 @@ export class Message {
                             Logger.instanse.error("Message", "RegisterExchange", error);
                             throw error;
                         }
+                    } else {
+                        if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
+                            let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
+                            Logger.instanse.error("Message", "RegisterExchange", error);
+                            throw error;
+                        }
                     }
                 } else {
                     const q = new Base(); q._type = "exchange";
@@ -743,6 +757,12 @@ export class Message {
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
+                        } else {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
+                                let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object {mq._id}`);
+                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                throw error;
+                            }
                         }
                         allowed = true;
                     }
@@ -758,6 +778,12 @@ export class Message {
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
+                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                throw error;
+                            }
+                        } else {
+                            if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
@@ -1677,7 +1703,11 @@ export class Message {
                             }
                         }
                     } catch (error) {
-                        Logger.instanse.error("Message", "Signin", error);
+                        if (error.message == "jwt expired") {
+                            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "failed", clientagent: msg.clientagent });
+                        }
+                        var errmessage = "[" + cli.id + "/" + msg.clientagent + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
+                        Logger.instanse.error("Message", "Signin", errmessage);
                     }
                     if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         user = User.user;

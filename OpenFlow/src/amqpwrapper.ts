@@ -128,7 +128,8 @@ export class amqpwrapper extends events.EventEmitter {
                     }
                 });
                 this.conn.on("close", () => {
-                    Logger.instanse.info("amqpwrapper", "connect", "econnecting");
+                    this.of_logger_ready = false;
+                    Logger.instanse.info("amqpwrapper", "close", "Connection closed");
                     this.conn = null;
                     if (this.timeout != null) {
                         clearTimeout(this.timeout);
@@ -156,7 +157,9 @@ export class amqpwrapper extends events.EventEmitter {
             try {
                 await this.Adddlx(span);
                 await this.AddOFExchange(span);
+                await this.AddOFLogExchange(span);
             } catch (error) {
+                this.of_logger_ready = false;
                 Logger.instanse.error("amqpwrapper", "connect", error);
                 if (Config.NODE_ENV == "production") {
                     Logger.instanse.error("amqpwrapper", "connect", "Exit, when we cannot create dead letter exchange and/or Openflow exchange");
@@ -167,6 +170,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.emit("connected");
             this.connected = true;
         } catch (error) {
+            this.of_logger_ready = false;
             span?.recordException(error);
             Logger.instanse.error("amqpwrapper", "connect", error);
             if (this.timeout != null) {
@@ -184,6 +188,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     shutdown() {
         this.connected = false;
+        this.of_logger_ready = false;
         try {
             if (this.channel != null) {
                 this.channel.removeAllListeners();
@@ -258,8 +263,9 @@ export class amqpwrapper extends events.EventEmitter {
                 } catch (error) {
                 }
             })
-            this.channel.on('close', async () => {
-                Logger.instanse.error("amqpwrapper", "AddReplyQueue", "Exit, when we cannot create dead letter exchange and/or Openflow exchange");
+            this.channel.on('close', async (msg) => {
+                this.of_logger_ready = false;
+                Logger.instanse.error("amqpwrapper", "AddReplyQueue", "Exit, reply channel was closed " + msg);
                 process.exit(406);
             });
         } catch (error) {
@@ -341,7 +347,7 @@ export class amqpwrapper extends events.EventEmitter {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
             const q: amqpexchange = new amqpexchange();
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
-            if (exchange != Config.amqp_dlx && exchange != "openflow") q.ExchangeOptions.autoDelete = true;
+            if (exchange != Config.amqp_dlx && exchange != "openflow" && exchange != "openflow_logs") q.ExchangeOptions.autoDelete = true;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             if (addqueue) {
@@ -456,7 +462,7 @@ export class amqpwrapper extends events.EventEmitter {
             data = JSON.stringify(data);
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
-        Logger.instanse.silly("amqpwrapper", "send", "send to queue: " + queue + " exchange: " + exchange);
+        if (exchange != "openflow_logs") Logger.instanse.silly("amqpwrapper", "send", "send to queue: " + queue + " exchange: " + exchange);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
@@ -517,6 +523,15 @@ export class amqpwrapper extends events.EventEmitter {
     IsMyQueue(queuename: string) {
         var q = this.queues.filter(q => q.queuename == queuename || q.queue == queuename);
         return q.length != 0;
+    }
+    public of_logger_ready: boolean = false;
+    async AddOFLogExchange(parent: Span) {
+        if (!Config.log_to_exchange) return;
+        await amqpwrapper.Instance().AddExchangeConsumer(Crypt.rootUser(), "openflow_logs", "fanout", "",
+            null, null, true, async (msg: any, options: any, ack: any, done: any) => {
+                ack();
+            }, parent)
+        this.of_logger_ready = true;
     }
     async AddOFExchange(parent: Span) {
         if (!Config.enable_openflow_amqp) return;

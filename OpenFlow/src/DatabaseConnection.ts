@@ -922,6 +922,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (!top) { top = 500; }
             if (!skip) { skip = 0; }
+            if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "query", "Query: " + JSON.stringify(_query));
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             span?.setAttribute("top", top);
@@ -1030,6 +1031,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
+            if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "count", "Query: " + JSON.stringify(_query));
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
             // @ts-ignore
@@ -1238,6 +1240,7 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.setAttribute("username", user.username);
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
         span?.addEvent("getbasequery");
+        if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "aggregate", "aggregates: " + JSON.stringify(aggregates));
         let base: object;
         if (DatabaseConnection.usemetadata(collectionname)) {
             base = this.getbasequery(user, "metadata._acl", [Rights.read]);
@@ -1322,6 +1325,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 aggregates = [{ $match: base }, aggregates];
             }
         }
+        if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "watch", "aggregates: " + JSON.stringify(aggregates));
         return await this.db.collection(collectionname).watch(aggregates, { fullDocument: 'updateLookup' });
     }
     /**
