@@ -640,7 +640,7 @@ export class Message {
                         }
                     } else {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                            let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
+                            let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing read permission on exchange object`);
                             Logger.instanse.error("Message", "RegisterExchange", error);
                             throw error;
                         }
@@ -784,7 +784,7 @@ export class Message {
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
-                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
+                                let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing read permission on queue object`);
                                 Logger.instanse.error("Message", "RegisterQueue", error);
                                 throw error;
                             }
