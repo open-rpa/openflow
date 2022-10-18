@@ -7442,7 +7442,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public messages: string[] = [];
     public watchid: string = "";
     public timeout: string = (60 * 1000).toString(); // 1 min;
-    public lines: string = "25";
+    public lines: string = "100";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,

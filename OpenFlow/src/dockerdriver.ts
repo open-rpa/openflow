@@ -81,8 +81,10 @@ export class dockerdriver implements i_nodered_driver {
             if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
 
             let hasbilling: boolean = false;
-            let assigned: ResourceUsage[] = await Config.db.db.collection("config")
-                .find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray() as any;
+            // let assigned: ResourceUsage[] = await Config.db.db.collection("config")
+            //     .find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray() as any;
+            let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByUserID(user._id, span);
+            assigned = assigned.filter(x => x.resource == "Nodered Instance");
             if (assigned.length > 0) {
                 let usage: ResourceUsage = assigned[0];
                 if (usage.quantity > 0 && !NoderedUtil.IsNullEmpty(usage.siid)) {

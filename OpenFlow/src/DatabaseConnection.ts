@@ -373,7 +373,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                             }                            
                         }
-                        if (collectionname == "config" && (_type == "restriction" || _type == "resource")) {
+                        if (collectionname == "config" && (_type == "restriction" || _type == "resource" || _type == "resourceusage")) {
                             Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                         }
                         if (collectionname == "config" && _type == "provider") {

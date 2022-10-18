@@ -1,5 +1,5 @@
 import { Crypt } from "./Crypt";
-import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue } from "@openiap/openflow-api";
+import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue, Resource, ResourceUsage } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Observable } from '@opentelemetry/api-metrics';
@@ -126,6 +126,41 @@ export class DBHelper {
             Logger.instanse.silly("DBHelper", "FindById", "Return user " + _id + " " + item.formvalidated);
             var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
             return res2;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async GetResources(parent: Span): Promise<Resource[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetResources", parent);
+        try {
+            let items = await this.memoryCache.wrap("resource", () => {
+                Logger.instanse.debug("DBHelper", "GetResources", "Add resources user to cache");
+                return Config.db.query<Resource>({ query: { "_type": "resource" }, collectionname: "config", jwt: Crypt.rootToken() }, span);
+            });
+            Logger.instanse.silly("DBHelper", "GetResources", "Return " + items.length + " resources");
+            return items;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async GetResourceUsageByUserID(userid: string, parent: Span): Promise<ResourceUsage[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetResourceUsageByUserID", parent);
+        try {
+            var key = ("resourceusage_" + userid).toString().toLowerCase();
+            let items = await this.memoryCache.wrap(key, () => {
+                Logger.instanse.debug("DBHelper", "GetResourceUsageByUserID", "Add user resources to cache : " + userid);
+                return Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", userid }, collectionname: "config", jwt: Crypt.rootToken() }, span);
+            });
+            Logger.instanse.silly("DBHelper", "GetResourceUsageByUserID", "Return resources for user " + userid);
+            return items;
         } catch (error) {
             span?.recordException(error);
             throw error;
