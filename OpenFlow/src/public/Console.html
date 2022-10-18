@@ -1,5 +1,14 @@
 <div class="row">
     <div class="col">
+        <select ng-model="ctrl.lines" ng-disabled="ctrl.loading==true">
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="250">250</option>
+            <option value="500">500</option>
+        </select>
+        <input type="checkbox" ng-checked="ctrl.model.log_to_exchange"
+        ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()" value="1" id="ctrl.model.log_to_exchange" />enabled streaming (can impact performance) Select log group below<br>
         <input type="checkbox" ng-checked="ctrl.model.log_cache"
         ng-click="ctrl.model.log_cache = !ctrl.model.log_cache; ctrl.submit()" value="1" id="ctrl.model.log_cache" />cache
         <input type="checkbox" ng-checked="ctrl.model.log_amqp"
@@ -22,13 +31,7 @@
         ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()" value="1" id="ctrl.model.log_otel" />otel
         <input type="checkbox" ng-checked="ctrl.model.log_blocked_ips"
         ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()" value="1" id="ctrl.model.log_blocked_ips" />blocked_ips
-        <select ng-model="ctrl.lines" ng-disabled="ctrl.loading==true">
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="250">250</option>
-            <option value="500">500</option>
-        </select><br>
+        <br /> <strong> high volume systems, these 3 can crash your system!!!</strong>
         <input type="checkbox" ng-checked="ctrl.model.log_debug"
         ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" value="1" id="ctrl.model.log_debug" />debug
         <input type="checkbox" ng-checked="ctrl.model.log_verbose"

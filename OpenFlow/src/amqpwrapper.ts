@@ -526,7 +526,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     public of_logger_ready: boolean = false;
     async AddOFLogExchange(parent: Span) {
-        if (!Config.log_to_exchange) return;
+        if (!Config.enable_openflow_amqp) return;
         await amqpwrapper.Instance().AddExchangeConsumer(Crypt.rootUser(), "openflow_logs", "fanout", "",
             null, null, true, async (msg: any, options: any, ack: any, done: any) => {
                 ack();
