@@ -6,6 +6,7 @@ import { WebSocketClientService } from "./WebSocketClientService";
 import * as jsondiffpatch from "jsondiffpatch";
 import * as ofurl from "./formsio_of_provider";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
+import { RegisterExchangeResponse } from "@openiap/openflow-api/lib/node/nodeclient/NoderedUtil";
 
 
 declare let $: any;
@@ -7443,6 +7444,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public watchid: string = "";
     public timeout: string = (60 * 1000).toString(); // 1 min;
     public lines: string = "100";
+    public exchange: RegisterExchangeResponse = null;
     public paused: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -7470,7 +7472,14 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     }
     async RegisterQueue() {
         try {
-            var test = await NoderedUtil.RegisterExchange({
+            if (this.exchange != null) {
+                try {
+                    await NoderedUtil.CloseQueue({ queuename: this.exchange.queuename });
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+            this.exchange = await NoderedUtil.RegisterExchange({
                 algorithm: "fanout", exchangename: "openflow_logs", callback: (data: QueueMessage, ack: any) => {
                     ack();
                     if (this.paused) return;
@@ -7494,8 +7503,8 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
                     this.loadData();
                 }
             })
-            // console.debug("test: ", test);
-            // console.debug("queuename: " + this.queuename);
+            console.debug("exchange: ", this.exchange);
+            console.debug("watchid: ", this.watchid);
         } catch (error) {
             console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
             setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);

@@ -530,12 +530,14 @@ export class amqpwrapper extends events.EventEmitter {
         await amqpwrapper.Instance().AddExchangeConsumer(Crypt.rootUser(), "openflow_logs", "fanout", "",
             null, null, true, async (msg: any, options: any, ack: any, done: any) => {
                 ack();
+                done();
             }, parent)
         this.of_logger_ready = true;
     }
     async AddOFExchange(parent: Span) {
         if (!Config.enable_openflow_amqp) return;
-        await this.AddExchangeConsumer(Crypt.rootUser(), "openflow", "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+        await this.AddExchangeConsumer(Crypt.rootUser(), "openflow", "fanout", "",
+            null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             ack();
             try {
                 if (typeof msg === "string" || msg instanceof String) {
