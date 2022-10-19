@@ -169,6 +169,8 @@ export class Logger {
         if (Config.otel_debug_log) Logger.enabled["WebSocketServerClient"] = level.Verbose;
         if (Config.otel_warn_log) Logger.enabled["WebSocketServerClient"] = level.Warning;
         if (Config.otel_err_log) Logger.enabled["WebSocketServerClient"] = level.Error;
+        if (Config.log_database_queries) Logger.enabled["log_database_queries"] = level.Verbose;
+
     }
     static hasDockerEnv(): boolean {
         try {

@@ -10,7 +10,15 @@
         <input type="checkbox" ng-checked="ctrl.paused"
         ng-click="ctrl.paused = !ctrl.paused" value="1" id="ctrl.paused" />pause output 
         <input type="checkbox" ng-checked="ctrl.model.log_to_exchange"
-        ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()" value="1" id="ctrl.model.log_to_exchange" />enabled streaming (can impact performance) Select log group below<br>
+        ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()" value="1" id="ctrl.model.log_to_exchange" />enabled streaming (can impact performance) Select log group below
+        <input type="checkbox" ng-checked="ctrl.host"
+        ng-click="ctrl.host = !ctrl.host" value="1" id="ctrl.host" />host
+        <input type="checkbox" ng-checked="ctrl.cls"
+        ng-click="ctrl.cls = !ctrl.cls" value="1" id="ctrl.cls" />cls
+        <input type="checkbox" ng-checked="ctrl.func"
+        ng-click="ctrl.func = !ctrl.func" value="1" id="ctrl.func" />func
+        
+        <br>
         <input type="checkbox" ng-checked="ctrl.model.log_cache"
         ng-click="ctrl.model.log_cache = !ctrl.model.log_cache; ctrl.submit()" value="1" id="ctrl.model.log_cache" />cache
         <input type="checkbox" ng-checked="ctrl.model.log_amqp"
@@ -25,6 +33,7 @@
         ng-click="ctrl.model.log_database = !ctrl.model.log_database; ctrl.submit()" value="1" id="ctrl.model.log_database" />database
         <input type="checkbox" ng-checked="ctrl.model.log_database_queries"
         ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()" value="1" id="ctrl.model.log_database_queries" />database queries
+        <input type="number" ng-model="ctrl.model.log_database_queries_ms" ng-blur="ctrl.submit()" min="0" max="240000" />ms
         <input type="checkbox" ng-checked="ctrl.model.log_grafana"
         ng-click="ctrl.model.log_grafana = !ctrl.model.log_grafana; ctrl.submit()" value="1" id="ctrl.model.log_grafana" />grafana
         <input type="checkbox" ng-checked="ctrl.model.log_housekeeping"

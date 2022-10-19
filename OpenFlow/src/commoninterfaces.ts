@@ -63,7 +63,7 @@ export interface i_otel {
     startSubSpan(name: string, parent: Span): Span;
     endSpan(span: Span): void;
     startTimer(): HrTime;
-    endTimer(startTime: HrTime, recorder: Histogram, labels?: Object): any;
+    endTimer(startTime: HrTime, recorder: Histogram, labels?: Object): number;
     setdefaultlabels(): void;
     shutdown(): Promise<void>;
 }

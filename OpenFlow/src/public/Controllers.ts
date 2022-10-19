@@ -7446,6 +7446,9 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public lines: string = "100";
     public exchange: RegisterExchangeResponse = null;
     public paused: boolean = false;
+    public host: boolean = false;
+    public cls: boolean = false;
+    public func: boolean = true;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7487,7 +7490,12 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
                     var lines = parseInt(this.lines);
                     // if messages has more than 1000 rows, then remove the last 500 rows
                     if (this.messages.length >= lines) this.messages.splice(lines - 1);
-                    this.messages.unshift(`[${host}][${cls}][${func}] ${message}`);
+                    var output = "";
+                    if (this.host == true) output += `[${host}]`;
+                    if (this.cls == true) output += `[${cls}]`;
+                    if (this.func == true) output += `[${func}]`;
+                    output += `${message}`
+                    this.messages.unshift(output);
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }, closedcallback: (msg) => {
                     console.debug("rabbitmq disconnected, start reconnect")

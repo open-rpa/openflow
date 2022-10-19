@@ -628,7 +628,8 @@ export class DatabaseConnection extends events.EventEmitter {
                             const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
                             mongodbspan?.setAttribute("results", arr.length);
                             Logger.otel.endSpan(mongodbspan);
-                            Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", user, "query"));
+                            var otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", user, "query"));
+                            if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "CleanACL", "[" + otelms + "ms][" + arr.length + "] Query: " + JSON.stringify({ _id: ace._id }));
                         }
                         if (NoderedUtil.IsNullUndefinded(_user)) {
                             item._acl.splice(i, 1);
@@ -689,7 +690,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else {
                         const ot_end = Logger.otel.startTimer();
                         const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
-                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", Crypt.rootUser(), "query"));
+                        var otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", Crypt.rootUser(), "query"));
+                        if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "Cleanmembers", "[" + otelms + "ms][" + arr.length + "] Query: " + JSON.stringify({ _id: ace._id }));
                         if (arr.length === 0) {
                             item.members.splice(i, 1);
                         }
@@ -736,7 +738,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullUndefinded(ace)) continue;
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", Crypt.rootUser(), "query"));
+                var otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", Crypt.rootUser(), "query"));
+                if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "Cleanmembers", "[" + otelms + "ms][" + arr.length + "] Query: " + JSON.stringify({ _id: ace._id }));
                 if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1 && !((item as any).hidemembers == true)) {
                         // when multi tenant don't allow members of common user groups to see each other
@@ -922,7 +925,6 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (!top) { top = 500; }
             if (!skip) { skip = 0; }
-            if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "query", "Query: " + JSON.stringify(query));
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             span?.setAttribute("top", top);
@@ -942,10 +944,11 @@ export class DatabaseConnection extends events.EventEmitter {
             arr = await _pipe.toArray();
             mongodbspan?.setAttribute("results", arr.length);
             Logger.otel.endSpan(mongodbspan);
-            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+            let otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
             if (decrypt) for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
             DatabaseConnection.traversejsondecode(arr);
-            Logger.instanse.debug("DatabaseConnection", "query", "[" + user.username + "][" + collectionname + "][" + timestr + "] query gave " + arr.length + " results ");
+            if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "query", "[" + otelms + "ms][" + arr.length + "] " + JSON.stringify(query));
+            Logger.instanse.debug("DatabaseConnection", "query", "[" + user.username + "][" + collectionname + "][" + otelms + "ms] query gave " + arr.length + " results ");
             return arr;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "query", "[" + collectionname + "] query error " + (error.message ? error.message : error));
@@ -1031,15 +1034,15 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "count", "Query: " + JSON.stringify(_query));
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
             // @ts-ignore
             let result = await this.db.collection(collectionname).countDocuments(_query);
             mongodbspan?.setAttribute("results", result);
             Logger.otel.endSpan(mongodbspan);
-            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
-            Logger.instanse.debug("DatabaseConnection", "count", "[" + user.username + "][" + collectionname + "][" + timestr + "] count gave " + result + " results ");
+            let otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
+            if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "count", "[" + otelms + "ms][" + result + "] Query: " + JSON.stringify(_query));
+            Logger.instanse.debug("DatabaseConnection", "count", "[" + user.username + "][" + collectionname + "][" + otelms + "ms] count gave " + result + " results ");
             return result;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "count", "[" + collectionname + "] count error " + (error.message ? error.message : error));
@@ -1240,7 +1243,6 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.setAttribute("username", user.username);
         const aggregatesjson = JSON.stringify(aggregates, null, 2)
         span?.addEvent("getbasequery");
-        if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "aggregate", "aggregates: " + JSON.stringify(aggregates));
         let base: object;
         if (DatabaseConnection.usemetadata(collectionname)) {
             base = this.getbasequery(user, "metadata._acl", [Rights.read]);
@@ -1265,11 +1267,11 @@ export class DatabaseConnection extends events.EventEmitter {
             mongodbspan?.setAttribute("results", items.length);
             Logger.otel.endSpan(mongodbspan);
 
-            let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
+            let otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
 
             DatabaseConnection.traversejsondecode(items);
-            Logger.instanse.debug("DatabaseConnection", "aggregate", "[" + user.username + "][" + collectionname + "][" + timestr + "] aggregate gave " + items.length + " results ");
-            Logger.instanse.silly("DatabaseConnection", "aggregate", aggregatesjson);
+            if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "aggregate", "[" + otelms + "ms][" + items.length + "] aggregates: " + JSON.stringify(aggregates));
+            Logger.instanse.debug("DatabaseConnection", "aggregate", "[" + user.username + "][" + collectionname + "][" + otelms + "] aggregate gave " + items.length + " results ");
             return items;
         } catch (error) {
             Logger.instanse.error("DatabaseConnection", "aggregate", error);
@@ -1325,7 +1327,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 aggregates = [{ $match: base }, aggregates];
             }
         }
-        if (Config.log_database_queries) Logger.instanse.debug("DatabaseConnection", "watch", "aggregates: " + JSON.stringify(aggregates));
         return await this.db.collection(collectionname).watch(aggregates, { fullDocument: 'updateLookup' });
     }
     /**
@@ -2915,7 +2916,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, "metadata._acl", [Rights.delete])] };
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection(collectionname).find(_query).toArray();
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+                var otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+                if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "DeleteOne", "[" + otelms + "ms][" + arr.length + "] Query: " + JSON.stringify(_query));
                 if (arr.length === 1) {
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.deleteOne", span);
@@ -3191,8 +3193,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 let deletecounter = 0;
                 Logger.otel.endSpan(mongodbspan);
-                let timestr = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
-                Logger.instanse.debug("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "][" + timestr + "] Deleting multiple files in database");
+                let otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+                if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "DeleteMany", "[" + otelms + "ms] Query: " + JSON.stringify(_query));
+                Logger.instanse.debug("DatabaseConnection", "DeleteMany", "[" + user.username + "][" + collectionname + "][" + otelms + "ms] Deleting multiple files in database");
                 for await (const c of cursor) {
                     deletecounter++;
                     const ot_end = Logger.otel.startTimer();
@@ -3230,7 +3233,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 const qmongodbspan: Span = Logger.otel.startSubSpan("mongodb.find", span);
                 const cursor = await this.db.collection(collectionname).find(_query);
                 Logger.otel.endSpan(qmongodbspan);
-                Logger.otel.endTimer(qot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+                var otelms = Logger.otel.endTimer(qot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+                if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "DeleteMany", "[" + otelms + "ms] Query: " + JSON.stringify(_query));
                 for await (const c of cursor) {
                     const doc = c;
                     const fullhist = {

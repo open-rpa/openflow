@@ -30,6 +30,7 @@ export class dbConfig extends Base {
     public log_webserver: boolean;
     public log_database: boolean;
     public log_database_queries: boolean;
+    public log_database_queries_ms: number;
     public log_grafana: boolean;
     public log_housekeeping: boolean;
     public log_otel: boolean;
@@ -110,6 +111,8 @@ export class dbConfig extends Base {
         Config.log_webserver = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_webserver) ? conf.log_webserver : Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_database) ? conf.log_database : Config.getEnv("log_database", "false"));
         Config.log_database_queries = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_database_queries) ? conf.log_database_queries : Config.getEnv("log_database_queries", "false"));
+        Config.log_database_queries_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.log_database_queries_ms) ? conf.log_database_queries_ms.toString() : Config.getEnv("log_database_queries_ms", "0"));
+
         Config.log_grafana = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_grafana) ? conf.log_grafana : Config.getEnv("log_grafana", "false"));
         Config.log_housekeeping = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_housekeeping) ? conf.log_housekeeping : Config.getEnv("log_housekeeping", "false"));
         Config.log_otel = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_otel) ? conf.log_otel : Config.getEnv("log_otel", "false"));
@@ -196,6 +199,7 @@ export class Config {
         Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
         Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
         Config.log_database_queries = Config.parseBoolean(Config.getEnv("log_database_queries", "false"));
+        Config.log_database_queries_ms = parseInt(Config.getEnv("log_database_queries_ms", "0")); 
         Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
         Config.log_housekeeping = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
         Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
@@ -412,6 +416,8 @@ export class Config {
     public static log_webserver: boolean = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
     public static log_database: boolean = Config.parseBoolean(Config.getEnv("log_database", "false"));
     public static log_database_queries: boolean = Config.parseBoolean(Config.getEnv("log_database_queries", "false"));
+    public static log_database_queries_ms: number = parseInt(Config.getEnv("log_database_queries_ms", "0"));    
+
     public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
     public static log_housekeeping: boolean = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
     public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel", "false"));
