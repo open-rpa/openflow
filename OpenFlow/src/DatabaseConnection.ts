@@ -1241,7 +1241,8 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.otel_trace_include_query) span?.setAttribute("aggregates", JSON.stringify(aggregates));
         span?.setAttribute("collection", collectionname);
         span?.setAttribute("username", user.username);
-        const aggregatesjson = JSON.stringify(aggregates, null, 2)
+        // const aggregatesjson = JSON.stringify(aggregates, null, 2)
+        const aggregatesjson = JSON.stringify(aggregates)
         span?.addEvent("getbasequery");
         let base: object;
         if (DatabaseConnection.usemetadata(collectionname)) {
@@ -1270,7 +1271,7 @@ export class DatabaseConnection extends events.EventEmitter {
             let otelms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
 
             DatabaseConnection.traversejsondecode(items);
-            if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "aggregate", "[" + otelms + "ms][" + items.length + "] aggregates: " + JSON.stringify(aggregates));
+            if (Config.log_database_queries && otelms >= Config.log_database_queries_ms) Logger.instanse.debug("log_database_queries", "aggregate", "[" + otelms + "ms][" + items.length + "] aggregates: " + aggregatesjson);
             Logger.instanse.debug("DatabaseConnection", "aggregate", "[" + user.username + "][" + collectionname + "][" + otelms + "] aggregate gave " + items.length + " results ");
             return items;
         } catch (error) {
