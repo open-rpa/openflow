@@ -7538,13 +7538,15 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     }
     ismatch(model) {
         if (this.searchstring == '') return true;
-        if (model.func.indexOf(this.searchstring) > -1) return true;
-        if (model.collection.indexOf(this.searchstring) > -1) return true;
-        if (model.user.indexOf(this.searchstring) > -1) return true;
-        if (model.message.indexOf(this.searchstring) > -1) return true;
+        if (model.func && model.func.indexOf(this.searchstring) > -1) return true;
+        if (model.collection && model.collection.indexOf(this.searchstring) > -1) return true;
+        if (model.user && model.user.indexOf(this.searchstring) > -1) return true;
+        if (model.message && model.message.indexOf(this.searchstring) > -1) return true;
         return false;
     }
     highlight(message) {
+        // if message is object the stringify it
+        if (typeof message == "object") message = JSON.stringify(message);
         if (this.searchstring == "") return message;
         return message.replace(
             new RegExp(this.searchstring + '(?!([^<]+)?<)', 'gi'),

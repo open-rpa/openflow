@@ -3,7 +3,7 @@
   background-color:rgba(255, 255, 0, 0.267);
   font-size:100%
 }
-    table {
+.consoletable {
         border-collapse: collapse;
         width: 100%;
         border-spacing: 30px;
@@ -80,12 +80,11 @@
         ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()" value="1" id="ctrl.model.log_verbose" /><span ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()">verbose</span>
         <input type="checkbox" ng-checked="ctrl.model.log_silly"
         ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()" value="1" id="ctrl.model.log_silly" /><span ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()">silly</span><br>
-        <input type="text" ng-model="ctrl.searchstring" />
-
+        search <input type="text" ng-model="ctrl.searchstring" placeholder="Search string" />
     </div>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
-<table>
+<table class="consoletable">
     <thead>
         <tr>
             <th ng-show="ctrl.host==true">Host</th>
@@ -103,9 +102,9 @@
         <td class="tcol" ng-show="ctrl.host==true">{{model.host}}</td>
         <td class="tcol">{{model.lvl}}</td>
         <td class="tcol" ng-show="ctrl.cls==true">{{model.cls}}</td>
-        <td class="tcol" ng-show="ctrl.func==true"><span ng-bind-html="ctrl.highlight(model.model.func)"></span></td>
-        <td class="tcol" ng-show="ctrl.hasprop('collection')"><span ng-bind-html="ctrl.highlight(model.model.collection)"></span></td>
-        <td class="tcol" ng-show="ctrl.hasprop('user')"><span ng-bind-html="ctrl.highlight(model.model.user)"></span></td>
+        <td class="tcol" ng-show="ctrl.func==true"><span ng-bind-html="ctrl.highlight(model.func)"></span></td>
+        <td class="tcol" ng-show="ctrl.hasprop('collection')"><span ng-bind-html="ctrl.highlight(model.collection)"></span></td>
+        <td class="tcol" ng-show="ctrl.hasprop('user')"><span ng-bind-html="ctrl.highlight(model.user)"></span></td>
         <td class="tcol" ng-show="ctrl.hasprop('ms')">{{model.ms}}</td>
         <td class="tcol" ng-show="ctrl.hasprop('count')">{{model.count}}</td>
         <td class="tcol"><span ng-bind-html="ctrl.highlight(model.message)"></span></td>
