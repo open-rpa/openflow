@@ -124,27 +124,41 @@ export class Crypt {
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
     static async verityToken(token: string): Promise<TokenUser> {
-        if (NoderedUtil.IsNullEmpty(token)) {
-            throw new Error('jwt must be provided');
-        }
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
-        const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
-        let impostor: string = null;
-        if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
-            if (!NoderedUtil.IsNullEmpty(o.data.impostor)) {
-                impostor = o.data.impostor;
+        try {
+            if (NoderedUtil.IsNullEmpty(token)) {
+                throw new Error('jwt must be provided');
             }
-        }
-        if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id) && o.data._id != WellknownIds.root) {
-            var id = o.data._id;
-            o.data = await Logger.DBHelper.FindById(o.data._id, null);
-            if (NoderedUtil.IsNullUndefinded(o) || NoderedUtil.IsNullUndefinded(o.data)) {
-                throw new Error("Token signature valid, but unable to find user with id " + id);
+            if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
+            const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
+            let impostor: string = null;
+            if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
+                if (!NoderedUtil.IsNullEmpty(o.data.impostor)) {
+                    impostor = o.data.impostor;
+                }
             }
+            if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id) && o.data._id != WellknownIds.root) {
+                var id = o.data._id;
+                o.data = await Logger.DBHelper.FindById(o.data._id, null);
+                if (NoderedUtil.IsNullUndefinded(o) || NoderedUtil.IsNullUndefinded(o.data)) {
+                    throw new Error("Token signature valid, but unable to find user with id " + id);
+                }
+            }
+            if (!NoderedUtil.IsNullEmpty(impostor)) o.data.impostor = impostor;
+            return TokenUser.assign(o.data);
+        } catch (error) {
+            var e = error;
+            try {
+                if (!NoderedUtil.IsNullEmpty(token)) {
+                    const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: true });
+                    if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
+                        e = new Error(error.message + " for token with exp " + o.exp + " for " + o.data.name + " username: " + o.data.username + " and id: " + o.data._id);
+                        // Logger.instanse.error("Crypt", "verityToken", JSON.stringify(o));
+                    }
+                }
+            } catch (error) {
+            }
+            throw e
         }
-        if (!NoderedUtil.IsNullEmpty(impostor)) o.data.impostor = impostor;
-        return TokenUser.assign(o.data);
-
     }
     static decryptToken(token: string): any {
         if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
