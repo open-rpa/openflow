@@ -7486,7 +7486,6 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
             this.exchange = await NoderedUtil.RegisterExchange({
                 algorithm: "fanout", exchangename: "openflow_logs", callback: (data: QueueMessage, ack: any) => {
                     ack();
-                    console.log(data.data)
                     if (this.paused) return;
                     if (data.data.lvl == 0) data.data.lvl = "inf"
                     if (data.data.lvl == 1) data.data.lvl = "err"
@@ -7542,7 +7541,15 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
         if (model.func && model.func.indexOf(this.searchstring) > -1) return true;
         if (model.collection && model.collection.indexOf(this.searchstring) > -1) return true;
         if (model.user && model.user.indexOf(this.searchstring) > -1) return true;
-        if (model.message && model.message.indexOf(this.searchstring) > -1) return true;
+        var message = model.message;
+        if (typeof message == "object") {
+            if (message.hasOwnProperty("stack") && message.hasOwnProperty("message")) {
+                message = message.message;
+            } else {
+                message = JSON.stringify(message);
+            }
+        }
+        if (message && message.indexOf(this.searchstring) > -1) return true;
         return false;
     }
     highlight(message) {
@@ -7553,7 +7560,8 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
                 message = JSON.stringify(message);
             }
         }
-        if (this.searchstring == "") return message;
+        if (this.searchstring == null || this.searchstring == "") return message;
+        if (message == null || message == "") return "";
         return message.replace(
             new RegExp(this.searchstring + '(?!([^<]+)?<)', 'gi'),
             '<span class="highlight">$&</span>'

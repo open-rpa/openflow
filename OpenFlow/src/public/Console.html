@@ -1,31 +1,28 @@
 <style>
 .highlight {
-  background-color:rgba(255, 255, 0, 0.267);
-  font-size:100%
+    background-color:rgba(255, 255, 0, 0.267);
+    font-size:100%
 }
+.inf { color: #0000ff; }
+.err { color: #ff0000; }
+.war { color: #ff8000; }
+.dbg { color: #808080; }
+.ver { color: #008000; }
+.sil { color: #808080; }
 .consoletable {
-        border-collapse: collapse;
-        width: 100%;
-        border-spacing: 30px;
+    border-collapse: collapse;
+    width: 100%;
+    border-spacing: 30px;
+}
+.tcol {
+    text-align: left;
+    vertical-align: text-top;
+    padding: 5px;
 
-    }
-    .col {
-        text-align: left;
-        padding: 15px;
-    }
-    
-    th, td {
-        text-align: left;
-        padding: 15px;
+}
+tr:nth-child(even){background-color: #f2f2f2} 
+.dark-mode tr:nth-child(even){background-color: #1e1e1e}
 
-    }
-    
-    /* tr:nth-child(even){background-color: #f2f2f2} */
-    
-    /* th {
-        background-color: #4CAF50;
-        color: white;
-    } */
 </style>
 <div class="row">
     <div class="col">
@@ -94,19 +91,21 @@
             <th ng-show="ctrl.hasprop('collection')">col</th>
             <th ng-show="ctrl.hasprop('user')">user</th>
             <th ng-show="ctrl.hasprop('ms')">Ms</th>
-            <th ng-show="ctrl.hasprop('count')">Count</th>
+            <!-- <th ng-show="ctrl.hasprop('count')">Count</th> -->
             <th>Message</th>
         </tr>
     </thead>
     <tr ng-repeat="model in ctrl.messages track by $index" class="trow" ng-show="ctrl.ismatch(model)">
         <td class="tcol" ng-show="ctrl.host==true">{{model.host}}</td>
-        <td class="tcol">{{model.lvl}}</td>
+        <td class="tcol" ng-class="model.lvl">{{model.lvl}}</td>
         <td class="tcol" ng-show="ctrl.cls==true">{{model.cls}}</td>
         <td class="tcol" ng-show="ctrl.func==true"><span ng-bind-html="ctrl.highlight(model.func)"></span></td>
         <td class="tcol" ng-show="ctrl.hasprop('collection')"><span ng-bind-html="ctrl.highlight(model.collection)"></span></td>
         <td class="tcol" ng-show="ctrl.hasprop('user')"><span ng-bind-html="ctrl.highlight(model.user)"></span></td>
         <td class="tcol" ng-show="ctrl.hasprop('ms')">{{model.ms}}</td>
-        <td class="tcol" ng-show="ctrl.hasprop('count')">{{model.count}}</td>
-        <td class="tcol"><span ng-bind-html="ctrl.highlight(model.message)"></span></td>
+        <!-- <td class="tcol" ng-show="ctrl.hasprop('count')">{{model.count}}</td> -->
+        <td class="tcol" ng-class="model.lvl"><span ng-bind-html="ctrl.highlight(model.message)"></span></td>
     </tr>
 </table>
+    
+
