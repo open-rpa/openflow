@@ -7440,7 +7440,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public arguments: any;
     public users: TokenUser[];
     public user: TokenUser;
-    public messages: string[] = [];
+    public messages: any[] = [];
     public watchid: string = "";
     public timeout: string = (60 * 1000).toString(); // 1 min;
     public lines: string = "100";
@@ -7449,6 +7449,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public host: boolean = false;
     public cls: boolean = false;
     public func: boolean = true;
+    public searchstring: string = "";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7486,16 +7487,17 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
                 algorithm: "fanout", exchangename: "openflow_logs", callback: (data: QueueMessage, ack: any) => {
                     ack();
                     if (this.paused) return;
-                    const { lvl, cls, func, message, host } = data.data;
+                    if (data.data.lvl == 0) data.data.lvl = "inf"
+                    if (data.data.lvl == 1) data.data.lvl = "err"
+                    if (data.data.lvl == 2) data.data.lvl = "war"
+                    if (data.data.lvl == 3) data.data.lvl = "inf"
+                    if (data.data.lvl == 4) data.data.lvl = "dbg"
+                    if (data.data.lvl == 5) data.data.lvl = "ver"
+                    if (data.data.lvl == 6) data.data.lvl = "sil"
+                    this.messages.unshift(data.data);
                     var lines = parseInt(this.lines);
                     // if messages has more than 1000 rows, then remove the last 500 rows
                     if (this.messages.length >= lines) this.messages.splice(lines - 1);
-                    var output = "";
-                    if (this.host == true) output += `[${host}]`;
-                    if (this.cls == true) output += `[${cls}]`;
-                    if (this.func == true) output += `[${func}]`;
-                    output += `${message}`
-                    this.messages.unshift(output);
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }, closedcallback: (msg) => {
                     console.debug("rabbitmq disconnected, start reconnect")
@@ -7531,5 +7533,22 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-
+    hasprop(name) {
+        return this.messages.filter(x => !NoderedUtil.IsNullEmpty(x[name])).length > 0
+    }
+    ismatch(model) {
+        if (this.searchstring == '') return true;
+        if (model.func.indexOf(this.searchstring) > -1) return true;
+        if (model.collection.indexOf(this.searchstring) > -1) return true;
+        if (model.user.indexOf(this.searchstring) > -1) return true;
+        if (model.message.indexOf(this.searchstring) > -1) return true;
+        return false;
+    }
+    highlight(message) {
+        if (this.searchstring == "") return message;
+        return message.replace(
+            new RegExp(this.searchstring + '(?!([^<]+)?<)', 'gi'),
+            '<span class="highlight">$&</span>'
+        )
+    }
 }
