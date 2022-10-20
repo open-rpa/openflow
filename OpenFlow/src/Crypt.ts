@@ -152,7 +152,7 @@ export class Crypt {
                     const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: true });
                     if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
                         e = new Error(error.message + " for token with exp " + o.exp + " for " + o.data.name + " username: " + o.data.username + " and id: " + o.data._id);
-                        // Logger.instanse.error("Crypt", "verityToken", JSON.stringify(o));
+                        // Logger.instanse.error(JSON.stringify(o));
                     }
                 }
             } catch (error) {

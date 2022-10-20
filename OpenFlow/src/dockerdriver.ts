@@ -272,7 +272,7 @@ export class dockerdriver implements i_nodered_driver {
             return result;
         } catch (error) {
             span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);
@@ -300,7 +300,7 @@ export class dockerdriver implements i_nodered_driver {
             }
         } catch (error) {
             span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);
@@ -360,7 +360,7 @@ export class dockerdriver implements i_nodered_driver {
             return result;
         } catch (error) {
             span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);
@@ -393,7 +393,7 @@ export class dockerdriver implements i_nodered_driver {
             }
         } catch (error) {
             span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);

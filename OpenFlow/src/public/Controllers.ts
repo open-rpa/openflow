@@ -7486,6 +7486,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
             this.exchange = await NoderedUtil.RegisterExchange({
                 algorithm: "fanout", exchangename: "openflow_logs", callback: (data: QueueMessage, ack: any) => {
                     ack();
+                    console.log(data.data)
                     if (this.paused) return;
                     if (data.data.lvl == 0) data.data.lvl = "inf"
                     if (data.data.lvl == 1) data.data.lvl = "err"
@@ -7545,8 +7546,13 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
         return false;
     }
     highlight(message) {
-        // if message is object the stringify it
-        if (typeof message == "object") message = JSON.stringify(message);
+        if (typeof message == "object") {
+            if (message.hasOwnProperty("stack") && message.hasOwnProperty("message")) {
+                message = message.message;
+            } else {
+                message = JSON.stringify(message);
+            }
+        }
         if (this.searchstring == "") return message;
         return message.replace(
             new RegExp(this.searchstring + '(?!([^<]+)?<)', 'gi'),

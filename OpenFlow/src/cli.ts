@@ -91,7 +91,7 @@ function getToken(): Promise<string> {
                 resolve(result.jwt);
                 socket = null;
             } catch (error) {
-                let closemsg: any = (error.message ? error.message : error);
+                let closemsg: any = error;
                 Logger.instanse.error(error);
                 if (socket != null) socket.close(1000, closemsg);
                 reject(closemsg);

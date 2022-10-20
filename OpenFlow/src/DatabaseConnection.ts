@@ -957,7 +957,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             return arr;
         } catch (error) {
-            Logger.instanse.error("query error " + (error.message ? error.message : error), { collection: collectionname });
+            Logger.instanse.error(error, { collection: collectionname });
             span?.recordException(error);
             throw error;
         } finally {

@@ -131,6 +131,14 @@ export class Logger {
         if (Config.log_to_exchange) {
             if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
             if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
+                var stringifyError = function (err, filter, space) {
+                    var plainObject = {};
+                    Object.getOwnPropertyNames(err).forEach(function (key) {
+                        plainObject[key] = err[key];
+                    });
+                    return JSON.stringify(plainObject, filter, space);
+                };
+                if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
                 amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", 1);
             }
         }
