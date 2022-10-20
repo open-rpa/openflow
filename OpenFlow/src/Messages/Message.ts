@@ -24,32 +24,21 @@ import { WebServer } from "../WebServer";
 const pako = require('pako');
 const got = require("got");
 
-var _hostname = "";
 async function handleError(cli: WebSocketServerClient, error: Error) {
     try {
         if (cli == null) {
-            Logger.instanse.error("Message", "handleError", error);
+            Logger.instanse.error(error);
             return;
         }
-        if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
-
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors))
             WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
-        var message = error.message ? error.message : error;
-        try {
-            message = "[" + cli.id + "/" + cli.remoteip + "] " + (error.message ? error.message : error);
-            if (!NoderedUtil.IsNullEmpty(cli.username)) {
-                message = "[" + cli.username + "/" + cli.clientagent + "/" + cli.id + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
-            }
-        } catch (error) {
-        }
-        Logger.instanse.error("Message", "handleError", message);
+        Logger.instanse.error(error, Logger.parsecli(cli));
     } catch (error) {
         if (error.consumedPoints) {
             let username: string = "Unknown";
             if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
-            Logger.instanse.warn("Message", "handleError", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+            Logger.instanse.warn("SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, Logger.instanse.error(error, Logger.parsecli(cli)));
             cli.devnull = true;
             cli.Close();
         }
@@ -153,7 +142,7 @@ export class Message {
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
         } catch (error) {
-            Logger.instanse.error("Message", "QueueProcess", error);
+            Logger.instanse.error(error);
             span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -244,9 +233,9 @@ export class Message {
 
                     if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit))
                         WebSocketServer.websocket_rate_limit.add(1, { ...Logger.otel.defaultlabels, command: command });
-                    if ((error.consumedPoints % 100) == 0) Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                    if ((error.consumedPoints % 100) == 0) Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
-                        Logger.instanse.debug("Message", "Process", "[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
+                        Logger.instanse.debug("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext);
                         cli.devnull = true;
                         cli.Close();
                     }
@@ -291,7 +280,7 @@ export class Message {
             let process: boolean = true;
             if (command != "signin" && command != "refreshtoken" && command != "error") {
                 if (!await this.EnsureJWT(cli)) {
-                    Logger.instanse.debug("Message", "Process", "Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                    Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                     process = false;
                     setTimeout(() => { cli.Close(); }, 500);
                 }
@@ -599,7 +588,7 @@ export class Message {
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
         } catch (error) {
-            Logger.instanse.error("Message", "Process", error);
+            Logger.instanse.error(error, Logger.parsecli(cli));
             span?.recordException(error);
         } finally {
             Logger.otel.endSpan(span);
@@ -629,19 +618,19 @@ export class Message {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
                             let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing update permission on exchange object`);
-                            Logger.instanse.error("Message", "RegisterExchange", error);
+                            Logger.instanse.error(error, Logger.parsecli(cli));
                             throw error;
                         }
                     } else if (Config.amqp_force_sender_has_invoke) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
                             let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
-                            Logger.instanse.error("Message", "RegisterExchange", error);
+                            Logger.instanse.error(error, Logger.parsecli(cli));
                             throw error;
                         }
                     } else {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                             let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing read permission on exchange object`);
-                            Logger.instanse.error("Message", "RegisterExchange", error);
+                            Logger.instanse.error(error, Logger.parsecli(cli));
                             throw error;
                         }
                     }
@@ -656,7 +645,7 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg.algorithm)) throw new Error("algorithm is mandatory, as either direct, fanout, topic or header");
             if (msg.algorithm != "direct" && msg.algorithm != "fanout" && msg.algorithm != "topic" && msg.algorithm != "header") {
                 let error = new Error("invalid algorithm must be either direct, fanout, topic or header");
-                Logger.instanse.error("Message", "RegisterExchange", error);
+                Logger.instanse.error(error, Logger.parsecli(cli));
                 throw error;
             }
             if (NoderedUtil.IsNullUndefinded(msg.routingkey)) msg.routingkey = "";
@@ -689,7 +678,7 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 let error = new Error("Access denied");
-                Logger.instanse.error("Message", "RegisterQueue", error);
+                Logger.instanse.error(error, Logger.parsecli(cli));
                 throw error;
             }
 
@@ -718,10 +707,10 @@ export class Message {
                             msg.queuename = name + msg.queuename;
                             if (msg.queuename.length == 24) { msg.queuename += "1"; }
                         } else {
-                            Logger.instanse.debug("Message", "RegisterQueue", "skipped force prefix for " + msg.queuename);
+                            Logger.instanse.debug("skipped force prefix for " + msg.queuename);
                         }
                     } else {
-                        Logger.instanse.debug("Message", "RegisterQueue", "[SKIP] skipped force prefix for " + msg.queuename);
+                        Logger.instanse.debug("[SKIP] skipped force prefix for " + msg.queuename);
                     }
                 } else {
                     let name = tuser.username.split("@").join("").split(".").join("");
@@ -748,19 +737,19 @@ export class Message {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing update permission on users object {mq._id}`);
-                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object {mq._id}`);
-                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object {mq._id}`);
-                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         }
@@ -773,19 +762,19 @@ export class Message {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing update permission on queue object`);
-                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
-                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing read permission on queue object`);
-                                Logger.instanse.error("Message", "RegisterQueue", error);
+                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         }
@@ -838,7 +827,7 @@ export class Message {
             }
             if (!NoderedUtil.IsNullEmpty(msg.exchangename) && !Config.amqp_enabled_exchange) {
                 let error = new Error("AMQP exchange is not enabled on this OpenFlow");
-                Logger.instanse.error("Message", "QueueMessage", error);
+                Logger.instanse.error(error, Logger.parsecli(cli));
                 throw error;
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_default_expiration);
@@ -858,16 +847,16 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.exchangename)) msg.exchangename = msg.exchangename.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.replyto)) msg.replyto = msg.replyto.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename == "openflow") {
-                Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
+                Logger.instanse.error(new Error("Access denied"), Logger.parsecli(cli));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename == "openflow") {
-                Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
+                Logger.instanse.error(new Error("Access denied"), Logger.parsecli(cli));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto == "openflow") {
-                Logger.instanse.error("Message", "QueueMessage", new Error("Access denied"));
+                Logger.instanse.error(new Error("Access denied"), Logger.parsecli(cli));
                 throw new Error("Access denied");
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
-                Logger.instanse.error("Message", "QueueMessage", new Error("queuename or exchange must be given"));
+                Logger.instanse.error(new Error("queuename or exchange must be given"), Logger.parsecli(cli));
                 throw new Error("queuename or exchange must be given");
             }
 
@@ -1017,12 +1006,12 @@ export class Message {
     }
     private UnknownCommand(): void {
         if (NoderedUtil.IsNullEmpty(this.command)) {
-            Logger.instanse.error("Message", "UnknownCommand", new Error("Received message with no command"));
+            Logger.instanse.error(new Error("Received message with no command"));
             return;
         }
         this.Reply("error");
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
-        Logger.instanse.error("Message", "UnknownCommand", new Error(this.data));
+        Logger.instanse.error("Message", "UnknownCommand");
     }
     private Ping(cli: WebSocketServerClient): void {
         this.Reply("pong");
@@ -1570,23 +1559,23 @@ export class Message {
                 }
                 if (!validated) {
                     if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
-                        Logger.instanse.error("Message", "DoSign", new Error(tuser.username + " failed logging in, not validated"));
+                        Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), Logger.parsecli(cli));
                         await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                         tuser = null;
                     }
                 }
             }
             if (tuser != null && cli.user != null && cli.user.disabled) {
-                Logger.instanse.error("Message", "DoSign", new Error(tuser.username + " failed logging in, user is disabled"));
+                Logger.instanse.error(new Error(tuser.username + " failed logging in, user is disabled"), Logger.parsecli(cli));
                 await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                 tuser = null;
             } else if (cli.user?.dblocked == true) {
-                Logger.instanse.warn("Message", "DoSign", tuser.username + " successfully signed in, but user is locked");
+                Logger.instanse.warn(tuser.username + " successfully signed in, but user is locked");
             } else if (tuser != null) {
-                Logger.instanse.debug("Message", "DoSign", tuser.username + " successfully signed in");
+                Logger.instanse.debug(tuser.username + " successfully signed in");
             }
         } catch (error) {
-            Logger.instanse.error("Message", "DoSign", error);
+            Logger.instanse.error(error, Logger.parsecli(cli));
             span?.recordException(error);
         }
         return tuser;
@@ -1632,7 +1621,7 @@ export class Message {
                         span?.addEvent("Failed resolving token");
                     }
                     if (tuser == null || user == null) {
-                        Logger.instanse.error("Message", "Signin", "Failed resolving token, could not find user by " + _id);
+                        Logger.instanse.error("Failed resolving token, could not find user by " + _id, Logger.parsecli(cli));
                         // Nodered will spam this, so to not strain the system to much force an 1 second delay
                         await new Promise(resolve => { setTimeout(resolve, 1000) });
                         throw new Error("Failed resolving token");
@@ -1742,11 +1731,11 @@ export class Message {
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    Logger.instanse.error("Message", "Signin", new Error(tuser.username + " failed logging in using " + type));
+                    Logger.instanse.error(new Error(tuser.username + " failed logging in using " + type), Logger.parsecli(cli));
                 } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    Logger.instanse.error("Message", "Signin", new Error("Disabled user " + tuser.username + " failed logging in using " + type));
+                    Logger.instanse.error(new Error("Disabled user " + tuser.username + " failed logging in using " + type), Logger.parsecli(cli));
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
                         span?.addEvent("looking up impersonated user " + impostor);
@@ -1762,7 +1751,7 @@ export class Message {
                         msg.impersonate = undefined;
                         impostor = undefined;
                     }
-                    Logger.instanse.debug("Message", "Signin", tuser.username + " successfully signed in");
+                    Logger.instanse.debug(tuser.username + " successfully signed in");
                     span?.setAttribute("name", tuser.name);
                     span?.setAttribute("username", tuser.username);
                     if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
@@ -1816,7 +1805,7 @@ export class Message {
                             if (impostors.length == 1) {
                                 imp = TokenUser.From(impostors[0]);
                             }
-                            Logger.instanse.error("Message", "Signin", new Error(tuser.name + " failed to impersonate " + msg.impersonate));
+                            Logger.instanse.error(new Error(tuser.name + " failed to impersonate " + msg.impersonate), Logger.parsecli(cli));
                             await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
@@ -1840,7 +1829,7 @@ export class Message {
                             }
 
                             await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
-                            Logger.instanse.error("Message", "Signin", new Error(tuser.name + " failed to impersonate " + msg.impersonate));
+                            Logger.instanse.error(new Error(tuser.name + " failed to impersonate " + msg.impersonate), Logger.parsecli(cli));
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                         }
                         tuser.impostor = tuserimpostor._id;
@@ -1860,7 +1849,7 @@ export class Message {
                             msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                         }
                         msg.user = tuser;
-                        Logger.instanse.debug("Message", "Signin", tuser.username + " successfully impersonated");
+                        Logger.instanse.debug(tuser.username + " successfully impersonated");
                         await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                     }
                     if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
@@ -1880,12 +1869,12 @@ export class Message {
                         user.device = msg.device;
                     }
                     if (msg.validate_only !== true) {
-                        Logger.instanse.debug("Message", "Signin", tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
+                        Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent);
                         if (cli) cli.jwt = msg.jwt;
                         if (cli) cli.user = user;
                         if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                     } else {
-                        Logger.instanse.debug("Message", "Signin", tuser.username + " was validated in using " + type);
+                        Logger.instanse.debug(tuser.username + " was validated in using " + type);
                     }
                     if (msg.impersonate === undefined || msg.impersonate === null || msg.impersonate === "") {
                         user.lastseen = new Date(new Date().toISOString());
@@ -1944,7 +1933,7 @@ export class Message {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         span?.addEvent("User not validet, decline login");
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        Logger.instanse.error("Message", "Signin", msg.user.username + " not validated");
+                        Logger.instanse.error(msg.user.username + " not validated", Logger.parsecli(cli));
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                     }
@@ -2242,13 +2231,13 @@ export class Message {
                     var data = Buffer.from(file, 'base64')
                     result = pako.inflate(data);
                 } catch (error) {
-                    Logger.instanse.error("Message", "_addFile", error);
+                    Logger.instanse.error(error);
                 }
                 readable._read = () => { }; // _read is required but you can noop it
                 readable.push(result);
                 readable.push(null);
             } catch (error) {
-                Logger.instanse.error("Message", "_addFile", error);
+                Logger.instanse.error(error);
                 throw error;
             }
         }
@@ -2856,7 +2845,7 @@ export class Message {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
-                    Logger.instanse.error("Message", "GetNextInvoice", msg.error);
+                    Logger.instanse.error(msg.error, Logger.parsecli(cli));
                 }
             }
         }
@@ -3469,7 +3458,7 @@ export class Message {
                     msg.customer.subscriptionid = null;
                     // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                    Logger.instanse.warn("Message", "EnsureCustomer", "[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.");
+                    Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.");
                     for (let usage of total_usage) {
                         await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                     }
@@ -3498,7 +3487,7 @@ export class Message {
                         let sub = msg.stripecustomer.subscriptions.data[0];
                         msg.customer.subscriptionid = sub.id;
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        Logger.instanse.warn("Message", "EnsureCustomer", "[" + user.username + "][" + msg.customer.name + "] Updating all " + total_usage.length + " unmapped purchases to an assigned plan.");
+                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] Updating all " + total_usage.length + " unmapped purchases to an assigned plan.");
 
                         for (let usage of total_usage) {
                             const items = sub.items.data.filter(x => ((x.price && x.price.id == usage.product.stripeprice) || (x.plan && x.plan.id == usage.product.stripeprice)));
@@ -3515,7 +3504,7 @@ export class Message {
                         msg.customer.subscriptionid = null;
                         // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        Logger.instanse.warn("Message", "EnsureCustomer", "[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.");
+                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.");
                         for (let usage of total_usage) {
                             await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                         }
@@ -3562,7 +3551,7 @@ export class Message {
                 msg.customer.subscriptionid = null;
                 // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                 const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                Logger.instanse.warn("Message", "EnsureCustomer", "[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.");
+                Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.");
                 for (let usage of total_usage) {
                     await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                 }
@@ -3697,7 +3686,7 @@ export class Message {
         const a: number = (date as any) - (Message.lastHouseKeeping as any);
         const diffminutes = a / (1000 * 60);
         // const diffhours = a / (1000 * 60 * 60);
-        Logger.instanse.silly("Message", "ReadyForHousekeeping", diffminutes + " minutes since laste house keeping");
+        Logger.instanse.silly(diffminutes + " minutes since laste house keeping");
         if (diffminutes < 60) return false;
         return true;
     }
@@ -3736,7 +3725,7 @@ export class Message {
             const date = new Date();
             const a: number = (date as any) - (Message.lastHouseKeeping as any);
             const diffminutes = a / (1000 * 60);
-            Logger.instanse.debug("Housekeeping", "_Housekeeping", "Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)");
+            Logger.instanse.debug("Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)");
             return;
         }
         Message.lastHouseKeeping = new Date();
@@ -3745,9 +3734,9 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             if (!skipNodered) {
-                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Get running Nodered Instances");
+                Logger.instanse.debug("Get running Nodered Instances");
                 await this.GetNoderedInstance(span);
-                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Get users with autocreate");
+                Logger.instanse.debug("Get users with autocreate");
                 const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
                 // TODO: we should get instances and compare, running ensure for each user will not scale well
                 for (let i = 0; i < users.length; i++) {
@@ -3769,7 +3758,7 @@ export class Message {
                         doensure = true;
                     }
                     if (doensure) {
-                        Logger.instanse.info("Housekeeping", "_Housekeeping", "EnsureNoderedInstance for " + user.name);
+                        Logger.instanse.info("EnsureNoderedInstance for " + user.name);
                         var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
                         ensuremsg._id = user._id;
                         var msg: Message = new Message(); msg.jwt = jwt;
@@ -3778,7 +3767,7 @@ export class Message {
                         await msg.EnsureNoderedInstance(span);
                     }
                 }
-                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Done processing autocreate");
+                Logger.instanse.debug("Done processing autocreate");
             }
         } catch (error) {
         }
@@ -3842,7 +3831,7 @@ export class Message {
                 if (DatabaseConnection.usemetadata(collectionname)) {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Start creating metadata._searchnames for collection " + collectionname);
+                        Logger.instanse.info("Start creating metadata._searchnames for collection " + collectionname);
                         await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
                             [
                                 {
@@ -3902,12 +3891,12 @@ export class Message {
                                 { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Done creating _searchnames for collection " + collectionname);
                     }
                 } else {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Start creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Start creating _searchnames for collection " + collectionname);
                         await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
                             [
                                 {
@@ -3967,7 +3956,7 @@ export class Message {
                                 { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("Housekeeping", "_Housekeeping", "Done creating _searchnames for collection " + collectionname);
+                        Logger.instanse.info("Done creating _searchnames for collection " + collectionname);
                     }
                 }
             }
@@ -3986,7 +3975,7 @@ export class Message {
                 for (let col of collections) {
                     if (col.name == "fs.chunks") continue;
                     if (skip_collections.indexOf(col.name) > -1) {
-                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "skipped " + col.name + " due to housekeeping_skip_collections setting");
+                        Logger.instanse.debug("skipped " + col.name + " due to housekeeping_skip_collections setting");
                         continue;
                     }
 
@@ -4100,7 +4089,7 @@ export class Message {
                                     bulkInsert.insert(item);
                                 }
                             } catch (error) {
-                                Logger.instanse.error("Housekeeping", "_Housekeeping", error);
+                                Logger.instanse.error(error);
                                 span?.recordException(error);
                             }
 
@@ -4110,19 +4099,19 @@ export class Message {
                             if (col.name != "cvr") {
                                 await bulkInsert.execute();
                             }
-                            if (items.length > 0) Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
+                            if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage));
 
                         } catch (error) {
-                            Logger.instanse.error("Housekeeping", "_Housekeeping", error);
+                            Logger.instanse.error(error);
                             span?.recordException(error);
                         }
                     }
                 }
-                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
+                Logger.instanse.debug("Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage));
             }
 
         } catch (error) {
-            Logger.instanse.error("Housekeeping", "_Housekeeping", error);
+            Logger.instanse.error(error);
             span?.recordException(error);
         }
         try {
@@ -4131,7 +4120,7 @@ export class Message {
                 let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": yesterday } } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all users (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Begin updating all users (" + usercount[0].userCount + ") dbusage field");
                 }
                 let cursor: FindCursor<any>;
                 if (Config.NODE_ENV == "production") {
@@ -4161,22 +4150,22 @@ export class Message {
                     ]// "items": { "$push": "$$ROOT" }
                     const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
                     if (items.length > 0) {
-                        Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
+                        Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections");
                         await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
                     }
-                    if (index % 100 == 0) Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
+                    if (index % 100 == 0) Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing");
                 }
-                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Completed updating all users dbusage field");
+                Logger.instanse.debug("Completed updating all users dbusage field");
             }
         } catch (error) {
-            Logger.instanse.error("Housekeeping", "_Housekeeping", error);
+            Logger.instanse.error(error);
             span?.recordException(error);
         }
         if (Config.multi_tenant) {
             try {
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
                 }
                 const pipe = [
                     { "$match": { "_type": "customer" } },
@@ -4225,7 +4214,7 @@ export class Message {
                     let dbusage: number = 0;
                     for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
                     await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
-                    Logger.instanse.debug("Housekeeping", "_Housekeeping", c.name + " using " + this.formatBytes(dbusage));
+                    Logger.instanse.debug(c.name + " using " + this.formatBytes(dbusage));
                 }
                 var sleep = (ms) => {
                     return new Promise(resolve => { setTimeout(resolve, ms) })
@@ -4233,7 +4222,7 @@ export class Message {
                 await sleep(2000);
 
             } catch (error) {
-                Logger.instanse.error("Housekeeping", "_Housekeeping", error);
+                Logger.instanse.error(error);
                 span?.recordException(error);
             }
         }
@@ -4242,7 +4231,7 @@ export class Message {
                 let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
-                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
+                    Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field");
                 }
 
                 const pipe = [
@@ -4311,13 +4300,13 @@ export class Message {
                             if (c.dbusage > resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    Logger.instanse.debug("dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
                                 }
                             } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                    Logger.instanse.debug("unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                                 }
                             }
@@ -4326,13 +4315,13 @@ export class Message {
                             if (c.dbusage > quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                                 if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    Logger.instanse.debug("dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
                                 }
                             } else if (c.dbusage <= quota) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                                 if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
+                                    Logger.instanse.debug("unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota));
                                     await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                                 }
                             }
@@ -4341,7 +4330,7 @@ export class Message {
                             if (billabledbusage > 0) {
                                 const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);
 
-                                Logger.instanse.debug("Housekeeping", "_Housekeeping", "Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
+                                Logger.instanse.debug("Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage));
                                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                                 const payload: any = { "quantity": billablecount, "timestamp": dt };
                                 if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
@@ -4354,9 +4343,9 @@ export class Message {
                             }
                         }
                         // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
-                        if (index % 100 == 0) Logger.instanse.debug("Housekeeping", "_Housekeeping", "[" + index + "/" + usercount[0].userCount + "] Processing");
+                        if (index % 100 == 0) Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing");
                     }
-                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Completed updating all customers dbusage field");
+                    Logger.instanse.debug("Completed updating all customers dbusage field");
 
 
                     const pipe2 = [
@@ -4367,24 +4356,24 @@ export class Message {
                         if (Config.db.WellknownIdsArray.indexOf(c._id) > -1) continue;
                         if (c.dbusage == null) c.dbusage = 0;
                         if (c.dbusage > resource.defaultmetadata.dbusage) {
-                            Logger.instanse.debug("Housekeeping", "_Housekeeping", "dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                            Logger.instanse.debug("dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                             await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                         } else {
                             if (c.dblocked) {
                                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                Logger.instanse.debug("Housekeeping", "_Housekeeping", "unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
+                                Logger.instanse.debug("unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage));
                             }
 
                         }
                     }
-                    Logger.instanse.debug("Housekeeping", "_Housekeeping", "Completed updating all users without a customer dbusage field");
+                    Logger.instanse.debug("Completed updating all users without a customer dbusage field");
                 }
             } catch (error) {
                 if (error.response && error.response.body) {
-                    Logger.instanse.error("Housekeeping", "_Housekeeping", error.response.body);
+                    Logger.instanse.error(error.response.body);
                     span?.recordException(error.response.body);
                 } else {
-                    Logger.instanse.error("Housekeeping", "_Housekeeping", error);
+                    Logger.instanse.error(error);
                     span?.recordException(error);
                 }
             }
@@ -4502,12 +4491,12 @@ export class Message {
                                     var data = Buffer.from(file.file, 'base64')
                                     result = pako.inflate(data);
                                 } catch (error) {
-                                    Logger.instanse.error("Message", "AddWorkitem", msg.error);
+                                    Logger.instanse.error(msg.error);
                                 }
                                 readable.push(result);
                                 readable.push(null);
                             } catch (error) {
-                                Logger.instanse.error("Message", "AddWorkitem", msg.error);
+                                Logger.instanse.error(msg.error);
                                 throw error;
                             }
                         }
@@ -4535,7 +4524,7 @@ export class Message {
                         wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                     } catch (err) {
-                        Logger.instanse.error("Message", "AddWorkitem", msg.error);
+                        Logger.instanse.error(msg.error);
                     }
                 }
             }
@@ -4703,12 +4692,12 @@ export class Message {
                                         var data = Buffer.from(file.file, 'base64')
                                         result = pako.inflate(data);
                                     } catch (error) {
-                                        Logger.instanse.error("Message", "AddWorkitems", msg.error);
+                                        Logger.instanse.error(msg.error);
                                     }
                                     readable.push(result);
                                     readable.push(null);
                                 } catch (error) {
-                                    Logger.instanse.error("Message", "AddWorkitems", msg.error);
+                                    Logger.instanse.error(msg.error);
                                     throw error;
                                 }
                             }
@@ -4736,7 +4725,7 @@ export class Message {
                             wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                         } catch (err) {
-                            Logger.instanse.error("Message", "AddWorkitems", msg.error);
+                            Logger.instanse.error(msg.error);
                         }
                     }
                 }
@@ -4861,7 +4850,7 @@ export class Message {
                         try {
                             await Config.db.DeleteOne(exists[0]._id, "fs.files", false, jwt, parent);
                         } catch (error) {
-                            Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
+                            Logger.instanse.error(msg.error);
                         }
                         wi.files = wi.files.filter(x => x.name != file.filename);
                     }
@@ -4879,12 +4868,12 @@ export class Message {
                                     var data = Buffer.from(file.file, 'base64')
                                     result = pako.inflate(data);
                                 } catch (error) {
-                                    Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
+                                    Logger.instanse.error(msg.error);
                                 }
                                 readable.push(result);
                                 readable.push(null);
                             } catch (error) {
-                                Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
+                                Logger.instanse.error(msg.error);
                                 throw error;
                             }
                         }
@@ -4911,7 +4900,7 @@ export class Message {
                         wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                     } catch (err) {
-                        Logger.instanse.error("Message", "UpdateWorkitem", msg.error);
+                        Logger.instanse.error(msg.error);
                     }
                 }
             }
@@ -5029,7 +5018,7 @@ export class Message {
 
                         msg.result = _wi;
                     } catch (error) {
-                        Logger.instanse.warn("Message", "PopWorkitem", (error.message ? error.message : error));
+                        Logger.instanse.warn((error.message ? error.message : error));
                     }
                 }
             } while (workitems.length > 0 && msg.result == null);
@@ -5359,8 +5348,8 @@ export class Message {
                     for (var i = 0; i < subscriptions.length; i++) {
                         var subscription = subscriptions[i];
                         WebServer.webpush.sendNotification(subscription, payload)
-                            .then(() => Logger.instanse.info("Message", "webpushmessage", "send wep push message to " + wpuser.name + " with payload " + payload))
-                            .catch(err => Logger.instanse.error("Message", "webpushmessage", err));
+                            .then(() => Logger.instanse.info("send wep push message to " + wpuser.name + " with payload " + payload))
+                            .catch(err => Logger.instanse.error(err));
                     }
                     break;
                 default:

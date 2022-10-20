@@ -91,12 +91,12 @@ export class LoginProvider {
                 const options = {
                     publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
                 }
-                Logger.instanse.verbose("LoginProvider", "validateToken", "saml.validate");
+                Logger.instanse.verbose("saml.validate");
                 saml.validate(rawAssertion, options, async (err, profile) => {
                     try {
                         if (err) {
                             span?.recordException(err);
-                            Logger.instanse.error("LoginProvider", "validateToken", err);
+                            Logger.instanse.error(err);
                             return reject(err);
                         }
                         const claims = profile.claims; // Array of user attributes;
@@ -104,13 +104,13 @@ export class LoginProvider {
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
-                        Logger.instanse.verbose("LoginProvider", "validateToken", "lookup " + username);
+                        Logger.instanse.verbose("lookup " + username);
                         const user = await Logger.DBHelper.FindByUsername(username, null, span);
                         if (user) {
-                            Logger.instanse.debug("LoginProvider", "validateToken", "succesfull");
+                            Logger.instanse.debug("succesfull");
                             resolve(user);
                         } else {
-                            Logger.instanse.error("LoginProvider", "validateToken", new Error("Unknown user"));
+                            Logger.instanse.error(new Error("Unknown user"));
                             span?.recordException("Unknown user");
                             reject("Unknown user");
                         }
@@ -138,16 +138,16 @@ export class LoginProvider {
             done(null, user._id);
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
-            Logger.instanse.silly("LoginProvider", "deserializeUser", "userid " + userid);
+            Logger.instanse.silly("userid " + userid);
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             if (typeof userid !== 'string') userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             const _user = await Logger.DBHelper.FindById(userid, null);
             if (_user == null) {
-                Logger.instanse.error("LoginProvider", "deserializeUser", "Failed locating user " + userid);
+                Logger.instanse.error("Failed locating user " + userid);
                 done(null, null);
             } else {
-                Logger.instanse.verbose("LoginProvider", "deserializeUser", "found user " + userid + " " + _user.name);
+                Logger.instanse.verbose("found user " + userid + " " + _user.name);
                 done(null, _user);
             }
             // const _user = await Auth.getUser(userid, "passport");
@@ -165,797 +165,24 @@ export class LoginProvider {
             //     done(null, _user);
             // }
         });
-        app.get("/dashboardauth", async (req: any, res: any, next: any) => {
-            const span: Span = (Config.otel_trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                if (req.user) {
-                    Logger.instanse.verbose("LoginProvider", "/dashboardauth", "User is signed in");
-                    const user: TokenUser = TokenUser.From(req.user);
-                    span?.setAttribute("username", user.username);
-                    if (user != null) {
-                        const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
-                        if (allowed.length > 0) {
-                            Logger.instanse.verbose("LoginProvider", "/dashboardauth", "Authorized " + user.username + " for " + req.url);
-                            return res.send({
-                                status: "success",
-                                display_status: "Success",
-                                message: "Connection OK"
-                            });
-                        } else {
-                            Logger.instanse.warn("LoginProvider", "/dashboardauth", (user.username + " is not member of 'dashboardusers' for " + req.url));
-                        }
-                    } else {
-                        Logger.instanse.error("LoginProvider", "/dashboardauth", "Failed casting user");
-                    }
-                }
-                const authorization: string = req.headers.authorization;
-
-                if (NoderedUtil.IsNullEmpty(authorization)) {
-                    res.statusCode = 401;
-                    res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
-                    res.end('Unauthorized');
-                    return;
-                }
-
-                Logger.instanse.verbose("LoginProvider", "/dashboardauth", "Lookup user by authentication header");
-                var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
-                if (user != null) {
-                    const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
-                    if (allowed.length > 0) {
-                        Logger.instanse.debug("LoginProvider", "/dashboardauth", "User is authorized to see dashboard");
-                        return res.send({
-                            status: "success",
-                            display_status: "Success",
-                            message: "Connection OK"
-                        });
-                    } else {
-                        Logger.instanse.warn("LoginProvider", "/dashboardauth", user.username + " is not member of 'dashboardusers' for " + req.url);
-                    }
-                }
-                res.statusCode = 401;
-                res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
-                res.end('Unauthorized');
-                return;
-            } catch (error) {
-                span?.recordException(error);
-                throw error;
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.get("/Signout", (req: any, res: any, next: any): void => {
-            req.logout();
-            const originalUrl: any = req.cookies.originalUrl;
-            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                Logger.instanse.debug("LoginProvider", "/Signout", "Redirect user to " + originalUrl);
-                res.cookie("originalUrl", "", { expires: new Date(0) });
-                LoginProvider.redirect(res, originalUrl);
-            } else {
-                Logger.instanse.debug("LoginProvider", "/Signout", "Redirect user to /");
-                res.redirect("/");
-            }
-        });
-        app.get("/PassiveSignout", (req: any, res: any, next: any): void => {
-            req.logout();
-            const originalUrl: any = req.cookies.originalUrl;
-            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                Logger.instanse.debug("LoginProvider", "/PassiveSignout", "Redirect user to " + originalUrl);
-                res.cookie("originalUrl", "", { expires: new Date(0) });
-                LoginProvider.redirect(res, originalUrl);
-            } else {
-                Logger.instanse.debug("LoginProvider", "/PassiveSignout", "Redirect user to /");
-                res.redirect("/Login");
-            }
-        });
+        app.get("/dashboardauth", LoginProvider.get_dashboardauth.bind(this));
+        app.get("/Signout", LoginProvider.get_Signout.bind(this));
+        app.get("/PassiveSignout", LoginProvider.get_PassiveSignout.bind(this));
         await LoginProvider.RegisterProviders(app, baseurl);
-        app.get("/user", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.user");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                res.setHeader("Content-Type", "application/json");
-                if (req.user) {
-                    Logger.instanse.debug("LoginProvider", "/user", "return user " + req.user._id);
-                    const user: User = await Logger.DBHelper.FindById(req.user._id, span);
-                    user.validated = true;
-                    if (Config.validate_user_form != "") {
-                        if (!user.formvalidated) user.validated = false;
-                    }
-                    if (Config.validate_emails) {
-                        if (!user.emailvalidated) user.validated = false;
-                    }
-                    res.end(JSON.stringify(user));
-                } else {
-                    Logger.instanse.debug("LoginProvider", "/user", "return nothing, not signed in");
-                    res.end(JSON.stringify({}));
-                }
-                res.end();
-            } catch (error) {
-                span?.recordException(error);
-                throw error;
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.get("/jwt", (req: any, res: any, next: any): void => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                res.setHeader("Content-Type", "application/json");
-                if (req.user) {
-                    const user: TokenUser = TokenUser.From(req.user);
-                    span?.setAttribute("username", user.username);
-                    Logger.instanse.debug("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
-                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
-                } else {
-                    Logger.instanse.verbose("LoginProvider", "/jwt", "return nothing, not signed in");
-                    res.end(JSON.stringify({ jwt: "" }));
-                }
-                res.end();
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/jwt", error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.get("/jwtlong", (req: any, res: any, next: any): void => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.jwtlong");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                res.setHeader("Content-Type", "application/json");
-                if (req.user) {
-                    const user: TokenUser = TokenUser.From(req.user);
-                    span?.setAttribute("username", user.username);
-
-                    if (!(user.validated == true) && Config.validate_user_form != "") {
-                        Logger.instanse.error("LoginProvider", "/jwtlong", "return nothing, user is not validated yet");
-                        res.end(JSON.stringify({ jwt: "" }));
-                    } else {
-                        Logger.instanse.debug("LoginProvider", "/jwt", "return token for user " + req.user._id + " " + user.name);
-                        res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
-                    }
-                } else {
-                    Logger.instanse.error("LoginProvider", "/jwtlong", "return nothing, not signed in");
-                    res.end(JSON.stringify({ jwt: "" }));
-                }
-                res.end();
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/jwtlong", error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.post("/jwt", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
-            // logger.debug("/jwt " + !(req.user == null));
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                const rawAssertion = req.body.token;
-                const user: User = await LoginProvider.validateToken(rawAssertion, span);
-                const tuser: TokenUser = TokenUser.From(user);
-                span?.setAttribute("username", user.username);
-                res.setHeader("Content-Type", "application/json");
-                Logger.instanse.debug("LoginProvider", "/jwt", "Recreating jwt token");
-                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/jwt", error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.get("/config", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.config");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                let _url = Config.basewsurl();
-                if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
-                if (!_url.endsWith("/")) _url += "/";
-                if (req.user) {
-                    const user: TokenUser = TokenUser.From(req.user);
-                    span?.setAttribute("username", user.username);
-                }
-                let nodered_domain_schema = Config.nodered_domain_schema;
-                if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
-                    nodered_domain_schema = "$nodered_id$." + Config.domain;
-                }
-                let forceddomains = [];
-                var providers = await Logger.DBHelper.GetProviders(null);
-                for (let i = 0; i < providers.length; i++) {
-                    var provider: any = providers[i];
-                    if (provider.forceddomains && Array.isArray(provider.forceddomains)) {
-                        forceddomains = forceddomains.concat(provider.forceddomains);
-                    }
-                }
-                const res2 = {
-                    wshost: _url,
-                    wsurl: _url,
-                    domain: Config.domain,
-                    auto_create_users: Config.auto_create_users,
-                    allow_personal_nodered: Config.allow_personal_nodered,
-                    auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
-                    auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
-                    namespace: Config.namespace,
-                    nodered_domain_schema: nodered_domain_schema,
-                    websocket_package_size: Config.websocket_package_size,
-                    version: Config.version,
-                    stripe_api_key: Config.stripe_api_key,
-                    getting_started_url: Config.getting_started_url,
-                    validate_user_form: Config.validate_user_form,
-                    validate_emails: Config.validate_emails,
-                    forgot_pass_emails: Config.forgot_pass_emails,
-                    supports_watch: Config.supports_watch,
-                    nodered_images: Config.nodered_images,
-                    amqp_enabled_exchange: Config.amqp_enabled_exchange,
-                    multi_tenant: Config.multi_tenant,
-                    enable_entity_restriction: Config.enable_entity_restriction,
-                    enable_web_tours: Config.enable_web_tours,
-                    enable_nodered_tours: Config.enable_nodered_tours,
-                    collections_with_text_index: DatabaseConnection.collections_with_text_index,
-                    timeseries_collections: DatabaseConnection.timeseries_collections,
-                    ping_clients_interval: Config.ping_clients_interval,
-                    validlicense: Logger.License.validlicense,
-                    forceddomains: forceddomains
-                }
-                Logger.instanse.debug("LoginProvider", "/config", "Return configuration settings");
-                res.end(JSON.stringify(res2));
-            } catch (error) {
-                Logger.instanse.error("LoginProvider", "/config", error);
-                span?.recordException(error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.post("/AddTokenRequest", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.login");
-            try {
-                const key = req.body.key;
-                let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
-                if (!NoderedUtil.IsNullUndefinded(exists)) {
-                    Logger.instanse.error("LoginProvider", "/AddTokenRequest", "Key has already been used! " + key);
-                    return res.status(500).send({ message: "Illegal key" });
-                }
-                await Logger.DBHelper.AdddRequestTokenID(key, {}, span);
-                Logger.instanse.debug("LoginProvider", "/AddTokenRequest", key);
-                res.status(200).send({ message: "ok" });
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/AddTokenRequest", error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.get("/GetTokenRequest", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.login");
-            try {
-                const key = req.query.key;
-                let exists: TokenRequest = null;
-                exists = await Logger.DBHelper.FindRequestTokenID(key, span);
-                if (NoderedUtil.IsNullUndefinded(exists)) {
-                    Logger.instanse.error("LoginProvider", "/GetTokenRequest", "Unknown key " + key);
-                    res.status(200).send({ message: "Illegal key" });
-                    return;
-                }
-
-                if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
-                    if (Config.validate_user_form != "") {
-                        try {
-                            var tuser = await await Crypt.verityToken(exists.jwt);
-                            var user = await Logger.DBHelper.FindById(tuser._id, span);
-                            if (user.validated == true) {
-                                await Logger.DBHelper.RemoveRequestTokenID(key, span);
-                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
-                                res.status(200).send(Object.assign(exists, { message: "ok" }));
-                            } else {
-                                Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "User not validated yet, for key " + key + " user " + user.name + " " + user._id);
-                                res.status(200).send({ message: "ok" });
-                            }
-                        } catch (error) {
-                            Logger.instanse.error("LoginProvider", "/GetTokenRequest", error);
-                        }
-                    } else {
-                        Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "return jwt for " + key);
-                        res.status(200).send(Object.assign(exists, { message: "ok" }));
-                        await Logger.DBHelper.RemoveRequestTokenID(key, span);
-                    }
-                } else {
-                    Logger.instanse.debug("LoginProvider", "/GetTokenRequest", "No jwt for " + key);
-                    res.status(200).send(Object.assign(exists, { message: "ok" }));
-                }
-            } catch (error) {
-                Logger.instanse.error("LoginProvider", "/GetTokenRequest", error);
-                span?.recordException(error);
-                try {
-                    res.status(500).send({ message: error.message ? error.message : error });
-                } catch (error) {
-                }
-            } finally {
-                try {
-                    res.end();
-                } catch (error) {
-                }
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.get("/login", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.login");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                let key = req.query.key;
-                if (NoderedUtil.IsNullEmpty(key) && !NoderedUtil.IsNullEmpty(req.cookies.requesttoken)) key = req.cookies.requesttoken;
-
-                if (!NoderedUtil.IsNullEmpty(key)) {
-                    if (req.user) {
-                        const user: User = await Logger.DBHelper.FindById(req.user._id, span);
-                        var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
-                        if (!NoderedUtil.IsNullUndefinded(exists)) {
-                            Logger.instanse.debug("LoginProvider", "/login", "adding jwt for request token " + key);
-                            await Logger.DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
-                            res.cookie("requesttoken", "", { expires: new Date(0) });
-                        }
-                    } else {
-                        res.cookie("requesttoken", key, { maxAge: 36000, httpOnly: true });
-                    }
-                }
-                if (!NoderedUtil.IsNullEmpty(req.query.key)) {
-                    if (req.user) {
-                        res.cookie("originalUrl", "", { expires: new Date(0) });
-                        Logger.instanse.debug("LoginProvider", "/login", "User signed in, with key " + key);
-                        this.redirect(res, "/");
-                    } else {
-                        try {
-                            res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
-                        } catch (error) {
-                        }
-                        Logger.instanse.debug("LoginProvider", "/login", "User not signed in, redirect to /login");
-                        this.redirect(res, "/login");
-                    }
-                }
-                let user: User;
-                let tuser: TokenUser;
-                if (req.user) {
-                    await Logger.DBHelper.UserRoleUpdate(req.user, false);
-                    user = await Logger.DBHelper.FindById(req.user._id, span);
-                    user.validated = true;
-                    if (Config.validate_user_form != "") {
-                        if (!user.formvalidated) user.validated = false;
-                    }
-                    if (Config.validate_emails) {
-                        if (!user.emailvalidated) user.validated = false;
-                    }
-                    tuser = TokenUser.From(user);
-                }
-                const originalUrl: any = req.cookies.originalUrl;
-                const validateurl: any = req.cookies.validateurl;
-                if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
-                    Logger.instanse.debug("LoginProvider", "/login", "Save originalUrl as " + originalUrl);
-                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
-                }
-                if (!NoderedUtil.IsNullEmpty(validateurl)) {
-                    if (tuser != null) {
-                        if (tuser.validated) {
-                            Logger.DBHelper.UserRoleUpdate(tuser, false);
-                        }
-                        if (!(tuser.validated == true) && Config.validate_user_form != "") {
-                        } else {
-                            res.cookie("validateurl", "", { expires: new Date(0) });
-                            res.cookie("originalUrl", "", { expires: new Date(0) });
-                            Logger.instanse.debug("LoginProvider", "/login", "redirect to validateurl /#" + validateurl);
-                            this.redirect(res, "/#" + validateurl);
-                            return;
-                        }
-                    }
-                }
-                if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl) && tuser.validated) {
-                    if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
-                        Logger.instanse.debug("LoginProvider", "/login", "user validated, redirect to " + originalUrl);
-                        this.redirect(res, originalUrl);
-                        return;
-                    } else if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
-                        Logger.instanse.debug("LoginProvider", "/login", "user signed in, redirect to " + originalUrl);
-                        this.redirect(res, originalUrl);
-                        return;
-                    }
-                }
-                if (tuser != null && tuser.validated) {
-                    Logger.instanse.debug("LoginProvider", "/login", "redirect to /");
-                    this.redirect(res, "/");
-                } else {
-                    Logger.instanse.debug("LoginProvider", "/login", "return PassiveLogin.html");
-                    const file = path.join(__dirname, 'public', 'PassiveLogin.html');
-                    res.sendFile(file);
-                }
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/login", error);
-                try {
-                    return res.status(500).send({ message: error.message ? error.message : error });
-                } catch (error) {
-                }
-            }
-            Logger.otel.endSpan(span);
-        });
-        app.get("/validateuserform", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.validateuserform");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                res.setHeader("Content-Type", "application/json");
-                if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
-                    Logger.instanse.debug("LoginProvider", "/validateuserform", "No validate user form set, return nothing");
-                    res.end(JSON.stringify({}));
-                    res.end();
-                    Logger.otel.endSpan(span);
-                    return;
-                }
-                var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, span);
-                if (forms.length == 1) {
-                    Logger.instanse.debug("LoginProvider", "/validateuserform", "Return form " + Config.validate_user_form);
-                    res.end(JSON.stringify(forms[0]));
-                    res.end();
-                    Logger.otel.endSpan(span);
-                    return;
-                }
-                Logger.instanse.error("LoginProvider", "/validateuserform", "validate_user_form " + Config.validate_user_form + " does not exists!");
-                Config.validate_user_form = "";
-                res.end(JSON.stringify({}));
-                res.end();
-            } catch (error) {
-                Logger.instanse.error("LoginProvider", "/validateuserform", error);
-                span?.recordException(error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-            return;
-        });
-        app.get("/read/:id", async (req: any, res) => {
-            if (NoderedUtil.IsNullEmpty(req.params.id)) return res.end(JSON.stringify({ "message": "notok" }));
-            const buffer = Buffer.alloc(43)
-            buffer.write('R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=', 'base64')
-            res.writeHead(200, { 'Content-Type': 'image/gif' })
-            res.end(buffer, 'binary')
-            try {
-                const id = req.params.id;
-                const dt = new Date(new Date().toISOString());
-                const ip = LoginProvider.remoteip(req);
-                let domain = "";
-                try {
-                    domain = await LoginProvider.reverseLookup(ip);
-                } catch (error) {
-                }
-                const agent = req.headers['user-agent'];
-                const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } }, "$inc": { "readcount": 1 } };
-                var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
-            } catch (error) {
-                Logger.instanse.error("LoginProvider", "/read", error);
-            }
-        });
-        app.post("/validateuserform", async (req: any, res) => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
-            res.setHeader("Content-Type", "application/json");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                if (req.user) {
-                    var u: User = req.user;
-                    if (!NoderedUtil.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, span);
-                    var tuser: TokenUser = TokenUser.From(u);
-                    if (req.body && req.body.data) {
-                        if (!tuser.formvalidated || tuser.formvalidated) {
-                            delete req.body.data._id;
-                            delete req.body.data.username;
-                            delete req.body.data.disabled;
-                            delete req.body.data.type;
-                            delete req.body.data.roles;
-                            delete req.body.data.submit;
-                            delete req.body.data.federationids;
-                            delete req.body.data.nodered;
-                            delete req.body.data.billing;
-                            delete req.body.data.clientagent;
-                            delete req.body.data.clientversion;
-                            const UpdateDoc: any = { "$set": {} };
-                            const keys = Object.keys(req.body.data);
-                            keys.forEach(key => {
-                                if (key.startsWith("_")) {
-                                } else if (key.indexOf("$") > -1) {
-                                } else {
-                                    UpdateDoc.$set[key] = req.body.data[key];
-                                }
-                            });
-                            UpdateDoc.$set["formvalidated"] = true;
-
-                            if (Config.validate_emails) {
-                                if (Config.smtp_service == "gmail") {
-                                    if (NoderedUtil.IsNullEmpty(Config.smtp_user) || NoderedUtil.IsNullEmpty(Config.smtp_pass)) {
-                                        Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing login information fot gmail");
-                                        Config.validate_emails = false;
-                                    }
-                                } else if (NoderedUtil.IsNullEmpty(Config.smtp_url)) {
-                                    Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing smtp_url");
-                                    Config.validate_emails = false;
-                                } else if (NoderedUtil.IsNullEmpty(Config.smtp_from)) {
-                                    Logger.instanse.error("LoginProvider", "/validateuserform", "Disabling email validation, missing smtp_from");
-                                    Config.validate_emails = false;
-                                }
-                            }
-
-                            Config.smtp_service = Config.getEnv("smtp_service", "");
-                            Config.smtp_from = Config.getEnv("smtp_from", "");
-                            Config.smtp_user = Config.getEnv("smtp_user", "");
-                            Config.smtp_pass = Config.getEnv("smtp_service", "");
-
-                            if (Config.validate_emails) {
-                                let email: string = tuser.username;
-                                if (tuser.email && tuser.email.indexOf("@") > -1) email = tuser.email;
-                                if (req.body.data.email) email = req.body.data.email;
-
-                                if (email.indexOf("@") > -1) {
-                                    if (Config.debounce_lookup) {
-                                        const response = await got.get("https://disposable.debounce.io/?email=" + email);
-                                        const body = JSON.parse(response.body);
-                                        if (body.disposable == true) {
-                                            throw new Error("Please use a valid and non temporary email address");
-                                        }
-                                    }
-                                    if (Config.validate_emails_disposable) {
-                                        var domain = await Logger.DBHelper.GetDisposableDomain(email, span);
-                                        if (domain != null) {
-                                            throw new Error("Please use a valid and non temporary email address");
-                                        }
-                                    }
-                                }
-
-                                if (email.indexOf("@") > -1) {
-
-                                    // https://disposable.debounce.io/?email=info@example.com
-                                    email = email.toLowerCase();
-                                    var exists = await Config.db.query<User>({ query: { "_id": { "$ne": tuser._id }, "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
-                                    if (exists.length > 0) {
-                                        Logger.instanse.error("LoginProvider", "/validateuserform", tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")")
-                                        email = "";
-                                        delete UpdateDoc.$set["email"];
-                                        UpdateDoc.$set["formvalidated"] = false;
-                                        throw new Error("email already in use by another user");
-                                    }
-                                }
-                                if (email.indexOf("@") > -1) {
-                                    if (tuser.emailvalidated == true) {
-                                        UpdateDoc.$set["validated"] = true;
-                                        tuser.validated = true;
-                                    } else {
-                                        const code = NoderedUtil.GetUniqueIdentifier();
-                                        UpdateDoc.$set["_mailcode"] = code;
-                                        this.sendEmail("validate", tuser._id, email, 'Validate email in OpenIAP flow',
-                                            `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`);
-                                    }
-                                } else {
-                                    Logger.instanse.error("LoginProvider", "/validateuserform", tuser.name + " email is mandatory)");
-                                    throw new Error("email is mandatory.");
-                                }
-                            } else {
-                                UpdateDoc.$set["validated"] = true;
-                                tuser.validated = true;
-                            }
-
-
-                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Update user " + tuser.name + " information");
-                            var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                            await Logger.DBHelper.UserRoleUpdate(tuser, false);
-                        }
-                        if (!(tuser.validated == true) && Config.validate_user_form != "") {
-                            Logger.instanse.debug("LoginProvider", "/validateuserform", "User not validated, return no token for user " + tuser.name);
-                            res.end(JSON.stringify({ jwt: "" }));
-                        } else {
-                            Logger.instanse.debug("LoginProvider", "/validateuserform", "Return new jwt for user " + tuser.name);
-                            res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
-                        }
-                    } else if (req.body) {
-                        if (req.body.resend) {
-                            var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
-                            if (exists.length > 0) {
-                                var u: User = exists[0];
-                                let email: string = u.username;
-                                if (u.email.indexOf("@") > -1) email = u.email;
-                                (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
-                                this.sendEmail("validate", u._id, email, 'Validate email in OpenIAP flow',
-                                    `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`);
-
-
-                                const UpdateDoc: any = { "$set": {} };
-                                UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
-                                var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                                await Logger.DBHelper.UserRoleUpdate(tuser, false);
-                                res.end(JSON.stringify({ jwt: "" }));
-                            } else {
-                                res.end(JSON.stringify({ jwt: "" }));
-                            }
-                        } else if (req.body.code) {
-                            var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
-                            if (exists.length > 0) {
-                                var u: User = exists[0];
-                                if ((u as any)._mailcode == req.body.code) {
-                                    // @ts-ignore
-                                    delete u._mailcode;
-                                    u.validated = true;
-                                    u.emailvalidated = true;
-                                    await Logger.DBHelper.Save(u, Crypt.rootToken(), span);
-
-                                    // const UpdateDoc: any = { "$set": {}, "$unset": {} };
-                                    // UpdateDoc.$unset["_mailcode"] = "";
-                                    // UpdateDoc.$set["validated"] = true;
-                                    // UpdateDoc.$set["emailvalidated"] = true;
-                                    // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                                    await Logger.DBHelper.UserRoleUpdate(tuser, false);
-                                    res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
-                                    return;
-                                } else {
-                                    throw new Error("Wrong validation code for " + tuser.name)
-                                }
-                            }
-                            res.end(JSON.stringify({ jwt: "" }));
-                        } else {
-                            res.end(JSON.stringify({ jwt: "" }));
-                        }
-
-                    }
-                } else {
-                    Logger.instanse.error("LoginProvider", "/validateuserform", "User no longer signed in");
-                    res.end(JSON.stringify({ jwt: "" }));
-                }
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/validateuserform", error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            }
-            Logger.otel.endSpan(span);
-            res.end();
-        });
-        app.post("/forgotpassword", async (req: any, res) => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
-            res.setHeader("Content-Type", "application/json");
-            try {
-                if (req.body && req.body.email) {
-                    const id = NoderedUtil.GetUniqueIdentifier();
-                    const email: string = req.body.email;
-                    let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
-                    if (user == null) {
-                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Received unknown email " + email);
-                        return res.end(JSON.stringify({ id }));
-                    }
-                    const code = NoderedUtil.GetUniqueIdentifier();
-                    var key = ("forgotpass_" + id).toString();
-                    let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
-                        Logger.instanse.info("LoginProvider", "/forgotpassword", `Add forgotpass if ${id} with code ${code} for ${email}`);
-                        return { id, email, code };
-                    });
-                    if (item.id != id || item.email != email || item.code != code) {
-                        Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong mail for id " + id);
-                        return res.end(JSON.stringify({ id }));
-                    }
-                    this.sendEmail("pwreset", user._id, email, 'Reset password request',
-                        `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`);
-                    await Logger.DBHelper.UserRoleUpdate(user, false);
-                    return res.end(JSON.stringify({ id }));
-                }
-                else if (req.body && req.body.code && req.body.id && !req.body.password) {
-                    const code: string = req.body.code.trim();
-                    const id: string = req.body.id;
-
-                    var key = ("forgotpass_" + id).toString();
-                    let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
-                        return null;
-                    });
-                    if (item == null || item.id != id || item.code != code) {
-                        if (item == null) {
-                            Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied unknown id " + id);
-                        } else {
-                            Logger.instanse.error("LoginProvider", "/forgotpassword", "Recevied wrong code for id " + id);
-                        }
-                        throw new Error("Recevied wrong code for id " + id);
-                    }
-                    return res.end(JSON.stringify({ id }));
-                }
-                else if (req.body && req.body.code && req.body.id && req.body.password) {
-                    const code: string = req.body.code.trim();
-                    const id: string = req.body.id;
-                    const password: string = req.body.password;
-
-                    var key = ("forgotpass_" + id).toString();
-                    let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
-                        Logger.instanse.debug("DBHelper", "FindById", "Add forgotpass : " + id);
-                        return null;
-                    });
-                    if (item == null || item.id != id || item.code != code) {
-                        Logger.instanse.error("LoginProvider", "forgotpassword", "Recevied wrong code for id " + id);
-                        throw new Error("Recevied wrong code for id " + id);
-                    }
-                    let user = await Config.db.getbyusername<User>(item.email, null, Crypt.rootToken(), true, span);
-                    (user as any).newpassword = password;
-                    user.emailvalidated = true;
-                    user.validated = true;
-                    if (Config.validate_user_form != "") {
-                        if (!user.formvalidated) user.validated = false;
-                    }
-                    if (Config.validate_emails) {
-                        if (!user.emailvalidated) user.validated = false;
-                    }
-                    await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
-                    await Logger.DBHelper.UserRoleUpdate(user, false);
-                    return res.end(JSON.stringify({ id }));
-                }
-                res.end(JSON.stringify({}));
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/validateuserform", error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            }
-            Logger.otel.endSpan(span);
-            res.end();
-        });
-        app.get("/loginproviders", async (req: any, res: any, next: any): Promise<void> => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                const result: Provider[] = await Logger.DBHelper.GetProviders(span);
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify(result));
-                res.end();
-            } catch (error) {
-                span?.recordException(error);
-                Logger.instanse.error("LoginProvider", "/loginproviders", error);
-                Logger.otel.endSpan(span);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-        app.get("/download/:id", async (req, res) => {
-            const span: Span = Logger.otel.startSpan("LoginProvider.download");
-            try {
-                span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-                let user: TokenUser = null;
-                let jwt: string = null;
-                const authHeader = req.headers.authorization;
-                if (authHeader) {
-                    user = await Crypt.verityToken(authHeader);
-                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                }
-                else if (req.user) {
-                    user = TokenUser.From(req.user as any);
-                    jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
-                }
-                if (user == null) {
-                    return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
-                }
-
-                const id = req.params.id;
-                const rows = await Config.db.query({ query: { _id: safeObjectID(id) }, top: 1, collectionname: "files", jwt }, span);
-                if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
-                const file = rows[0] as any;
-
-                const bucket = new GridFSBucket(Config.db.db);
-                let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-                res.set('Content-Type', file.contentType);
-                res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
-                res.set('Content-Length', file.length);
-                downloadStream.on("error", function (err) {
-                    res.end();
-                });
-                downloadStream.pipe(res);
-            } catch (error) {
-                span?.recordException(error);
-                return res.status(500).send({ message: error.message ? error.message : error });
-            } finally {
-                Logger.otel.endSpan(span);
-            }
-        });
-
+        app.get("/user", LoginProvider.get_user.bind(this));
+        app.get("/jwt", LoginProvider.get_jwt.bind(this));
+        app.get("/jwtlong", LoginProvider.get_jwtlong.bind(this));
+        app.post("/jwt", LoginProvider.post_jwt.bind(this));
+        app.get("/config", LoginProvider.get_config.bind(this));
+        app.post("/AddTokenRequest", LoginProvider.post_AddTokenRequest.bind(this));
+        app.get("/GetTokenRequest", LoginProvider.get_GetTokenRequest.bind(this));
+        app.get("/login", LoginProvider.get_login.bind(this));
+        app.get("/validateuserform", LoginProvider.get_validateuserform.bind(this));
+        app.get("/read/:id", LoginProvider.get_read.bind(this));
+        app.post("/validateuserform", LoginProvider.post_validateuserform.bind(this));
+        app.post("/forgotpassword", LoginProvider.post_forgotpassword.bind(this));
+        app.get("/loginproviders", LoginProvider.get_loginproviders.bind(this));
+        app.get("/download/:id", LoginProvider.get_download.bind(this));
     }
     static async RegisterProviders(app: express.Express, baseurl: string) {
         const span: Span = Logger.otel.startSpan("LoginProvider.RegisterProviders");
@@ -984,7 +211,7 @@ export class LoginProvider {
                     }
                     if (provider.provider === "local") { hasLocal = true; }
                 } catch (error) {
-                    Logger.instanse.error("LoginProvider", "RegisterProviders", error);
+                    Logger.instanse.error(error);
                 }
             });
             if (hasLocal === true) {
@@ -997,7 +224,7 @@ export class LoginProvider {
                 let key = keys[i];
                 var exists = providers.filter(x => x.id == key || (key == 'local' && x.provider == 'local'));
                 if (exists.length == 0) {
-                    Logger.instanse.debug("LoginProvider", "RegisterProviders", "[loginprovider] Removing passport strategy " + key);
+                    Logger.instanse.debug("[loginprovider] Removing passport strategy " + key);
                     passport.unuse(key);
                 }
             }
@@ -1022,7 +249,7 @@ export class LoginProvider {
 
 
     static async CreateOpenIDStrategy(app: express.Express, discoveryurl: string, key: string, clientID: string, clientSecret: string, baseurl: string): Promise<any> {
-        Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
+        Logger.instanse.debug("Adding new google strategy " + key);
         const response = await got.get(discoveryurl, options);
         const document = JSON.parse(response.body);
         var options = {
@@ -1058,7 +285,7 @@ export class LoginProvider {
         return strategy;
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string): any {
-        Logger.instanse.debug("LoginProvider", "CreateGoogleStrategy", "Adding new google strategy " + key);
+        Logger.instanse.debug("Adding new google strategy " + key);
         const options: googleauthstrategyoptions = new googleauthstrategyoptions();
         options.clientID = consumerKey;
         options.clientSecret = consumerSecret;
@@ -1087,7 +314,7 @@ export class LoginProvider {
 
     // tslint:disable-next-line: max-line-length
     static CreateSAMLStrategy(app: express.Express, key: string, cert: string, singin_url: string, issuer: string, baseurl: string): passport.Strategy {
-        Logger.instanse.debug("LoginProvider", "CreateSAMLStrategy", "Adding new SAML strategy " + key);
+        Logger.instanse.debug("Adding new SAML strategy " + key);
         const options: samlauthstrategyoptions = new samlauthstrategyoptions();
         (options as any).passReqToCallback = true;
         options.entryPoint = singin_url;
@@ -1175,7 +402,7 @@ export class LoginProvider {
 
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy({ passReqToCallback: true }, async (req: any, username: string, password: string, done: any): Promise<void> => {
-            Logger.instanse.debug("LoginProvider", "CreateLocalStrategy", "Adding new local strategy");
+            Logger.instanse.debug("Adding new local strategy");
             const span: Span = Logger.otel.startSpan("LoginProvider.LocalLogin");
             try {
                 let remoteip: string = "";
@@ -1266,7 +493,7 @@ export class LoginProvider {
             } catch (error) {
                 span?.recordException(error);
                 Logger.otel.endSpan(span);
-                Logger.instanse.error("LoginProvider", "CreateLocalStrategy", error);
+                Logger.instanse.error(error);
                 done(error.message ? error.message : error);
             }
         });
@@ -1295,13 +522,13 @@ export class LoginProvider {
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
                     if (err) {
-                        Logger.instanse.error("LoginProvider", "/local", err);
+                        Logger.instanse.error(err);
                     }
                     if (!err && user) {
                         req.logIn(user, function (err: any) {
                             if (err) {
-                                Logger.instanse.debug("LoginProvider", "/local", "req.logIn failed");
-                                Logger.instanse.error("LoginProvider", "/local", err);
+                                Logger.instanse.debug("req.logIn failed");
+                                Logger.instanse.error(err);
                                 return next(err);
                             }
                             if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
@@ -1311,10 +538,10 @@ export class LoginProvider {
                                 try {
                                     res.cookie("originalUrl", "", { expires: new Date(0) });
                                     LoginProvider.redirect(res, originalUrl);
-                                    Logger.instanse.debug("LoginProvider", "/local", "redirect: " + originalUrl);
+                                    Logger.instanse.debug("redirect: " + originalUrl);
                                     return;
                                 } catch (error) {
-                                    Logger.instanse.error("LoginProvider", "CreateLocalStrategy", error);
+                                    Logger.instanse.error(error);
                                 }
                             } else {
                                 res.redirect("/");
@@ -1331,17 +558,17 @@ export class LoginProvider {
                         }
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
-                            Logger.instanse.debug("LoginProvider", "/local", "redirect: " + originalUrl);
+                            Logger.instanse.debug("redirect: " + originalUrl);
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
-                            Logger.instanse.error("LoginProvider", "CreateLocalStrategy", error);
+                            Logger.instanse.error(error);
                         }
                     } else {
                         try {
                             res.redirect("/");
                             return next();
                         } catch (error) {
-                            Logger.instanse.error("LoginProvider", "/local", error);
+                            Logger.instanse.error(error);
                         }
                     }
                 })(req, res, next);
@@ -1357,7 +584,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug("LoginProvider", "samlverify", username);
+            Logger.instanse.debug(username);
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             let remoteip: string = "";
             if (!NoderedUtil.IsNullUndefinded(req)) {
@@ -1452,7 +679,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug("LoginProvider", "openidverify", profile.id);
+            Logger.instanse.debug(profile.id);
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(profile.id, issuer, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 _user = await Logger.DBHelper.FindByUsernameOrFederationid(profile.username, issuer, span);
@@ -1500,7 +727,7 @@ export class LoginProvider {
             await Audit.LoginSuccess(tuser, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
             done(null, tuser);
         } catch (error) {
-            Logger.instanse.error("LoginProvider", "openidverify", error);
+            Logger.instanse.error(error);
             span?.recordException(error);
         }
         Logger.otel.endSpan(span);
@@ -1521,7 +748,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug("LoginProvider", "googleverify", username);
+            Logger.instanse.debug(username);
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
@@ -1564,7 +791,7 @@ export class LoginProvider {
             await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
             done(null, tuser);
         } catch (error) {
-            Logger.instanse.error("LoginProvider", "googleverify", error);
+            Logger.instanse.error(error);
             span?.recordException(error);
         }
         Logger.otel.endSpan(span);
@@ -1604,8 +831,8 @@ export class LoginProvider {
             let from = Config.smtp_from;
 
             if (Config.NODE_ENV != "production") {
-                Logger.instanse.warn("LoginProvider", "sendEmail", "Skip sending email to " + to);
-                Logger.instanse.info("LoginProvider", "sendEmail", text);
+                Logger.instanse.warn("Skip sending email to " + to);
+                Logger.instanse.info(text);
                 resolve("email not sent");
             } else {
                 transporter.sendMail({
@@ -1615,10 +842,10 @@ export class LoginProvider {
                     html
                 }, function (error, info) {
                     if (error) {
-                        Logger.instanse.info("LoginProvider", "sendEmail", error);
+                        Logger.instanse.error(error);
                         reject(error);
                     } else {
-                        Logger.instanse.info("LoginProvider", "sendEmail", "Email sent to " + to + " " + info.response);
+                        Logger.instanse.info("Email sent to " + to + " " + info.response);
                         var item: any = new Base();
                         item.readcount = 0;
                         item._type = type;
@@ -1637,5 +864,794 @@ export class LoginProvider {
                 });
             }
         });
+    }
+    static async get_dashboardauth(req: any, res: any, next: any) {
+        const span: Span = (Config.otel_trace_dashboardauth ? Logger.otel.startSpan("LoginProvider.dashboardauth") : null);
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            if (req.user) {
+                Logger.instanse.verbose("User is signed in");
+                const user: TokenUser = TokenUser.From(req.user);
+                span?.setAttribute("username", user.username);
+                if (user != null) {
+                    const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                    if (allowed.length > 0) {
+                        Logger.instanse.verbose("Authorized " + user.username + " for " + req.url);
+                        return res.send({
+                            status: "success",
+                            display_status: "Success",
+                            message: "Connection OK"
+                        });
+                    } else {
+                        Logger.instanse.warn((user.username + " is not member of 'dashboardusers' for " + req.url));
+                    }
+                } else {
+                    Logger.instanse.error("Failed casting user");
+                }
+            }
+            const authorization: string = req.headers.authorization;
+
+            if (NoderedUtil.IsNullEmpty(authorization)) {
+                res.statusCode = 401;
+                res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
+                res.end('Unauthorized');
+                return;
+            }
+
+            Logger.instanse.verbose("Lookup user by authentication header");
+            var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
+            if (user != null) {
+                const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                if (allowed.length > 0) {
+                    Logger.instanse.debug("User is authorized to see dashboard");
+                    return res.send({
+                        status: "success",
+                        display_status: "Success",
+                        message: "Connection OK"
+                    });
+                } else {
+                    Logger.instanse.warn(user.username + " is not member of 'dashboardusers' for " + req.url);
+                }
+            }
+            res.statusCode = 401;
+            res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
+            res.end('Unauthorized');
+            return;
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static get_Signout(req: any, res: any, next: any): void {
+        req.logout();
+        const originalUrl: any = req.cookies.originalUrl;
+        if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+            Logger.instanse.debug("Redirect user to " + originalUrl);
+            res.cookie("originalUrl", "", { expires: new Date(0) });
+            LoginProvider.redirect(res, originalUrl);
+        } else {
+            Logger.instanse.debug("Redirect user to /");
+            res.redirect("/");
+        }
+    }
+    static get_PassiveSignout(req: any, res: any, next: any): void {
+        req.logout();
+        const originalUrl: any = req.cookies.originalUrl;
+        if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+            Logger.instanse.debug("Redirect user to " + originalUrl);
+            res.cookie("originalUrl", "", { expires: new Date(0) });
+            LoginProvider.redirect(res, originalUrl);
+        } else {
+            Logger.instanse.debug("Redirect user to /");
+            res.redirect("/Login");
+        }
+    }
+    static async get_user(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.user");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            res.setHeader("Content-Type", "application/json");
+            if (req.user) {
+                Logger.instanse.debug("return user " + req.user._id);
+                const user: User = await Logger.DBHelper.FindById(req.user._id, span);
+                user.validated = true;
+                if (Config.validate_user_form != "") {
+                    if (!user.formvalidated) user.validated = false;
+                }
+                if (Config.validate_emails) {
+                    if (!user.emailvalidated) user.validated = false;
+                }
+                res.end(JSON.stringify(user));
+            } else {
+                Logger.instanse.debug("return nothing, not signed in");
+                res.end(JSON.stringify({}));
+            }
+            res.end();
+        } catch (error) {
+            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static get_jwt(req: any, res: any, next: any): void {
+        const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            res.setHeader("Content-Type", "application/json");
+            if (req.user) {
+                const user: TokenUser = TokenUser.From(req.user);
+                span?.setAttribute("username", user.username);
+                Logger.instanse.debug("return token for user " + req.user._id + " " + user.name);
+                res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
+            } else {
+                Logger.instanse.verbose("return nothing, not signed in");
+                res.end(JSON.stringify({ jwt: "" }));
+            }
+            res.end();
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static get_jwtlong(req: any, res: any, next: any): void {
+        const span: Span = Logger.otel.startSpan("LoginProvider.jwtlong");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            res.setHeader("Content-Type", "application/json");
+            if (req.user) {
+                const user: TokenUser = TokenUser.From(req.user);
+                span?.setAttribute("username", user.username);
+
+                if (!(user.validated == true) && Config.validate_user_form != "") {
+                    Logger.instanse.error("return nothing, user is not validated yet");
+                    res.end(JSON.stringify({ jwt: "" }));
+                } else {
+                    Logger.instanse.debug("return token for user " + req.user._id + " " + user.name);
+                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                }
+            } else {
+                Logger.instanse.error("return nothing, not signed in");
+                res.end(JSON.stringify({ jwt: "" }));
+            }
+            res.end();
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static async post_jwt(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.jwt");
+        // logger.debug("/jwt " + !(req.user == null));
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            const rawAssertion = req.body.token;
+            const user: User = await LoginProvider.validateToken(rawAssertion, span);
+            const tuser: TokenUser = TokenUser.From(user);
+            span?.setAttribute("username", user.username);
+            res.setHeader("Content-Type", "application/json");
+            Logger.instanse.debug("Recreating jwt token");
+            res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static async get_config(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.config");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            let _url = Config.basewsurl();
+            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
+            if (!_url.endsWith("/")) _url += "/";
+            if (req.user) {
+                const user: TokenUser = TokenUser.From(req.user);
+                span?.setAttribute("username", user.username);
+            }
+            let nodered_domain_schema = Config.nodered_domain_schema;
+            if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
+                nodered_domain_schema = "$nodered_id$." + Config.domain;
+            }
+            let forceddomains = [];
+            var providers = await Logger.DBHelper.GetProviders(null);
+            for (let i = 0; i < providers.length; i++) {
+                var provider: any = providers[i];
+                if (provider.forceddomains && Array.isArray(provider.forceddomains)) {
+                    forceddomains = forceddomains.concat(provider.forceddomains);
+                }
+            }
+            const res2 = {
+                wshost: _url,
+                wsurl: _url,
+                domain: Config.domain,
+                auto_create_users: Config.auto_create_users,
+                allow_personal_nodered: Config.allow_personal_nodered,
+                auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
+                auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
+                namespace: Config.namespace,
+                nodered_domain_schema: nodered_domain_schema,
+                websocket_package_size: Config.websocket_package_size,
+                version: Config.version,
+                stripe_api_key: Config.stripe_api_key,
+                getting_started_url: Config.getting_started_url,
+                validate_user_form: Config.validate_user_form,
+                validate_emails: Config.validate_emails,
+                forgot_pass_emails: Config.forgot_pass_emails,
+                supports_watch: Config.supports_watch,
+                nodered_images: Config.nodered_images,
+                amqp_enabled_exchange: Config.amqp_enabled_exchange,
+                multi_tenant: Config.multi_tenant,
+                enable_entity_restriction: Config.enable_entity_restriction,
+                enable_web_tours: Config.enable_web_tours,
+                enable_nodered_tours: Config.enable_nodered_tours,
+                collections_with_text_index: DatabaseConnection.collections_with_text_index,
+                timeseries_collections: DatabaseConnection.timeseries_collections,
+                ping_clients_interval: Config.ping_clients_interval,
+                validlicense: Logger.License.validlicense,
+                forceddomains: forceddomains
+            }
+            Logger.instanse.debug("Return configuration settings");
+            res.end(JSON.stringify(res2));
+        } catch (error) {
+            Logger.instanse.error(error);
+            span?.recordException(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static async post_AddTokenRequest(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.login");
+        try {
+            const key = req.body.key;
+            let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
+            if (!NoderedUtil.IsNullUndefinded(exists)) {
+                Logger.instanse.error("Key has already been used! " + key);
+                return res.status(500).send({ message: "Illegal key" });
+            }
+            await Logger.DBHelper.AdddRequestTokenID(key, {}, span);
+            Logger.instanse.debug(key);
+            res.status(200).send({ message: "ok" });
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static async get_GetTokenRequest(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.login");
+        try {
+            const key = req.query.key;
+            let exists: TokenRequest = null;
+            exists = await Logger.DBHelper.FindRequestTokenID(key, span);
+            if (NoderedUtil.IsNullUndefinded(exists)) {
+                Logger.instanse.error("Unknown key " + key);
+                res.status(200).send({ message: "Illegal key" });
+                return;
+            }
+
+            if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
+                if (Config.validate_user_form != "") {
+                    try {
+                        var tuser = await await Crypt.verityToken(exists.jwt);
+                        var user = await Logger.DBHelper.FindById(tuser._id, span);
+                        if (user.validated == true) {
+                            await Logger.DBHelper.RemoveRequestTokenID(key, span);
+                            Logger.instanse.debug("return jwt for " + key);
+                            res.status(200).send(Object.assign(exists, { message: "ok" }));
+                        } else {
+                            Logger.instanse.debug("User not validated yet, for key " + key + " user " + user.name + " " + user._id);
+                            res.status(200).send({ message: "ok" });
+                        }
+                    } catch (error) {
+                        Logger.instanse.error(error);
+                    }
+                } else {
+                    Logger.instanse.debug("return jwt for " + key);
+                    res.status(200).send(Object.assign(exists, { message: "ok" }));
+                    await Logger.DBHelper.RemoveRequestTokenID(key, span);
+                }
+            } else {
+                Logger.instanse.debug("No jwt for " + key);
+                res.status(200).send(Object.assign(exists, { message: "ok" }));
+            }
+        } catch (error) {
+            Logger.instanse.error(error);
+            span?.recordException(error);
+            try {
+                res.status(500).send({ message: error.message ? error.message : error });
+            } catch (error) {
+            }
+        } finally {
+            try {
+                res.end();
+            } catch (error) {
+            }
+            Logger.otel.endSpan(span);
+        }
+    }
+    static async get_login(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.login");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            let key = req.query.key;
+            if (NoderedUtil.IsNullEmpty(key) && !NoderedUtil.IsNullEmpty(req.cookies.requesttoken)) key = req.cookies.requesttoken;
+
+            if (!NoderedUtil.IsNullEmpty(key)) {
+                if (req.user) {
+                    const user: User = await Logger.DBHelper.FindById(req.user._id, span);
+                    var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
+                    if (!NoderedUtil.IsNullUndefinded(exists)) {
+                        Logger.instanse.debug("adding jwt for request token " + key);
+                        await Logger.DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
+                        res.cookie("requesttoken", "", { expires: new Date(0) });
+                    }
+                } else {
+                    res.cookie("requesttoken", key, { maxAge: 36000, httpOnly: true });
+                }
+            }
+            if (!NoderedUtil.IsNullEmpty(req.query.key)) {
+                if (req.user) {
+                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                    Logger.instanse.debug("User signed in, with key " + key);
+                    this.redirect(res, "/");
+                } else {
+                    try {
+                        res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                    } catch (error) {
+                    }
+                    Logger.instanse.debug("User not signed in, redirect to /login");
+                    this.redirect(res, "/login");
+                }
+            }
+            let user: User;
+            let tuser: TokenUser;
+            if (req.user) {
+                await Logger.DBHelper.UserRoleUpdate(req.user, false);
+                user = await Logger.DBHelper.FindById(req.user._id, span);
+                user.validated = true;
+                if (Config.validate_user_form != "") {
+                    if (!user.formvalidated) user.validated = false;
+                }
+                if (Config.validate_emails) {
+                    if (!user.emailvalidated) user.validated = false;
+                }
+                tuser = TokenUser.From(user);
+            }
+            const originalUrl: any = req.cookies.originalUrl;
+            const validateurl: any = req.cookies.validateurl;
+            if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
+                Logger.instanse.debug("Save originalUrl as " + originalUrl);
+                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+            }
+            if (!NoderedUtil.IsNullEmpty(validateurl)) {
+                if (tuser != null) {
+                    if (tuser.validated) {
+                        Logger.DBHelper.UserRoleUpdate(tuser, false);
+                    }
+                    if (!(tuser.validated == true) && Config.validate_user_form != "") {
+                    } else {
+                        res.cookie("validateurl", "", { expires: new Date(0) });
+                        res.cookie("originalUrl", "", { expires: new Date(0) });
+                        Logger.instanse.debug("redirect to validateurl /#" + validateurl);
+                        this.redirect(res, "/#" + validateurl);
+                        return;
+                    }
+                }
+            }
+            if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl) && tuser.validated) {
+                if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
+                    Logger.instanse.debug("user validated, redirect to " + originalUrl);
+                    this.redirect(res, originalUrl);
+                    return;
+                } else if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                    Logger.instanse.debug("user signed in, redirect to " + originalUrl);
+                    this.redirect(res, originalUrl);
+                    return;
+                }
+            }
+            if (tuser != null && tuser.validated) {
+                Logger.instanse.debug("redirect to /");
+                this.redirect(res, "/");
+            } else {
+                Logger.instanse.debug("return PassiveLogin.html");
+                const file = path.join(__dirname, 'public', 'PassiveLogin.html');
+                res.sendFile(file);
+            }
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            try {
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } catch (error) {
+            }
+        }
+        Logger.otel.endSpan(span);
+    }
+    static async get_validateuserform(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.validateuserform");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            res.setHeader("Content-Type", "application/json");
+            if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                Logger.instanse.debug("No validate user form set, return nothing");
+                res.end(JSON.stringify({}));
+                res.end();
+                Logger.otel.endSpan(span);
+                return;
+            }
+            var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, span);
+            if (forms.length == 1) {
+                Logger.instanse.debug("Return form " + Config.validate_user_form);
+                res.end(JSON.stringify(forms[0]));
+                res.end();
+                Logger.otel.endSpan(span);
+                return;
+            }
+            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Config.validate_user_form = "";
+            res.end(JSON.stringify({}));
+            res.end();
+        } catch (error) {
+            Logger.instanse.error(error);
+            span?.recordException(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+        return;
+    }
+    static async get_read(req: any, res) {
+        if (NoderedUtil.IsNullEmpty(req.params.id)) return res.end(JSON.stringify({ "message": "notok" }));
+        const buffer = Buffer.alloc(43)
+        buffer.write('R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=', 'base64')
+        res.writeHead(200, { 'Content-Type': 'image/gif' })
+        res.end(buffer, 'binary')
+        try {
+            const id = req.params.id;
+            const dt = new Date(new Date().toISOString());
+            const ip = LoginProvider.remoteip(req);
+            let domain = "";
+            try {
+                domain = await LoginProvider.reverseLookup(ip);
+            } catch (error) {
+            }
+            const agent = req.headers['user-agent'];
+            const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } }, "$inc": { "readcount": 1 } };
+            var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
+        } catch (error) {
+            Logger.instanse.error(error);
+        }
+    }
+    static async post_validateuserform(req: any, res) {
+        const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
+        res.setHeader("Content-Type", "application/json");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            if (req.user) {
+                var u: User = req.user;
+                if (!NoderedUtil.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, span);
+                var tuser: TokenUser = TokenUser.From(u);
+                if (req.body && req.body.data) {
+                    if (!tuser.formvalidated || tuser.formvalidated) {
+                        delete req.body.data._id;
+                        delete req.body.data.username;
+                        delete req.body.data.disabled;
+                        delete req.body.data.type;
+                        delete req.body.data.roles;
+                        delete req.body.data.submit;
+                        delete req.body.data.federationids;
+                        delete req.body.data.nodered;
+                        delete req.body.data.billing;
+                        delete req.body.data.clientagent;
+                        delete req.body.data.clientversion;
+                        const UpdateDoc: any = { "$set": {} };
+                        const keys = Object.keys(req.body.data);
+                        keys.forEach(key => {
+                            if (key.startsWith("_")) {
+                            } else if (key.indexOf("$") > -1) {
+                            } else {
+                                UpdateDoc.$set[key] = req.body.data[key];
+                            }
+                        });
+                        UpdateDoc.$set["formvalidated"] = true;
+
+                        if (Config.validate_emails) {
+                            if (Config.smtp_service == "gmail") {
+                                if (NoderedUtil.IsNullEmpty(Config.smtp_user) || NoderedUtil.IsNullEmpty(Config.smtp_pass)) {
+                                    Logger.instanse.error("Disabling email validation, missing login information fot gmail");
+                                    Config.validate_emails = false;
+                                }
+                            } else if (NoderedUtil.IsNullEmpty(Config.smtp_url)) {
+                                Logger.instanse.error("Disabling email validation, missing smtp_url");
+                                Config.validate_emails = false;
+                            } else if (NoderedUtil.IsNullEmpty(Config.smtp_from)) {
+                                Logger.instanse.error("Disabling email validation, missing smtp_from");
+                                Config.validate_emails = false;
+                            }
+                        }
+
+                        Config.smtp_service = Config.getEnv("smtp_service", "");
+                        Config.smtp_from = Config.getEnv("smtp_from", "");
+                        Config.smtp_user = Config.getEnv("smtp_user", "");
+                        Config.smtp_pass = Config.getEnv("smtp_service", "");
+
+                        if (Config.validate_emails) {
+                            let email: string = tuser.username;
+                            if (tuser.email && tuser.email.indexOf("@") > -1) email = tuser.email;
+                            if (req.body.data.email) email = req.body.data.email;
+
+                            if (email.indexOf("@") > -1) {
+                                if (Config.debounce_lookup) {
+                                    const response = await got.get("https://disposable.debounce.io/?email=" + email);
+                                    const body = JSON.parse(response.body);
+                                    if (body.disposable == true) {
+                                        throw new Error("Please use a valid and non temporary email address");
+                                    }
+                                }
+                                if (Config.validate_emails_disposable) {
+                                    var domain = await Logger.DBHelper.GetDisposableDomain(email, span);
+                                    if (domain != null) {
+                                        throw new Error("Please use a valid and non temporary email address");
+                                    }
+                                }
+                            }
+
+                            if (email.indexOf("@") > -1) {
+
+                                // https://disposable.debounce.io/?email=info@example.com
+                                email = email.toLowerCase();
+                                var exists = await Config.db.query<User>({ query: { "_id": { "$ne": tuser._id }, "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                                if (exists.length > 0) {
+                                    Logger.instanse.error(tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")")
+                                    email = "";
+                                    delete UpdateDoc.$set["email"];
+                                    UpdateDoc.$set["formvalidated"] = false;
+                                    throw new Error("email already in use by another user");
+                                }
+                            }
+                            if (email.indexOf("@") > -1) {
+                                if (tuser.emailvalidated == true) {
+                                    UpdateDoc.$set["validated"] = true;
+                                    tuser.validated = true;
+                                } else {
+                                    const code = NoderedUtil.GetUniqueIdentifier();
+                                    UpdateDoc.$set["_mailcode"] = code;
+                                    this.sendEmail("validate", tuser._id, email, 'Validate email in OpenIAP flow',
+                                        `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`);
+                                }
+                            } else {
+                                Logger.instanse.error(tuser.name + " email is mandatory)");
+                                throw new Error("email is mandatory.");
+                            }
+                        } else {
+                            UpdateDoc.$set["validated"] = true;
+                            tuser.validated = true;
+                        }
+
+
+                        Logger.instanse.debug("Update user " + tuser.name + " information");
+                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                        await Logger.DBHelper.UserRoleUpdate(tuser, false);
+                    }
+                    if (!(tuser.validated == true) && Config.validate_user_form != "") {
+                        Logger.instanse.debug("User not validated, return no token for user " + tuser.name);
+                        res.end(JSON.stringify({ jwt: "" }));
+                    } else {
+                        Logger.instanse.debug("Return new jwt for user " + tuser.name);
+                        res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
+                    }
+                } else if (req.body) {
+                    if (req.body.resend) {
+                        var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                        if (exists.length > 0) {
+                            var u: User = exists[0];
+                            let email: string = u.username;
+                            if (u.email.indexOf("@") > -1) email = u.email;
+                            (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
+                            this.sendEmail("validate", u._id, email, 'Validate email in OpenIAP flow',
+                                `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`);
+
+
+                            const UpdateDoc: any = { "$set": {} };
+                            UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
+                            var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                            await Logger.DBHelper.UserRoleUpdate(tuser, false);
+                            res.end(JSON.stringify({ jwt: "" }));
+                        } else {
+                            res.end(JSON.stringify({ jwt: "" }));
+                        }
+                    } else if (req.body.code) {
+                        var exists = await Config.db.query<User>({ query: { "_id": tuser._id, "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                        if (exists.length > 0) {
+                            var u: User = exists[0];
+                            if ((u as any)._mailcode == req.body.code) {
+                                // @ts-ignore
+                                delete u._mailcode;
+                                u.validated = true;
+                                u.emailvalidated = true;
+                                await Logger.DBHelper.Save(u, Crypt.rootToken(), span);
+
+                                // const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                                // UpdateDoc.$unset["_mailcode"] = "";
+                                // UpdateDoc.$set["validated"] = true;
+                                // UpdateDoc.$set["emailvalidated"] = true;
+                                // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                                await Logger.DBHelper.UserRoleUpdate(tuser, false);
+                                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
+                                return;
+                            } else {
+                                throw new Error("Wrong validation code for " + tuser.name)
+                            }
+                        }
+                        res.end(JSON.stringify({ jwt: "" }));
+                    } else {
+                        res.end(JSON.stringify({ jwt: "" }));
+                    }
+
+                }
+            } else {
+                Logger.instanse.error("User no longer signed in");
+                res.end(JSON.stringify({ jwt: "" }));
+            }
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        }
+        Logger.otel.endSpan(span);
+        res.end();
+    }
+    static async post_forgotpassword(req: any, res) {
+        const span: Span = Logger.otel.startSpan("LoginProvider.postvalidateuserform");
+        res.setHeader("Content-Type", "application/json");
+        try {
+            if (req.body && req.body.email) {
+                const id = NoderedUtil.GetUniqueIdentifier();
+                const email: string = req.body.email;
+                let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
+                if (user == null) {
+                    Logger.instanse.error("Received unknown email " + email);
+                    return res.end(JSON.stringify({ id }));
+                }
+                const code = NoderedUtil.GetUniqueIdentifier();
+                var key = ("forgotpass_" + id).toString();
+                let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
+                    Logger.instanse.info(`Add forgotpass if ${id} with code ${code} for ${email}`);
+                    return { id, email, code };
+                });
+                if (item.id != id || item.email != email || item.code != code) {
+                    Logger.instanse.error("Recevied wrong mail for id " + id);
+                    return res.end(JSON.stringify({ id }));
+                }
+                this.sendEmail("pwreset", user._id, email, 'Reset password request',
+                    `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`);
+                await Logger.DBHelper.UserRoleUpdate(user, false);
+                return res.end(JSON.stringify({ id }));
+            }
+            else if (req.body && req.body.code && req.body.id && !req.body.password) {
+                const code: string = req.body.code.trim();
+                const id: string = req.body.id;
+
+                var key = ("forgotpass_" + id).toString();
+                let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
+                    return null;
+                });
+                if (item == null || item.id != id || item.code != code) {
+                    if (item == null) {
+                        Logger.instanse.error("Recevied unknown id " + id);
+                    } else {
+                        Logger.instanse.error("Recevied wrong code for id " + id);
+                    }
+                    throw new Error("Recevied wrong code for id " + id);
+                }
+                return res.end(JSON.stringify({ id }));
+            }
+            else if (req.body && req.body.code && req.body.id && req.body.password) {
+                const code: string = req.body.code.trim();
+                const id: string = req.body.id;
+                const password: string = req.body.password;
+
+                var key = ("forgotpass_" + id).toString();
+                let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
+                    Logger.instanse.debug("Add forgotpass : " + id);
+                    return null;
+                });
+                if (item == null || item.id != id || item.code != code) {
+                    Logger.instanse.error("Recevied wrong code for id " + id);
+                    throw new Error("Recevied wrong code for id " + id);
+                }
+                let user = await Config.db.getbyusername<User>(item.email, null, Crypt.rootToken(), true, span);
+                (user as any).newpassword = password;
+                user.emailvalidated = true;
+                user.validated = true;
+                if (Config.validate_user_form != "") {
+                    if (!user.formvalidated) user.validated = false;
+                }
+                if (Config.validate_emails) {
+                    if (!user.emailvalidated) user.validated = false;
+                }
+                await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
+                await Logger.DBHelper.UserRoleUpdate(user, false);
+                return res.end(JSON.stringify({ id }));
+            }
+            res.end(JSON.stringify({}));
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        }
+        Logger.otel.endSpan(span);
+        res.end();
+    }
+    static async get_loginproviders(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpan("LoginProvider.loginproviders");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            const result: Provider[] = await Logger.DBHelper.GetProviders(span);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(result));
+            res.end();
+        } catch (error) {
+            span?.recordException(error);
+            Logger.instanse.error(error);
+            Logger.otel.endSpan(span);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static async get_download(req, res) {
+        const span: Span = Logger.otel.startSpan("LoginProvider.download");
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            let user: TokenUser = null;
+            let jwt: string = null;
+            const authHeader = req.headers.authorization;
+            if (authHeader) {
+                user = await Crypt.verityToken(authHeader);
+                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+            }
+            else if (req.user) {
+                user = TokenUser.From(req.user as any);
+                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+            }
+            if (user == null) {
+                return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+            }
+
+            const id = req.params.id;
+            const rows = await Config.db.query({ query: { _id: safeObjectID(id) }, top: 1, collectionname: "files", jwt }, span);
+            if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
+            const file = rows[0] as any;
+
+            const bucket = new GridFSBucket(Config.db.db);
+            let downloadStream = bucket.openDownloadStream(safeObjectID(id));
+            res.set('Content-Type', file.contentType);
+            res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
+            res.set('Content-Length', file.length);
+            downloadStream.on("error", function (err) {
+                res.end();
+            });
+            downloadStream.pipe(res);
+        } catch (error) {
+            span?.recordException(error);
+            return res.status(500).send({ message: error.message ? error.message : error });
+        } finally {
+            Logger.otel.endSpan(span);
+        }
     }
 }

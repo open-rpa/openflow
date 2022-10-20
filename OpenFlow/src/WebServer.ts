@@ -23,17 +23,17 @@ var _hostname = "";
 
 const rateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
     if (req.originalUrl.indexOf('/oidc') > -1) return next();
-    Logger.instanse.verbose('WebServer', 'rateLimiter', "Validate for " + req.originalUrl);
+    Logger.instanse.verbose("Validate for " + req.originalUrl);
     WebServer.BaseRateLimiter
         .consume(WebServer.remoteip(req))
         .then((e) => {
-            Logger.instanse.verbose("WebServer", "rateLimiter", "consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+            Logger.instanse.verbose("consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
             next();
         })
         .catch((e) => {
             const route = url.parse(req.url).pathname;
             // if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, route: route }).update(e.consumedPoints);
-            Logger.instanse.warn("WebServer", "rateLimiter", "API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
+            Logger.instanse.warn("API_RATE_LIMIT consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints + " msBeforeNext: " + e.msBeforeNext);
             res.status(429).json({ response: 'RATE_LIMIT' });
         });
 };
@@ -76,7 +76,7 @@ export class WebServer {
                 }
             }
         } catch (error) {
-            Logger.instanse.error("WebServer", "/ipblock", error);
+            Logger.instanse.error(error);
         }
         return false;
     }
@@ -97,13 +97,13 @@ export class WebServer {
             this.app.disable("x-powered-by");
             const loggerstream = {
                 write: function (message, encoding) {
-                    Logger.instanse.silly("WebServer", "configure", message);
+                    Logger.instanse.silly(message);
                 }
             };
             this.app.use(async (req, res, next) => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = WebSocketServerClient.remoteip(req);
-                    if (Config.log_blocked_ips) Logger.instanse.error("WebServer", "configure", remoteip + " is blocked");
+                    if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked");
                     try {
                         res.status(429).json({ "message": "ip blocked" });
                     } catch (error) {
@@ -135,7 +135,7 @@ export class WebServer {
             this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = LoginProvider.remoteip(req);
-                    if (Config.log_blocked_ips) Logger.instanse.error("WebServer", "/ipblock", remoteip + " is blocked");
+                    if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked");
                     res.statusCode = 401;
                     res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
                     res.end('Unauthorized');
@@ -146,7 +146,7 @@ export class WebServer {
 
             // Add headers
             this.app.use(function (req, res, next) {
-                Logger.instanse.verbose('WebServer', 'configure', "add for " + req.originalUrl);
+                Logger.instanse.verbose("add for " + req.originalUrl);
                 // const origin: string = (req.headers.origin as any);
                 // if (NoderedUtil.IsNullEmpty(origin)) {
                 //     res.header('Access-Control-Allow-Origin', '*');
@@ -202,13 +202,13 @@ export class WebServer {
                         const subscription = req.body;
 
                         if (NoderedUtil.IsNullUndefinded(subscription) && NoderedUtil.IsNullEmpty(subscription.jwt)) {
-                            Logger.instanse.error("WebServer", "wapid", "Received invalid subscription request");
+                            Logger.instanse.error("Received invalid subscription request");
                             return res.status(500).json({ "error": "no subscription" });
                         }
                         const jwt = subscription.jwt;
                         const tuser: TokenUser = await Crypt.verityToken(jwt);
                         if (NoderedUtil.IsNullUndefinded(tuser)) {
-                            Logger.instanse.error("WebServer", "wapid", "jwt is invalid");
+                            Logger.instanse.error("jwt is invalid");
                             return res.status(500).json({ "error": "no subscription" });
                         }
                         delete subscription.jwt;
@@ -221,10 +221,10 @@ export class WebServer {
                         msg.uniqeness = "userid,_type,host,endpoint";
 
                         await Config.db._InsertOrUpdateOne(msg, null);
-                        Logger.instanse.info("WebServer", "wapid", "Registered webpush subscription for " + tuser.name);
+                        Logger.instanse.info("Registered webpush subscription for " + tuser.name);
                         res.status(201).json({})
                     } catch (error) {
-                        Logger.instanse.error("WebServer", "wapid", error);
+                        Logger.instanse.error(error);
                         try {
                             return res.status(500).json({ "error": error.message ? error.message : error });
                         } catch (error) {
@@ -280,7 +280,7 @@ export class WebServer {
             return WebServer.server;
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error("WebServer", "configure", error);
+            Logger.instanse.error(error);
             return null;
         } finally {
             Logger.otel.endSpan(span);
@@ -288,12 +288,12 @@ export class WebServer {
     }
     public static Listen() {
         WebServer.server.listen(Config.port).on('error', function (error) {
-            Logger.instanse.error("WebServer", "Listen", error);
+            Logger.instanse.error(error);
             if (Config.NODE_ENV == "production") {
                 WebServer.server.close();
                 process.exit(404);
             }
         });
-        Logger.instanse.info("WebServer", "Listen", "Listening on " + Config.baseurl());
+        Logger.instanse.info("Listening on " + Config.baseurl());
     }
 }

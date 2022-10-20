@@ -54,7 +54,7 @@ export function hassourceenv(): boolean {
     return fs.existsSync(sourceenv);
 }
 export function loadenv() {
-    Logger.instanse.info("cliutil", "", "NodeJS version " + process.version + " Config " + envfilepathname);
+    Logger.instanse.info("NodeJS version " + process.version + " Config " + envfilepathname);
     let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
     for (const k in parsedFile) {
         process.env[k] = parsedFile[k];

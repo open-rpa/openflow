@@ -14,13 +14,13 @@ export class dockerdriver implements i_nodered_driver {
             await docker.listContainers();
             return true;
         } catch (error) {
-            Logger.instanse.error("dockerdriver", "detect", error);
+            Logger.instanse.error(error);
         }
         return false;
     }
     public async EnsureNoderedInstance(jwt: string, tuser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
-        Logger.instanse.debug("dockerdriver", "EnsureNoderedInstance", "[" + tuser.username + "] EnsureNoderedInstance");
+        Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance");
         if (_id === null || _id === undefined || _id === "") _id = tuser._id;
 
         const users = await Config.db.query<NoderedUser>({ query: { _id: _id }, top: 1, collectionname: "users", jwt: jwt }, span);
@@ -244,7 +244,7 @@ export class dockerdriver implements i_nodered_driver {
                         const a: number = (date as any) - (Created as any);
                         const diffhours = a / (1000 * 60 * 60);
                         if (billed != "true" && diffhours > runtime) {
-                            Logger.instanse.warn("dockerdriver", "GetNoderedInstance", "[" + tokenUser.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
+                            Logger.instanse.warn("[" + tokenUser.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
                             await this.DeleteNoderedInstance(rootjwt, rootuser, _id, name, span);
                             deleted = true;
                         }
@@ -315,15 +315,15 @@ export class dockerdriver implements i_nodered_driver {
                 docker.modem.followProgress(stream, onFinished, onProgress);
 
                 function onFinished(err2, output) {
-                    Logger.instanse.debug("dockerdriver", "_pullImage", output);
+                    Logger.instanse.debug(output);
                     if (err2) {
-                        Logger.instanse.error("dockerdriver", "_pullImage", err2);
+                        Logger.instanse.error(err2);
                         return reject(err2);
                     }
                     return resolve();
                 }
                 function onProgress(event) {
-                    Logger.instanse.debug("dockerdriver", "_pullImage", event);
+                    Logger.instanse.debug(event);
                 }
             });
         })
@@ -373,7 +373,7 @@ export class dockerdriver implements i_nodered_driver {
     public async DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.dockerDeleteNoderedPod", parent);
         try {
-            Logger.instanse.debug("dockerdriver", "DeleteNoderedPod", "[" + user.username + "] dockerDeleteNoderedPod");
+            Logger.instanse.debug("[" + user.username + "] dockerDeleteNoderedPod");
 
             if (NoderedUtil.IsNullEmpty(podname)) podname = name;
 

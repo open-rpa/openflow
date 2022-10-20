@@ -282,7 +282,7 @@ export class OAuthProvider {
                                 const tuserimpostor = tuser;
                                 _user = User.assign(items[0] as User);
                                 tuser = TokenUser.From(_user);
-                                Logger.instanse.info("Message", "Signin", tuser.username + " successfully impersonated");
+                                Logger.instanse.info(tuser.username + " successfully impersonated");
                                 await Audit.ImpersonateSuccess(tuser, tuserimpostor, "browser", Config.version, span);
                             }
                         }
@@ -330,7 +330,7 @@ export class OAuthProvider {
             });
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error("OAuthProvider", "LoadClients", error);
+            Logger.instanse.error(error);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -347,16 +347,16 @@ export class OAuthProvider {
                 instance.app = app;
                 // @ts-ignore
                 this.LoadClients().catch(error => {
-                    Logger.instanse.error("OAuthProvider", "configure", error);
+                    Logger.instanse.error(error);
                 });
             } catch (error) {
-                Logger.instanse.error("OAuthProvider", "configure", error);
+                Logger.instanse.error(error);
                 throw error;
             }
             return instance;
         } catch (error) {
             span?.recordException(error);
-            Logger.instanse.error("OAuthProvider", "configure", error);
+            Logger.instanse.error(error);
             return OAuthProvider.instance;
         } finally {
             Logger.otel.endSpan(span);
@@ -407,10 +407,10 @@ export class Account {
         try {
             let role = client.defaultrole;
             const keys: string[] = Object.keys(client.rolemappings);
-            Logger.instanse.debug("OAuthProvider", "AddAccount", "[" + tuser.username + "] Lookup roles for " + tuser.username);
+            Logger.instanse.debug("[" + tuser.username + "] Lookup roles for " + tuser.username);
             for (let i = 0; i < keys.length; i++) {
                 if (tuser.HasRoleName(keys[i])) {
-                    Logger.instanse.debug("OAuthProvider", "AddAccount", "[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
+                    Logger.instanse.debug("[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
                     role = client.rolemappings[keys[i]];
                 }
             }
@@ -420,7 +420,7 @@ export class Account {
             var res = new Account(tuser._id, tuser);
             return res;
         } catch (error) {
-            Logger.instanse.error("OAuthProvider", "AddAccount", error);
+            Logger.instanse.error(error);
         }
         return undefined;
     }

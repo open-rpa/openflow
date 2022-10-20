@@ -89,7 +89,7 @@ export class WebSocketServerClient {
         if (!NoderedUtil.IsNullUndefinded(req)) {
             this.remoteip = WebSocketServerClient.remoteip(req);
         }
-        Logger.instanse.debug("WebSocketServerClient", "constructor", "new client " + this.id + " from " + this.remoteip);
+        Logger.instanse.debug("new client " + this.id + " from " + this.remoteip);
         socketObject.on("open", this.open.bind(this));
         socketObject.on("message", this.message.bind(this)); // e: MessageEvent
         socketObject.on("error", this.error.bind(this));
@@ -120,7 +120,7 @@ export class WebSocketServerClient {
             q.queuename = this._queues[i].queue;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.debug("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for queue " + q.queuename);
+            Logger.instanse.debug("Send queue closed message to " + this.id + " for queue " + q.queuename);
         }
         for (var i = 0; i < this._exchanges.length; i++) {
             let msg: SocketMessage = SocketMessage.fromcommand("exchangeclosed");
@@ -128,22 +128,22 @@ export class WebSocketServerClient {
             q.queuename = this._exchanges[i].queue.queue; q.exchangename = this._exchanges[i].exchange;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.debug("WebSocketServerClient", "amqpdisconnected", "Send queue closed message to " + this.id + " for exchange " + q.exchangename);
+            Logger.instanse.debug("Send queue closed message to " + this.id + " for exchange " + q.exchangename);
         }
         this._exchanges = [];
         this.CloseConsumers(null);
     }
     private open(e: Event): void {
-        Logger.instanse.debug("WebSocketServerClient", "open", "Connection opened " + e + " " + this.id);
+        Logger.instanse.debug("Connection opened " + e + " " + this.id);
     }
     private close(e: CloseEvent): void {
-        Logger.instanse.debug("WebSocketServerClient", "close", "Connection closed " + e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent);
         this.Close();
         Config.db.removeListener("disconnected", this._dbdisconnected);
         Config.db.removeListener("connected", this._dbconnected);
     }
     private error(e: Event): void {
-        Logger.instanse.error("WebSocketServerClient", "error", e + " " + this.id + "/" + this.clientagent);
+        Logger.instanse.error(e, Logger.parsecli(this));
     }
     public queuecount(): number {
         if (this._queues == null) return 0;
@@ -176,13 +176,13 @@ export class WebSocketServerClient {
                 return;
             }
         } catch (error) {
-            Logger.instanse.error("WebSocketServerClient", "ping", error);
+            Logger.instanse.error(error, Logger.parsecli(this));
             span?.recordException(error);
             this._receiveQueue = [];
             this._sendQueue = [];
             if (this._socketObject != null) {
                 this.Close().catch((err) => {
-                    Logger.instanse.error("WebSocketServerClient", "ping", error);
+                    Logger.instanse.error(error, Logger.parsecli(this));
                 });
             }
         } finally {
@@ -190,9 +190,9 @@ export class WebSocketServerClient {
         }
     }
     private _message(message: string): void {
-        Logger.instanse.silly("WebSocketServerClient", "_message", "WebSocket message received " + message);
+        Logger.instanse.silly("WebSocket message received " + message);
         let msg: SocketMessage = SocketMessage.fromjson(message);
-        Logger.instanse.silly("WebSocketServerClient", "_message", "WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
+        Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
         this._receiveQueue.push(msg);
         if ((msg.index + 1) >= msg.count) this.ProcessQueue();
     }
@@ -202,7 +202,7 @@ export class WebSocketServerClient {
             if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
             this._message(message);
         } catch (error) {
-            Logger.instanse.error("WebSocketServerClient", "message", "[" + username + "/" + this.clientagent + "/" + this.id + "] " + (error.message ? error.message : error));
+            Logger.instanse.error(error, Logger.parsecli(this));
             const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
             this._socketObject.send(JSON.stringify(errormessage));
         }
@@ -217,7 +217,7 @@ export class WebSocketServerClient {
                 this._queuescurrent--;
                 this._queuescurrentstr = this._queuescurrent.toString();
             } catch (error) {
-                Logger.instanse.error("WebSocketServerClient", "CloseConsumers", "WebSocketclient::closeconsumers " + error);
+                Logger.instanse.error(error, Logger.parsecli(this));
             }
         }
         semaphore.up();
@@ -234,18 +234,18 @@ export class WebSocketServerClient {
                 try {
                     this._socketObject.removeAllListeners();
                 } catch (error) {
-                    Logger.instanse.error("WebSocketServerClient", "Close", error);
+                    Logger.instanse.error(error, Logger.parsecli(this));
                 }
                 try {
                     this._socketObject.close();
                 } catch (error) {
-                    Logger.instanse.error("WebSocketServerClient", "Close", error);
+                    Logger.instanse.error(error, Logger.parsecli(this));
                 }
             }
             try {
                 amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
             } catch (error) {
-                Logger.instanse.error("WebSocketServerClient", "Close", error);
+                Logger.instanse.error(error, Logger.parsecli(this));
             }
             var keys = Object.keys(this.watches);
             for (var i = 0; i < keys.length; i++) {
@@ -261,7 +261,7 @@ export class WebSocketServerClient {
             // this._queues
             // this._exchanges
         } catch (error) {
-            Logger.instanse.error("WebSocketServerClient", "Close", error);
+            Logger.instanse.error(error, Logger.parsecli(this));
             span?.recordException(error);
             throw error;
         } finally {
@@ -278,13 +278,13 @@ export class WebSocketServerClient {
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
                         amqpwrapper.Instance().RemoveQueueConsumer(user, this._queues[i], span).catch((err) => {
-                            Logger.instanse.error("WebSocketServerClient", "CloseConsumer", err);
+                            Logger.instanse.error(err, Logger.parsecli(this));
                         });
                         this._queues.splice(i, 1);
                         this._queuescurrent--;
                         this._queuescurrentstr = this._queuescurrent.toString();
                     } catch (error) {
-                        Logger.instanse.error("WebSocketServerClient", "CloseConsumer", error);
+                        Logger.instanse.error(error, Logger.parsecli(this));
                     }
                 }
             }
@@ -327,8 +327,8 @@ export class WebSocketServerClient {
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            Logger.instanse.error("WebSocketServerClient", "RegisterExchange", exchange + " failed message queue message, nack and re queue message: ");
-                            Logger.instanse.error("WebSocketServerClient", "RegisterExchange", error);
+                            Logger.instanse.error(exchange + " failed message queue message, nack and re queue message: ", Logger.parsecli(this));
+                            Logger.instanse.error(error, Logger.parsecli(this));
                         }, Config.amqp_requeue_time);
                     }
                 }, span);
@@ -345,7 +345,7 @@ export class WebSocketServerClient {
                     this._queuescurrentstr = this._queuescurrent.toString();
                 }
             } catch (error) {
-                Logger.instanse.error("WebSocketServerClient", "RegisterExchange", error);
+                Logger.instanse.error(error, Logger.parsecli(this));
             }
             if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
@@ -385,7 +385,7 @@ export class WebSocketServerClient {
                 }
                 var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
                 if (exists.length > 0) {
-                    Logger.instanse.warn("WebSocketServerClient", "CreateConsumer", qname + " already exists, removing before re-creating");
+                    Logger.instanse.warn(qname + " already exists, removing before re-creating");
                     for (let i = 0; i < exists.length; i++) {
                         await amqpwrapper.Instance().RemoveQueueConsumer(this.user, exists[i], span);
                     }
@@ -394,16 +394,16 @@ export class WebSocketServerClient {
                     // const _data = msg;
                     var _data = msg;
                     try {
-                        Logger.instanse.verbose("WebSocketServerClient", "CreateConsumer", "[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
+                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                         _data = await this.Queue(msg, qname, options);;
                         ack();
                         // const result = await this.Queue(msg, qname, options);
                         // done(result);
-                        Logger.instanse.debug("WebSocketServerClient", "CreateConsumer", "[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
+                        Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            Logger.instanse.warn("WebSocketServerClient", "CreateConsumer", "[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
+                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error))
                         }, Config.amqp_requeue_time);
                     } finally {
                         try {
@@ -459,10 +459,10 @@ export class WebSocketServerClient {
             const msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
             if (this._receiveQueue.length > Config.websocket_max_package_count) {
                 if (Config.websocket_disconnect_out_of_sync) {
-                    Logger.instanse.error("WebSocketServerClient", "ProcessQueue", "[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting");
+                    Logger.instanse.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting", Logger.parsecli(this));
                     this.Close();
                 } else {
-                    Logger.instanse.error("WebSocketServerClient", "ProcessQueue", "[" + username + "/" + this.clientagent + "/" + this.id + "] _receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!");
+                    Logger.instanse.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!", Logger.parsecli(this));
                     this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                 }
             }
@@ -491,7 +491,7 @@ export class WebSocketServerClient {
             try {
                 if (this._socketObject != null) this._socketObject.send(JSON.stringify(msg));
             } catch (error) {
-                Logger.instanse.error("WebSocketServerClient", "ProcessQueue", error);
+                Logger.instanse.error(error, Logger.parsecli(this));
             }
             this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
         });

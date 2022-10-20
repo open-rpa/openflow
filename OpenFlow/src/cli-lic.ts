@@ -8,11 +8,11 @@ import { Config } from "./Config";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { i_license_data } from "./commoninterfaces";
 function printusage() {
-    Logger.instanse.info("cli-lic", "", "openflow-cli [--months 3][--email email] domain");
-    Logger.instanse.info("cli-lic", "", "   --months - Set number of months, default 3");
-    Logger.instanse.info("cli-lic", "", "   --email - email to use in license");
-    Logger.instanse.info("cli-lic", "", "   domain - Generate ofid and create v2 license");
-    Logger.instanse.info("cli-lic", "", "Requires private key to be in ./config/private_key.pem");
+    Logger.instanse.info("openflow-cli [--months 3][--email email] domain");
+    Logger.instanse.info("   --months - Set number of months, default 3");
+    Logger.instanse.info("   --email - email to use in license");
+    Logger.instanse.info("   domain - Generate ofid and create v2 license");
+    Logger.instanse.info("Requires private key to be in ./config/private_key.pem");
 }
 const optionDefinitions = [
     { name: 'email', type: String },
@@ -45,17 +45,17 @@ let options = null;
 try {
     options = commandLineArgs(optionDefinitions, { partial: true });
     let months: number = 3;
-    if (!options.email && !options.domain) { throw new Error("Domain is mandatory"); }
+    if (!options.email && !options.domain) { Logger.instanse.error("Domain is mandatory"); process.exit(); }
     if (!options.email) options.email = "";
     if (options.months) {
         months = parseInt(options.months);
     }
     if (options._unknown) {
-        Logger.instanse.info("cli-lic", "", "Unknown param " + options._unknown)
+        Logger.instanse.info("Unknown param " + options._unknown)
         process.exit();
     }
     if (!fs.existsSync('config/private_key.pem')) {
-        Logger.instanse.info("cli-lic", "", "no such file or directory, open config/private_key.pem");
+        Logger.instanse.info("no such file or directory, open config/private_key.pem");
         process.exit();
     }
     const data: i_license_data = {} as any;
@@ -76,10 +76,10 @@ try {
         data: data
     });
     Logger.usecolors = false;
-    Logger.instanse.info("cli-lic", "", Buffer.from(licenseFileContent).toString('base64'));
+    Logger.instanse.info(Buffer.from(licenseFileContent).toString('base64'));
     process.exit();
 } catch (error) {
-    Logger.instanse.error("cli-lic", "", error.message ? error.message : error);
+    Logger.instanse.error(error);
     printusage();
     process.exit();
 }
