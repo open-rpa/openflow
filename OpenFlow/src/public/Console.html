@@ -3,6 +3,15 @@
     background-color:rgba(255, 255, 0, 0.267);
     font-size:100%
 }
+input[type="number"], input[type="text"], input[type="checkbox"], select {
+    background-color : #d1d1d1; 
+    accent-color: #d1d1d1
+}
+input[type="checkbox"] {
+    accent-color: #9b59b6;
+}
+
+
 .inf { color: #0000ff; }
 .err { color: #ff0000; }
 .war { color: #ff8000; }
@@ -39,6 +48,8 @@ tr:nth-child(even){background-color: #f2f2f2}
         ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()" value="1" id="ctrl.model.log_to_exchange" /><span ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()">enabled streaming</span> (can impact performance) Select log group below
         <input type="checkbox" ng-checked="ctrl.host"
         ng-click="ctrl.host = !ctrl.host" value="1" id="ctrl.host" /><span ng-click="ctrl.host = !ctrl.host">host</span>
+        <input type="checkbox" ng-checked="ctrl.agent"
+        ng-click="ctrl.agent = !ctrl.agent" value="1" id="ctrl.agent" /><span ng-click="ctrl.agent = !ctrl.agent">agent</span>
         <input type="checkbox" ng-checked="ctrl.cls"
         ng-click="ctrl.cls = !ctrl.cls" value="1" id="ctrl.cls" /><span ng-click="ctrl.cls = !ctrl.cls">cls</span>
         <input type="checkbox" ng-checked="ctrl.func"
@@ -57,9 +68,6 @@ tr:nth-child(even){background-color: #f2f2f2}
         ng-click="ctrl.model.log_oauth = !ctrl.model.log_oauth; ctrl.submit()" value="1" id="ctrl.model.log_oauth" /><span ng-click="ctrl.model.log_oauth = !ctrl.model.log_oauth; ctrl.submit()">oauth</span>
         <input type="checkbox" ng-checked="ctrl.model.log_database"
         ng-click="ctrl.model.log_database = !ctrl.model.log_database; ctrl.submit()" value="1" id="ctrl.model.log_database" /><span ng-click="ctrl.model.log_database = !ctrl.model.log_database; ctrl.submit()">database</span>
-        <input type="checkbox" ng-checked="ctrl.model.log_database_queries"
-        ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()" value="1" id="ctrl.model.log_database_queries" /><span ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()">database queries</span>
-        <input type="number" ng-model="ctrl.model.log_database_queries_ms" ng-blur="ctrl.submit()" min="0" max="240000" />ms
         <input type="checkbox" ng-checked="ctrl.model.log_grafana"
         ng-click="ctrl.model.log_grafana = !ctrl.model.log_grafana; ctrl.submit()" value="1" id="ctrl.model.log_grafana" /><span ng-click="ctrl.model.log_grafana = !ctrl.model.log_grafana; ctrl.submit()">grafana</span>
         <input type="checkbox" ng-checked="ctrl.model.log_housekeeping"
@@ -70,13 +78,19 @@ tr:nth-child(even){background-color: #f2f2f2}
         ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()" value="1" id="ctrl.model.log_otel" /><span ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()">otel</span>
         <input type="checkbox" ng-checked="ctrl.model.log_blocked_ips"
         ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()" value="1" id="ctrl.model.log_blocked_ips" /><span ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()">blocked_ips</span>
-        <br /> <strong>On high volume systems, these 3 can crash your system!!!</strong>
+        <br /><input type="checkbox" ng-checked="ctrl.model.log_database_queries"
+        ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()" value="1" id="ctrl.model.log_database_queries" /><span ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()">database queries</span>
+        <input type="number" ng-model="ctrl.model.log_database_queries_ms" ng-blur="ctrl.submit()" min="0" max="240000" />ms
+
+        <br /> <strong>On high volume systems, these 3 can crash your system!!!</strong> 
         <input type="checkbox" ng-checked="ctrl.model.log_debug"
         ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" value="1" id="ctrl.model.log_debug" /><span ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" >debug</span>
         <input type="checkbox" ng-checked="ctrl.model.log_verbose"
         ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()" value="1" id="ctrl.model.log_verbose" /><span ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()">verbose</span>
         <input type="checkbox" ng-checked="ctrl.model.log_silly"
-        ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()" value="1" id="ctrl.model.log_silly" /><span ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()">silly</span><br>
+        ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()" value="1" id="ctrl.model.log_silly" /><span ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()">silly</span>
+        <br> Click on message to copy log object with all properties to clipboard
+        <br>
         search <input type="text" ng-model="ctrl.searchstring" placeholder="Search string" />
     </div>
 </div>
@@ -88,6 +102,7 @@ tr:nth-child(even){background-color: #f2f2f2}
             <th>Level</th>
             <th ng-show="ctrl.cls==true">Class</th>
             <th ng-show="ctrl.func==true">Function</th>
+            <th ng-show="ctrl.agent==true">Agent</th>            
             <th ng-show="ctrl.hasprop('collection')">col</th>
             <th ng-show="ctrl.hasprop('user')">user</th>
             <th ng-show="ctrl.hasprop('ms')">Ms</th>
@@ -100,11 +115,12 @@ tr:nth-child(even){background-color: #f2f2f2}
         <td class="tcol" ng-class="model.lvl">{{model.lvl}}</td>
         <td class="tcol" ng-show="ctrl.cls==true">{{model.cls}}</td>
         <td class="tcol" ng-show="ctrl.func==true"><span ng-bind-html="ctrl.highlight(model.func)"></span></td>
+        <td class="tcol" ng-show="ctrl.agent==true"><span ng-bind-html="ctrl.highlight(model.agent)"></span></td>
         <td class="tcol" ng-show="ctrl.hasprop('collection')"><span ng-bind-html="ctrl.highlight(model.collection)"></span></td>
         <td class="tcol" ng-show="ctrl.hasprop('user')"><span ng-bind-html="ctrl.highlight(model.user)"></span></td>
         <td class="tcol" ng-show="ctrl.hasprop('ms')">{{model.ms}}</td>
         <!-- <td class="tcol" ng-show="ctrl.hasprop('count')">{{model.count}}</td> -->
-        <td class="tcol" ng-class="model.lvl"><span ng-bind-html="ctrl.highlight(model.message)"></span></td>
+        <td class="tcol" ng-class="model.lvl"><span ng-bind-html="ctrl.highlight(model.message)" ng-click="ctrl.CopySecret(model)"></span></td>
     </tr>
 </table>
     

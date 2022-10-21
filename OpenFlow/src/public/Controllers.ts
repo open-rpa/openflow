@@ -1994,6 +1994,7 @@ export class LoginCtrl {
         console.debug("LoginCtrl::constructor");
         this.domain = window.location.hostname;
         WebSocketClientService.getJSON("/loginproviders", async (error: any, data: any) => {
+            if (NoderedUtil.IsNullUndefinded(data)) return;
             this.forgot_pass_emails = WebSocketClientService.forgot_pass_emails;
             this.providers = data;
             this.allow_user_registration = WebSocketClientService.allow_user_registration;
@@ -7447,6 +7448,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public exchange: RegisterExchangeResponse = null;
     public paused: boolean = false;
     public host: boolean = false;
+    public agent: boolean = false;    
     public cls: boolean = false;
     public func: boolean = true;
     public searchstring: string = "";
@@ -7566,5 +7568,12 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
             new RegExp(this.searchstring + '(?!([^<]+)?<)', 'gi'),
             '<span class="highlight">$&</span>'
         )
+    }
+    CopySecret(model) {
+        navigator.clipboard.writeText(JSON.stringify(model, null, 2)).then(function () {
+            console.log('Async: Copying to clipboard was successful!');
+        }, function (err) {
+            console.error('Async: Could not copy text: ', err);
+        });
     }
 }
