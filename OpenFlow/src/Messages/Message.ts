@@ -618,19 +618,16 @@ export class Message {
                     if (Config.amqp_force_consumer_has_update) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
                             let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing update permission on exchange object`);
-                            Logger.instanse.error(error, Logger.parsecli(cli));
                             throw error;
                         }
                     } else if (Config.amqp_force_sender_has_invoke) {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
                             let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing invoke permission on exchange object`);
-                            Logger.instanse.error(error, Logger.parsecli(cli));
                             throw error;
                         }
                     } else {
                         if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                             let error = new Error(`[${tuser.name}] Unknown queue ${msg.exchangename} or access denied, missing read permission on exchange object`);
-                            Logger.instanse.error(error, Logger.parsecli(cli));
                             throw error;
                         }
                     }
@@ -645,7 +642,6 @@ export class Message {
             if (NoderedUtil.IsNullUndefinded(msg.algorithm)) throw new Error("algorithm is mandatory, as either direct, fanout, topic or header");
             if (msg.algorithm != "direct" && msg.algorithm != "fanout" && msg.algorithm != "topic" && msg.algorithm != "header") {
                 let error = new Error("invalid algorithm must be either direct, fanout, topic or header");
-                Logger.instanse.error(error, Logger.parsecli(cli));
                 throw error;
             }
             if (NoderedUtil.IsNullUndefinded(msg.routingkey)) msg.routingkey = "";
@@ -678,7 +674,6 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
                 let error = new Error("Access denied");
-                Logger.instanse.error(error, Logger.parsecli(cli));
                 throw error;
             }
 
@@ -737,19 +732,16 @@ export class Message {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing update permission on users object {mq._id}`);
-                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object {mq._id}`);
-                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${mq.name} or access denied, missing invoke permission on users object {mq._id}`);
-                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         }
@@ -762,19 +754,16 @@ export class Message {
                         if (Config.amqp_force_consumer_has_update) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.update)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing update permission on queue object`);
-                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing invoke permission on queue object`);
-                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         } else {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.read)) {
                                 let error = new Error(`[${tuser.name}] Unknown queue ${msg.queuename} or access denied, missing read permission on queue object`);
-                                Logger.instanse.error(error, Logger.parsecli(cli));
                                 throw error;
                             }
                         }
@@ -827,7 +816,6 @@ export class Message {
             }
             if (!NoderedUtil.IsNullEmpty(msg.exchangename) && !Config.amqp_enabled_exchange) {
                 let error = new Error("AMQP exchange is not enabled on this OpenFlow");
-                Logger.instanse.error(error, Logger.parsecli(cli));
                 throw error;
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_default_expiration);
@@ -847,16 +835,12 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.exchangename)) msg.exchangename = msg.exchangename.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.replyto)) msg.replyto = msg.replyto.toLowerCase();
             if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename == "openflow") {
-                Logger.instanse.error(new Error("Access denied"), Logger.parsecli(cli));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename == "openflow") {
-                Logger.instanse.error(new Error("Access denied"), Logger.parsecli(cli));
                 throw new Error("Access denied");
             } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto == "openflow") {
-                Logger.instanse.error(new Error("Access denied"), Logger.parsecli(cli));
                 throw new Error("Access denied");
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
-                Logger.instanse.error(new Error("queuename or exchange must be given"), Logger.parsecli(cli));
                 throw new Error("queuename or exchange must be given");
             }
 
@@ -1575,7 +1559,7 @@ export class Message {
                 Logger.instanse.debug(tuser.username + " successfully signed in");
             }
         } catch (error) {
-            Logger.instanse.error(error, Logger.parsecli(cli));
+            await handleError(cli, error);
             span?.recordException(error);
         }
         return tuser;
@@ -1621,15 +1605,13 @@ export class Message {
                         span?.addEvent("Failed resolving token");
                     }
                     if (tuser == null || user == null) {
-                        Logger.instanse.error("Failed resolving token, could not find user by " + _id, Logger.parsecli(cli));
                         // Nodered will spam this, so to not strain the system to much force an 1 second delay
                         await new Promise(resolve => { setTimeout(resolve, 1000) });
-                        throw new Error("Failed resolving token");
+                        throw new Error("Failed resolving token, could not find user by " + _id);
                     }
 
                     if (cli?.clientagent == "openrpa" && user.dblocked == true) {
                         // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        // Logger.instanse.error("Message", "Signin", user.username + " is dblocked");
                         span?.addEvent("User dblocked, decline login");
                         // Dillema ....
                         // If we send an error or empy yser, the robot will spam new tabs 
@@ -1700,7 +1682,6 @@ export class Message {
                         //     Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "failed", clientagent: msg.clientagent });
                         // }
                         // var errmessage = "[" + cli.id + "/" + msg.clientagent + "/" + cli.remoteip + "]" + (error.message ? error.message : error);
-                        // Logger.instanse.error("Message", "Signin", errmessage);
                     }
                     if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                         user = User.user;
@@ -1731,11 +1712,11 @@ export class Message {
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    Logger.instanse.error(new Error(tuser.username + " failed logging in using " + type), Logger.parsecli(cli));
+                    throw new Error(tuser.username + " failed logging in using " + type);
                 } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                     if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    Logger.instanse.error(new Error("Disabled user " + tuser.username + " failed logging in using " + type), Logger.parsecli(cli));
+                    throw new Error("Disabled user " + tuser.username + " failed logging in using " + type);
                 } else {
                     if (msg.impersonate == "-1" || msg.impersonate == "false") {
                         span?.addEvent("looking up impersonated user " + impostor);
@@ -1804,8 +1785,8 @@ export class Message {
                             let imp: TokenUser = TokenUser.From(impb);
                             if (impostors.length == 1) {
                                 imp = TokenUser.From(impostors[0]);
+
                             }
-                            Logger.instanse.error(new Error(tuser.name + " failed to impersonate " + msg.impersonate), Logger.parsecli(cli));
                             await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
                         }
@@ -1829,7 +1810,6 @@ export class Message {
                             }
 
                             await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
-                            Logger.instanse.error(new Error(tuser.name + " failed to impersonate " + msg.impersonate), Logger.parsecli(cli));
                             throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                         }
                         tuser.impostor = tuserimpostor._id;
@@ -1933,14 +1913,13 @@ export class Message {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         span?.addEvent("User not validet, decline login");
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        Logger.instanse.error(msg.user.username + " not validated", Logger.parsecli(cli));
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
+                        throw new Error(msg.user.username + " not validated");
                     }
                 } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
                     span?.addEvent("User dblocked, decline login");
                     // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    // Logger.instanse.error("Message", "Signin", msg.user.username + " is dblocked");
                     // Dillema ....
                     // If we send an error or empy yser, the robot will spam new tabs 
                     // If we just close the connection the user will not know what is wrong ...
@@ -1965,9 +1944,9 @@ export class Message {
             span?.recordException(error);
         } finally {
             span?.addEvent("Signin complete");
+            Logger.otel.endSpan(span);
+            if (cli) this.Send(cli);
         }
-        Logger.otel.endSpan(span);
-        if (cli) this.Send(cli);
     }
     private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string, parent: Span): Promise<string> {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceName", parent);
@@ -2237,7 +2216,6 @@ export class Message {
                 readable.push(result);
                 readable.push(null);
             } catch (error) {
-                Logger.instanse.error(error);
                 throw error;
             }
         }
@@ -2839,15 +2817,15 @@ export class Message {
             }
         } catch (error) {
             span?.recordException(error);
-            await handleError(null, error);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
-                    Logger.instanse.error(msg.error, Logger.parsecli(cli));
+                    error = new Error(msg.error)
                 }
             }
+            await handleError(null, error);
         }
         try {
             this.data = JSON.stringify(msg);
@@ -3771,48 +3749,6 @@ export class Message {
             }
         } catch (error) {
         }
-
-        // if (Config.NODE_ENV != "production") {
-        //     let ui: number = 0;
-        //     let updatecount: number = 0;
-        //     try {
-        //         let cursor: Cursor<any>;
-        //         cursor = Config.db.db.collection("dbusage").find({})
-        //         for await (const u of cursor) {
-        //             ui++;
-        //             var item: Base = u;
-        //             var needsupdate: boolean = false;
-
-        //             // @ts-ignore
-        //             var exists = item._acl.filter(x => x._id == item.userid);
-        //             if (exists.length == 0) {
-        //                 // @ts-ignore
-        //                 Base.addRight(item, item.userid, item.name, [Rights.read]);
-        //             }
-        //             for (let i = item._acl.length - 1; i >= 0; i--) {
-        //                 {
-        //                     const ace = item._acl[i];
-        //                     if (typeof ace.rights === "string") {
-        //                         const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
-        //                         (ace.rights as any) = b;
-        //                         needsupdate = true;
-        //                     }
-        //                 }
-        //             }
-        //             if (needsupdate) {
-        //                 updatecount++;
-        //                 await Config.db.db.collection("dbusage").updateOne({ _id: item._id },
-        //                     { $set: { "_acl": item._acl } });
-        //             }
-        //             if ((ui % 500 == 0)) {
-        //                 Logger.instanse. info("Housekeeping", "_Housekeeping", "Processed " + ui + " items so far, and updated " + updatecount + " items.");
-        //             }
-        //         }
-        //     } catch (error) {
-        //         Logger.instanse.error("Housekeeping", "_Housekeeping", error);
-        //         span?.recordException(error);
-        //     }
-        // }
         try {
             await Config.db.ensureindexes(span);
         } catch (error) {
@@ -4496,7 +4432,6 @@ export class Message {
                                 readable.push(result);
                                 readable.push(null);
                             } catch (error) {
-                                Logger.instanse.error(msg.error);
                                 throw error;
                             }
                         }
@@ -4697,7 +4632,6 @@ export class Message {
                                     readable.push(result);
                                     readable.push(null);
                                 } catch (error) {
-                                    Logger.instanse.error(msg.error);
                                     throw error;
                                 }
                             }
@@ -4873,7 +4807,6 @@ export class Message {
                                 readable.push(result);
                                 readable.push(null);
                             } catch (error) {
-                                Logger.instanse.error(msg.error);
                                 throw error;
                             }
                         }
