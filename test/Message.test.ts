@@ -31,6 +31,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     @test async 'Unselect customer as root'() {
         var q = new SelectCustomerMessage();
         var msg = new Message(); msg.jwt = this.rootToken;
+        await msg.EnsureJWT(null)
         await msg.SelectCustomer(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -39,6 +40,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     @test async 'select customer as root'() {
         var q = new SelectCustomerMessage(); q.customerid = "60b683e12382b05d20762f09";
         var msg = new Message(); msg.jwt = this.rootToken;
+        await msg.EnsureJWT(null)
         await msg.SelectCustomer(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -47,6 +49,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     @test async 'Unselect customer as testuser'() {
         var q = new SelectCustomerMessage();
         var msg = new Message(); msg.jwt = this.userToken;
+        await msg.EnsureJWT(null)
         await msg.SelectCustomer(null);
         q = JSON.parse(msg.data);
         assert.ok(q && !q.error, q.error);
@@ -54,6 +57,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     @test async 'select customer as testuser'() {
         var q = new SelectCustomerMessage(); q.customerid = "60b683e12382b05d20762f09";
         var msg = new Message(); msg.jwt = this.userToken;
+        await msg.EnsureJWT(null)
         await msg.SelectCustomer(null);
         q = JSON.parse(msg.data);
         assert.ok(q && !q.error, q.error);

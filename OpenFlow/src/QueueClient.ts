@@ -5,6 +5,8 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Logger } from "./Logger";
 import { Message } from "./Messages/Message";
+import opentelemetry = require('@opentelemetry/sdk-node');
+import { TraceFlags, trace, ROOT_CONTEXT, SpanContext } from '@opentelemetry/api';
 export class QueueClient {
     static async configure(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("QueueClient.configure", parent);
@@ -15,8 +17,7 @@ export class QueueClient {
                 QueueClient.connect();
             });
         } catch (error) {
-            span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error(error, span);
             return;
         } finally {
             Logger.otel.endSpan(span);
@@ -43,14 +44,15 @@ export class QueueClient {
             try {
                 msg.priority = options.priority;
                 if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
-                    span = Logger.otel.startSpan("QueueClient.QueueMessage");
-                    Logger.instanse.debug("Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId);
+
+                    span = Logger.otel.startSpan("OpenFlow Queue Process Message", msg.traceId, msg.spanId);
+                    Logger.instanse.debug("Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId, span);
                     await msg.QueueProcess(options, span);
                     ack();
-                    await amqpwrapper.Instance().send(options.exchangename, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey);
+                    await amqpwrapper.Instance().send(options.exchangename, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey, span);
                 } else {
                     ack(false);
-                    Logger.instanse.debug("[queue][ack] No replyto !!!!");
+                    Logger.instanse.debug("[queue][ack] No replyto !!!!", span);
                 }
             } catch (error) {
                 try {
@@ -87,32 +89,32 @@ export class QueueClient {
         }, null);
     }
     private static messages: Message[] = [];
-    public static async SendForProcessing(msg: Message, priority: number) {
+    public static async SendForProcessing(msg: Message, priority: number, span: Span) {
         return new Promise<Message>(async (resolve, reject) => {
             try {
                 msg.correlationId = NoderedUtil.GetUniqueIdentifier();
                 this.messages.push(msg);
-                Logger.instanse.debug("Submit command: " + msg.command + " id: " + msg.id + " correlationId: " + msg.correlationId);
+                Logger.instanse.debug("Submit command: " + msg.command + " id: " + msg.id + " correlationId: " + msg.correlationId, span);
                 msg.cb = (result) => {
                     if (result.replyto != msg.id) {
-                        Logger.instanse.warn("Received response failed for command: " + msg.command + " id: " + result.id + " replyto: " + result.replyto + " but expected reply to be " + msg.id + " correlationId: " + result.correlationId)
+                        Logger.instanse.warn("Received response failed for command: " + msg.command + " id: " + result.id + " replyto: " + result.replyto + " but expected reply to be " + msg.id + " correlationId: " + result.correlationId, span)
                         result.id = NoderedUtil.GetUniqueIdentifier();
                         result.replyto = msg.id;
                     }
                     result.correlationId = msg.correlationId;
-                    Logger.instanse.debug("Got reply command: " + msg.command + " id: " + result.id + " replyto: " + result.replyto + " correlationId: " + result.correlationId);
+                    Logger.instanse.debug("Got reply command: " + msg.command + " id: " + result.id + " replyto: " + result.replyto + " correlationId: " + result.correlationId, span);
                     resolve(result);
                 }
                 Logger.instanse.silly("Submit request for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + this.queue.queue + " correlationId: " + msg.correlationId)
-                await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, JSON.stringify(msg), Config.openflow_amqp_expiration, msg.correlationId, "", priority);
+                await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, JSON.stringify(msg), Config.openflow_amqp_expiration, msg.correlationId, "", span, priority);
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(this.queue)) {
-                    Logger.instanse.warn("SendForProcessing queue is null, shutdown amqp connection");
+                    Logger.instanse.warn("SendForProcessing queue is null, shutdown amqp connection", span);
                     process.exit(406);
                     // amqpwrapper.Instance().shutdown();
                     // amqpwrapper.Instance().connect(null);
                 } else {
-                    Logger.instanse.error(error);
+                    Logger.instanse.error(error, span);
                 }
                 reject(error);
             }

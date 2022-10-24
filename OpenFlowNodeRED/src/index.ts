@@ -1,3 +1,9 @@
+function clog(message) {
+    let dt = new Date();
+    let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
+    console.log(dts + " " + message);
+}
+clog("Starting @openiap/nodered");
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
@@ -7,9 +13,10 @@ import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "./file-system-cache";
+clog("Configure logging");
 Logger.configure(false);
 Logger.instanse.info("index", "", "starting openflow nodered");
-
+clog("register process hooks");
 process.on('beforeExit', (code) => {
     console.error('Process beforeExit event with code: ', code);
 });
@@ -78,11 +85,13 @@ Object.keys(signals).forEach((signal) => process.on(signal, handle));
 let server: http.Server = null;
 (async function (): Promise<void> {
     try {
+        clog("Loading disk cache");
         const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
         const flow_filename: string = Config.nodered_id + "_flows.json";
         const nodereduser_filename: string = Config.nodered_id + "_user.json";
         const flowjson = await backupStore.get<string>(flow_filename, null);
         const userjson = await backupStore.get<string>(nodereduser_filename, null);
+        clog("Creating socket");
         const socket: WebSocketClient = new WebSocketClient(Logger.instanse, Config.api_ws_url);
         if (!NoderedUtil.IsNullEmpty(flowjson) && Config.allow_start_from_cache) {
             Logger.instanse.info("index", "", "Start using cached workflow");
@@ -149,6 +158,7 @@ let server: http.Server = null;
                 } else {
                     throw new Error("missing encryption_key and jwt, signin not possible!");
                 }
+                Logger.instanse.info("index", "", "signin with token");
                 const result = await NoderedUtil.SigninWithToken({ jwt, websocket: socket });
                 Logger.instanse.info("index", "", "signed in as " + result.user.name + " with id " + result.user._id);
                 socket.user = result.user;
@@ -163,10 +173,11 @@ let server: http.Server = null;
                 if (result.otel_metric_interval > 0) Config.otel_metric_interval = result.otel_metric_interval;
                 if (!NoderedUtil.IsNullEmpty(result.otel_metric_url) || !NoderedUtil.IsNullEmpty(result.otel_trace_url)) {
                     Config.enable_analytics = result.enable_analytics;
+                    Logger.instanse.info("index", "", "Regiser with open telemetry collector");
                     Logger.otel.registerurl(result.otel_metric_url, result.otel_trace_url);
                 }
                 if (server == null) {
-
+                    Logger.instanse.info("index", "", "Query for user configiration");
                     const user = await NoderedUtil.Query({ collectionname: "users", query: { _id: result.user._id }, projection: { "nodered": 1 }, top: 1, jwt: result.jwt });
                     if (user.length > 0) {
                         const nodered = user[0].nodered;
@@ -185,6 +196,7 @@ let server: http.Server = null;
                     const baseurl = (!NoderedUtil.IsNullEmpty(Config.saml_baseurl) ? Config.saml_baseurl : Config.baseurl());
                     Logger.instanse.info("index", "", "listening on " + baseurl);
                 }
+                Logger.instanse.info("index", "", "Emit signed event");
                 socket.events.emit("onsignedin", result.user);
             } catch (error) {
                 let closemsg: any = (error.message ? error.message : error);

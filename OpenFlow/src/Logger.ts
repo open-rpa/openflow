@@ -9,6 +9,8 @@ import { Crypt } from "./Crypt";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 const fs = require('fs');
 const path = require('path');
+import opentelemetry = require('@opentelemetry/sdk-node');
+import { Span } from "@opentelemetry/api";
 
 const MAX_RETRIES_DEFAULT = 5
 export async function promiseRetry<T>(
@@ -94,9 +96,28 @@ export class Logger {
         }
         return prefix + message;
     }
-    public json(obj) {
+    public json(obj, span: Span) {
         if (Config.unittesting) return;
         const { cls, func, message, lvl } = obj;
+        if (!NoderedUtil.IsNullEmpty(func) && span != null && span.isRecording()) {
+            var stringifyError = function (err, filter, space) {
+                var plainObject = {};
+                Object.getOwnPropertyNames(err).forEach(function (key) {
+                    plainObject[key] = err[key];
+                });
+                return JSON.stringify(plainObject, filter, space);
+            };
+            if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
+            // var keys = Object.keys(obj);
+            // keys.forEach(key => {
+            //     if (key != "message") span.setAttribute(key, obj[key]);
+            // });
+            if (lvl == level.Error) {
+                span.setStatus({ code: 2, message: obj.message });
+                span.recordException(message)
+            }
+            span.addEvent(obj.message, obj)
+        }
         if (Logger.enabled[cls]) {
             if (Logger.enabled[cls] < lvl) return;
         } else {
@@ -128,22 +149,22 @@ export class Logger {
         } else {
             console.log(this.prefix(lvl, cls, func, message, obj.collection, obj.user, obj.ms));
         }
-        if (Config.log_to_exchange) {
+        var stringifyError = function (err, filter, space) {
+            var plainObject = {};
+            Object.getOwnPropertyNames(err).forEach(function (key) {
+                plainObject[key] = err[key];
+            });
+            return JSON.stringify(plainObject, filter, space);
+        };
+        if (Config.log_to_exchange && !Config.unittesting) {
             if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
             if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
-                var stringifyError = function (err, filter, space) {
-                    var plainObject = {};
-                    Object.getOwnPropertyNames(err).forEach(function (key) {
-                        plainObject[key] = err[key];
-                    });
-                    return JSON.stringify(plainObject, filter, space);
-                };
                 if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
-                amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", 1);
+                amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", span, 1);
             }
         }
     }
-    public error(message: string | Error | unknown, options?: any) {
+    public error(message: string | Error | unknown, span: Span, options?: any) {
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -160,9 +181,9 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj);
+        this.json(obj, span);
     }
-    public info(message: string, options?: any) {
+    public info(message: string, span: Span, options?: any) {
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -180,9 +201,9 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj);
+        this.json(obj, span);
     }
-    public warn(message: string, options?: any) {
+    public warn(message: string, span: Span, options?: any) {
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -199,9 +220,9 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj);
+        this.json(obj, span);
     }
-    public debug(message: string, options?: any) {
+    public debug(message: string, span: Span, options?: any) {
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -218,7 +239,7 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj);
+        this.json(obj, span);
     }
     public verbose(message: string, options?: any) {
         var s = Logger.getStackInfo(0);
@@ -237,7 +258,7 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj);
+        this.json(obj, null);
     }
     public silly(message: string, options?: any) {
         var s = Logger.getStackInfo(0);
@@ -256,7 +277,7 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj);
+        this.json(obj, null);
     }
 
     public static async shutdown() {
@@ -317,7 +338,7 @@ export class Logger {
         return true;
     }
 
-    static configure(skipotel: boolean, skiplic: boolean): void {
+    static async configure(skipotel: boolean, skiplic: boolean): Promise<void> {
         Logger.DBHelper = new DBHelper();
         Logger.reload() 
 
@@ -353,43 +374,6 @@ export class Logger {
             Logger.License.shutdown = () => undefined;
         }
 
-        this.nodereddriver = null;
-        if (!Logger.isKubernetes() && Logger.isDocker()) {
-            if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
-                try {
-                    this.nodereddriver = new dockerdriver();
-                    if (!this.nodereddriver.detect()) {
-                        this.nodereddriver = null;
-                    }
-                } catch (error) {
-                    this.nodereddriver = null;
-                    Logger.instanse.error(error);
-                }
-            }
-        }
-        if (this.nodereddriver == null) {
-            let _driver: any = null;
-            try {
-                _driver = require("./ee/kubedriver");
-            } catch (error) {
-            }
-            try {
-                if (_driver != null) {
-                    this.nodereddriver = new _driver.kubedriver();
-                } else {
-                    this.nodereddriver = new dockerdriver();
-                }
-                if (!this.nodereddriver.detect()) {
-                    this.nodereddriver = null;
-                }
-            } catch (error) {
-                this.nodereddriver = null;
-                Logger.instanse.error(error);
-            }
-        }
-
-
-
         let _otel_require: any = null;
         try {
             if (!skipotel) _otel_require = require("./ee/otel");
@@ -397,7 +381,7 @@ export class Logger {
 
         }
         if (_otel_require != null) {
-            Logger.otel = _otel_require.otel.configure();
+            Logger.otel = await _otel_require.otel.configure();
         } else {
             const fakespan = {
                 context: () => undefined,
@@ -427,6 +411,42 @@ export class Logger {
                         createObservableGauge: () => undefined,
                     }
                 } as any;
+        }
+
+
+        this.nodereddriver = null;
+        if (!Logger.isKubernetes() && Logger.isDocker()) {
+            if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
+                try {
+                    this.nodereddriver = new dockerdriver();
+                    if (!this.nodereddriver.detect()) {
+                        this.nodereddriver = null;
+                    }
+                } catch (error) {
+                    this.nodereddriver = null;
+                    Logger.instanse.error(error, null);
+                }
+            }
+        }
+        if (this.nodereddriver == null) {
+            let _driver: any = null;
+            try {
+                _driver = require("./ee/kubedriver");
+            } catch (error) {
+            }
+            try {
+                if (_driver != null) {
+                    this.nodereddriver = new _driver.kubedriver();
+                } else {
+                    this.nodereddriver = new dockerdriver();
+                }
+                if (!this.nodereddriver.detect()) {
+                    this.nodereddriver = null;
+                }
+            } catch (error) {
+                this.nodereddriver = null;
+                Logger.instanse.error(error, null);
+            }
         }
     }
     static instanse: Logger = null;

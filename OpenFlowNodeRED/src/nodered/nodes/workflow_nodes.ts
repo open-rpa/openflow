@@ -3,6 +3,7 @@ import { Red } from "node-red";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, Base, Role, Rolemember, QueueMessage } from "@openiap/openflow-api";
 import { Util } from "./Util";
+import { log_message, WebServer } from "../../WebServer";
 
 export interface Iworkflow_in_node {
     queue: string;
@@ -264,10 +265,17 @@ export class workflow_in_node {
             if (data != null && data.jwt != null && data.payload != null && data.jwt == data.payload.jwt) {
                 delete data.payload.jwt;
             }
-
+            if (NoderedUtil.IsNullEmpty(data._msgid)) data._msgid = NoderedUtil.GetUniqueIdentifier();
+            WebServer.log_messages[data._msgid] = new log_message(data._msgid);
+            log_message.nodestart(data._msgid, this.node.id);
+            if (data.payload && !NoderedUtil.IsNullEmpty(data.payload.traceId) && !NoderedUtil.IsNullEmpty(data.payload.spanId)) {
+                WebServer.log_messages[data._msgid].traceId = data.payload.traceId;
+                WebServer.log_messages[data._msgid].spanId = data.payload.spanId;
+            }
             this.node.send(data);
             // this.node.send(result);
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
+            log_message.nodeend(data._msgid, this.node.id);
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
             try {
@@ -336,102 +344,110 @@ export class workflow_out_node {
         this.node.on("input", this.oninput);
         this.node.on("close", this.onclose);
     }
-    async oninput(msg: any) {
+    async oninput(msg: any, send: any, done: any) {
         try {
+            try {
+                this.node.status({});
+                msg.state = this.config.state;
+                msg.form = this.config.form;
+                let priority: number = 1;
+                if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+                if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
+                    if (this.config.removestate) {
+                        let msgcopy: any = {};
+                        msgcopy._id = msg._id;
+                        msgcopy.queue = msg.queue;
+                        msgcopy.name = msg.name;
+                        msgcopy.workflow = msg.workflow;
+                        msgcopy.targetid = msg.targetid;
+                        msgcopy.replyto = msg.replyto;
+                        msgcopy.correlationId = msg.correlationId;
+                        msgcopy.queuename = msg.queuename;
+                        msgcopy.consumerTag = msg.consumerTag;
+                        msgcopy.exchange = msg.exchange;
+                        msgcopy._msgid = msg._msgid;
+                        msgcopy.state = msg.state;
+                        msgcopy.form = msg.form;
+                        this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
+                        await NoderedUtil.UpdateOne({ collectionname: "workflow_instances", item: msgcopy, jwt: msg.jwt, priority });
+                    } else {
+                        let msgcopy = Object.assign({}, msg);
+                        delete msgcopy.jwt;
+                        delete msgcopy.user;
+                        // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
+                        this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
+                        await NoderedUtil.UpdateOne({ collectionname: "workflow_instances", item: msgcopy, jwt: msg.jwt, priority });
+                    }
+                }
+            } catch (error) {
+                NoderedUtil.HandleError(this, error, msg);
+            }
+            try {
+                if (msg.amqpacknowledgment) {
+                    this.node.status({ fill: "blue", shape: "dot", text: "amqpacknowledgment" });
+                    msg.amqpacknowledgment(true);
+                }
+            } catch (error) {
+                NoderedUtil.HandleError(this, error, msg);
+                done();
+                return;
+            }
+            try {
+                if (!NoderedUtil.IsNullEmpty(msg.resultqueue) && (msg.state == "completed" || msg.state == "failed")) {
+                    const data: any = {};
+                    data.state = msg.state;
+                    if (msg.error) {
+                        data.error = "error";
+                        if (msg.error.message) {
+                            data.error = msg.error.message;
+                        }
+                    }
+                    data._id = msg._id;
+                    data.payload = msg.payload;
+                    data.values = msg.values;
+                    data.jwt = msg.jwt;
+                    const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
+                    this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
+                    await NoderedUtil.Queue({ queuename: msg.resultqueue, data, correlationId: msg.correlationId, expiration, striptoken: false });
+
+                    if (msg.resultqueue == msg._replyTo) msg._replyTo = null; // don't double message (??)
+
+                }
+            } catch (error) {
+                NoderedUtil.HandleError(this, error, msg);
+            }
+            try {
+                // if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
+                if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
+                    if (msg.payload === null || msg.payload === undefined) { msg.payload = {}; }
+                    const data: any = {};
+                    data.state = msg.state;
+                    if (msg.error) {
+                        data.error = "error";
+                        if (msg.error.message) {
+                            data.error = msg.error.message;
+                        }
+                    }
+                    data._id = msg._id;
+                    data.payload = msg.payload;
+                    data.values = msg.values;
+                    data.jwt = msg.jwt;
+                    // ROLLBACK
+                    // Don't wait for ack(), we don't care if the receiver is there, right ?
+                    this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
+                    await NoderedUtil.Queue({ queuename: msg._replyTo, data, correlationId: msg.correlationId, expiration: Config.amqp_workflow_out_expiration, striptoken: false });
+                }
+            } catch (error) {
+                NoderedUtil.HandleError(this, error, msg);
+            }
+            send(msg);
+            done();
             this.node.status({});
-            msg.state = this.config.state;
-            msg.form = this.config.form;
-            let priority: number = 1;
-            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
-            if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
-                if (this.config.removestate) {
-                    let msgcopy: any = {};
-                    msgcopy._id = msg._id;
-                    msgcopy.queue = msg.queue;
-                    msgcopy.name = msg.name;
-                    msgcopy.workflow = msg.workflow;
-                    msgcopy.targetid = msg.targetid;
-                    msgcopy.replyto = msg.replyto;
-                    msgcopy.correlationId = msg.correlationId;
-                    msgcopy.queuename = msg.queuename;
-                    msgcopy.consumerTag = msg.consumerTag;
-                    msgcopy.exchange = msg.exchange;
-                    msgcopy._msgid = msg._msgid;
-                    msgcopy.state = msg.state;
-                    msgcopy.form = msg.form;
-                    this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
-                    await NoderedUtil.UpdateOne({ collectionname: "workflow_instances", item: msgcopy, jwt: msg.jwt, priority });
-                } else {
-                    let msgcopy = Object.assign({}, msg);
-                    delete msgcopy.jwt;
-                    delete msgcopy.user;
-                    // Logger.instanse.info("Updating workflow instance with id " + msg._id + " (" + msg.name + " with state " + msg.state);
-                    this.node.status({ fill: "blue", shape: "dot", text: "Updating workflow instance" });
-                    await NoderedUtil.UpdateOne({ collectionname: "workflow_instances", item: msgcopy, jwt: msg.jwt, priority });
-                }
-            }
         } catch (error) {
-            NoderedUtil.HandleError(this, error, msg);
+            done(error);
         }
-        try {
-            if (msg.amqpacknowledgment) {
-                this.node.status({ fill: "blue", shape: "dot", text: "amqpacknowledgment" });
-                msg.amqpacknowledgment(true);
-            }
-        } catch (error) {
-            NoderedUtil.HandleError(this, error, msg);
-            return;
+        finally {
         }
-        try {
-            if (!NoderedUtil.IsNullEmpty(msg.resultqueue) && (msg.state == "completed" || msg.state == "failed")) {
-                const data: any = {};
-                data.state = msg.state;
-                if (msg.error) {
-                    data.error = "error";
-                    if (msg.error.message) {
-                        data.error = msg.error.message;
-                    }
-                }
-                data._id = msg._id;
-                data.payload = msg.payload;
-                data.values = msg.values;
-                data.jwt = msg.jwt;
-                const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-                this.node.status({ fill: "blue", shape: "dot", text: "QueueMessage.1" });
-                await NoderedUtil.Queue({ queuename: msg.resultqueue, data, correlationId: msg.correlationId, expiration, striptoken: false });
-
-                if (msg.resultqueue == msg._replyTo) msg._replyTo = null; // don't double message (??)
-
-            }
-        } catch (error) {
-            NoderedUtil.HandleError(this, error, msg);
-        }
-        try {
-            // if (!NoderedUtil.IsNullEmpty(msg._replyTo) && NoderedUtil.IsNullEmpty(msg.resultqueue)) {
-            if (!NoderedUtil.IsNullEmpty(msg._replyTo)) {
-                if (msg.payload === null || msg.payload === undefined) { msg.payload = {}; }
-                const data: any = {};
-                data.state = msg.state;
-                if (msg.error) {
-                    data.error = "error";
-                    if (msg.error.message) {
-                        data.error = msg.error.message;
-                    }
-                }
-                data._id = msg._id;
-                data.payload = msg.payload;
-                data.values = msg.values;
-                data.jwt = msg.jwt;
-                // ROLLBACK
-                // Don't wait for ack(), we don't care if the receiver is there, right ?
-                this.node.status({ fill: "blue", shape: "dot", text: "Queue message for " + msg._replyTo });
-                await NoderedUtil.Queue({ queuename: msg._replyTo, data, correlationId: msg.correlationId, expiration: Config.amqp_workflow_out_expiration, striptoken: false });
-            }
-        } catch (error) {
-            NoderedUtil.HandleError(this, error, msg);
-        }
-        this.node.send(msg);
-        this.node.status({});
     }
     onclose() {
     }

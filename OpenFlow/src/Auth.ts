@@ -14,7 +14,6 @@ export class Auth {
             if ((await Crypt.compare(password, user.passwordhash, span)) !== true) { return null; }
             return user;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);

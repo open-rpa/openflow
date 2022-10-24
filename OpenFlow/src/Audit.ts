@@ -38,8 +38,7 @@ export class Audit {
             log.clientversion = clientversion;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -66,8 +65,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -93,8 +91,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -117,8 +114,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -146,8 +142,7 @@ export class Audit {
             if (!NoderedUtil.IsNullEmpty(instancename)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);

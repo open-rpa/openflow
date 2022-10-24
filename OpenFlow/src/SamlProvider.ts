@@ -79,16 +79,16 @@ export class SamlProvider {
 
             },
             getUserFromRequest: (req: any) => {
-                const span: Span = Logger.otel.startSpan("SAML.getUserFromRequest");
+                const span: Span = Logger.otel.startSpanExpress("SAML.getUserFromRequest", req);
                 try {
                     const tuser: TokenUser = TokenUser.From(req.user);
                     const remoteip = SamlProvider.remoteip(req);
                     span?.setAttribute("remoteip", remoteip);
                     Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "samlverify", "unknown", span).catch((e) => {
-                        Logger.instanse.error(e);
+                        Logger.instanse.error(e, span);
                     });
                 } catch (error) {
-                    span?.recordException(error);
+                    Logger.instanse.error(error, span);
                 } finally {
                     Logger.otel.endSpan(span);
                 }
@@ -110,7 +110,7 @@ export class SamlProvider {
                     } catch (error) {
                         res.body(error.message ? error.message : error);
                         res.end();
-                        Logger.instanse.error(error);
+                        Logger.instanse.error(error, null);
                     }
                 } else {
                     // continue with issuing token using samlp

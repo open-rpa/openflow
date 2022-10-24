@@ -112,12 +112,12 @@ export class amqpwrapper extends events.EventEmitter {
     }
     conn_error(error) {
         if (error.code != 404) {
-            Logger.instanse.error(error);
+            Logger.instanse.error(error, null);
         }
     }
     conn_close() {
         this.of_logger_ready = false;
-        Logger.instanse.info("Connection closed");
+        Logger.instanse.info("Connection closed", null);
         this.conn = null;
         if (this.timeout != null) {
             clearTimeout(this.timeout);
@@ -128,7 +128,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     channel_error(error) {
         if (error.code != 404) {
-            Logger.instanse.error(error);
+            Logger.instanse.error(error, null);
         }
     }
     async connect(parent: Span): Promise<void> {
@@ -140,9 +140,9 @@ export class amqpwrapper extends events.EventEmitter {
             }
             if (this.conn == null) {
                 span?.addEvent("connect");
-                Logger.instanse.info("Connecting to rabbitmq");
+                Logger.instanse.info("Connecting to rabbitmq", span);
                 this.conn = await amqplib.connect(this.connectionstring);
-                Logger.instanse.info("Connected to rabbitmq");
+                Logger.instanse.info("Connected to rabbitmq", span);
                 this.conn.on('error', this.conn_error);
                 this.conn.on("close", this.conn_close);
             }
@@ -151,9 +151,9 @@ export class amqpwrapper extends events.EventEmitter {
                 await this.AddReplyQueue(span);
                 this.channel.on('error', this.channel_error);
             } catch (error) {
-                Logger.instanse.error(error);
+                Logger.instanse.error(error, span);
                 if (Config.NODE_ENV == "production") {
-                    Logger.instanse.error("Exit, when we cannot create reply queue");
+                    Logger.instanse.error("Exit, when we cannot create reply queue", span);
                     process.exit(405);
                 }
             }
@@ -163,9 +163,9 @@ export class amqpwrapper extends events.EventEmitter {
                 await this.AddOFLogExchange(span);
             } catch (error) {
                 this.of_logger_ready = false;
-                Logger.instanse.error(error);
+                Logger.instanse.error(error, span);
                 if (Config.NODE_ENV == "production") {
-                    Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange");
+                    Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange", span);
                     process.exit(406);
                 }
             }
@@ -174,8 +174,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.connected = true;
         } catch (error) {
             this.of_logger_ready = false;
-            span?.recordException(error);
-            Logger.instanse.error(error);
+            Logger.instanse.error(error, span);
             if (this.timeout != null) {
                 clearTimeout(this.timeout);
                 this.timeout = null;
@@ -183,7 +182,7 @@ export class amqpwrapper extends events.EventEmitter {
             if (error.message.startsWith("Expected amqp: or amqps:")) {
                 throw error;
             }
-            Logger.instanse.error(error);
+            Logger.instanse.error(error, span);
             this.timeout = setTimeout(this.connect.bind(this), 1000);
         } finally {
             Logger.otel.endSpan(span);
@@ -223,7 +222,7 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error(error, null);
         }
         done();
     }
@@ -253,15 +252,15 @@ export class amqpwrapper extends events.EventEmitter {
                 } else {
                     msg.command = "timeout";
                 }
-                Logger.instanse.debug("[" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey)
-                await amqpwrapper.Instance().send("", replyTo, msg, 20000, correlationId, "");
+                Logger.instanse.debug("[" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey, null)
+                await amqpwrapper.Instance().send("", replyTo, msg, 20000, correlationId, "", null);
             }
         } catch (error) {
         }
     }
     async reply_queue_close(msg) {
         this.of_logger_ready = false;
-        Logger.instanse.error("Exit, reply channel was closed " + msg);
+        Logger.instanse.error("Exit, reply channel was closed " + msg, null);
         process.exit(406);
     }
     async AddReplyQueue(parent: Span): Promise<void> {
@@ -269,14 +268,12 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             this.channel = await this.conn.createConfirmChannel();
             this.channel.prefetch(Config.amqp_prefetch);
-            this.replyqueue = await this.AddQueueConsumer(Crypt.rootUser(), "", null, null, this.reply_queue_message, undefined);
+            this.replyqueue = await this.AddQueueConsumer(Crypt.rootUser(), "", null, null, this.reply_queue_message.bind(this), undefined);
             // We don't want to recreate this
             this.queues = this.queues.filter(q => q.consumerTag != this.replyqueue.consumerTag);
-            this.channel.on('return', this.reply_queue_return)
-            this.channel.on('close', this.reply_queue_close);
+            this.channel.on('return', this.reply_queue_return.bind(this))
+            this.channel.on('close', this.reply_queue_close.bind(this));
         } catch (error) {
-            span?.recordException(error);
-            Logger.instanse.error(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -287,13 +284,13 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
-                Logger.instanse.debug("[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag);
+                Logger.instanse.debug("[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag, span);
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
                         await this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
                     } catch (error) {
-                        Logger.instanse.error(error);
+                        Logger.instanse.error(error, span);
                     }
                     if (this.channel != null) {
                         if (exc[0].queue) await this.channel.cancel(exc[0].queue.consumerTag);
@@ -307,7 +304,6 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -334,13 +330,12 @@ export class amqpwrapper extends events.EventEmitter {
                     this.OnMessage(q, msg, q.callback);
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
-                Logger.instanse.debug("[" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag);
+                Logger.instanse.debug("[" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag, span);
             } else {
                 throw new Error("Failed asserting Queue " + queue);
             }
             return q;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -365,13 +360,12 @@ export class amqpwrapper extends events.EventEmitter {
                 q.queue = await this.AddQueueConsumer(user, "", AssertQueueOptions, jwt, q.callback, span);
                 if (q.queue) {
                     this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
-                    Logger.instanse.debug("[" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue);
+                    Logger.instanse.debug("[" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue, span);
                 }
             }
             this.exchanges.push(q);
             return q;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -410,27 +404,38 @@ export class amqpwrapper extends events.EventEmitter {
                     }
                     this.channel.ack(msg);
                 } catch (error) {
-                    Logger.instanse.error(error);
+                    Logger.instanse.error(error, null);
                 }
             }, (result) => {
             });
         } catch (error) {
-            Logger.instanse.error(error);
+            Logger.instanse.error(error, null);
         }
     }
-    async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string): Promise<string> {
+    async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, span: Span): Promise<string> {
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         var promise = new Deferred<string>();
         this.activecalls[correlationId] = promise;
         if (this.replyqueue) {
-            await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId, routingkey);
+            await this.sendWithReplyTo(exchange, queue, this.replyqueue.queue, data, expiration, correlationId, routingkey, span);
         }
         return promise.promise;
     }
-    async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
+    async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string, routingkey: string, span: Span, priority: number = 1): Promise<void> {
         await amqpwrapper.asyncWaitFor(() => this.connected);
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
+        }
+        try {
+            if (typeof data === 'string' || ((data as any) instanceof String)) {
+                data = JSON.parse(data);
+            }
+            const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
+            if (!NoderedUtil.IsNullEmpty(traceId)) {
+                data.traceId = traceId;
+                data.spanId = spanId;
+            }
+        } catch (error) {
         }
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
@@ -459,11 +464,22 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
-    async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, priority: number = 1): Promise<void> {
+    async send(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, span: Span, priority: number = 1): Promise<void> {
         if (exchange == "openflow" && !Config.enable_openflow_amqp) return;
         await amqpwrapper.asyncWaitFor(() => this.connected);
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
+        }
+        try {
+            if (typeof data === 'string' || ((data as any) instanceof String)) {
+                data = JSON.parse(data);
+            }
+            const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
+            if (!NoderedUtil.IsNullEmpty(traceId)) {
+                data.traceId = traceId;
+                data.spanId = spanId;
+            }
+        } catch (error) {
         }
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
@@ -491,7 +507,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
-    async Adddlx(parent: Span) {
+    async Adddlx(span: Span) {
         if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
         await this.AddExchangeConsumer(Crypt.rootUser(), Config.amqp_dlx, "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             ack();
@@ -510,20 +526,20 @@ export class amqpwrapper extends events.EventEmitter {
                 }
                 if (ismine) {
                     // Resend message, this time to the reply queue for the correct node (replyTo)
-                    Logger.instanse.warn("[" + options.exchangename + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId);
+                    Logger.instanse.warn("[" + options.exchangename + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId, span);
                     // await amqpwrapper.Instance().sendWithReply("", options.replyTo, msg, 20000, options.correlationId, "");
-                    await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "");
+                    await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "", span);
                 } else {
                     if (!msg.hasOwnProperty("cls")) {
-                        Logger.instanse.debug("[" + options.exchangename + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId);
+                        Logger.instanse.debug("[" + options.exchangename + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId, span);
                     }
                 }
             } catch (error) {
-                Logger.instanse.error("Failed sending deadletter message to " + options.replyTo);
-                Logger.instanse.error(error);
+                Logger.instanse.error("Failed sending deadletter message to " + options.replyTo, span);
+                Logger.instanse.error(error, span);
             }
             done();
-        }, parent);
+        }, span);
     }
     IsMyconsumerTag(consumerTag: string) {
         var q = this.queues.filter(q => q.consumerTag == consumerTag);
@@ -548,6 +564,7 @@ export class amqpwrapper extends events.EventEmitter {
         await this.AddExchangeConsumer(Crypt.rootUser(), "openflow", "fanout", "",
             null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             ack();
+                let span: Span;
             try {
                 if (typeof msg === "string" || msg instanceof String) {
                     try {
@@ -555,20 +572,22 @@ export class amqpwrapper extends events.EventEmitter {
                     } catch (error) {
                     }
                 }
+                span = Logger.otel.startSpan("Openflow Exchange " + msg.command, msg.traceId, msg.spanId);
+
                 if (typeof msg !== "string") {
-                    Logger.instanse.debug("[" + options.exchangename + "] Received command " + msg.command);
+                    Logger.instanse.debug("[" + options.exchangename + "] Received command " + msg.command, span);
                     switch (msg.command) {
                         case "clearcache":
-                            Logger.DBHelper.clearCache("amqp broadcast");
+                            Logger.DBHelper.clearCache("amqp broadcast", span);
                             break;
                         case "housekeeping":
                             // if (this.IsMyconsumerTag(options.consumerTag)) break;
                             if (msg.lastrun) {
-                                Logger.instanse.debug("[" + options.exchangename + "] " + msg.lastrun)
+                                Logger.instanse.debug("[" + options.exchangename + "] " + msg.lastrun, span)
                                 Message.lastHouseKeeping = new Date(msg.lastrun);
                             } else {
                                 if (Message.lastHouseKeeping != null) {
-                                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", 1);
+                                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", span, 1);
                                 }
                             }
                             break;
@@ -579,32 +598,34 @@ export class amqpwrapper extends events.EventEmitter {
                                 await Logger.License.shutdown()
                                 // await Auth.shutdown();
                             } catch (error) {
-                                Logger.instanse.error(error);
+                                Logger.instanse.error(error, span);
                             }
                             process.exit(404);
                             // process.kill(process.pid, "SIGINT");
                             break;
                         case "dumpwebsocketclients":
-                            WebSocketServer.DumpClients();
+                            WebSocketServer.DumpClients(span);
                             break;
                         case "killwebsocketclient":
                             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
                                 if (cli.id == msg.id) {
-                                    Logger.instanse.warn("Killing websocket client " + msg.id);
-                                    cli.Close();
+                                    Logger.instanse.warn("Killing websocket client " + msg.id, span);
+                                    cli.Close(span);
                                 }
                             }
                             break;
                         default:
-                            Logger.instanse.error(new Error("[OF] Received unknown command: " + msg.command));
+                            Logger.instanse.error(new Error("[OF] Received unknown command: " + msg.command), span);
                             break;
                     }
                 } else {
                     Logger.instanse.verbose("Received string message: " + JSON.stringify(msg));
                 }
             } catch (error) {
-                Logger.instanse.error(error);
+                Logger.instanse.error(error, span);
+            } finally {
+                span?.end();
             }
             done();
         }, parent);

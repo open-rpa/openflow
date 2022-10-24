@@ -1,7 +1,11 @@
+function clog(message) {
+    let dt = new Date();
+    let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
+    console.log(dts + " " + message);
+}
+clog("Starting @openiap/openflow");
 import { Logger } from "./Logger";
-Logger.configure(false, false);
 import * as http from "http";
-
 import { WebServer } from "./WebServer";
 import { WebSocketServer } from "./WebSocketServer";
 import { DatabaseConnection } from "./DatabaseConnection";
@@ -13,11 +17,6 @@ import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
 import { Message } from "./Messages/Message";
-import { emitWarning } from "process";
-
-
-Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);
-
 
 let amqp: amqpwrapper = null;
 async function initamqp(parent: Span) {
@@ -27,8 +26,7 @@ async function initamqp(parent: Span) {
         amqpwrapper.SetInstance(amqp);
         await amqp.connect(span);
     } catch (error) {
-        span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error(error, span);
         return false;
     } finally {
         Logger.otel.endSpan(span);
@@ -39,40 +37,39 @@ async function ValidateUserForm(parent: Span) {
     try {
         var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
         if (forms.length == 0) {
-            Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!");
+            Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!", span);
             Config.validate_user_form = "";
         }
     } catch (error) {
-        span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error(error, span);
         return false;
     } finally {
         Logger.otel.endSpan(span);
     }
 }
-function doHouseKeeping() {
+function doHouseKeeping(span: Span) {
     // Message.lastHouseKeeping = new Date();
     if (Message.lastHouseKeeping == null) {
         Message.lastHouseKeeping = new Date();
         Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
     }
-    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": (new Date()).toISOString() }, 20000, null, "", 1);
+    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": (new Date()).toISOString() }, 20000, null, "", span, 1);
     var dt = new Date(Message.lastHouseKeeping.toISOString());
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
     var h = dt.getHours();
     var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
     if (Config.NODE_ENV == "production") {
-        msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error));
+        msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error, null));
     } else {
         // While debugging, always do all calculations
-        msg2._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error(error));
+        msg2._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
         // msg2._Housekeeping(true, true, true, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
     }
 }
 async function initDatabase(parent: Span): Promise<boolean> {
     const span: Span = Logger.otel.startSubSpan("initDatabase", parent);
     try {
-        Logger.instanse.info("Begin validating builtin roles");
+        Logger.instanse.info("Begin validating builtin roles", span);
         const jwt: string = Crypt.rootToken();
         Config.dbConfig = await dbConfig.Load(jwt, span);
         const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
@@ -197,7 +194,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
                 await Logger.DBHelper.Save(customer_admins, jwt, span);
             } catch (error) {
-                Logger.instanse.error(error);
+                Logger.instanse.error(error, span);
             }
         }
 
@@ -282,57 +279,56 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     if (!Message.ReadyForHousekeeping()) {
                         return;
                     }
-                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
+                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
                     await new Promise(resolve => { setTimeout(resolve, 10000) });
                     if (Message.ReadyForHousekeeping()) {
-                        doHouseKeeping();
+                        doHouseKeeping(span);
                     } else {
                         Logger.instanse.verbose("SKIP housekeeping");
                     }
                 } else {
-                    doHouseKeeping();
+                    doHouseKeeping(span);
                 }
             }, (15 * 60 * 1000) + (randomNum * 1000));
             // If I'm first and noone else has run it, lets trigger it now
             const randomNum2 = crypto.randomInt(1, 10);
-            Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds");
+            Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds", span);
             setTimeout(async () => {
                 if (Config.enable_openflow_amqp) {
                     if (!Message.ReadyForHousekeeping()) {
                         return;
                     }
-                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", 1);
+                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
                     await new Promise(resolve => { setTimeout(resolve, 10000) });
                     if (Message.ReadyForHousekeeping()) {
-                        doHouseKeeping();
+                        doHouseKeeping(span);
                     } else {
                         Logger.instanse.verbose("SKIP housekeeping");
                     }
                 } else {
-                    doHouseKeeping();
+                    doHouseKeeping(span);
                 }
             }, randomNum2 * 1000);
         }
         return true;
     } catch (error) {
-        span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error(error, span);
         return false;
     } finally {
         Logger.otel.endSpan(span);
     }
 }
 
-
+clog("register process hooks");
 process.on('beforeExit', (code) => {
-    Logger.instanse.error(code as any);
+    Logger.instanse.error(code as any, null);
 });
 process.on('exit', (code) => {
-    Logger.instanse.error(code as any);
+    Logger.instanse.error(code as any, null);
 });
 const unhandledRejections = new Map();
 process.on('unhandledRejection', (reason, promise) => {
-    Logger.instanse.error(reason as any);
+    Logger.instanse.error(reason as any, null);
     // ('Unhandled Rejection at: Promise', promise, 'reason:', reason);
     unhandledRejections.set(promise, reason);
 });
@@ -340,13 +336,13 @@ process.on('rejectionHandled', (promise) => {
     unhandledRejections.delete(promise);
 });
 process.on('uncaughtException', (err, origin) => {
-    Logger.instanse.error(err);
+    Logger.instanse.error(err, null);
     // (`Caught exception: ${err}\n` +
     //     `Exception origin: ${origin}`
     // );
 });
 function onerror(err, origin) {
-    Logger.instanse.error(err);
+    Logger.instanse.error(err, null);
     // (`Caught exception Monitor: ${err}\n` +
     //     `Exception origin: ${origin}`
     // );
@@ -354,7 +350,7 @@ function onerror(err, origin) {
 process.on('uncaughtExceptionMonitor', onerror);
 function onWarning(warning) {
     try {
-        Logger.instanse.warn(warning.name + ": " + warning.message);
+        Logger.instanse.warn(warning.name + ": " + warning.message, null);
     } catch (error) {
     }
 }
@@ -368,7 +364,7 @@ var signals = {
 };
 var housekeeping = null;
 function handle(signal, value) {
-    Logger.instanse.info(`process received a ${signal} signal with value ${value}`);
+    Logger.instanse.info(`process received a ${signal} signal with value ${value}`, null);
     try {
         Config.db.shutdown();
         Logger.otel.shutdown();
@@ -384,18 +380,19 @@ function handle(signal, value) {
             process.exit(128 + value);
         }, 1000);
         server.close((err) => {
-            Logger.instanse.info(`server stopped by ${signal} with value ${value}`);
-            Logger.instanse.error(err);
+            Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
+            Logger.instanse.error(err, null);
             process.exit(128 + value);
         })
     } catch (error) {
-        Logger.instanse.error(error);
-        Logger.instanse.info(`server stopped by ${signal} with value ${value}`);
+        Logger.instanse.error(error, null);
+        Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
         process.exit(128 + value);
     }
 }
 Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
+clog("require gp");
 let GrafanaProxy: any = null;
 try {
     GrafanaProxy = require("./ee/grafana-proxy");
@@ -415,15 +412,27 @@ const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
 var server: http.Server = null;
 (async function (): Promise<void> {
-    const span: Span = Logger.otel.startSpan("openflow.startup");
+    clog("Configure logging");
     try {
+        await Logger.configure(false, false);
+    } catch (error) {
+        console.error(error);
+        process.exit(404);
+    }
+    clog("Configure database connection");
+    Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);
+    const span: Span = Logger.otel.startSpan("openflow.startup", null, null);
+    try {
+        clog("Connect to database");
+        await Config.db.connect(span);
+        clog("Configure amqp");
         await initamqp(span);
-        Logger.instanse.info("VERSION: " + Config.version);
+        Logger.instanse.info("VERSION: " + Config.version, span);
         if (Logger.License.validlicense) {
             if (NoderedUtil.IsNullEmpty(Logger.License.data.domain)) {
-                Logger.instanse.info("License valid to " + Logger.License.data.expirationDate);
+                Logger.instanse.info("License valid to " + Logger.License.data.expirationDate, span);
             } else {
-                Logger.instanse.info("License valid for " + Logger.License.data.domain + " until the " + Logger.License.data.expirationDate);
+                Logger.instanse.info("License valid for " + Logger.License.data.domain + " until the " + Logger.License.data.expirationDate, span);
             }
         }
         server = await WebServer.configure(Config.baseurl(), span);
@@ -438,11 +447,11 @@ var server: http.Server = null;
             process.exit(404);
         }
         WebServer.Listen();
-        Config.db.ensureQueueMonitoring();
-
+        if (Config.workitem_queue_monitoring_enabled) {
+            Config.db.ensureQueueMonitoring();
+        }
     } catch (error) {
-        span?.recordException(error);
-        Logger.instanse.error(error);
+        Logger.instanse.error(error, span);
         process.exit(404);
     } finally {
         Logger.otel.endSpan(span);

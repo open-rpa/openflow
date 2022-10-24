@@ -5,6 +5,7 @@ import { Config } from "./Config";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { WebSocketServerClient } from "./WebSocketServerClient";
 export class Crypt {
     static encryption_key: string = null; // must be 256 bytes (32 characters))
     static iv_length: number = 16; // for AES, this is always 16
@@ -26,7 +27,6 @@ export class Crypt {
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -39,7 +39,6 @@ export class Crypt {
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -88,17 +87,16 @@ export class Crypt {
     }
     static async compare(password: string, passwordhash: string, parent: Span): Promise<boolean> {
         const span: Span = Logger.otel.startSubSpan("Crypt.compare", parent);
-        return new Promise<boolean>(async (resolve, reject) => {
+        return new Promise<boolean>((resolve, reject) => {
             try {
-                if (NoderedUtil.IsNullEmpty(password)) { span?.recordException("Password cannot be empty"); return reject("Password cannot be empty"); }
-                if (NoderedUtil.IsNullEmpty(passwordhash)) { span?.recordException("Passwordhash cannot be empty"); return reject("Passwordhash cannot be empty"); }
-                bcrypt.compare(password, passwordhash, async (error, res) => {
-                    if (error) { span?.recordException(error); Logger.otel.endSpan(span); return reject(error); }
+                if (NoderedUtil.IsNullEmpty(password)) { return reject("Password cannot be empty"); }
+                if (NoderedUtil.IsNullEmpty(passwordhash)) { return reject("Passwordhash cannot be empty"); }
+                bcrypt.compare(password, passwordhash, (error, res) => {
+                    if (error) { Logger.otel.endSpan(span); return reject(error); }
                     Logger.otel.endSpan(span);
                     resolve(res);
                 });
             } catch (error) {
-                span?.recordException(error);
                 reject(error);
                 Logger.otel.endSpan(span);
             }
@@ -123,7 +121,7 @@ export class Crypt {
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
-    static async verityToken(token: string): Promise<TokenUser> {
+    static async verityToken(token: string, cli?: WebSocketServerClient): Promise<TokenUser> {
         try {
             if (NoderedUtil.IsNullEmpty(token)) {
                 throw new Error('jwt must be provided');
@@ -151,6 +149,10 @@ export class Crypt {
                 if (!NoderedUtil.IsNullEmpty(token)) {
                     const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: true });
                     if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
+                        if (cli != null) {
+                            cli.user = TokenUser.assign(o.data);
+                            cli.username = cli.user?.username;
+                        }
                         e = new Error(error.message + " for token with exp " + o.exp + " for " + o.data.name + " username: " + o.data.username + " and id: " + o.data._id);
                         // Logger.instanse.error(JSON.stringify(o));
                     }

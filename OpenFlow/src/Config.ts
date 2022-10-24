@@ -45,6 +45,9 @@ export class dbConfig extends Base {
     public log_to_exchange: boolean;
     public workitem_queue_monitoring_interval: number;
     public workitem_queue_monitoring_enabled: boolean;
+    public client_heartbeat_timeout: number;
+    public client_signin_timeout: number;
+    public client_disconnect_signin_error: boolean;
 
     public amqp_allow_replyto_empty_queuename: boolean;
     public enable_web_tours: boolean;
@@ -99,7 +102,7 @@ export class dbConfig extends Base {
         if (!NoderedUtil.IsNullEmpty(conf.allow_personal_nodered)) Config.allow_personal_nodered = Config.parseBoolean(conf.allow_personal_nodered);
         if (!NoderedUtil.IsNullEmpty(conf.amqp_enabled_exchange)) Config.amqp_enabled_exchange = Config.parseBoolean(conf.amqp_enabled_exchange);
 
-        Logger.instanse.info("db version: " + conf.version);
+        Logger.instanse.info("db version: " + conf.version, parent);
 
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
@@ -125,6 +128,9 @@ export class dbConfig extends Base {
         Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
         Config.log_silly = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_silly) ? conf.log_silly : Config.getEnv("log_silly", "false"));
         Config.log_to_exchange = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_to_exchange) ? conf.log_to_exchange : Config.getEnv("log_to_exchange", "false"));
+        Config.client_heartbeat_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_heartbeat_timeout) ? conf.client_heartbeat_timeout.toString() : Config.getEnv("client_heartbeat_timeout", "60"));
+        Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "60"));
+        Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
 
         Config.workitem_queue_monitoring_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_interval) ? conf.workitem_queue_monitoring_interval.toString() : Config.getEnv("workitem_queue_monitoring_interval", "10000"));
         Config.workitem_queue_monitoring_enabled = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_enabled) ? conf.workitem_queue_monitoring_enabled : Config.getEnv("workitem_queue_monitoring_enabled", "true"));
@@ -289,13 +295,14 @@ export class Config {
         Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
         Config.socket_rate_limit = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
         Config.socket_rate_limit_points = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
-        Config.socket_rate_limit_points_disconnect = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "600"));
+        Config.socket_rate_limit_points_disconnect = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "100"));
         Config.socket_rate_limit_duration = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
         Config.socket_error_rate_limit_points = parseInt(Config.getEnv("socket_error_rate_limit_points", "16"));
         Config.socket_error_rate_limit_duration = parseInt(Config.getEnv("socket_error_rate_limit_duration", "2"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
-        Config.client_signin_timeout = parseInt(Config.getEnv("client_signin_timeout", "120"));
+        Config.client_signin_timeout = parseInt(Config.getEnv("client_signin_timeout", "60"));
+        Config.client_disconnect_signin_error = Config.parseBoolean(Config.getEnv("client_disconnect_signin_error", "false"));
 
 
         Config.expected_max_roles = parseInt(Config.getEnv("expected_max_roles", "4000"));
@@ -508,13 +515,14 @@ export class Config {
     public static api_rate_limit_duration: number = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
     public static socket_rate_limit: boolean = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
     public static socket_rate_limit_points: number = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
-    public static socket_rate_limit_points_disconnect: number = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "600"));
+    public static socket_rate_limit_points_disconnect: number = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "100"));
     public static socket_rate_limit_duration: number = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
     public static socket_error_rate_limit_points: number = parseInt(Config.getEnv("socket_error_rate_limit_points", "30"));
     public static socket_error_rate_limit_duration: number = parseInt(Config.getEnv("socket_error_rate_limit_duration", "1"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
-    public static client_signin_timeout: number = parseInt(Config.getEnv("client_signin_timeout", "120"));
+    public static client_signin_timeout: number = parseInt(Config.getEnv("client_signin_timeout", "60"));
+    public static client_disconnect_signin_error: boolean = Config.parseBoolean(Config.getEnv("client_disconnect_signin_error", "false"));
 
     public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "20000"));
     public static decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
