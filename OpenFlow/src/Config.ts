@@ -43,6 +43,9 @@ export class dbConfig extends Base {
     public log_verbose: boolean;
     public log_silly: boolean;
     public log_to_exchange: boolean;
+    public api_bypass_perm_check: boolean;
+    public force_audit_ts: boolean;
+
     public workitem_queue_monitoring_interval: number;
     public workitem_queue_monitoring_enabled: boolean;
     public client_heartbeat_timeout: number;
@@ -131,6 +134,10 @@ export class dbConfig extends Base {
         Config.client_heartbeat_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_heartbeat_timeout) ? conf.client_heartbeat_timeout.toString() : Config.getEnv("client_heartbeat_timeout", "60"));
         Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "60"));
         Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
+        Config.api_bypass_perm_check = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.api_bypass_perm_check) ? conf.api_bypass_perm_check : Config.getEnv("api_bypass_perm_check", "false"));
+        Config.force_audit_ts = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.force_audit_ts) ? conf.force_audit_ts : Config.getEnv("force_audit_ts", "false"));
+
+
 
         Config.workitem_queue_monitoring_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_interval) ? conf.workitem_queue_monitoring_interval.toString() : Config.getEnv("workitem_queue_monitoring_interval", "10000"));
         Config.workitem_queue_monitoring_enabled = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_enabled) ? conf.workitem_queue_monitoring_enabled : Config.getEnv("workitem_queue_monitoring_enabled", "true"));
@@ -307,12 +314,15 @@ export class Config {
 
         Config.expected_max_roles = parseInt(Config.getEnv("expected_max_roles", "4000"));
         Config.decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
-        Config.update_acl_based_on_groups = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
+        Config.update_acl_based_on_groups = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "true"));
+        Config.allow_merge_acl = Config.parseBoolean(Config.getEnv("allow_merge_acl", "false"));
         Config.multi_tenant = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
         Config.cleanup_on_delete_customer = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer", "false"));
         Config.cleanup_on_delete_user = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
 
         Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+        Config.force_audit_ts = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
+
         Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
         Config.websocket_max_package_count = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
         Config.protocol = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
@@ -527,11 +537,15 @@ export class Config {
     public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "20000"));
     public static decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
     public static max_recursive_group_depth: number = parseInt(Config.getEnv("max_recursive_group_depth", "2"));
-    public static update_acl_based_on_groups: boolean = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "false"));
+    public static update_acl_based_on_groups: boolean = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "true"));
+    public static allow_merge_acl: boolean = Config.parseBoolean(Config.getEnv("allow_merge_acl", "false"));
+
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer", "false"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+    public static force_audit_ts: boolean = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
+
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
     public static websocket_disconnect_out_of_sync: boolean = Config.parseBoolean(Config.getEnv("websocket_disconnect_out_of_sync", "false"));

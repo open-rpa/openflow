@@ -72,6 +72,16 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Logger.instanse.info("Begin validating builtin roles", span);
         const jwt: string = Crypt.rootToken();
         Config.dbConfig = await dbConfig.Load(jwt, span);
+
+        let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
+        var audit = collections.find(x => x.name == "audit");
+        if (Config.force_audit_ts && audit.type != "timeseries") {
+            await Config.db.db.collection("audit").rename("oldaudit");
+            audit = null;
+        }
+        if (audit == null) {
+            await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "userid", granularity: "minutes" } });
+        }
         const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
         const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, null, span);
@@ -441,11 +451,11 @@ var server: http.Server = null;
         }
         OAuthProvider.configure(WebServer.app, span);
         WebSocketServer.configure(server, span);
-        await QueueClient.configure(span);
-        await ValidateUserForm(span);
         if (!await initDatabase(span)) {
             process.exit(404);
         }
+        await QueueClient.configure(span);
+        await ValidateUserForm(span);
         WebServer.Listen();
         if (Config.workitem_queue_monitoring_enabled) {
             Config.db.ensureQueueMonitoring();
