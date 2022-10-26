@@ -636,6 +636,42 @@ export class DatabaseConnection extends events.EventEmitter {
                 const newacl = item._acl.slice(0, Config.max_ace_count);
                 item._acl = newacl;
             }
+            let precount: number = item._acl.length;
+            // remove duplicate acls
+            item._acl = item._acl.filter((thing, index, self) =>
+                index === self.findIndex((t) => (
+                    t._id === thing._id && t.rights === thing.rights
+                ))
+            )
+            if (item._acl.length != precount) {
+                let diff = precount - item._acl.length;
+                Logger.instanse.warn("Removed " + diff + " doublicate aces from " + item.name, span, { count: diff });
+            }
+            precount = item._acl.length;
+            if (Config.allow_merge_acl) {
+                // merge acls by doing bit or on rights for all acls with same id 
+                item._acl = item._acl.reduce((acc, cur) => {
+                    const found = acc.find(x => x._id == cur._id);
+                    if (found) {
+                        var rights = Ace._base64ToArrayBuffer(found.rights);
+                        var currentrights = Ace._base64ToArrayBuffer(cur.rights);
+                        var newrights = new Uint8Array(rights.byteLength);
+                        for (let index = 0; index < rights.byteLength; index++) {
+                            newrights[index] = rights[index] | currentrights[index];
+                        }
+                        // found.rights = Ace._arrayBufferToBase64(newrights);
+                        found.rights = Ace._arrayBufferToBase64(newrights);
+                    } else {
+                        acc.push(cur);
+                    }
+                    return acc;
+                }, [] as Ace[]);
+                if (item._acl.length != precount) {
+                    let diff = precount - item._acl.length;
+                    Logger.instanse.warn("Merged " + diff + " aces from " + item.name, span, { count: diff });
+                }
+            }
+
             for (let i = item._acl.length - 1; i >= 0; i--) {
                 {
                     const ace = item._acl[i];
@@ -690,6 +726,18 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (exists.length === 0) removed.push(ace);
             }
         }
+        let precount: number = item.members.length;
+        // remove doublicate members
+        item.members = item.members.filter((thing, index, self) =>
+            index === self.findIndex((t) => (
+                t._id === thing._id
+            ))
+        )
+        if (item.members.length != precount) {
+            let diff = precount - item.members.length;
+            Logger.instanse.warn("Removed " + diff + " doublicate members from " + item.name, span, { count: diff });
+        }
+
         let doadd: boolean = true;
         if ((item as any).hidemembers == true) {
             doadd = false;
@@ -1417,31 +1465,109 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.addEvent("verityToken");
             const user: TokenUser = await Crypt.verityToken(jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            span?.addEvent("ensureResource");
-            item = this.ensureResource(item, collectionname);
-            if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
-                throw Error("Create " + item._type + " access denied");
-            }
             span?.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
             let name = item.name;
             if (NoderedUtil.IsNullEmpty(name)) name = item._name;
             if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-            item._createdby = user.name;
-            item._createdbyid = user._id;
-            item._created = new Date(new Date().toISOString());
-            item._modifiedby = user.name;
-            item._modifiedbyid = user._id;
-            item._modified = item._created;
-            if (collectionname == "audit") {
-                delete item._modifiedby;
-                delete item._modifiedbyid;
-                delete item._modified;
-            }
-            const hasUser: Ace = item._acl.find(e => e._id === user._id);
-            if ((hasUser === null || hasUser === undefined)) {
-                Base.addRight(item, user._id, user.name, [Rights.full_control]);
+            if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
+                item._version = 0;
+                item._createdby = user.name;
+                item._createdbyid = user._id;
+                item._created = new Date(new Date().toISOString());
+                item._modifiedby = user.name;
+                item._modifiedbyid = user._id;
+                item._modified = item._created;
+                if (collectionname == "audit") {
+                    delete item._modifiedby;
+                    delete item._modifiedbyid;
+                    delete item._modified;
+                }
+                span?.addEvent("ensureResource");
                 item = this.ensureResource(item, collectionname);
+                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                    throw Error("Create " + item._type + " access denied");
+                }
+
+                // const hasUser: Ace = item._acl.find(e => e._id === user._id);
+                // if ((hasUser === null || hasUser === undefined)) {
+                //     Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                //     item = this.ensureResource(item, collectionname);
+                // }
+                if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                    Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                    item = this.ensureResource(item, collectionname);
+                }
+            } else if (DatabaseConnection.istimeseries(collectionname)) {
+                item._created = new Date(new Date().toISOString());
+                if (collectionname == "audit") {
+                    item._createdby = user.name;
+                    item._createdbyid = user._id;
+                }
+                span?.addEvent("ensureResource");
+                // @ts-ignore
+                item = this.ensureResource(item, collectionname);
+                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                    // @ts-ignore
+                    throw Error("Create " + item._type + " access denied");
+                }
+                // item._createdby = user.name;
+                // item._createdbyid = user._id;
+                // const hasUser: Ace = item._acl.find(e => e._id === user._id);
+                // if ((hasUser === null || hasUser === undefined)) {
+                //     // @ts-ignore
+                //     Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                //     // @ts-ignore
+                //     item = this.ensureResource(item, collectionname);
+                // }
+                if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                    Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                    item = this.ensureResource(item, collectionname);
+                }
+            } else {
+                item._created = new Date(new Date().toISOString());
+                // @ts-ignore
+                if (NoderedUtil.IsNullUndefinded(item.metadata)) item.metadata = {};
+                span?.addEvent("ensureResource");
+                // @ts-ignore
+                item.metadata = this.ensureResource(item.metadata, collectionname);
+                if (item.hasOwnProperty("name")) {
+                    // @ts-ignore
+                    item.metadata.name = item.name;
+                    delete item.name;
+                }
+                if (item.hasOwnProperty("_type")) {
+                    // @ts-ignore
+                    item.metadata._type = item._type;
+                    delete item._type;
+                }
+                // @ts-ignore
+                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item.metadata, span)) {
+                    // @ts-ignore
+                    throw Error("Create " + item.metadata._type + " access denied");
+                }
+                // @ts-ignore
+                item.metadata._version = 0;
+                // @ts-ignore
+                item.metadata._createdby = user.name;
+                // @ts-ignore
+                item.metadata._createdbyid = user._id;
+                // @ts-ignore
+                // const hasUser: Ace = item.metadata._acl.find(e => e._id === user._id);
+                // if ((hasUser === null || hasUser === undefined)) {
+                //     // @ts-ignore
+                //     Base.addRight(item.metadata, user._id, user.name, [Rights.full_control]);
+                //     // @ts-ignore
+                //     item.metadata = this.ensureResource(item.metadata, collectionname);
+                // }
+                // @ts-ignore
+                if (!DatabaseConnection.hasAuthorization(user, item.metadata, Rights.create)) {
+                    // @ts-ignore
+                    Base.addRight(item.metadata, user._id, user.name, [Rights.full_control]);
+                    // @ts-ignore
+                    item.metadata = this.ensureResource(item.metadata, collectionname);
+                }
+
             }
             Logger.instanse.silly("Adding " + item._type + " " + name + " to database", { collection: collectionname, user: user.username });
             if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
@@ -1547,7 +1673,6 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             j = ((j as any) === 'true' || j === true);
             w = parseInt((w as any));
-            item._version = 0;
             if (item._id != null) {
                 const basehist = await this.query<any>({ query: { id: item._id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken() }, span);
                 if (basehist.length > 0) {
@@ -1586,8 +1711,14 @@ export class DatabaseConnection extends events.EventEmitter {
             } else {
                 item._id = new ObjectId().toHexString();
             }
-            span?.addEvent("CleanACL");
-            item = await this.CleanACL(item, user, collectionname, span);
+            if (!DatabaseConnection.usemetadata(collectionname)) {
+                span?.addEvent("CleanACL");
+                item = await this.CleanACL(item, user, collectionname, span);
+            } else {
+                span?.addEvent("CleanACL");
+                // @ts-ignore
+                item.metadata = await this.CleanACL(item.metadata, user, collectionname, span);
+            }
             if (collectionname === "users" && item._type === "user" && !NoderedUtil.IsNullEmpty(item._id)) {
                 Base.addRight(item, item._id, item.name, [Rights.full_control]);
                 Base.removeRight(item, item._id, [Rights.delete]);
@@ -1809,11 +1940,15 @@ export class DatabaseConnection extends events.EventEmitter {
                 item._modifiedby = user.name;
                 item._modifiedbyid = user._id;
                 item._modified = item._created;
-                const hasUser: Ace = item._acl.find(e => e._id === user._id);
-                if ((hasUser === null || hasUser === undefined)) {
+                if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
                     item = this.ensureResource(item, collectionname);
                 }
+                // const hasUser: Ace = item._acl.find(e => e._id === user._id);
+                // if ((hasUser === null || hasUser === undefined)) {
+                //     Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                //     item = this.ensureResource(item, collectionname);
+                // }
                 Logger.instanse.silly("Adding " + item._type + " " + name + " to database", { collection: collectionname, user: user.username });
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
@@ -2166,6 +2301,17 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (user._id != WellknownIds.root && original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
                         throw Error("Create " + q.item._type + " access denied");
                     }
+                    if (!DatabaseConnection.usemetadata(q.collectionname)) {
+                        q.item = await this.CleanACL(q.item, user, q.collectionname, span);
+                    } else {
+                        (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
+                    }
+                    // force cleaning members, to clean up mess with auto added members
+                    if (q.item._type === "role" && q.collectionname === "users") {
+                        q.item = await this.Cleanmembers(q.item as any, original, span);
+                        // DBHelper.cached_roles = [];
+                    }
+
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
                     if (NoderedUtil.IsNullUndefinded(hasUser) && q.item._acl.length === 0) {
                         Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
@@ -2331,15 +2477,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
                         q.item = await this.Cleanmembers(q.item as any, original, span);
-                        // DBHelper.cached_roles = [];
                     }
-                    // if (q.item._type === "role" && q.collectionname === "users") {
-                    //     if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                    //         Logger.DBHelper.clearCache("updateone in " + q.collectionname + " collection for a " + q.item._type + " object");
-                    //     } else if (Config.enable_openflow_amqp) {
-                    //         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    //     } 
-                    // }
                     if (q.collectionname === "mq") {
                         if (q.item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(q.item._id, false, span);
                         if (!NoderedUtil.IsNullEmpty(q.item.name)) {
@@ -2956,7 +3094,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const _skip_array: string[] = Config.skip_history_collections.split(",");
                 const skip_array: string[] = [];
                 _skip_array.forEach(x => skip_array.push(x.trim()));
-                if (skip_array.indexOf(collectionname) == -1) {
+                if (skip_array.indexOf(collectionname) == -1 && !DatabaseConnection.usemetadata(collectionname)) {
                     (doc as any)._deleted = new Date(new Date().toISOString());
                     (doc as any)._deletedby = user.name;
                     (doc as any)._deletedbyid = user._id;
@@ -3402,10 +3540,12 @@ export class DatabaseConnection extends events.EventEmitter {
      * @returns T Validated object
      */
     ensureResource<T extends Base>(item: T, collection: string): T {
-        if (!item.hasOwnProperty("_type") || item._type === null || item._type === undefined) {
-            item._type = "unknown";
+        if (!DatabaseConnection.istimeseries(collection)) {
+            if (!item.hasOwnProperty("_type") || item._type === null || item._type === undefined) {
+                item._type = "unknown";
+            }
+            item._type = item._type.toLowerCase();
         }
-        item._type = item._type.toLowerCase();
         if (!item._acl) { item._acl = []; }
         if (item._acl.length === 0) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -3889,12 +4029,26 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         });
     }
+    async ParseTimeseries(span: Span) {
+        Logger.instanse.debug("Parse timeseries collections", span);
+        span?.addEvent("Get collections");
+        let collections = await DatabaseConnection.toArray(this.db.listCollections());
+        collections = collections.filter(x => x.name.indexOf("system.") === -1);
+
+        DatabaseConnection.timeseries_collections = [];
+        for (let i = 0; i < collections.length; i++) {
+            var collection = collections[i];
+            if (collection.type == "timeseries") {
+                DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+                DatabaseConnection.timeseries_collections.push(collection.name);
+            }
+        }
+    }
     public static collections_with_text_index: string[] = [];
     public static timeseries_collections: string[] = [];
     async ensureindexes(parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
-            if (!Config.ensure_indexes) return;
             Logger.instanse.info("Begin validating index, this might take a while", span);
             span?.addEvent("Get collections");
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
@@ -3907,8 +4061,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
                     DatabaseConnection.timeseries_collections.push(collection.name);
                 }
-                if (collection.type != "collection" && collection.type != "timeseries") continue;
             }
+            if (!Config.ensure_indexes) return;
 
             for (let i = 0; i < collections.length; i++) {
                 try {
@@ -4150,13 +4304,19 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
+    static istimeseries(collectionname: string) {
+        if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
+            return true;
+        }
+        return false;
+    }
     static usemetadata(collectionname: string) {
         if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
             return true;
         }
-        if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
-            return true;
-        }
+        // if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
+        //     return true;
+        // }
         return false;
     }
     static otel_label(collectionname: string, user: TokenUser | User, action: "query" | "count" | "aggregate" | "insert" | "insertmany" | "update" | "updatemany" | "replace" | "delete" | "deletemany") {
