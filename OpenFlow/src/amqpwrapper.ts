@@ -481,8 +481,12 @@ export class amqpwrapper extends events.EventEmitter {
             }
         } catch (error) {
         }
-        if (typeof data !== 'string' && !(data instanceof String)) {
-            data = JSON.stringify(data);
+        try {
+            if (typeof data !== 'string' && !(data instanceof String)) {
+                data = JSON.stringify(data);
+            }
+        } catch (error) {
+            throw error;            
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange);
