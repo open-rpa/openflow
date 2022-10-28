@@ -38,8 +38,6 @@ async function handleError(cli: WebSocketServerClient, error: Error, span: Span)
         Logger.instanse.error(error, span, Logger.parsecli(cli));
     } catch (error) {
         if (error.consumedPoints) {
-            let username: string = "Unknown";
-            if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
             Logger.instanse.warn("SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " +
                 error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span, Logger.parsecli(cli));
             cli.devnull = true;
@@ -63,6 +61,8 @@ export class Message {
     public priority: number = 1;
     public options: QueueMessageOptions;
     public tuser: TokenUser;
+    public clientagent: string;
+    public clientversion: string;
     public async QueueProcess(options: QueueMessageOptions, parent: Span): Promise<void> {
         let span: Span = undefined;
         try {
@@ -162,6 +162,8 @@ export class Message {
         result.id = msg.id;
         result.replyto = msg.replyto;
         result.command = msg.command;
+        result.clientagent = msg.clientagent;
+        result.clientversion = msg.clientversion;
         result.data = data;
         // if data is object
         if (data && typeof data === "object") {
@@ -187,6 +189,8 @@ export class Message {
         result.id = data.id;
         result.replyto = data.replyto;
         result.command = data.command;
+        result.clientagent = data.clientagent;
+        result.clientversion = data.clientversion;
         result.data = data.data;
         result.jwt = data.jwt;
         result.traceId = data.traceId;
@@ -318,6 +322,8 @@ export class Message {
                         }
                         break;
                     case "query":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -334,6 +340,8 @@ export class Message {
                         }
                         break;
                     case "getdocumentversion":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -342,6 +350,8 @@ export class Message {
                         }
                         break;
                     case "aggregate":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -356,6 +366,8 @@ export class Message {
                         await this.UnWatch(cli);
                         break;
                     case "insertone":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -364,6 +376,8 @@ export class Message {
                         }
                         break;
                     case "insertmany":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -372,6 +386,8 @@ export class Message {
                         }
                         break;
                     case "updateone":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -380,6 +396,8 @@ export class Message {
                         }
                         break;
                     case "updatemany":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -388,6 +406,8 @@ export class Message {
                         }
                         break;
                     case "insertorupdateone":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -396,6 +416,8 @@ export class Message {
                         }
                         break;
                     case "insertorupdatemany":
+                        this.clientagent = cli.clientagent;
+                        this.clientversion = cli.clientversion;
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
                         } else {
@@ -547,7 +569,6 @@ export class Message {
                         await this.GetWorkitemQueue(span);
                         cli.Send(this);
                         break;
-
                     case "updateworkitemqueue":
                         if (Config.enable_openflow_amqp) {
                             cli.Send(await QueueClient.SendForProcessing(this, this.priority, span));
@@ -1115,6 +1136,7 @@ export class Message {
             } else {
                 const { query, projection, top, skip, orderby, collectionname, jwt, queryas, hint } = msg;
                 msg.result = await Config.db.query({ query, projection, top, skip, orderby, collectionname, jwt, queryas, hint }, span);
+                if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
             }
             delete msg.query;
         } catch (error) {
@@ -1169,6 +1191,7 @@ export class Message {
                 msg.error = "Access denied, not signed in";
             } else {
                 msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg.id, version: msg.version, jwt: msg.jwt }, span);
+                if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
             }
         } catch (error) {
             await handleError(null, error, span);
@@ -1192,6 +1215,7 @@ export class Message {
             msg = AggregateMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
+            if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
             delete msg.aggregates;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1272,6 +1296,7 @@ export class Message {
                 throw new Error("jwt is null and client is not authenticated");
             }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt, span);
+            if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
             delete msg.item;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1299,6 +1324,7 @@ export class Message {
                 throw new Error("jwt is null and client is not authenticated");
             }
             msg.results = await Config.db.InsertMany(msg.items, msg.collectionname, msg.w, msg.j, msg.jwt, span);
+            if (this.clientagent == "openrpa") Config.db.parseResults(msg.results, this.clientagent, this.clientversion);
             if (msg.skipresults) msg.results = [];
             delete msg.items;
         } catch (error) {
@@ -1326,6 +1352,7 @@ export class Message {
             var tempres = await Config.db.UpdateOne(msg, span);
             msg = tempres;
             delete msg.item;
+            if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1350,6 +1377,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db.UpdateDocument(msg, span);
+            if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
             delete msg.item;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1381,6 +1409,7 @@ export class Message {
                 }
             }
             msg = await Config.db.InsertOrUpdateOne(msg, parent);
+            if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
             delete msg.item;
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
@@ -1410,6 +1439,7 @@ export class Message {
             msg.results = await Config.db.InsertOrUpdateMany(msg.items, msg.collectionname, msg.uniqeness, msg.skipresults, msg.w, msg.j, msg.jwt, span);
             if (msg.skipresults) msg.results = [];
             delete msg.items;
+            if (this.clientagent == "openrpa") Config.db.parseResults(msg.items, this.clientagent, this.clientversion);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
@@ -1873,6 +1903,7 @@ export class Message {
                         await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
+                        if (Config.client_disconnect_signin_error) cli.Close(span);
                         throw new Error(msg.user.username + " not validated");
                     }
                 } else if (cli?.clientagent == "openrpa" && msg.user.dblocked == true) {
@@ -3637,6 +3668,7 @@ export class Message {
         }
         Message.lastHouseKeeping = new Date();
         this.tuser = User.assign(Crypt.rootUser());
+        let rootuser = this.tuser;
         const jwt: string = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
@@ -3682,6 +3714,142 @@ export class Message {
             await Config.db.ensureindexes(span);
         } catch (error) {
         }
+
+
+
+
+        let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
+        try {
+            let audit = collections.find(x => x.name == "audit");
+            let audit_old = collections.find(x => x.name == "audit_old");
+            if (audit != null && Config.force_audit_ts && audit.type != "timeseries") {
+                await Config.db.db.collection("audit").rename("audit_old");
+                audit = null;
+            }
+            if (audit == null) {
+                audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "userid", granularity: "minutes" } });
+                // audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "metadata", granularity: "minutes" } });
+            }
+            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
+            audit = collections.find(x => x.name == "audit");
+            audit_old = collections.find(x => x.name == "audit_old");
+            if (Config.migrate_audit_to_ts && Config.force_audit_ts && audit != null && audit_old != null && audit.type == "timeseries") {
+                let bulkInsert = Config.db.db.collection("audit").initializeUnorderedBulkOp();
+                let bulkRemove = Config.db.db.collection("audit_old").initializeUnorderedBulkOp()
+                DatabaseConnection.timeseries_collections = ["audit"]
+
+                let cursor = Config.db.db.collection("audit_old").find({})
+                var count = await Config.db.db.collection("audit_old").countDocuments();
+                var counter = 0;
+                const x = 1000
+                for await (let a of cursor) {
+                    // a.metadata = { _acl: a._acl, name: a.name, userid: a.userid, username: a.username }
+                    // delete a._acl;
+                    // delete a._modifiedby;
+                    // delete a._modifiedbyid;
+                    // delete a._modified;
+                    // delete a.userid;
+                    // delete a.name;
+                    // delete a.username;
+
+                    // a.metadata = await Config.db.CleanACL(a.metadata as any, rootuser as any, "audit", span, true) as any;
+                    a = await Config.db.CleanACL(a as any, rootuser as any, "audit", span, true) as any;
+                    bulkInsert.insert(a);
+                    bulkRemove.find({ _id: a._id }).deleteOne();
+                    counter++
+                    // @ts-ignore
+                    var insertCount = bulkInsert.length;
+                    if (counter % x === 0) {
+                        if (insertCount > 0) {
+                            console.log("migrated " + counter + " of " + count + " audit records " + ((100 * counter) / count).toFixed(2) + "%");
+                            bulkInsert.execute()
+                            bulkRemove.execute()
+                            bulkInsert = Config.db.db.collection("audit").initializeUnorderedBulkOp();
+                            bulkRemove = Config.db.db.collection("audit_old").initializeUnorderedBulkOp()
+                        }
+                    }
+                }
+                // @ts-ignore
+                var insertCount = bulkInsert.length;
+                if (insertCount > 0) {
+                    bulkInsert.execute()
+                    bulkRemove.execute()
+                }
+
+            }
+        } catch (error) {
+            Logger.instanse.error(error, span);
+        }
+
+
+        try {
+            let dbusage = collections.find(x => x.name == "dbusage");
+            let dbusage_old = collections.find(x => x.name == "dbusage_old");
+            if (dbusage != null && Config.force_dbusage_ts && dbusage.type != "timeseries") {
+                await Config.db.db.collection("dbusage").rename("dbusage_old");
+                dbusage = null;
+            }
+            if (dbusage == null) {
+                dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
+                // dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
+            }
+
+            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
+            dbusage = collections.find(x => x.name == "dbusage");
+            dbusage_old = collections.find(x => x.name == "dbusage_old");
+            if (Config.force_dbusage_ts && dbusage != null && dbusage_old != null && dbusage.type == "timeseries") {
+                let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                let bulkRemove = Config.db.db.collection("dbusage_old").initializeUnorderedBulkOp()
+                DatabaseConnection.timeseries_collections = ["dbusage"]
+
+                let cursor = Config.db.db.collection("dbusage_old").find({})
+                var count = await Config.db.db.collection("dbusage_old").countDocuments();
+                var counter = 0;
+                const x = 1000
+                for await (let a of cursor) {
+                    // a.metadata = { userid: a.userid, collection: a.collection, username: a.username }
+                    // delete a.userid;
+                    // delete a.collection;
+                    delete a.name;
+                    delete a._createdby;
+                    delete a._createdbyid;
+                    delete a._created;
+                    delete a._modifiedby;
+                    delete a._modifiedbyid;
+                    delete a._modified;
+                    delete a._type;
+
+                    a = await Config.db.CleanACL(a as any, rootuser as any, "dbusage", span, true) as any;
+                    bulkInsert.insert(a);
+                    bulkRemove.find({ _id: a._id }).deleteOne();
+                    counter++
+                    // @ts-ignore
+                    var insertCount = bulkInsert.length;
+                    if (counter % x === 0) {
+                        if (insertCount > 0) {
+                            console.log("migrated " + counter + " of " + count + " dbusage records " + ((100 * counter) / count).toFixed(2) + "%");
+                            bulkInsert.execute()
+                            bulkRemove.execute()
+                            bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+                            bulkRemove = Config.db.db.collection("dbusage_old").initializeUnorderedBulkOp()
+                        }
+                    }
+                }
+                // @ts-ignore
+                var insertCount = bulkInsert.length;
+                if (insertCount > 0) {
+                    bulkInsert.execute()
+                    bulkRemove.execute()
+                }
+
+            }
+        } catch (error) {
+            Logger.instanse.error(error, span);
+        }
+
+
+
+
         const timestamp = new Date(new Date().toISOString());
         timestamp.setUTCHours(0, 0, 0, 0);
 
@@ -3829,6 +3997,7 @@ export class Message {
             // skipCalculateSize = false;
             if (!skipCalculateSize) {
 
+                const usemetadata = DatabaseConnection.usemetadata("dbusage");
                 const user = Crypt.rootUser();
                 const tuser = TokenUser.From(user);
                 let collections = await Config.db.ListCollections(jwt);
@@ -3843,6 +4012,7 @@ export class Message {
                         Logger.instanse.debug("skipped " + col.name + " due to housekeeping_skip_collections setting", span);
                         continue;
                     }
+
 
                     index++;
                     let aggregates: any = [
@@ -3911,7 +4081,13 @@ export class Message {
                     }
 
                     const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
-                    Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
+                    if (!DatabaseConnection.istimeseries("dbusage")) {
+                        if (usemetadata) {
+                            Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, "metadata.collection": col.name });
+                        } else {
+                            Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
+                        }
+                    }
                     let usage = 0;
                     if (items.length > 0) {
                         let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
@@ -3932,27 +4108,28 @@ export class Message {
                                     }
                                 }
                                 delete item._id;
-                                item.username = item.name;
-                                item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
-                                item._type = "metered";
-                                item._createdby = "root";
-                                item._createdbyid = WellknownIds.root;
-                                item._created = new Date(new Date().toISOString());
-                                item._modifiedby = "root";
-                                item._modifiedbyid = WellknownIds.root;
-                                item._modified = item._created;
+                                if (usemetadata) {
+                                    item.metadata = item.metadata || {};
+                                    item.metadata.collection = item.collection;
+                                    item.metadata.username = item.name;
+                                    delete item.collection;
+                                    delete item.name;
+                                } else {
+                                    item.username = item.name;
+                                    item._type = "metered";
+                                    delete item.name;
+                                    // item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
+                                }
+                                // item._createdby = "root";
+                                // item._createdbyid = WellknownIds.root;
+                                // item._created = new Date(new Date().toISOString());
+                                // item._modifiedby = "root";
+                                // item._modifiedbyid = WellknownIds.root;
+                                // item._modified = item._created;
                                 usage += item.size;
                                 DatabaseConnection.traversejsonencode(item);
                                 item.timestamp = new Date(timestamp.toISOString());
-                                if (col.name == "cvr") {
-                                    delete item.timestamp;
-                                }
-                                if (col.name == "cvr") {
-                                    await Config.db.db.collection("dbusage").insertOne(item);
-                                    await Config.db.db.collection("dbusage").updateOne({ _id: item._id }, { $set: { "timestamp": new Date(timestamp.toISOString()) } });
-                                } else {
-                                    bulkInsert.insert(item);
-                                }
+                                bulkInsert.insert(item);
                             } catch (error) {
                                 Logger.instanse.error(error, span);
                             }
@@ -4443,10 +4620,10 @@ export class Message {
         for (let i = _wiq._acl.length - 1; i >= 0; i--) {
             const ace = _wiq._acl[i];
             let bits = [];
-            if (ace.rights == "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=") {
+            if (ace.rights == Ace.full_control || ace.rights == "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=") {
                 bits = [-1];
             } else {
-                for (let y = 0; y < ace.ace_right_bits; y++) {
+                for (let y = 0; y < Ace.ace_right_bits; y++) {
                     if (Ace.isBitSet(ace, y)) bits.push(y);
                 }
             }

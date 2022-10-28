@@ -44,7 +44,6 @@ export class dbConfig extends Base {
     public log_silly: boolean;
     public log_to_exchange: boolean;
     public api_bypass_perm_check: boolean;
-    public force_audit_ts: boolean;
 
     public workitem_queue_monitoring_interval: number;
     public workitem_queue_monitoring_enabled: boolean;
@@ -135,7 +134,6 @@ export class dbConfig extends Base {
         Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "60"));
         Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
         Config.api_bypass_perm_check = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.api_bypass_perm_check) ? conf.api_bypass_perm_check : Config.getEnv("api_bypass_perm_check", "false"));
-        Config.force_audit_ts = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.force_audit_ts) ? conf.force_audit_ts : Config.getEnv("force_audit_ts", "false"));
 
 
 
@@ -322,6 +320,8 @@ export class Config {
 
         Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
         Config.force_audit_ts = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
+        Config.force_dbusage_ts = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
+        Config.migrate_audit_to_ts = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
 
         Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
         Config.websocket_max_package_count = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
@@ -545,6 +545,8 @@ export class Config {
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
     public static force_audit_ts: boolean = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
+    public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
+    public static migrate_audit_to_ts: boolean = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
 
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);

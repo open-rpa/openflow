@@ -2609,27 +2609,38 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             }
             if (this.removedmembers.length > 0) {
                 for (let i = 0; i < this.removedmembers.length; i++) {
-                    const roles = await NoderedUtil.Query({ collectionname: "users", query: { _type: "role", _id: this.removedmembers[i]._id }, orderby: { _type: -1, name: 1 }, top: 5 });
-                    if (roles.length > 0) {
-                        const memberof = roles[i];
-                        const exists = memberof.members.filter(x => x._id == this.model._id);
-                        if (exists.length > 0) {
-                            memberof.members = memberof.members.filter(x => x._id != this.model._id);
-                            try {
-                                await NoderedUtil.UpdateOne({ collectionname: "users", item: memberof });
-                            } catch (error) {
-                                console.error("Error updating " + memberof.name, error);
+                    var roles;
+                    var role;
+                    try {
+                        roles = await NoderedUtil.Query({ collectionname: "users", query: { _type: "role", _id: this.removedmembers[i]._id }, orderby: { _type: -1, name: 1 }, top: 5 });
+                        if (roles.length > 0) {
+                            role = roles[0];
+                            if (role.members === null || role.members === undefined) {
+                                console.log("role.members is null", role);
+                                continue;
                             }
+                            const exists = role.members.filter(x => x._id == this.model._id);
+                            if (exists.length > 0) {
+                                console.log("Updating role", role.name);
+                                role.members = role.members.filter(x => x._id != this.model._id);
+                                try {
+                                    await NoderedUtil.UpdateOne({ collectionname: "users", item: role });
+                                } catch (error) {
+                                    console.error("Error updating " + role.name, error);
+                                }
+                            }
+
                         }
-
+                    } catch (error) {
+                        console.log(roles, roles)
+                        console.error(error);
                     }
-
                 }
-
             }
             this.loading = false;
             this.$location.path("/Users");
         } catch (error) {
+            console.error(error);
             this.loading = false;
             this.errormessage = error.message ? error.message : error;
         }
@@ -4079,8 +4090,6 @@ export class EntityCtrl extends entityCtrl<Base> {
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
-        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
-
         if (this.collection == "files") {
             (this.model as any).metadata._acl.push(ace);
         } else {
@@ -4089,74 +4098,22 @@ export class EntityCtrl extends entityCtrl<Base> {
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
-
-    isBitSet(base64: string, bit: number): boolean {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        return (currentValue & mask) != 0;
+    isBitSet(item: Ace, bit: number): boolean {
+        return Ace.isBitSet(item, bit);
     }
-    setBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue | mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    setBit(item: Ace, bit: number): void {
+        Ace.isBitSet(item, bit);
     }
-    unsetBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        let currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue &= ~mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    unsetBit(item: Ace, bit: number): void {
+        Ace.isBitSet(item, bit);
     }
-    toogleBit(a: any, bit: number) {
-        if (this.isBitSet(a.rights, bit)) {
-            a.rights = this.unsetBit(a.rights, bit);
+    toogleBit(a: Ace, bit: number) {
+        if (this.isBitSet(a, bit)) {
+            this.unsetBit(a, bit);
         } else {
-            a.rights = this.setBit(a.rights, bit);
+            this.setBit(a, bit);
         }
-        const buf2 = this._base64ToArrayBuffer(a.rights);
-        const view2 = new Uint8Array(buf2);
     }
-    _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        const binary_string = window.atob(string_base64);
-        const len = binary_string.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            //const ascii = string_base64.charCodeAt(i);
-            const ascii = binary_string.charCodeAt(i);
-            bytes[i] = ascii;
-        }
-        return bytes.buffer;
-    }
-    _arrayBufferToBase64(array_buffer): string {
-        let binary = '';
-        const bytes = new Uint8Array(array_buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i])
-        }
-        return window.btoa(binary);
-    }
-
-
-
-
     restrictInput(e) {
         if (e.keyCode == 13) {
             e.preventDefault();
@@ -4892,11 +4849,13 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
     ) {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = false;
-        this.baseprojection = { name: 1, username: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
+        this.baseprojection = null;
+        // this.baseprojection = { name: 1, username: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1, metadata: 1 };
         this.searchfields = ["name", "impostorname", "clientagent", "type"];
         console.debug("AuditlogsCtrl");
-        // this.pagesize = 20;
+        this.pagesize = 20;
         // this.basequery = { _type: "role" };
+        // this.orderby = { "_created": -1 };
         this.collection = "audit";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -5081,15 +5040,10 @@ export class CredentialCtrl extends entityCtrl<Base> {
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
-        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
         if (WebSocketClient.instance.user._id != ace._id) {
-            ace.rights = this.unsetBit(ace.rights, 1);
-            ace.rights = this.setBit(ace.rights, 2);
-            ace.rights = this.unsetBit(ace.rights, 3);
-            ace.rights = this.unsetBit(ace.rights, 4);
-            ace.rights = this.unsetBit(ace.rights, 5);
+            Ace.resetnone(ace);
+            this.setBit(ace, 2);
         }
-
         if (this.collection == "files") {
             (this.model as any).metadata._acl.push(ace);
         } else {
@@ -5098,74 +5052,22 @@ export class CredentialCtrl extends entityCtrl<Base> {
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
-
-    isBitSet(base64: string, bit: number): boolean {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        return (currentValue & mask) != 0;
+    isBitSet(item: Ace, bit: number): boolean {
+        return Ace.isBitSet(item, bit);
     }
-    setBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue | mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    setBit(item: Ace, bit: number): void {
+        Ace.isBitSet(item, bit);
     }
-    unsetBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        let currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue &= ~mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    unsetBit(item: Ace, bit: number): void {
+        Ace.isBitSet(item, bit);
     }
-    toogleBit(a: any, bit: number) {
-        if (this.isBitSet(a.rights, bit)) {
-            a.rights = this.unsetBit(a.rights, bit);
+    toogleBit(a: Ace, bit: number) {
+        if (this.isBitSet(a, bit)) {
+            this.unsetBit(a, bit);
         } else {
-            a.rights = this.setBit(a.rights, bit);
+            this.setBit(a, bit);
         }
-        const buf2 = this._base64ToArrayBuffer(a.rights);
-        const view2 = new Uint8Array(buf2);
     }
-    _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        const binary_string = window.atob(string_base64);
-        const len = binary_string.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            //const ascii = string_base64.charCodeAt(i);
-            const ascii = binary_string.charCodeAt(i);
-            bytes[i] = ascii;
-        }
-        return bytes.buffer;
-    }
-    _arrayBufferToBase64(array_buffer): string {
-        let binary = '';
-        const bytes = new Uint8Array(array_buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i])
-        }
-        return window.btoa(binary);
-    }
-
-
-
-
     restrictInput(e) {
         if (e.keyCode == 13) {
             e.preventDefault();
@@ -6422,13 +6324,9 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
-        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
         if (WebSocketClient.instance.user._id != ace._id) {
-            ace.rights = this.setBit(ace.rights, 1);
-            ace.rights = this.unsetBit(ace.rights, 2);
-            ace.rights = this.unsetBit(ace.rights, 3);
-            ace.rights = this.unsetBit(ace.rights, 4);
-            ace.rights = this.unsetBit(ace.rights, 5);
+            Ace.resetnone(ace);
+            this.setBit(ace, 1);
         }
 
         if (this.collection == "files") {
@@ -6439,69 +6337,21 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
-
-    isBitSet(base64: string, bit: number): boolean {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        return (currentValue & mask) != 0;
+    isBitSet(item: Ace, bit: number): boolean {
+        return Ace.isBitSet(item, bit);
     }
-    setBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue | mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    setBit(item: Ace, bit: number): void {
+        Ace.isBitSet(item, bit);
     }
-    unsetBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        let currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue &= ~mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    unsetBit(item: Ace, bit: number): void {
+        Ace.isBitSet(item, bit);
     }
-    toogleBit(a: any, bit: number) {
-        if (this.isBitSet(a.rights, bit)) {
-            a.rights = this.unsetBit(a.rights, bit);
+    toogleBit(a: Ace, bit: number) {
+        if (this.isBitSet(a, bit)) {
+            this.unsetBit(a, bit);
         } else {
-            a.rights = this.setBit(a.rights, bit);
+            this.setBit(a, bit);
         }
-        const buf2 = this._base64ToArrayBuffer(a.rights);
-        const view2 = new Uint8Array(buf2);
-    }
-    _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        const binary_string = window.atob(string_base64);
-        const len = binary_string.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            //const ascii = string_base64.charCodeAt(i);
-            const ascii = binary_string.charCodeAt(i);
-            bytes[i] = ascii;
-        }
-        return bytes.buffer;
-    }
-    _arrayBufferToBase64(array_buffer): string {
-        let binary = '';
-        const bytes = new Uint8Array(array_buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i])
-        }
-        return window.btoa(binary);
     }
     searchFilteredList: Role[] = [];
     searchSelectedItem: Role = null;

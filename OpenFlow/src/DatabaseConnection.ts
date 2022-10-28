@@ -46,7 +46,7 @@ export class DatabaseConnection extends events.EventEmitter {
     private _dbname: string;
     // public static ot_mongodb_query_count: Counter;
     public static mongodb_query: Histogram;
-    public static mongodb_count: Histogram;    
+    public static mongodb_count: Histogram;
     public static mongodb_aggregate: Histogram;
     public static mongodb_insert: Histogram;
     public static mongodb_insertmany: Histogram;
@@ -75,7 +75,7 @@ export class DatabaseConnection extends events.EventEmitter {
             });
             DatabaseConnection.mongodb_count = Logger.otel.meter.createHistogram('openflow_mongodb_count_seconds', {
                 description: 'Duration for mongodb counts', valueType: 1, unit: 's'
-            });            
+            });
             // valueType: ValueType.DOUBLE
             DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createHistogram('openflow_mongodb_aggregate_seconds', {
                 description: 'Duration for mongodb aggregates', valueType: 1, unit: 's'
@@ -300,6 +300,9 @@ export class DatabaseConnection extends events.EventEmitter {
         let span: Span = Logger.otel.startSpan("db.GlobalWatchCallback", null, null);
         let discardspan: boolean = true;
         try {
+            if (next.documentKey == null) {
+                return;
+            }
             var _id = next.documentKey._id;
             if (next.operationType == 'update' && collectionname == "users") {
                 if (next.updateDescription.updatedFields.hasOwnProperty("_heartbeat")) return;
@@ -338,7 +341,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                     discardspan = false;
-                    // Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name);
                     if (_id != WellknownIds.root) {
                         await Logger.DBHelper.UserRoleUpdate(item, true, span);
                     }
@@ -496,6 +498,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                             if (q.result && !q.result.fullDocument) q.result.fullDocument = item;
                                             if (q.result && q.result.fullDocument) {
                                                 q.result.fullDocument = Config.db.decryptentity(q.result.fullDocument);
+                                                this.parseResult(q.result.fullDocument, client.clientagent, client.clientversion)
                                             }
                                             msg.data = JSON.stringify(q);
                                             client._socketObject.send(msg.tojson(), (err) => {
@@ -558,7 +561,7 @@ export class DatabaseConnection extends events.EventEmitter {
     async ListCollections(jwt: string): Promise<any[]> {
         let result = await DatabaseConnection.toArray(this.db.listCollections());
         result = result.filter(x => x.name.indexOf("system.") === -1);
-        result.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}))
+        result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
         await Crypt.verityToken(jwt);
         return result;
     }
@@ -628,7 +631,7 @@ export class DatabaseConnection extends events.EventEmitter {
         "reseller", "resellers"
     ]
 
-    async CleanACL<T extends Base>(item: T, user: TokenUser, collectionname: string, parent: Span): Promise<T> {
+    async CleanACL<T extends Base>(item: T, user: TokenUser, collectionname: string, parent: Span, skipNameLookup: boolean = false): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.CleanACL", parent);
         try {
             if (item._acl.length > Config.max_ace_count) {
@@ -649,18 +652,13 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             precount = item._acl.length;
             if (Config.allow_merge_acl) {
-                // merge acls by doing bit or on rights for all acls with same id 
+                // merge acls by combining  bits for all aces with same id 
                 item._acl = item._acl.reduce((acc, cur) => {
                     const found = acc.find(x => x._id == cur._id);
                     if (found) {
-                        var rights = Ace._base64ToArrayBuffer(found.rights);
-                        var currentrights = Ace._base64ToArrayBuffer(cur.rights);
-                        var newrights = new Uint8Array(rights.byteLength);
-                        for (let index = 0; index < rights.byteLength; index++) {
-                            newrights[index] = rights[index] | currentrights[index];
+                        for (let index = 0; index < Ace.ace_right_bits; index++) {
+                            if (Ace.isBitSet(cur, index)) Ace.setBit(found, index)
                         }
-                        // found.rights = Ace._arrayBufferToBase64(newrights);
-                        found.rights = Ace._arrayBufferToBase64(newrights);
                     } else {
                         acc.push(cur);
                     }
@@ -672,42 +670,44 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
 
+
             for (let i = item._acl.length - 1; i >= 0; i--) {
                 {
-                    const ace = item._acl[i];
-                    if (typeof ace.rights === "string") {
-                        const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
-                        (ace.rights as any) = b;
+                    let ace = item._acl[i];
+                    if (ace.rights == 0) {
+                        item._acl.splice(i, 1);
+                        continue;
                     }
-                    if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
+                    // force updating ace to number
+                    if (typeof ace.rights === "string" || typeof ace.rights === "object") {
+                        const newace = new Ace();
+                        Ace.resetnone(newace);
+                        newace._id = ace._id; newace.deny = ace.deny;
+                        for (var y = 0; y < Ace.ace_right_bits; y++) {
+                            if (Ace.isBitSet(ace, y)) Ace.setBit(newace, y);
+                        }
+                        // const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+                        // (ace.rights as any) = b;
+                        item._acl[i] = newace;
+                        ace = newace;
+                    }
+                    if (ace.deny == false) delete ace.deny;
+                    //if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
+                    if (!skipNameLookup) {
                         let _user = await Logger.DBHelper.FindById(ace._id, span);
                         if (NoderedUtil.IsNullUndefinded(_user)) {
-                            const ot_end = Logger.otel.startTimer();
-                            span?.setAttribute("collection", "users");
-                            if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify({ _id: ace._id }));
-                            const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1 }).limit(1).toArray();
-                            span?.setAttribute("results", arr.length);
-                            let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", user, "query"));
-                            if (Config.log_database_queries && ms >= Config.log_database_queries_ms)
-                                Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { collection: collectionname, user: user?.username, ms, count: arr.length });
-                        }
-                        if (NoderedUtil.IsNullUndefinded(_user)) {
                             item._acl.splice(i, 1);
-                        } else { ace.name = _user.name; }
+                        } else {
+                            ace.name = _user.name;
+                            //delete ace.name;
+                        }
                     }
                 }
             }
-            let addself: boolean = true;
-            item._acl.forEach(ace => {
-                if (ace._id === user._id) addself = false;
-                if (addself) {
-                    user.roles.forEach(role => {
-                        if (ace._id === role._id) addself = false;
-                    });
-                }
-            })
-            if (addself) {
-                Base.addRight(item, user._id, user.name, [Rights.full_control], false);
+            if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                var test = DatabaseConnection.hasAuthorization(user, item, Rights.full_control);
+                Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                // item = this.ensureResource(item, collectionname);
             }
             item = this.ensureResource(item, collectionname);
         } catch (error) {
@@ -862,7 +862,40 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return item;
     }
-
+    public parseResult(item: Base, agent: string, version: string): void {
+        if (agent != "openrpa") return;
+        if (this.compare(version, "1.4.44") == 1) return; // skip if version is higher than 1.4.44
+        if (item._acl != null) {
+            for (var a = 0; a < item._acl.length; a++) {
+                const ace = item._acl[a];
+                if (typeof ace.rights == "number") {
+                    var newace = new Ace();
+                    newace._id = ace._id;
+                    newace.name = ace.name;
+                    newace.deny = ace.deny;
+                    if (newace.deny == null) newace.deny = false;
+                    newace.rights = "";
+                    Ace.resetnone(newace);
+                    for (var y = 0; y < Ace.ace_right_bits; y++) {
+                        if (Ace.isBitSet(ace, y)) Ace.setBit(newace, y);
+                    }
+                    item._acl[a] = newace;
+                }
+            }
+        }
+    }
+    public compare(cur: string, version: string): number {
+        return cur.localeCompare(version, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    public parseResults(arr: any[], agent: string, version: string): void {
+        if (arr == null || arr.length == 0) return;
+        if (agent != "openrpa") return;
+        if (this.compare(version, "1.4.44") == 1) return;// skip if version is higher than 1.4.44
+        for (var i = 0; i < arr.length; i++) {
+            const item = arr[i];
+            this.parseResult(item, agent, version);
+        }
+    }
     /**
      * Send a query to the database.
      * @param {any} query MongoDB Query
@@ -1173,13 +1206,13 @@ export class DatabaseConnection extends events.EventEmitter {
             throw error;
         }
     }
-        /**
-     * Get a single item based on id
-     * @param  {string} id Id to search for
-     * @param  {string} collectionname Collection to search
-     * @param  {string} jwt JWT of user who is making the query, to limit results based on permissions
-     * @returns Promise<T>
-     */
+    /**
+    * Get a single item based on id
+    * @param  {string} id Id to search for
+    * @param  {string} collectionname Collection to search
+    * @param  {string} jwt JWT of user who is making the query, to limit results based on permissions
+    * @returns Promise<T>
+    */
     async GetOne<T extends Base>(options: { query?: object, collectionname: string, orderby?: object, jwt?: string, decrypt?: boolean }, span: Span): Promise<T> {
         if (NoderedUtil.IsNullUndefinded(options.jwt)) options.jwt = Crypt.rootToken();
         if (NoderedUtil.IsNullUndefinded(options.decrypt)) options.decrypt = true;
@@ -1498,7 +1531,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
                     item = this.ensureResource(item, collectionname);
                 }
-            } else if (DatabaseConnection.istimeseries(collectionname)) {
+            } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
                 item._created = new Date(new Date().toISOString());
                 if (collectionname == "audit") {
                     item._createdby = user.name;
@@ -1540,6 +1573,21 @@ export class DatabaseConnection extends events.EventEmitter {
                     // @ts-ignore
                     item.metadata._type = item._type;
                     delete item._type;
+                }
+                if (item.hasOwnProperty("_acl")) {
+                    // @ts-ignore
+                    item.metadata._acl = item._acl;
+                    delete item._acl;
+                }
+                if (collectionname == "audit") {
+                    // @ts-ignore
+                    item.metadata.userid = item.userid;
+                    // @ts-ignore
+                    item.metadata.username = item.username;
+                    // @ts-ignore
+                    delete item.userid;
+                    // @ts-ignore
+                    delete item.username;
                 }
                 // @ts-ignore
                 if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item.metadata, span)) {
@@ -1584,7 +1632,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (item._type == "queue") item.name = item.name.toLowerCase();
             }
             // @ts-ignore
-            if (collectionname == "workitems" && item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid, span);
+            if (collectionname == "workitems" && item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid, false, span);
             // @ts-ignore
             if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
             // @ts-ignore
@@ -1816,7 +1864,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 var ace: Ace = new Ace();
                                 ace._id = customers[i].users; ace.name = customers[i].name + " users";
                                 Ace.resetnone(ace); Ace.setBit(ace, Rights.read);
-                                ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                 if (!userupdate["$push"]["_acl"]) {
                                     userupdate["$push"]["_acl"] = { "$each": [] };
                                 }
@@ -1824,7 +1872,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 var ace: Ace = new Ace();
                                 ace._id = customers[i].admins; ace.name = customers[i].name + " admins";
                                 Ace.resetfullcontrol(ace);
-                                ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                 userupdate["$push"]["_acl"]["$each"].push(ace);
                                 await this.db.collection("users").updateOne(
                                     { _id: customers[i].users },
@@ -1859,17 +1907,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 const ot_end = Logger.otel.startTimer();
                 await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, DatabaseConnection.otel_label(collectionname, user, "replace"));
-                // if (item._type === "role") {
-                //     const r: Role = (item as any);
-                //     if (r.members.length > 0) {
-                //         if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                //             // we clear all since we might have cached tons of userrole mappings
-                //             Logger.DBHelper.clearCache("insertone in " + collectionname + " collection for a " + item._type + " object");
-                //         } else if (Config.enable_openflow_amqp) {
-                //             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                //         } 
-                //     }
-                // }
             }
             if (collectionname === "users") {
                 await Logger.DBHelper.UserRoleUpdate(item, false, span);
@@ -1992,17 +2029,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         throw new Error("Username is mandatory for users")
                     }
                     await Logger.DBHelper.UserRoleUpdate(item, false, span);
-                    // if (item._type === "role") {
-                    //     const r: Role = item as any;
-                    //     if (r.members.length > 0) {
-                    //         if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                    //             // we clear all since we might have cached tons of userrole mappings
-                    //             Logger.DBHelper.clearCache("insertmany in " + collectionname + " collection for a " + item._type + " object");
-                    //         } else if (Config.enable_openflow_amqp) {
-                    //             amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    //         } 
-                    //     }
-                    // }
                 }
                 item._version = 0;
                 if (item._id != null) {
@@ -2116,7 +2142,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     await Logger.DBHelper.WorkitemQueueUpdate(wiqids[i], false, span);
                 }
             }
-            result = items;
+            result = items;            
             Logger.instanse.verbose("inserted " + counter + " items in database", { collection: collectionname, user: user.username, count: counter });
         } catch (error) {
             throw error;
@@ -2301,11 +2327,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (user._id != WellknownIds.root && original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
                         throw Error("Create " + q.item._type + " access denied");
                     }
-                    if (!DatabaseConnection.usemetadata(q.collectionname)) {
-                        q.item = await this.CleanACL(q.item, user, q.collectionname, span);
-                    } else {
-                        (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
-                    }
+                    // if (!DatabaseConnection.usemetadata(q.collectionname)) {
+                    //     q.item = await this.CleanACL(q.item, user, q.collectionname, span);
+                    // } else {
+                    //     (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
+                    // }
                     // force cleaning members, to clean up mess with auto added members
                     if (q.item._type === "role" && q.collectionname === "users") {
                         q.item = await this.Cleanmembers(q.item as any, original, span);
@@ -2322,8 +2348,8 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
                         if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
                         if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
-                        Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
-                        q.item = this.ensureResource(q.item, q.collectionname);
+                        // Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
+                        // q.item = this.ensureResource(q.item, q.collectionname);
                     }
 
                     DatabaseConnection.traversejsonencode(q.item);
@@ -2470,10 +2496,12 @@ export class DatabaseConnection extends events.EventEmitter {
             q.opresult = null;
             try {
                 if (itemReplace) {
-                    if (!DatabaseConnection.usemetadata(q.collectionname)) {
-                        q.item = await this.CleanACL(q.item, user, q.collectionname, span);
-                    } else {
-                        (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
+                    if (q.item._id != WellknownIds.users) {
+                        if (!DatabaseConnection.usemetadata(q.collectionname)) {
+                            q.item = await this.CleanACL(q.item, user, q.collectionname, span);
+                        } else {
+                            (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
+                        }
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
                         q.item = await this.Cleanmembers(q.item as any, original, span);
@@ -2590,7 +2618,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                     var ace: Ace = new Ace();
                                     ace._id = customers[i].users; ace.name = customers[i].name + " users";
                                     Ace.resetnone(ace); Ace.setBit(ace, Rights.read);
-                                    ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                    // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                     if (!userupdate["$push"]["_acl"]) {
                                         userupdate["$push"]["_acl"] = { "$each": [] };
                                     }
@@ -2598,7 +2626,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                     var ace: Ace = new Ace();
                                     ace._id = customers[i].admins; ace.name = customers[i].name + " admins";
                                     Ace.resetfullcontrol(ace);
-                                    ace.rights = (new Binary(Buffer.from(ace.rights, "base64"), 0) as any);
+                                    // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                     userupdate["$push"]["_acl"]["$each"].push(ace);
                                     await this.db.collection("users").updateOne(
                                         { _id: customers[i].users },
@@ -2635,7 +2663,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
                 }
-
                 q.result = q.item;
             } catch (error) {
                 throw error;
@@ -2681,7 +2708,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         for (let i = 0; i < value.length; i++) {
                             const a = value[i];
                             if (typeof a.rights === "string") {
-                                a.rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
+                                // a.rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
                             }
                         }
                     }
@@ -3128,21 +3155,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "users", false, jwt, span);
                     }
-                    // if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                    //     // @ts-ignore
-                    //     if (!NoderedUtil.IsNullEmpty(doc.username)) {
-                    //         // @ts-ignore
-                    //         await Logger.DBHelper.memoryCache.del("username_" + doc.username);
-                    //         // @ts-ignore
-                    //         await Logger.DBHelper.memoryCache.del("federation_" + doc.username);
-                    //     }
-                    //     await Logger.DBHelper.memoryCache.del("users" + doc._id);
-                    //     await Logger.DBHelper.memoryCache.del("userroles_" + doc._id);
-
-                    // } else if (Config.enable_openflow_amqp) {
-                    //     amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                    // } 
-
                     if (Config.cleanup_on_delete_user || recursive) {
                         let skip_collections = [];
                         if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
@@ -3166,12 +3178,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
 
                     }
-                    // await this.db.collection("audit").deleteMany({ "userid": doc._id });
-                    // await this.db.collection("openrpa_instances").deleteMany({ "_modifiedbyid": doc._id });
-                    // await this.db.collection("workflow_instances").deleteMany({ "_modifiedbyid": doc._id });
-                    // await this.db.collection("oauthtokens").deleteMany({ "userId": doc._id });
-                    // this.db.collection("nodered").deleteMany({"_modifiedbyid": doc._id});
-                    // this.db.collection("openrpa").deleteMany({"_modifiedbyid": doc._id});
                 }
                 if (collectionname == "users" && doc._type == "customer") {
                     const subdocs = await this.db.collection("config").find({ "customerid": doc._id }).toArray();
@@ -3179,20 +3185,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         this.DeleteOne(r._id, "config", false, jwt, span);
                     }
                 }
-                if(collectionname == "users") {
+                if (collectionname == "users") {
                     await Logger.DBHelper.UserRoleUpdate(doc, false, span);
                 }
-                // if (collectionname == "users" && doc._type == "role") {
-                //     if (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb") {
-                //         // we clear all since we might have cached tons of userrole mappings
-                //         Logger.DBHelper.clearCache("deleted role " + doc.name);
-                //         // await Logger.DBHelper.memoryCache.del("users" + doc._id);
-                //         // await Logger.DBHelper.memoryCache.del("rolename_" + doc.name);
-                //         // await Logger.DBHelper.memoryCache.del("allroles");
-                //     } else if (Config.enable_openflow_amqp) {
-                //         amqpwrapper.Instance().send("openflow", "", { "command": "clearcache" }, 20000, null, "", 1);
-                //     } 
-                // }
                 if (collectionname === "mq") {
                     if (doc._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(doc._id, false, span);
                     if (doc._type == "queue") await Logger.DBHelper.QueueUpdate(doc._id, doc.name, false, span);
@@ -3453,25 +3448,25 @@ export class DatabaseConnection extends events.EventEmitter {
         return (Object.keys(item).reduce((newObj, key) => { return this._encryptentity(item, newObj, key) }, item) as Base);
     }
     _decryptentity(item, newObj, key) {
-            const value: any = item[key];
-            try {
-                if (this._shouldEncryptValue(item._encrypt, key, value)) {
-                    let newvalue = Crypt.decrypt(value);
-                    if (newvalue.indexOf("{") === 0 || newvalue.indexOf("[") === 0) {
-                        try {
-                            newvalue = JSON.parse(newvalue);
-                        } catch (error) {
-                        }
+        const value: any = item[key];
+        try {
+            if (this._shouldEncryptValue(item._encrypt, key, value)) {
+                let newvalue = Crypt.decrypt(value);
+                if (newvalue.indexOf("{") === 0 || newvalue.indexOf("[") === 0) {
+                    try {
+                        newvalue = JSON.parse(newvalue);
+                    } catch (error) {
                     }
-                    newObj[key] = newvalue;
-                } else {
-                    newObj[key] = value;
                 }
-            } catch (error) {
-                Logger.instanse.error(error, null);
+                newObj[key] = newvalue;
+            } else {
                 newObj[key] = value;
             }
-            return newObj;
+        } catch (error) {
+            Logger.instanse.error(error, null);
+            newObj[key] = value;
+        }
+        return newObj;
     }
     /**
      * Enumerate object, decrypting fields that needs to be decrypted
@@ -3497,15 +3492,30 @@ export class DatabaseConnection extends events.EventEmitter {
             return { _id: { $ne: "bum" } };
         }
         const isme: any[] = [];
-        isme.push({ _id: user._id });
+        const q = {};
         for (let i: number = 0; i < bits.length; i++) {
             bits[i]--; // bitwize matching is from offset 0, when used on bindata
         }
+        if (field.indexOf("metadata") > -1) { // do always ?
+            // timeseries does not support $elemMatch on "metadata" fields
+            q[field + "._id"] = user._id
+            q[field + ".rights"] = { $bitsAllSet: bits }
+            isme.push(q);
+            user.roles.forEach(role => {
+                var subq = {}
+                subq[field + "._id"] = role._id
+                subq[field + ".rights"] = { $bitsAllSet: bits }
+                isme.push(subq);
+                if (role._id == WellknownIds.admins) return { _id: { $ne: "bum" } };
+            });
+            return { $or: isme };
+        }
+        isme.push({ _id: user._id });
         user.roles.forEach(role => {
             isme.push({ _id: role._id });
+            if (role._id == WellknownIds.admins) return { _id: { $ne: "bum" } };
         });
         const finalor: any[] = [];
-        const q = {};
         // todo: add check for deny's
         q[field] = {
             $elemMatch: {
@@ -3555,7 +3565,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         item._acl.forEach((a, index) => {
             if (typeof a.rights === "string") {
-                item._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
+                // item._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
             }
         });
         if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
@@ -4140,17 +4150,19 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 break;
                             case "audit":
-                                if (indexnames.indexOf("_type_1") === -1) {
-                                    await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_created_1") === -1) {
-                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("_acl") === -1) {
-                                    await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("userid_1") === -1) {
-                                    await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
+                                if (!DatabaseConnection.usemetadata("audit")) {
+                                    if (indexnames.indexOf("_type_1") === -1) {
+                                        await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
+                                    }
+                                    if (indexnames.indexOf("_created_1") === -1) {
+                                        await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                    }
+                                    if (indexnames.indexOf("_acl") === -1) {
+                                        await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
+                                    }
+                                    if (indexnames.indexOf("userid_1") === -1) {
+                                        await this.createIndex(collection.name, "userid_1", { "userid": 1 }, null, span)
+                                    }
                                 }
                                 break;
                             case "users":
@@ -4160,9 +4172,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 // if (indexnames.indexOf("_type_1") === -1) {
                                 //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
                                 // }
-                                // if (indexnames.indexOf("_created_1") === -1) {
-                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                // }
+                                if (indexnames.indexOf("_created_1") === -1) {
+                                    await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
+                                }
                                 // if (indexnames.indexOf("_modified_1") === -1) {
                                 //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 // }
@@ -4202,14 +4214,16 @@ export class DatabaseConnection extends events.EventEmitter {
                                 // if (indexnames.indexOf("_modified_1") === -1) {
                                 //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
                                 // }
-                                if (indexnames.indexOf("collection_1_timestamp_1_userid_1") === -1) {
-                                    await this.createIndex(collection.name, "collection_1_timestamp_1_userid_1", { _type: 1, "{collection:1,timestamp:1,userid:1}": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("timestamp_1_userid_1") === -1) {
-                                    await this.createIndex(collection.name, "timestamp_1_userid_1", { _type: 1, "{timestamp:1,userid:1}": 1 }, null, span)
-                                }
-                                if (indexnames.indexOf("timestamp_1") === -1) {
-                                    await this.createIndex(collection.name, "timestamp_1", { _type: 1, "{timestamp:1}": 1 }, null, span)
+                                if (!DatabaseConnection.usemetadata("audit")) {
+                                    if (indexnames.indexOf("collection_1_timestamp_1_userid_1") === -1) {
+                                        await this.createIndex(collection.name, "collection_1_timestamp_1_userid_1", { _type: 1, "{collection:1,timestamp:1,userid:1}": 1 }, null, span)
+                                    }
+                                    if (indexnames.indexOf("timestamp_1_userid_1") === -1) {
+                                        await this.createIndex(collection.name, "timestamp_1_userid_1", { _type: 1, "{timestamp:1,userid:1}": 1 }, null, span)
+                                    }
+                                    if (indexnames.indexOf("timestamp_1") === -1) {
+                                        await this.createIndex(collection.name, "timestamp_1", { _type: 1, "{timestamp:1}": 1 }, null, span)
+                                    }
                                 }
                                 // if (indexnames.indexOf("_acl") === -1) {
                                 //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
@@ -4314,6 +4328,9 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
             return true;
         }
+        // if (this.istimeseries("audit")) {
+        //     return true;
+        // }
         // if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
         //     return true;
         // }

@@ -582,7 +582,11 @@ export class amqpwrapper extends events.EventEmitter {
                     Logger.instanse.debug("[" + options.exchangename + "] Received command " + msg.command, span);
                     switch (msg.command) {
                         case "clearcache":
-                            Logger.DBHelper.clearCache("amqp broadcast", span);
+                            if (NoderedUtil.IsNullEmpty(msg.key)) {
+                                Logger.DBHelper.clearCache("amqp broadcast", span);
+                            } else {
+                                Logger.DBHelper.DeleteKey(msg.key, false, span);
+                            }
                             break;
                         case "housekeeping":
                             // if (this.IsMyconsumerTag(options.consumerTag)) break;
