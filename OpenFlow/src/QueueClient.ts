@@ -74,7 +74,7 @@ export class QueueClient {
                     ack();
                     const exists = this.messages.filter(x => x.correlationId == options.correlationId);
                     if (exists.length > 0) {
-                        Logger.instanse.silly("[queue][ack] Received response for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
+                        Logger.instanse.silly("[queue][ack] Received response for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, null)
                         this.messages = this.messages.filter(x => x.correlationId != options.correlationId);
                         exists[0].cb(msg);
                     } else {
@@ -105,7 +105,7 @@ export class QueueClient {
                     Logger.instanse.debug("Got reply command: " + msg.command + " id: " + result.id + " replyto: " + result.replyto + " correlationId: " + result.correlationId, span);
                     resolve(result);
                 }
-                Logger.instanse.silly("Submit request for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + this.queue.queue + " correlationId: " + msg.correlationId)
+                Logger.instanse.silly("Submit request for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + this.queue.queue + " correlationId: " + msg.correlationId, null)
                 await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, JSON.stringify(msg), Config.openflow_amqp_expiration, msg.correlationId, "", span, priority);
             } catch (error) {
                 if (NoderedUtil.IsNullUndefinded(this.queue)) {

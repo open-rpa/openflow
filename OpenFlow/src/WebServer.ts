@@ -26,9 +26,9 @@ const rateLimiter = async (req: express.Request, res: express.Response, next: ex
     if (req.originalUrl.indexOf('/oidc') > -1) return next();
     // var span = Logger.otel.startSpanExpress("rateLimiter", req);
     try {
-        Logger.instanse.verbose("Validate for " + req.originalUrl);
+        Logger.instanse.verbose("Validate for " + req.originalUrl, null);
         var e = await WebServer.BaseRateLimiter.consume(WebServer.remoteip(req))
-        Logger.instanse.verbose("consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints);
+        Logger.instanse.verbose("consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints, null);
         next();
     } catch (error) {
         // const route = url.parse(req.url).pathname;
@@ -143,7 +143,7 @@ export class WebServer {
 
             // Add headers
             this.app.use(function (req, res, next) {
-                Logger.instanse.verbose("add for " + req.originalUrl);
+                Logger.instanse.verbose("add for " + req.originalUrl, null);
                 // const origin: string = (req.headers.origin as any);
                 // if (NoderedUtil.IsNullEmpty(origin)) {
                 //     res.header('Access-Control-Allow-Origin', '*');

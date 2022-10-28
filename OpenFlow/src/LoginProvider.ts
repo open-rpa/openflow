@@ -91,7 +91,7 @@ export class LoginProvider {
                 const options = {
                     publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
                 }
-                Logger.instanse.verbose("saml.validate");
+                Logger.instanse.verbose("saml.validate", span);
                 saml.validate(rawAssertion, options, async (err, profile) => {
                     const span: Span = Logger.otel.startSpan("saml.validate", null, null);
                     try {
@@ -104,7 +104,7 @@ export class LoginProvider {
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
-                        Logger.instanse.verbose("lookup " + username);
+                        Logger.instanse.verbose("lookup " + username, span);
                         const user = await Logger.DBHelper.FindByUsername(username, null, span);
                         if (user) {
                             Logger.instanse.debug("succesfull", span);
@@ -137,7 +137,7 @@ export class LoginProvider {
             done(null, user._id);
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
-            Logger.instanse.silly("userid " + userid);
+            Logger.instanse.silly("userid " + userid, null);
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
             if (typeof userid !== 'string') userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
@@ -146,7 +146,7 @@ export class LoginProvider {
                 Logger.instanse.error("Failed locating user " + userid, null);
                 done(null, null);
             } else {
-                Logger.instanse.verbose("found user " + userid + " " + _user.name);
+                Logger.instanse.verbose("found user " + userid + " " + _user.name, null);
                 done(null, _user);
             }
             // const _user = await Auth.getUser(userid, "passport");
@@ -898,13 +898,13 @@ export class LoginProvider {
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             if (req.user) {
-                Logger.instanse.verbose("User is signed in");
+                Logger.instanse.verbose("User is signed in", span);
                 const user: TokenUser = TokenUser.From(req.user);
                 span?.setAttribute("username", user.username);
                 if (user != null) {
                     const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                     if (allowed.length > 0) {
-                        Logger.instanse.verbose("Authorized " + user.username + " for " + req.url);
+                        Logger.instanse.verbose("Authorized " + user.username + " for " + req.url, span);
                         return res.send({
                             status: "success",
                             display_status: "Success",
@@ -926,7 +926,7 @@ export class LoginProvider {
                 return;
             }
 
-            Logger.instanse.verbose("Lookup user by authentication header");
+            Logger.instanse.verbose("Lookup user by authentication header", span);
             var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
             if (user != null) {
                 const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
@@ -1029,7 +1029,7 @@ export class LoginProvider {
                 Logger.instanse.debug("return token for user " + req.user._id + " " + user.name, span);
                 res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
             } else {
-                Logger.instanse.verbose("return nothing, not signed in");
+                Logger.instanse.verbose("return nothing, not signed in", span);
                 res.end(JSON.stringify({ jwt: "" }));
             }
             res.end();

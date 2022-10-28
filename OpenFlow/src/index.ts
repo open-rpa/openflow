@@ -89,7 +89,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
         Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self", span);
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
@@ -140,7 +140,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self", span);
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
@@ -157,7 +157,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self", span);
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
@@ -169,7 +169,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self", span);
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
@@ -212,7 +212,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self", span);
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
@@ -230,7 +230,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self", span);
             Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
         }
         await Logger.DBHelper.Save(filestore_admins, jwt, span);
@@ -242,7 +242,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(filestore_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(filestore_users, WellknownIds.admins, [Rights.delete]);
         if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self");
+            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self", span);
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
         } else if (Config.update_acl_based_on_groups) {
             Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
@@ -275,7 +275,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
             const crypto = require('crypto');
             const randomNum = crypto.randomInt(1, 100);
             // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
-            Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds");
+            Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds", span);
             housekeeping = setInterval(async () => {
                 if (Config.enable_openflow_amqp) {
                     if (!Message.ReadyForHousekeeping()) {
@@ -286,7 +286,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     if (Message.ReadyForHousekeeping()) {
                         doHouseKeeping(span);
                     } else {
-                        Logger.instanse.verbose("SKIP housekeeping");
+                        Logger.instanse.verbose("SKIP housekeeping", span);
                     }
                 } else {
                     doHouseKeeping(span);
@@ -305,7 +305,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     if (Message.ReadyForHousekeeping()) {
                         doHouseKeeping(span);
                     } else {
-                        Logger.instanse.verbose("SKIP housekeeping");
+                        Logger.instanse.verbose("SKIP housekeeping", span);
                     }
                 } else {
                     doHouseKeeping(span);

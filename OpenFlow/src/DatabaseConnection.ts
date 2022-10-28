@@ -158,7 +158,7 @@ export class DatabaseConnection extends events.EventEmitter {
         Logger.instanse.info("Connected to mongodb", span);
         span?.addEvent("Connected to mongodb");
 
-        Logger.instanse.silly("Really connected to mongodb");
+        Logger.instanse.silly("Really connected to mongodb", span);
         const errEvent = (error) => {
             this.isConnected = false;
             Logger.instanse.error(error, span);
@@ -166,7 +166,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         const closeEvent = () => {
             this.isConnected = false;
-            Logger.instanse.silly("Disconnected from mongodb");
+            Logger.instanse.silly("Disconnected from mongodb", span);
             this.emit("disconnected");
         }
         this.cli
@@ -416,7 +416,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname, span, { collection: collectionname });
                 return;
             } else {
-                Logger.instanse.verbose("[" + next.operationType + "] " + _id + " " + item.name, { collectionname });
+                Logger.instanse.verbose("[" + next.operationType + "] " + _id + " " + item.name, span, { collectionname });
             }
             try {
                 for (var i = 0; i < WebSocketServer._clients.length; i++) {
@@ -485,7 +485,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                         discardspan = false;
                                         let subspan: Span = Logger.otel.startSpan("Watch " + collectionname + " " + next.operationType + " " + _type, null, null);
                                         try {
-                                            Logger.instanse.verbose("Notify " + tuser.username + " of " + next.operationType + " " + item.name, { collection: collectionname });
+                                            Logger.instanse.verbose("Notify " + tuser.username + " of " + next.operationType + " " + item.name, span, { collection: collectionname });
                                             // Logger.instanse.info("Watch: " + JSON.stringify(next.documentKey), subspan);
                                             const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
                                             const q = new WatchEventMessage();
@@ -544,7 +544,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // if (collectionname == "users") return;
             if (collectionname == "dbusage") return;
             if (collectionname == "audit") return;
-            Logger.instanse.verbose("register global watch for " + collectionname + " collection", { collection: collectionname });
+            Logger.instanse.verbose("register global watch for " + collectionname + " collection", span, { collection: collectionname });
             var stream = new clsstream();
             stream.collectionname = collectionname;
             stream.stream = this.db.collection(collectionname).watch([], { fullDocument: 'updateLookup' });
@@ -772,30 +772,30 @@ export class DatabaseConnection extends events.EventEmitter {
                             ace.name = arr[0].name;
                             if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1) {
                                 // when multi tenant don't allow members of common user groups to see each other
-                                Logger.instanse.silly("Running in multi tenant mode, skip adding permissions for " + item.name);
+                                Logger.instanse.silly("Running in multi tenant mode, skip adding permissions for " + item.name, span);
                             } else if (arr[0]._type === "user") {
                                 let u: User = User.assign(arr[0]);
                                 if (!Base.hasRight(u, item._id, Rights.read)) {
-                                    Logger.instanse.silly("Assigning " + item.name + " read permission to " + u.name);
+                                    Logger.instanse.silly("Assigning " + item.name + " read permission to " + u.name, span);
                                     Base.addRight(u, item._id, item.name, [Rights.read], false);
                                     u = this.ensureResource(u, "users");
                                     const _ot_end1 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: u._id }, { $set: { _acl: u._acl } });
                                     Logger.otel.endTimer(_ot_end1, DatabaseConnection.mongodb_update, DatabaseConnection.otel_label("users", Crypt.rootUser(), "update"));
                                 } else if (u._id != item._id) {
-                                    Logger.instanse.silly(item.name + " allready exists on " + u.name);
+                                    Logger.instanse.silly(item.name + " allready exists on " + u.name, span);
                                 }
                             } else if (arr[0]._type === "role") {
                                 let r: Role = Role.assign(arr[0]);
                                 if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
-                                    Logger.instanse.silly("Assigning " + item.name + " read permission to " + r.name);
+                                    Logger.instanse.silly("Assigning " + item.name + " read permission to " + r.name, span);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
                                     r = this.ensureResource(r, "users");
                                     const _ot_end2 = Logger.otel.startTimer();
                                     await this.db.collection("users").updateOne({ _id: r._id }, { $set: { _acl: r._acl } });
                                     Logger.otel.endTimer(_ot_end2, DatabaseConnection.mongodb_update, DatabaseConnection.otel_label("users", Crypt.rootUser(), "update"));
                                 } else if (r._id != item._id) {
-                                    Logger.instanse.silly(item.name + " allready exists on " + r.name);
+                                    Logger.instanse.silly(item.name + " allready exists on " + r.name, span);
                                 }
 
                             }
@@ -816,7 +816,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1 && !((item as any).hidemembers == true)) {
                         // when multi tenant don't allow members of common user groups to see each other
-                        Logger.instanse.verbose("Running in multi tenant mode, skip removing permissions for " + item.name);
+                        Logger.instanse.verbose("Running in multi tenant mode, skip removing permissions for " + item.name, span);
                     } else if (arr[0]._type === "user") {
                         let u: User = User.assign(arr[0]);
                         if (Base.hasRight(u, item._id, Rights.read)) {
@@ -1617,7 +1617,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
 
             }
-            Logger.instanse.silly("Adding " + item._type + " " + name + " to database", { collection: collectionname, user: user.username });
+            Logger.instanse.silly("Adding " + item._type + " " + name + " to database", span, { collection: collectionname, user: user.username });
             if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
             span?.addEvent("encryptentity");
@@ -1986,7 +1986,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 //     Base.addRight(item, user._id, user.name, [Rights.full_control]);
                 //     item = this.ensureResource(item, collectionname);
                 // }
-                Logger.instanse.silly("Adding " + item._type + " " + name + " to database", { collection: collectionname, user: user.username });
+                Logger.instanse.silly("Adding " + item._type + " " + name + " to database", span, { collection: collectionname, user: user.username });
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
                 item = this.encryptentity(item) as T;
@@ -2143,7 +2143,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             result = items;            
-            Logger.instanse.verbose("inserted " + counter + " items in database", { collection: collectionname, user: user.username, count: counter });
+            Logger.instanse.verbose("inserted " + counter + " items in database", span, { collection: collectionname, user: user.username, count: counter });
         } catch (error) {
             throw error;
         }
@@ -2467,7 +2467,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     setTimeout(() => OAuthProvider.LoadClients(span), 1000);
                 }
             }
-            Logger.instanse.silly("Updating " + (q.item.name || q.item._name) + " in database", { collection: q.collectionname, user: user.username });
+            Logger.instanse.silly("Updating " + (q.item.name || q.item._name) + " in database", span, { collection: q.collectionname, user: user.username });
 
             if (q.query === null || q.query === undefined) {
                 const id: string = q.item._id;
@@ -2756,7 +2756,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 })
             }
 
-            Logger.instanse.silly("UpdateMany " + (q.item.name || q.item._name) + " in database", { collection: q.collectionname, user: user.username });
+            Logger.instanse.silly("UpdateMany " + (q.item.name || q.item._name) + " in database", span, { collection: q.collectionname, user: user.username });
 
             q.j = ((q.j as any) === 'true' || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
@@ -2816,7 +2816,7 @@ export class DatabaseConnection extends events.EventEmitter {
             } else {
                 delete (q as any).user;
             }
-            Logger.instanse.verbose("begin", { collection: q.collectionname, user: user?.username });
+            Logger.instanse.verbose("begin", span, { collection: q.collectionname, user: user?.username });
             await DatabaseConnection.InsertOrUpdateOneSemaphore.down();
             let query: any = null;
             if (q.uniqeness !== null && q.uniqeness !== undefined && q.uniqeness !== "") {
@@ -2844,7 +2844,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 q.item._id = exists[0]._id;
             }
             else if (exists.length > 1) {
-                Logger.instanse.verbose("query for existing", { collection: q.collectionname, user: user.username });
+                Logger.instanse.verbose("query for existing", span, { collection: q.collectionname, user: user.username });
                 throw JSON.stringify(query) + " is not uniqe, more than 1 item in collection matches this";
             }
             if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) {
@@ -2890,7 +2890,7 @@ export class DatabaseConnection extends events.EventEmitter {
             throw error;
         } finally {
             DatabaseConnection.InsertOrUpdateOneSemaphore.up();
-            Logger.instanse.verbose("completed", { collection: q.collectionname, user: user?.username });
+            Logger.instanse.verbose("completed", span, { collection: q.collectionname, user: user?.username });
             Logger.otel.endSpan(span);
         }
     }
@@ -2907,7 +2907,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            Logger.instanse.verbose("received " + items.length + " items with uniqeness " + uniqeness, { collection: collectionname, user: user?.username, count: items.length });
+            Logger.instanse.verbose("received " + items.length + " items with uniqeness " + uniqeness, span, { collection: collectionname, user: user?.username, count: items.length });
 
 
             let insert: T[] = [];
@@ -3063,7 +3063,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     throw Error("item not found, or Access Denied");
                 }
             }
-            Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database", { collection: collectionname, user: user?.username });
+            Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database", span, { collection: collectionname, user: user?.username });
             const docs = await this.db.collection(collectionname).find(_query).toArray();
             for (let i = 0; i < docs.length; i++) {
                 // @ts-ignore
@@ -3305,7 +3305,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
                 }
-                Logger.instanse.verbose("deleted " + deletecounter + " files in database", { collection: collectionname, user: user?.username, ms, count: deletecounter });
+                Logger.instanse.verbose("deleted " + deletecounter + " files in database", span, { collection: collectionname, user: user?.username, ms, count: deletecounter });
                 return deletecounter;
             } else if (recursive && !NoderedUtil.IsNullUndefinded(ids) && ids.length > 0) {
                 for (let i = 0; i < ids.length; i++) {
@@ -3326,7 +3326,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
 
 
-                Logger.instanse.verbose("quering items to delete from " + collectionname, { collection: collectionname, user: user?.username });
+                Logger.instanse.verbose("quering items to delete from " + collectionname, span, { collection: collectionname, user: user?.username });
                 const qot_end = Logger.otel.startTimer();
                 const cursor = await this.db.collection(collectionname).find(_query);
                 let ms = Logger.otel.endTimer(qot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
@@ -3362,14 +3362,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     var removeCount = bulkRemove.length;
                     if (counter % x === 0) {
                         if (insertCount > 0) {
-                            Logger.instanse.verbose("Inserting " + bulkInsert.addToOperationsList.length + " items into " + collectionname + "_hist", { collection: collectionname, user: user?.username, count: insertCount });
+                            Logger.instanse.verbose("Inserting " + bulkInsert.addToOperationsList.length + " items into " + collectionname + "_hist", span, { collection: collectionname, user: user?.username, count: insertCount });
                             const ot_end = Logger.otel.startTimer();
                             bulkInsert.execute()
                             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, DatabaseConnection.otel_label(collectionname + "_hist", user, "insertmany"));
                             bulkInsert = this.db.collection(collectionname + "_hist").initializeUnorderedBulkOp()
                         }
                         if (removeCount > 0) {
-                            Logger.instanse.verbose("Deleting " + bulkRemove.addToOperationsList.length + " items from " + collectionname, { collection: collectionname, user: user?.username, count: removeCount });
+                            Logger.instanse.verbose("Deleting " + bulkRemove.addToOperationsList.length + " items from " + collectionname, span, { collection: collectionname, user: user?.username, count: removeCount });
                             const ot_end = Logger.otel.startTimer();
                             bulkRemove.execute()
                             Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
@@ -3383,20 +3383,20 @@ export class DatabaseConnection extends events.EventEmitter {
                 var removeCount = bulkRemove.length;
                 if (insertCount > 0 || removeCount > 0) {
                     if (insertCount > 0) {
-                        Logger.instanse.verbose("Inserting " + bulkInsert.addToOperationsList.length + " items into " + collectionname + "_hist", { collection: collectionname, user: user?.username, count: insertCount });
+                        Logger.instanse.verbose("Inserting " + bulkInsert.addToOperationsList.length + " items into " + collectionname + "_hist", span, { collection: collectionname, user: user?.username, count: insertCount });
                         const ot_end = Logger.otel.startTimer();
                         bulkInsert.execute()
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insertmany, DatabaseConnection.otel_label(collectionname + "_hist", user, "insertmany"));
                     }
                     if (removeCount > 0) {
-                        Logger.instanse.verbose("Deleting " + bulkRemove.addToOperationsList.length + " items from " + collectionname, { collection: collectionname, user: user?.username, count: removeCount });
+                        Logger.instanse.verbose("Deleting " + bulkRemove.addToOperationsList.length + " items from " + collectionname, span, { collection: collectionname, user: user?.username, count: removeCount });
                         const ot_end = Logger.otel.startTimer();
                         bulkRemove.execute()
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
                     }
                 }
 
-                Logger.instanse.verbose("deleted " + counter + " items in database", { collection: collectionname, user: user?.username });
+                Logger.instanse.verbose("deleted " + counter + " items in database", span, { collection: collectionname, user: user?.username });
                 return counter;
             }
         } catch (error) {
@@ -4379,19 +4379,19 @@ export class EntityRestriction extends Base {
         for (let path of this.paths) {
             if (!NoderedUtil.IsNullEmpty(path)) {
                 var json = { a: object };
-                Logger.instanse.verbose(path);
-                Logger.instanse.silly(JSON.stringify(json, null, 2));
+                Logger.instanse.verbose(path, null);
+                Logger.instanse.silly(JSON.stringify(json, null, 2), null);
                 try {
                     const result = JSONPath({ path, json });
                     if (result && result.length > 0) {
-                        Logger.instanse.verbose("true");
+                        Logger.instanse.verbose("true", null);
                         return true;
                     }
                 } catch (error) {
                 }
             }
         }
-        Logger.instanse.verbose("false");
+        Logger.instanse.verbose("false", null);
         return false;
     }
     public IsAuthorized(user: TokenUser | User): boolean {

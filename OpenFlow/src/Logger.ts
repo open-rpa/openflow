@@ -48,7 +48,7 @@ export class Logger {
 
     public static parsecli(cli: WebSocketServerClient) {
         if (NoderedUtil.IsNullUndefinded(cli)) return {};
-        return { user: cli.username, agent: cli.clientagent, cid: cli.id, ip: cli.remoteip }
+        return { user: cli.username, agent: cli.clientagent, version: cli.clientversion, cid: cli.id, ip: cli.remoteip }
     }
     public prefix(lvl: level, cls: string, func: string, message: string | unknown, collection: string, user: string, ms: number): string {
         let White = Console.Reset + Console.Bright + Console.FgWhite;
@@ -108,10 +108,6 @@ export class Logger {
                 return JSON.stringify(plainObject, filter, space);
             };
             if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
-            // var keys = Object.keys(obj);
-            // keys.forEach(key => {
-            //     if (key != "message") span.setAttribute(key, obj[key]);
-            // });
             if (lvl == level.Error) {
                 span.setStatus({ code: 2, message: obj.message });
                 span.recordException(message)
@@ -137,7 +133,6 @@ export class Logger {
                 }
             }
         }
-        // if (Logger.log_with_trace) return console.trace(this.prefix(level.Error, cls, func, message));
         if (message instanceof Error) {
             console.error(message);
         } else if (lvl == level.Error) {
@@ -241,7 +236,7 @@ export class Logger {
         }
         this.json(obj, span);
     }
-    public verbose(message: string, options?: any) {
+    public verbose(message: string, span: Span, options?: any) {
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -258,9 +253,9 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj, null);
+        this.json(obj, span);
     }
-    public silly(message: string, options?: any) {
+    public silly(message: string, span: Span, options?: any) {
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -277,7 +272,7 @@ export class Logger {
         if (obj.cls == "") {
             var c = obj.cls;
         }
-        this.json(obj, null);
+        this.json(obj, span);
     }
 
     public static async shutdown() {

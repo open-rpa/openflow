@@ -197,9 +197,9 @@ export class WebSocketServerClient {
         }
     }
     private _message(message: string): void {
-        Logger.instanse.silly("WebSocket message received " + message);
+        Logger.instanse.silly("WebSocket message received " + message, null, Logger.parsecli(this));
         let msg: SocketMessage = SocketMessage.fromjson(message);
-        Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count);
+        Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count, null, Logger.parsecli(this));
 
         this.lastheartbeat = new Date();
         this.lastheartbeatstr = new Date().toISOString();
@@ -413,7 +413,7 @@ export class WebSocketServerClient {
                         var o = msg;
                         if (typeof o === 'string') o = JSON.parse(o);
                         span = Logger.otel.startSpan("OpenFlow Queue Process Message", o.traceId, o.spanId);
-                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId)
+                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
                         _data = await this.Queue(msg, qname, options, span);;
                         ack();
                         // const result = await this.Queue(msg, qname, options);

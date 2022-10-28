@@ -119,7 +119,7 @@ export class DBHelper {
                 Logger.instanse.debug("No user matches " + _id, span);
                 return null;
             }
-            Logger.instanse.silly("Return user " + _id + " " + item.formvalidated);
+            Logger.instanse.silly("Return user " + _id + " " + item.formvalidated, span);
             var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
             return res2;
         } catch (error) {
@@ -137,7 +137,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetResources", parent);
         try {
             let items = await this.memoryCache.wrap("resource", () => { return this.GetResourcesWrap(span) });
-            Logger.instanse.silly("Return " + items.length + " resources");
+            Logger.instanse.silly("Return " + items.length + " resources", span);
             return items;
         } catch (error) {
             throw error;
@@ -155,7 +155,7 @@ export class DBHelper {
         try {
             var key = ("resourceusage_" + userid).toString().toLowerCase();
             let items = await this.memoryCache.wrap(key, () => { return this.GetResourceUsageByUserIDWrap(userid, span) });
-            Logger.instanse.silly("Return resources for user " + userid);
+            Logger.instanse.silly("Return resources for user " + userid, span);
             return items;
         } catch (error) {
             throw error;
@@ -543,7 +543,7 @@ export class DBHelper {
                 let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
                 if (hasusers.length == 0) {
                     user.roles.push(new Rolemember("users", WellknownIds.users));
-                    Logger.instanse.verbose("also adding user to users " + WellknownIds.users);
+                    Logger.instanse.verbose("also adding user to users " + WellknownIds.users, span);
                     // Logger.instanse.debug(user.name + " missing from users, adding it", span);
                     // await Config.db.db.collection("users").updateOne(
                     //     { _id: WellknownIds.users },
@@ -740,10 +740,10 @@ export class DBHelper {
     public async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
-            Logger.instanse.verbose(`FindRoleByName ${name}`);
+            Logger.instanse.verbose(`FindRoleByName ${name}`, span);
             let role: Role = await this.FindRoleByName(name, jwt, span);
             if (role == null) {
-                Logger.instanse.verbose(`EnsureRole FindRoleById ${name}`);
+                Logger.instanse.verbose(`EnsureRole FindRoleById ${name}`, span);
                 role = await this.FindRoleById(id, null, span);
             }
             if (role !== null && (role._id === id || NoderedUtil.IsNullEmpty(id))) { return role; }
@@ -752,13 +752,13 @@ export class DBHelper {
                 await Config.db.DeleteOne(role._id, "users", false, jwt, span);
             }
             role = new Role(); role.name = name; role._id = id;
-            Logger.instanse.verbose(`Adding new role ${name}`);
+            Logger.instanse.verbose(`Adding new role ${name}`, span);
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
             role = Role.assign(role);
             Base.addRight(role, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(role, role._id, role.name, [Rights.full_control]);
             Base.removeRight(role, role._id, [Rights.delete]);
-            Logger.instanse.verbose(`Updating ACL for new role ${name}`);
+            Logger.instanse.verbose(`Updating ACL for new role ${name}`, span);
             await this.Save(role, jwt, span);
             return Role.assign(role);
         } catch (error) {
@@ -771,10 +771,10 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
             span?.addEvent("FindByUsernameOrId");
-            Logger.instanse.verbose(`FindById ${name} ${id}`);
+            Logger.instanse.verbose(`FindById ${name} ${id}`, span);
             let user = await this.FindById(id, span);
             if (user == null) {
-                Logger.instanse.verbose(`FindByUsername ${username}`);
+                Logger.instanse.verbose(`FindByUsername ${username}`, span);
                 user = await this.FindByUsername(username, null, span);
             }
             if (user !== null && (user._id === id || id === null)) { return user; }
@@ -794,11 +794,11 @@ export class DBHelper {
                 await Crypt.SetPassword(user, Math.random().toString(36).substr(2, 9), span);
             }
             span?.addEvent("Insert user");
-            Logger.instanse.verbose(`Adding new user ${name}`);
+            Logger.instanse.verbose(`Adding new user ${name}`, span);
             user = await Config.db.InsertOne(user, "users", 0, false, jwt, span);
             user = User.assign(user);
             span?.addEvent("DecorateWithRoles");
-            Logger.instanse.verbose(`Decorating new user ${name} with roles`);
+            Logger.instanse.verbose(`Decorating new user ${name} with roles`, span);
             user = await this.DecorateWithRoles(user, span);
             span?.addEvent("return user");
             return user;

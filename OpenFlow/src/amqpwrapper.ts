@@ -440,7 +440,7 @@ export class amqpwrapper extends events.EventEmitter {
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
-        Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId);
+        Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId, span);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
@@ -489,7 +489,7 @@ export class amqpwrapper extends events.EventEmitter {
             throw error;            
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
-        if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange);
+        if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange, span);
         const options: any = { mandatory: true };
         if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
@@ -628,7 +628,7 @@ export class amqpwrapper extends events.EventEmitter {
                             break;
                     }
                 } else {
-                    Logger.instanse.verbose("Received string message: " + JSON.stringify(msg));
+                    Logger.instanse.verbose("Received string message: " + JSON.stringify(msg), span);
                 }
             } catch (error) {
                 Logger.instanse.error(error, span);
