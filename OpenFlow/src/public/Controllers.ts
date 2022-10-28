@@ -4102,11 +4102,9 @@ export class EntityCtrl extends entityCtrl<Base> {
         return Ace.isBitSet(item, bit);
     }
     setBit(item: Ace, bit: number): void {
-        debugger;
         Ace.setBit(item, bit);
     }
     unsetBit(item: Ace, bit: number): void {
-        debugger;
         Ace.unsetBit(item, bit);
     }
     toogleBit(a: Ace, bit: number) {
