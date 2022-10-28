@@ -4102,10 +4102,12 @@ export class EntityCtrl extends entityCtrl<Base> {
         return Ace.isBitSet(item, bit);
     }
     setBit(item: Ace, bit: number): void {
-        Ace.isBitSet(item, bit);
+        debugger;
+        Ace.setBit(item, bit);
     }
     unsetBit(item: Ace, bit: number): void {
-        Ace.isBitSet(item, bit);
+        debugger;
+        Ace.unsetBit(item, bit);
     }
     toogleBit(a: Ace, bit: number) {
         if (this.isBitSet(a, bit)) {
@@ -5056,10 +5058,10 @@ export class CredentialCtrl extends entityCtrl<Base> {
         return Ace.isBitSet(item, bit);
     }
     setBit(item: Ace, bit: number): void {
-        Ace.isBitSet(item, bit);
+        Ace.setBit(item, bit);
     }
     unsetBit(item: Ace, bit: number): void {
-        Ace.isBitSet(item, bit);
+        Ace.unsetBit(item, bit);
     }
     toogleBit(a: Ace, bit: number) {
         if (this.isBitSet(a, bit)) {
@@ -6341,10 +6343,10 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         return Ace.isBitSet(item, bit);
     }
     setBit(item: Ace, bit: number): void {
-        Ace.isBitSet(item, bit);
+        Ace.setBit(item, bit);
     }
     unsetBit(item: Ace, bit: number): void {
-        Ace.isBitSet(item, bit);
+        Ace.unsetBit(item, bit);
     }
     toogleBit(a: Ace, bit: number) {
         if (this.isBitSet(a, bit)) {
