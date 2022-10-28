@@ -191,7 +191,8 @@ export class dockerdriver implements i_nodered_driver {
                 "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString(),
                 "noderedcatalogues=" + Config.noderedcatalogues,
                 "log_with_colors=" + Config.log_with_colors.toString(),
-                "TZ=" + tz
+                "TZ=" + tz,
+                "allow_start_from_cache=false"
             ]
 
             if (tzvolume != null) {
