@@ -3274,6 +3274,17 @@ export class DatabaseConnection extends events.EventEmitter {
                         } else
                             return value; // leave any other value as-is
                     });
+                    const keys: string[] = Object.keys(query);
+                    for (let key of keys) {
+                        if (key === "_id") {
+                            const id: string = query._id;
+                            const safeid = safeObjectID(id);
+                            if (safeid !== null && safeid !== undefined) {
+                                delete query._id;
+                                query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                            }
+                        }
+                    }
                 }
                 _query = { $and: [query, baseq] };
             } else {
