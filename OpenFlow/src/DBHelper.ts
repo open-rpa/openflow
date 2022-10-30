@@ -624,7 +624,6 @@ export class DBHelper {
                 Logger.instanse.debug("Send clearcache command for " + key, span);
                 amqpwrapper.Instance().send("openflow", "", { "command": "clearcache", "key": key }, 20000, null, "", span, 1);
             }
-            return;
         }
         await Logger.DBHelper.memoryCache.del(key);
     }

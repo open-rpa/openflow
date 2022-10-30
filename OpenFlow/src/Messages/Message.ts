@@ -1586,10 +1586,10 @@ export class Message {
     public async Signin(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.Signin", parent);
+        let msg: SigninMessage
         try {
             // const hrstart = process.hrtime()
             // let hrend = process.hrtime(hrstart)
-            let msg: SigninMessage
             let impostor: string = "";
             const UpdateDoc: any = { "$set": {} };
             let type: tokenType = "local";
@@ -1916,6 +1916,10 @@ export class Message {
                     throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
+        } catch (error) {
+            await handleError(cli, error, span);
+        }
+        try {
             try {
                 msg.websocket_package_size = Config.websocket_package_size;
                 msg.openflow_uniqueid = Config.openflow_uniqueid;
