@@ -776,11 +776,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
-        <select id="node-input-targetid-select">
-            <option>Loading...</option>
-        </select>
-        <input id="node-input-targetid" type="hidden">
+        <label ><i class="fa fa-tag"></i> Target</label>
+        <input type="text" id="node-lookup-targetid" placeholder="Leave empty, to get from msg.targetid ">
+        <input type="hidden" id="node-input-targetid">
     </div>
     <div class="form-row">
         <label for="node-input-typed-entities"><i class="fa fa-list"></i> Entities</label>
@@ -807,7 +805,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
-            targetid: { value: "result._id", required: true },
+            targetid: { value: "" },
             entities: { value: "payload", required: true },
             bits: { value: "", required: true }
         },
@@ -825,26 +823,50 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             $("#node-input-typed-entities").typedInput('value', this.entities);
 
 
-            $.getJSON('api_roles', function (data) {
-                $('#node-input-targetid-select').empty();
-                $('#node-input-targetid-select').append($('<option>', {
-                    value: "from msg.targetid",
-                    text: "from msg.targetid"
-                }));
+            try {
+                $("#node-lookup-targetid").autocomplete("destroy");
+            } catch (error) {
+            }
+            var targetidvalues = [];
+            $.getJSON('api_userroles', function (data) {
+                targetidvalues.push({
+                    value: null,
+                    label: "from msg.targetid"
+                })
                 $.each(data, function (i, ele) {
-                    $('#node-input-targetid-select').append($('<option>', {
-                        value: ele._id,
-                        text: ele.name
-                    }));
+                    targetidvalues.push({
+                        id: ele._id,
+                        value: ele.name,
+                        label: ele.name
+                    })
+                    if (ele._id == $("#node-input-targetid").val()) {
+                        $("#node-lookup-targetid").val(ele.name);
+
+                    }
                 });
-                $('#node-input-targetid-select').val($('#node-input-targetid').val());
-            }).error(function (jqXHR, textStatus, errorThrown) {
-                alert("error:" + jqXHR.responseText);
+            });
+            $("#node-lookup-targetid").focus(() => {
+                $("#node-lookup-targetid").autocomplete("search", $("#node-lookup-targetid").val());
+            })
+            $("#node-lookup-targetid").autocomplete({
+                source: targetidvalues,
+                minLength: 0,
+                select: function (event, ui) {
+                    $("#node-input-targetid").val(ui.item.id);
+                    $("#node-lookup-targetid").val(ui.item.label);
+                    return false; // Prevent the widget from inserting the value.
+                },
+                close: function (event, ui) {
+                    $.each(targetidvalues, function (i, ele) {
+                        if (ele.id == $("#node-input-targetid").val()) {
+                            $("#node-lookup-targetid").val(ele.label);
+                        }
+                    });
+                },
             });
 
         },
         oneditsave: function () {
-            $('#node-input-targetid').val($('#node-input-targetid-select').val());
             $("#node-input-entities").val($("#node-input-typed-entities").typedInput('value'));
         }
 
@@ -863,11 +885,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
-        <select id="node-input-targetid-select">
-            <option>Loading...</option>
-        </select>
-        <input id="node-input-targetid" type="hidden">
+        <label ><i class="fa fa-tag"></i> Target</label>
+        <input type="text" id="node-lookup-targetid" placeholder="Leave empty, to get from msg.targetid ">
+        <input type="hidden" id="node-input-targetid">
     </div>
     <div class="form-row">
         <label for="node-input-typed-entities"><i class="fa fa-list"></i> Entities</label>
@@ -894,7 +914,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
-            targetid: { value: "result._id", required: true },
+            targetid: { value: "" },
             entities: { value: "payload", required: true },
             bits: { value: "", required: true }
         },
@@ -912,26 +932,51 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             $("#node-input-typed-entities").typedInput('value', this.entities);
 
 
-            $.getJSON('api_roles', function (data) {
-                $('#node-input-targetid-select').empty();
-                $('#node-input-targetid-select').append($('<option>', {
-                    value: "from msg.targetid",
-                    text: "from msg.targetid"
-                }));
+            
+            try {
+                $("#node-lookup-targetid").autocomplete("destroy");
+            } catch (error) {
+            }
+            var targetidvalues = [];
+            $.getJSON('api_userroles', function (data) {
+                targetidvalues.push({
+                    value: null,
+                    label: "from msg.targetid"
+                })
                 $.each(data, function (i, ele) {
-                    $('#node-input-targetid-select').append($('<option>', {
-                        value: ele._id,
-                        text: ele.name
-                    }));
+                    targetidvalues.push({
+                        id: ele._id,
+                        value: ele.name,
+                        label: ele.name
+                    })
+                    if (ele._id == $("#node-input-targetid").val()) {
+                        $("#node-lookup-targetid").val(ele.name);
+
+                    }
                 });
-                $('#node-input-targetid-select').val($('#node-input-targetid').val());
-            }).error(function (jqXHR, textStatus, errorThrown) {
-                alert("error:" + jqXHR.responseText);
+            });
+            $("#node-lookup-targetid").focus(() => {
+                $("#node-lookup-targetid").autocomplete("search", $("#node-lookup-targetid").val());
+            })
+            $("#node-lookup-targetid").autocomplete({
+                source: targetidvalues,
+                minLength: 0,
+                select: function (event, ui) {
+                    $("#node-input-targetid").val(ui.item.id);
+                    $("#node-lookup-targetid").val(ui.item.label);
+                    return false; // Prevent the widget from inserting the value.
+                },
+                close: function (event, ui) {
+                    $.each(targetidvalues, function (i, ele) {
+                        if (ele.id == $("#node-input-targetid").val()) {
+                            $("#node-lookup-targetid").val(ele.label);
+                        }
+                    });
+                },
             });
 
         },
         oneditsave: function () {
-            $('#node-input-targetid').val($('#node-input-targetid-select').val());
             $("#node-input-entities").val($("#node-input-typed-entities").typedInput('value'));
         }
 

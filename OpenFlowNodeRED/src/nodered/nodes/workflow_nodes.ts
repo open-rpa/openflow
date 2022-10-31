@@ -349,7 +349,9 @@ export class workflow_out_node {
             try {
                 this.node.status({});
                 msg.state = this.config.state;
-                msg.form = this.config.form;
+                if (this.config.state != "from msg.form") {
+                    msg.form = this.config.form;
+                }
                 let priority: number = 1;
                 if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
                 if (msg._id !== null && msg._id !== undefined && msg._id !== "") {
@@ -714,7 +716,11 @@ export class assign_workflow_node {
 
             const res3 = await NoderedUtil.InsertOne({ collectionname: "workflow_instances", item: runnerinstance, jwt, priority });
             msg._parentid = res3._id;
-            msg.payload._parentid = res3._id;
+            try {
+                msg.payload._parentid = res3._id;
+            } catch (error) {
+                msg.payload = { data: msg.payload, _parentid: res3._id }
+            }
 
             // parentid: res3._id, 
             msg.newinstanceid = await NoderedUtil.CreateWorkflowInstance({ targetid, workflowid, name: topic, resultqueue: this.localqueue, data: msg.payload, initialrun, jwt, priority });
