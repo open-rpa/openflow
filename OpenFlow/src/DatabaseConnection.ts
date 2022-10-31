@@ -3507,6 +3507,8 @@ export class DatabaseConnection extends events.EventEmitter {
         for (let i: number = 0; i < bits.length; i++) {
             bits[i]--; // bitwize matching is from offset 0, when used on bindata
         }
+        var hasadmin = user.roles.find(x => x._id == WellknownIds.admins);
+        if (hasadmin != null) return { _id: { $ne: "bum" } };
         if (field.indexOf("metadata") > -1) { // do always ?
             // timeseries does not support $elemMatch on "metadata" fields
             q[field + "._id"] = user._id
@@ -3517,14 +3519,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 subq[field + "._id"] = role._id
                 subq[field + ".rights"] = { $bitsAllSet: bits }
                 isme.push(subq);
-                if (role._id == WellknownIds.admins) return { _id: { $ne: "bum" } };
             });
             return { $or: isme };
         }
         isme.push({ _id: user._id });
         user.roles.forEach(role => {
             isme.push({ _id: role._id });
-            if (role._id == WellknownIds.admins) return { _id: { $ne: "bum" } };
         });
         const finalor: any[] = [];
         // todo: add check for deny's
