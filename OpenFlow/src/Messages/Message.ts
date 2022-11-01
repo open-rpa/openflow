@@ -4141,9 +4141,7 @@ export class Message {
                         }
                         totalusage += usage;
                         try {
-                            if (col.name != "cvr") {
-                                await bulkInsert.execute();
-                            }
+                            await bulkInsert.execute();
                             if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage), span);
 
                         } catch (error) {
@@ -4161,20 +4159,25 @@ export class Message {
             if (!skipUpdateUserSize) {
                 var dt = new Date();
                 let index = 0;
-                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": yesterday } } }, { $count: "userCount" }]).toArray();
+                const fivedaysago = new Date(new Date().toISOString());;
+                fivedaysago.setUTCHours(0, 0, 0, 0);
+                fivedaysago.setDate(fivedaysago.getDate() - 5);
+
+                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": fivedaysago } } }, { $count: "userCount" }]).toArray();
                 if (usercount.length > 0) {
                     Logger.instanse.debug("Begin updating all users (" + usercount[0].userCount + ") dbusage field", span);
                 }
                 let cursor: FindCursor<any>;
                 if (Config.NODE_ENV == "production") {
-                    cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": yesterday } });
+                    cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
                 } else {
-                    if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
-                        // cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
-                        cursor = Config.db.db.collection("users").find({ "_type": "user", "dblocked": true })
-                    } else {
-                        cursor = Config.db.db.collection("users").find({ "_type": "user" })
-                    }
+                    cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
+                    // if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
+                    //     // cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
+                    //     cursor = Config.db.db.collection("users").find({ "_type": "user", "dblocked": true })
+                    // } else {
+                    //     cursor = Config.db.db.collection("users").find({ "_type": "user" })
+                    // }
                     // While debugging, also update users who has not been online the last 24 hours
                 }
                 for await (const u of cursor) {
@@ -4186,7 +4189,7 @@ export class Message {
                             "$group":
                             {
                                 "_id": "$userid",
-                                "size": { "$sum": "$size" },
+                                "size": { "$max": "$size" },
                                 "count": { "$sum": 1 }
                             }
                         }
@@ -4323,10 +4326,6 @@ export class Message {
 
                     }
                 ]
-                // ,
-                // {
-                //     "$match": { config: { $not: { $size: 0 } } }
-                // }
                 const cursor = await Config.db.db.collection("users").aggregate(pipe);
                 // @ts-ignore
                 let resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Database Usage" }).toArray();
