@@ -648,6 +648,7 @@ export class DBHelper {
             if (u.federationids != null && Array.isArray(u.federationids)) {
                 for (var i = 0; i < u.federationids.length; i++) {
                     var fed = u.federationids[i];
+                    if (fed == null) continue;
                     // has self property with value id
                     if (fed.hasOwnProperty("id")) {
                         await this.DeleteKey(("federation_" + fed.id).toString(), watch, span);
