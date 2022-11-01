@@ -4428,17 +4428,13 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
                 var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
                 if (customer == null) msg.customerid = null;
+            } else {
+                // do we really need to force this ? 
+                // var customers = await Config.db.query<Customer>({ query: {"_type" : "customer"}, collectionname:"users", jwt: this.jwt, top:2}, parent)
+                // if(customers.length == 1) msg.customerid = user.customerid;
             }
             user = this.tuser;
             if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
-
-            if (NoderedUtil.IsNullEmpty(msg.customerid)) {
-                {
-                    if (!user.HasRoleName("resellers") && !user.HasRoleName("admins")) {
-                        msg.customerid = user.customerid;
-                    }
-                }
-            }
 
             const UpdateDoc: any = { "$set": {} };
             UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
