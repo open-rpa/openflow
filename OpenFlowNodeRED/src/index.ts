@@ -7,7 +7,7 @@ clog("Starting @openiap/nodered");
 import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
-import { WebSocketClient, NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { WebSocketClient, NoderedUtil, TokenUser, ApiConfig } from "@openiap/openflow-api";
 import { Logger } from "./Logger";
 import { WebServer } from "./WebServer";
 import { Config } from "./Config";
@@ -81,7 +81,18 @@ function handle(signal, value) {
 }
 Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
-
+var logger = {
+    info(msg) { Logger.instanse.info("websocket", "", msg); },
+    verbose(msg) { Logger.instanse.verbose("websocket", "", msg); },
+    error(msg) { Logger.instanse.error("websocket", "", msg); },
+    debug(msg) { Logger.instanse.debug("websocket", "", msg); },
+    silly(msg) {
+        if (typeof msg === "object") {
+            if (msg.data) msg = msg.data;
+        }
+        Logger.instanse.silly("websocket", "", msg);
+    }
+}
 let server: http.Server = null;
 (async function (): Promise<void> {
     try {
@@ -92,7 +103,12 @@ let server: http.Server = null;
         const flowjson = await backupStore.get<string>(flow_filename, null);
         const userjson = await backupStore.get<string>(nodereduser_filename, null);
         clog("Creating socket");
-        const socket: WebSocketClient = new WebSocketClient(Logger.instanse, Config.api_ws_url);
+        // const socket: WebSocketClient = new WebSocketClient(Logger.instanse, Config.api_ws_url);
+        // ApiConfig.log_error = true;
+        // ApiConfig.log_information = true;
+        // ApiConfig.log_trafic_silly = true;
+        // ApiConfig.log_trafic_verbose = true;
+        const socket: WebSocketClient = new WebSocketClient(logger, Config.api_ws_url);
         if (!NoderedUtil.IsNullEmpty(flowjson) && Config.allow_start_from_cache) {
             Logger.instanse.info("index", "", "Start using cached workflow");
             server = await WebServer.configure(socket);
