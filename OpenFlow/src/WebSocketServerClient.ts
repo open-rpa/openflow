@@ -85,6 +85,8 @@ export class WebSocketServerClient {
             socketObject.on("message", this.message.bind(this)); // e: MessageEvent
             socketObject.on("error", this.error.bind(this));
             socketObject.on("close", this.close.bind(this));
+            this._dbdisconnected = this.dbdisconnected.bind(this);
+            this._dbconnected = this.dbconnected.bind(this);
 
 
             let remoteip: string = "unknown";
@@ -121,8 +123,6 @@ export class WebSocketServerClient {
                 this.remoteip = WebSocketServerClient.remoteip(req);
             }
             Logger.instanse.debug("new client " + this.id + " from " + this.remoteip, span, Logger.parsecli(this));
-            this._dbdisconnected = this.dbdisconnected.bind(this);
-            this._dbconnected = this.dbconnected.bind(this);
             Config.db.on("disconnected", this._dbdisconnected);
             Config.db.on("connected", this._dbconnected);
 
@@ -171,8 +171,8 @@ export class WebSocketServerClient {
     private close(e: CloseEvent): void {
         Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent, null, Logger.parsecli(this));
         this.Close(null);
-        Config.db.removeListener("disconnected", this._dbdisconnected);
-        Config.db.removeListener("connected", this._dbconnected);
+        if (this._dbdisconnected != null) Config.db.removeListener("disconnected", this._dbdisconnected);
+        if (this._dbconnected != null) Config.db.removeListener("connected", this._dbconnected);
     }
     private error(e: Event): void {
         Logger.instanse.error(e, null, Logger.parsecli(this));
