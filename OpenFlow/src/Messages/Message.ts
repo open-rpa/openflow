@@ -689,6 +689,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -815,6 +816,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -988,6 +990,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1010,6 +1013,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1095,6 +1099,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1116,6 +1121,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1145,6 +1151,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1173,6 +1180,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1199,6 +1207,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1223,6 +1232,7 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1249,6 +1259,7 @@ export class Message {
             await handleError(cli, error, null);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1276,6 +1287,7 @@ export class Message {
             await handleError(cli, error, null);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1304,6 +1316,7 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1333,6 +1346,7 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1359,7 +1373,10 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
-            if (msg != null) delete msg.query;
+            if (msg != null) {
+                delete msg.query;
+                delete msg.jwt;
+            }
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1385,7 +1402,10 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
-            delete msg.query;
+            if (msg != null) {
+                delete msg.query;
+                delete msg.jwt;
+            }
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1418,6 +1438,9 @@ export class Message {
             await handleError(null, error, parent);
         }
         try {
+            if (msg != null) {
+                delete msg.jwt;
+            }
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1446,6 +1469,7 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1479,6 +1503,7 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
+            delete msg.id;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1501,6 +1526,8 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
+            delete msg.query;
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1525,6 +1552,7 @@ export class Message {
             await handleError(cli, error, null);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -1984,6 +2012,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2007,6 +2036,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2030,6 +2060,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2056,6 +2087,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2077,6 +2109,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2101,6 +2134,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2124,6 +2158,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2260,6 +2295,7 @@ export class Message {
         }
         try {
             delete msg.file;
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2328,6 +2364,7 @@ export class Message {
             await handleError(cli, error, span);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2400,6 +2437,7 @@ export class Message {
             await handleError(cli, error, null);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2619,6 +2657,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2800,6 +2839,7 @@ export class Message {
             await handleError(null, error, span);
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -2832,6 +2872,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -3282,6 +3323,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -3585,6 +3627,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -3651,6 +3694,7 @@ export class Message {
             if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -4447,6 +4491,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -4580,6 +4625,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -4785,6 +4831,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -4976,6 +5023,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -5064,6 +5112,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -5110,6 +5159,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -5177,6 +5227,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -5210,6 +5261,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -5279,6 +5331,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -5336,6 +5389,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
@@ -5395,6 +5449,7 @@ export class Message {
             }
         }
         try {
+            delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
             this.data = "";
