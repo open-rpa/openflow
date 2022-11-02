@@ -9,6 +9,8 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { clientType } from "./Audit";
 import express = require("express");
+import { WebSocketServer } from "./WebSocketServer";
+import { WebServer } from "./WebServer";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -44,8 +46,8 @@ export class clsstream {
 export class WebSocketServerClient {
     public jwt: string;
     public _socketObject: WebSocket;
-    private _receiveQueue: SocketMessage[];
-    private _sendQueue: SocketMessage[];
+    private _receiveQueue: SocketMessage[] = [];
+    private _sendQueue: SocketMessage[] = [];
     public messageQueue: IHashTable<QueuedMessage> = {};
     public remoteip: string;
     public clientagent: clientType;
@@ -76,9 +78,36 @@ export class WebSocketServerClient {
         if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"] as string;
         return remoteip;
     }
-    constructor(socketObject: WebSocket, req: any) {
-        const span: Span = Logger.otel.startSpanExpress("WebSocketServerClient.constructor", req);
+    async Initialize(socketObject: WebSocket, req: express.Request): Promise<void> {
+        const span: Span = Logger.otel.startSpanExpress("WebSocketServerClient.Initialize", req);
         try {
+            socketObject.on("open", this.open.bind(this));
+            socketObject.on("message", this.message.bind(this)); // e: MessageEvent
+            socketObject.on("error", this.error.bind(this));
+            socketObject.on("close", this.close.bind(this));
+
+
+            let remoteip: string = "unknown";
+            if (Config.otel_trace_connection_ips) {
+                if (!NoderedUtil.IsNullUndefinded(req)) {
+                    remoteip = WebSocketServerClient.remoteip(req);
+                }
+                remoteip = remoteip.split(":").join("-");
+            }
+            if (!WebSocketServer.total_connections_count[remoteip]) WebSocketServer.total_connections_count[remoteip] = 0;
+            WebSocketServer.total_connections_count[remoteip]++;
+
+            if (await WebServer.isBlocked(req)) {
+                remoteip = WebSocketServerClient.remoteip(req);
+                if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null);
+                try {
+                    socketObject.close()
+                } catch (error) {
+                    Logger.instanse.error(error, null);
+                }
+                return;
+            }
+
             this.id = NoderedUtil.GetUniqueIdentifier();
             this._socketObject = socketObject;
             this._receiveQueue = [];
@@ -92,11 +121,6 @@ export class WebSocketServerClient {
                 this.remoteip = WebSocketServerClient.remoteip(req);
             }
             Logger.instanse.debug("new client " + this.id + " from " + this.remoteip, span, Logger.parsecli(this));
-            socketObject.on("open", this.open.bind(this));
-            socketObject.on("message", this.message.bind(this)); // e: MessageEvent
-            socketObject.on("error", this.error.bind(this));
-            socketObject.on("close", this.close.bind(this));
-
             this._dbdisconnected = this.dbdisconnected.bind(this);
             this._dbconnected = this.dbconnected.bind(this);
             Config.db.on("disconnected", this._dbdisconnected);
@@ -197,18 +221,21 @@ export class WebSocketServerClient {
         }
     }
     private _message(message: string): void {
-        Logger.instanse.silly("WebSocket message received " + message, null, Logger.parsecli(this));
-        let msg: SocketMessage = SocketMessage.fromjson(message);
-        Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count, null, Logger.parsecli(this));
+        try {
+            Logger.instanse.silly("WebSocket message received " + message, null, Logger.parsecli(this));
+            let msg: SocketMessage = SocketMessage.fromjson(message);
+            Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count, null, Logger.parsecli(this));
+            this.lastheartbeat = new Date();
+            this.lastheartbeatstr = new Date().toISOString();
+            const now = new Date();
+            const seconds = (now.getTime() - this.lastheartbeat.getTime()) / 1000;
+            this.lastheartbeatsec = seconds.toString();
 
-        this.lastheartbeat = new Date();
-        this.lastheartbeatstr = new Date().toISOString();
-        const now = new Date();
-        const seconds = (now.getTime() - this.lastheartbeat.getTime()) / 1000;
-        this.lastheartbeatsec = seconds.toString();
-
-        this._receiveQueue.push(msg);
-        if ((msg.index + 1) >= msg.count) this.ProcessQueue(null);
+            this._receiveQueue.push(msg);
+            if ((msg.index + 1) >= msg.count) this.ProcessQueue(null);
+        } catch (error) {
+            Logger.instanse.error(error, null, Logger.parsecli(this));
+        }
     }
     private async message(message: string): Promise<void> {
         let username: string = "Unknown";

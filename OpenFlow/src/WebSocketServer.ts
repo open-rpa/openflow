@@ -44,27 +44,13 @@ export class WebSocketServer {
             this._clients = [];
             this._socketserver = new WebSocket.Server({ server: server });
             this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
-                let remoteip: string = "unknown";
-                if (Config.otel_trace_connection_ips) {
-                    if (!NoderedUtil.IsNullUndefinded(req)) {
-                        remoteip = WebSocketServerClient.remoteip(req);
-                    }
-                    remoteip = remoteip.split(":").join("-");
+                try {
+                    var sock = new WebSocketServerClient();
+                    sock.Initialize(socketObject, req);
+                    this._clients.push(sock);
+                } catch (error) {
+                    Logger.instanse.error(error, null);    
                 }
-                if (!this.total_connections_count[remoteip]) this.total_connections_count[remoteip] = 0;
-                this.total_connections_count[remoteip]++;
-
-                if (await WebServer.isBlocked(req)) {
-                    remoteip = WebSocketServerClient.remoteip(req);
-                    if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null);
-                    try {
-                        socketObject.close()
-                    } catch (error) {
-                        Logger.instanse.error(error, null);
-                    }
-                    return;
-                }
-                this._clients.push(new WebSocketServerClient(socketObject, req));
             });
             this._socketserver.on("error", (error: Error): void => {
                 Logger.instanse.error(error, null);
