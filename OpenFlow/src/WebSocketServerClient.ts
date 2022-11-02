@@ -70,6 +70,7 @@ export class WebSocketServerClient {
     private _amqpdisconnected: any = null;
     private _dbdisconnected: any = null;
     private _dbconnected: any = null;
+    private init_complete: boolean = false;
     public static remoteip(req: express.Request) {
         let remoteip: string = req.socket.remoteAddress;
         if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
@@ -87,6 +88,7 @@ export class WebSocketServerClient {
             socketObject.on("close", this.close.bind(this));
             this._dbdisconnected = this.dbdisconnected.bind(this);
             this._dbconnected = this.dbconnected.bind(this);
+            this._amqpdisconnected = this.amqpdisconnected.bind(this);
 
 
             let remoteip: string = "unknown";
@@ -126,8 +128,9 @@ export class WebSocketServerClient {
             Config.db.on("disconnected", this._dbdisconnected);
             Config.db.on("connected", this._dbconnected);
 
-            this._amqpdisconnected = this.amqpdisconnected.bind(this);
             amqpwrapper.Instance().on("disconnected", this._amqpdisconnected);
+            this.init_complete = true;
+            this.ProcessQueue(null);
         } catch (error) {
             Logger.instanse.error(error, span);
             // return res.status(500).send({ message: error.message ? error.message : error });
@@ -232,15 +235,13 @@ export class WebSocketServerClient {
             this.lastheartbeatsec = seconds.toString();
 
             this._receiveQueue.push(msg);
-            if ((msg.index + 1) >= msg.count) this.ProcessQueue(null);
+            if ((msg.index + 1) >= msg.count && this.init_complete) this.ProcessQueue(null);
         } catch (error) {
             Logger.instanse.error(error, null, Logger.parsecli(this));
         }
     }
     private async message(message: string): Promise<void> {
-        let username: string = "Unknown";
         try {
-            if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
             this._message(message);
         } catch (error) {
             Logger.instanse.error(error, null, Logger.parsecli(this));
@@ -284,7 +285,7 @@ export class WebSocketServerClient {
                 }
             }
             try {
-                amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
+                if (this._amqpdisconnected != null) amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
             } catch (error) {
                 Logger.instanse.error(error, span, Logger.parsecli(this));
             }
