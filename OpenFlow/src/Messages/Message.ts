@@ -251,7 +251,7 @@ export class Message {
                     if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit))
                         WebSocketServer.websocket_rate_limit.add(1, { ...Logger.otel.defaultlabels, command: command });
                     if ((error.consumedPoints % 10) == 1 || error.consumedPoints > 0) {
-                        Logger.instanse.warn("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
+                        // Logger.instanse.warn("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
                     }
                     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
                         Logger.instanse.warn("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
