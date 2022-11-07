@@ -79,7 +79,7 @@ export class WebSocketServerClient {
         if (req.headers["x-real-ip"] != null) remoteip = req.headers["x-real-ip"] as string;
         return remoteip;
     }
-    async Initialize(socketObject: WebSocket, req: express.Request): Promise<void> {
+    async Initialize(socketObject: WebSocket, req: express.Request): Promise<boolean> {
         const span: Span = Logger.otel.startSpanExpress("WebSocketServerClient.Initialize", req);
         try {
             socketObject.on("open", this.open.bind(this));
@@ -89,6 +89,7 @@ export class WebSocketServerClient {
             this._dbdisconnected = this.dbdisconnected.bind(this);
             this._dbconnected = this.dbconnected.bind(this);
             this._amqpdisconnected = this.amqpdisconnected.bind(this);
+            this.id = NoderedUtil.GetUniqueIdentifier();
 
 
             let remoteip: string = "unknown";
@@ -109,10 +110,20 @@ export class WebSocketServerClient {
                 } catch (error) {
                     Logger.instanse.error(error, null);
                 }
-                return;
-            }
+                return false;
+            } else {
+                if (Config.socket_rate_limit) {
+                    try {
+                        if (remoteip == "unknown") remoteip = WebSocketServerClient.remoteip(req);
+                        await WebSocketServer.BaseRateLimiter.consume(remoteip);
+                    } catch (error) {
+                        Logger.instanse.error(error, null);
+                        socketObject.close()
+                        return false;
+                    }
 
-            this.id = NoderedUtil.GetUniqueIdentifier();
+                }
+            }
             this._socketObject = socketObject;
             this._receiveQueue = [];
             this._sendQueue = [];
@@ -133,10 +144,10 @@ export class WebSocketServerClient {
             this.ProcessQueue(null);
         } catch (error) {
             Logger.instanse.error(error, span);
-            // return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
         }
+        return true;
     }
     private async dbdisconnected(e: Event): Promise<void> {
         var keys = Object.keys(this.watches);
@@ -173,6 +184,7 @@ export class WebSocketServerClient {
     }
     private close(e: CloseEvent): void {
         Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent, null, Logger.parsecli(this));
+        this.init_complete = false;
         this.Close(null);
         if (this._dbdisconnected != null) Config.db.removeListener("disconnected", this._dbdisconnected);
         if (this._dbconnected != null) Config.db.removeListener("connected", this._dbconnected);
@@ -235,7 +247,7 @@ export class WebSocketServerClient {
             this.lastheartbeatsec = seconds.toString();
 
             this._receiveQueue.push(msg);
-            if ((msg.index + 1) >= msg.count && this.init_complete) this.ProcessQueue(null);
+            if ((msg.index + 1) >= msg.count) this.ProcessQueue(null);
         } catch (error) {
             Logger.instanse.error(error, null, Logger.parsecli(this));
         }
@@ -267,6 +279,7 @@ export class WebSocketServerClient {
     public async Close(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.Close", parent);
         try {
+            this.init_complete = false;
             Config.db.removeListener("disconnected", this._dbdisconnected);
             Config.db.removeListener("connected", this._dbconnected);
 
@@ -494,6 +507,9 @@ export class WebSocketServerClient {
         if (this.devnull) {
             this._receiveQueue = [];
             this._sendQueue = [];
+            return;
+        }
+        if (!this.init_complete) {
             return;
         }
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.ProcessQueue", parent);

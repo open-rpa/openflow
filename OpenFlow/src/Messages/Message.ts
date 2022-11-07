@@ -71,7 +71,7 @@ export class Message {
             span = Logger.otel.startSubSpan("QueueProcessMessage " + this.command, parent);
             span?.setAttribute("command", this.command);
             span?.setAttribute("id", this.id);
-            if (await this.EnsureJWT(null)) {
+            if (await this.EnsureJWT(null, true)) {
                 switch (this.command) {
                     case "listcollections":
                         await this.ListCollections(span);
@@ -203,29 +203,31 @@ export class Message {
         this.id = NoderedUtil.GetUniqueIdentifier();
     }
 
-    public async EnsureJWT(cli: WebSocketServerClient): Promise<boolean> {
+    public async EnsureJWT(cli: WebSocketServerClient, jwtrequired: boolean): Promise<boolean> {
         if (!NoderedUtil.IsNullUndefinded(this.data)) {
             var obj: any = this.data;
             if (typeof obj == "string") obj = JSON.parse(obj);
             if (!NoderedUtil.IsNullEmpty(obj.jwt)) {
-                this.jwt = obj.jwt; delete obj.jwt;
+                this.jwt = obj.jwt;
+                if (jwtrequired) delete obj.jwt;
                 this.data = JSON.stringify(obj);
             }
         }
         if (!NoderedUtil.IsNullUndefinded(cli) && NoderedUtil.IsNullEmpty(this.jwt)) {
             this.jwt = cli.jwt;
         }
-        if (NoderedUtil.IsNullEmpty(this.jwt)) {
+        if (NoderedUtil.IsNullEmpty(this.jwt) && jwtrequired) {
             this.Reply("error");
-            this.data = "{\"message\": \"Not signed in, and missing jwt\"}";
+            this.data = "{\"message\": \"Not signed in, and missing jwt\", \"error\": \"Not signed in, and missing jwt\"}";
             cli?.Send(this);
             return false;
-        } else {
+        } else if (!NoderedUtil.IsNullEmpty(this.jwt)) {
             try {
                 this.tuser = User.assign(await Crypt.verityToken(this.jwt, cli));
             } catch (error) {
+                if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, Logger.parsecli(cli));
                 this.Reply("error");
-                this.data = "{\"message\": \"" + error.message ? error.message : error + "\"}";
+                this.data = JSON.stringify({ "error": (error.message ? error.message : error) });
                 cli?.Send(this);
                 return false;
             }
@@ -297,10 +299,15 @@ export class Message {
             span?.setAttribute("id", this.id);
             let process: boolean = true;
             if (command != "signin" && command != "refreshtoken" && command != "error") {
-                if (!await this.EnsureJWT(cli)) {
+                if (!await this.EnsureJWT(cli, true)) {
                     Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, Logger.parsecli(cli));
                     process = false;
-                    setTimeout(() => { cli.Close(span); }, 500);
+                    if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
+                }
+            } else if (command == "signin") {
+                if (!await this.EnsureJWT(cli, false)) {
+                    if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
+                    process = false;
                 }
             }
             if (process) {
