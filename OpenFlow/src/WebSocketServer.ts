@@ -46,7 +46,7 @@ export class WebSocketServer {
             this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
                 try {
                     var sock = new WebSocketServerClient();
-                    if (sock.Initialize(socketObject, req)) {
+                    if (await sock.Initialize(socketObject, req)) {
                         this._clients.push(sock);
                     }                    
                 } catch (error) {

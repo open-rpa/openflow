@@ -49,7 +49,7 @@ export class WebSocketServerClient {
     private _receiveQueue: SocketMessage[] = [];
     private _sendQueue: SocketMessage[] = [];
     public messageQueue: IHashTable<QueuedMessage> = {};
-    public remoteip: string;
+    public remoteip: string = "unknown";
     public clientagent: clientType;
     public clientversion: string;
     public created: Date = new Date();
@@ -72,6 +72,7 @@ export class WebSocketServerClient {
     private _dbconnected: any = null;
     private init_complete: boolean = false;
     public static remoteip(req: express.Request) {
+        if (req == null) return "unknown";
         let remoteip: string = req.socket.remoteAddress;
         if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
         if (req.headers["X-real-IP"] != null) remoteip = req.headers["X-real-IP"] as string;
@@ -90,32 +91,29 @@ export class WebSocketServerClient {
             this._dbconnected = this.dbconnected.bind(this);
             this._amqpdisconnected = this.amqpdisconnected.bind(this);
             this.id = NoderedUtil.GetUniqueIdentifier();
-
-
-            let remoteip: string = "unknown";
+            this.remoteip = WebSocketServerClient.remoteip(req);
+            let _remoteip = "unknown";
             if (Config.otel_trace_connection_ips) {
-                if (!NoderedUtil.IsNullUndefinded(req)) {
-                    remoteip = WebSocketServerClient.remoteip(req);
-                }
-                remoteip = remoteip.split(":").join("-");
+                _remoteip = _remoteip.split(":").join("-");
             }
-            if (!WebSocketServer.total_connections_count[remoteip]) WebSocketServer.total_connections_count[remoteip] = 0;
-            WebSocketServer.total_connections_count[remoteip]++;
+            if (!WebSocketServer.total_connections_count[_remoteip]) WebSocketServer.total_connections_count[_remoteip] = 0;
+            WebSocketServer.total_connections_count[_remoteip]++;
 
             if (await WebServer.isBlocked(req)) {
-                remoteip = WebSocketServerClient.remoteip(req);
-                if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null);
+                if (Config.log_blocked_ips) Logger.instanse.error(this.remoteip + " is blocked", null);
                 try {
-                    socketObject.close()
+                    if (Config.client_disconnect_signin_error) {
+                        socketObject.close()
+                        return false;
+                    }
                 } catch (error) {
                     Logger.instanse.error(error, null);
                 }
-                return false;
+                return true;
             } else {
                 if (Config.socket_rate_limit) {
                     try {
-                        if (remoteip == "unknown") remoteip = WebSocketServerClient.remoteip(req);
-                        await WebSocketServer.BaseRateLimiter.consume(remoteip);
+                        await WebSocketServer.BaseRateLimiter.consume(this.remoteip);
                     } catch (error) {
                         Logger.instanse.error(error, null);
                         socketObject.close()
