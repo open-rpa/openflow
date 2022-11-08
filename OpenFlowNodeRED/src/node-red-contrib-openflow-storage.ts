@@ -385,13 +385,17 @@ export class noderedcontribopenflowstorage {
         try {
             Logger.instanse.silly("storage", "init", "_getnpmrc");
             if (WebSocketClient.instance != null && WebSocketClient.instance.isConnected()) {
-                const array = await NoderedUtil.Query({ collectionname: "nodered", query: { _type: "npmrc", nodered_id: Config.nodered_id }, top: 1 });
-                if (NoderedUtil.IsNullUndefinded(array) || array.length === 0) { return null; }
-                try {
+                const array = await NoderedUtil.Query({
+                    collectionname: "nodered", query:
+                        { _type: "npmrc", "$or": [{ nodered_id: Config.nodered_id }, { nodered_id: { "$exists": false } }] }, top: 2
+                });
+                if (NoderedUtil.IsNullUndefinded(array) || array.length === 0) {
+                    return null;
+                }
+                if (array.length > 1) {
+                    this.npmrc = array.filter(x => x.nodered_id === Config.nodered_id)[0];
+                } else {
                     this.npmrc = array[0];
-                } catch (error) {
-                    Logger.instanse.error("storage", "init", error);
-                    this.npmrc = null;
                 }
             }
         } catch (error) {
@@ -408,6 +412,14 @@ export class noderedcontribopenflowstorage {
             // } else {
             //     await backupStore.set(filename, JSON.stringify(this.npmrc));
             // }
+            if (this.npmrc != null) {
+                if (this.npmrc.catalogues && this.npmrc.catalogues.length > 0) {
+                    Logger.instanse.info("storage", "init", "using catalogues: " + JSON.stringify(this.npmrc.catalogues));
+                }
+                if (!NoderedUtil.IsNullEmpty(this.npmrc.content)) {
+                    Logger.instanse.info("storage", "init", "set npmrc: \n" + this.npmrc.content);
+                }
+            }
             return this.npmrc;
         } catch (error) {
             Logger.instanse.error("storage", "init", error);
