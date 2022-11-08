@@ -5,8 +5,6 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Logger } from "./Logger";
 import { Message } from "./Messages/Message";
-import opentelemetry = require('@opentelemetry/sdk-node');
-import { TraceFlags, trace, ROOT_CONTEXT, SpanContext } from '@opentelemetry/api';
 export class QueueClient {
     static async configure(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("QueueClient.configure", parent);
@@ -18,7 +16,7 @@ export class QueueClient {
             });
         } catch (error) {
             Logger.instanse.error(error, span);
-            return;
+            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }

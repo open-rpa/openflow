@@ -447,32 +447,36 @@ export class LoginProvider {
                 if (providers.length === 0 || NoderedUtil.IsNullEmpty(providers[0]._id)) {
                     user = await Logger.DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
-                        let createUser: boolean = Config.auto_create_users;
-                        if (!createUser) {
-                            return done(null, false);
-                        }
+                        Logger.instanse.info("No login providers, creating " + username + " as admin", span);
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
                         user = await Logger.DBHelper.EnsureUser(jwt, user.name, user.username, null, password, null, span);
 
                         const admins: Role = await Logger.DBHelper.FindRoleByName("admins", null, span);
+                        if (admins == null) throw new Error("Failed locating admins role!")
                         admins.AddMember(user);
                         await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
-                        if (user.disabled) {
-                            await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
-                            done("Disabled user " + username, null);
-                            return;
-                        }
                         if (!(await Crypt.ValidatePassword(user, password, span))) {
+                            Logger.instanse.error("No login providers, login for " + username + " failed", span);
                             await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                             return done(null, false);
                         }
+                        Logger.instanse.info("No login providers, updating " + username + " as admin", span);
+                        const admins: Role = await Logger.DBHelper.FindRoleByName("admins", null, span);
+                        if (admins == null) throw new Error("Failed locating admins role!")
+                        admins.AddMember(user);
+                        await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
+
                     }
+                    Logger.instanse.info("Clear cache", span);
+                    await Logger.DBHelper.clearCache("Initialized", span);
                     await Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", remoteip, "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
+                    Logger.instanse.info("Saving local provider", span);
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
+                    Logger.instanse.info("local provider created as " + result._id, span);
                     await Logger.DBHelper.ClearProviders();
                     const tuser: TokenUser = TokenUser.From(user);
                     done(null, tuser);
