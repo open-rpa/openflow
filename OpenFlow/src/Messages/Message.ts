@@ -1,4 +1,3 @@
-import * as os from "os";
 var mimetype = require('mimetype');
 import { SocketMessage } from "../SocketMessage";
 import { Auth } from "../Auth";
@@ -21,8 +20,6 @@ import { Logger } from "../Logger";
 import { QueueClient } from "../QueueClient";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, CustomCommandMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { WebServer } from "../WebServer";
-import opentelemetry = require('@opentelemetry/sdk-node');
-import { TraceFlags, trace, ROOT_CONTEXT, SpanContext } from '@opentelemetry/api';
 const pako = require('pako');
 const got = require("got");
 
