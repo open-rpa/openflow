@@ -32,6 +32,7 @@
     "@opentelemetry/sdk-metrics-base": "^0.31.0",
     "@opentelemetry/sdk-node": "^0.32.0",
     "body-parser": "^1.20.1",
+    "cache-require-paths": "^0.3.0",
     "command-line-args": "^5.2.1",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",

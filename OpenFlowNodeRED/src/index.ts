@@ -4,7 +4,7 @@ function clog(message) {
     console.log(dts + " " + message);
 }
 clog("Starting @openiap/nodered");
-import * as fs from "fs";
+require('cache-require-paths');
 import * as path from "path";
 import * as http from "http";
 import { WebSocketClient, NoderedUtil, TokenUser, ApiConfig } from "@openiap/openflow-api";
@@ -13,10 +13,8 @@ import { WebServer } from "./WebServer";
 import { Config } from "./Config";
 import { Crypt } from "./nodeclient/Crypt";
 import { FileSystemCache } from "./file-system-cache";
-clog("Configure logging");
 Logger.configure(false);
 Logger.instanse.info("index", "", "starting openflow nodered");
-clog("register process hooks");
 process.on('beforeExit', (code) => {
     console.error('Process beforeExit event with code: ', code);
 });
@@ -96,13 +94,11 @@ var logger = {
 let server: http.Server = null;
 (async function (): Promise<void> {
     try {
-        clog("Loading disk cache");
         const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
         const flow_filename: string = Config.nodered_id + "_flows.json";
         const nodereduser_filename: string = Config.nodered_id + "_user.json";
         const flowjson = await backupStore.get<string>(flow_filename, null);
         const userjson = await backupStore.get<string>(nodereduser_filename, null);
-        clog("Creating socket");
         // const socket: WebSocketClient = new WebSocketClient(Logger.instanse, Config.api_ws_url);
         // ApiConfig.log_error = true;
         // ApiConfig.log_information = true;
