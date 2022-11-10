@@ -54,7 +54,7 @@ tr:nth-child(even){background-color: #f2f2f2}
         ng-click="ctrl.cls = !ctrl.cls" value="1" id="ctrl.cls" /><span ng-click="ctrl.cls = !ctrl.cls">cls</span>
         <input type="checkbox" ng-checked="ctrl.func"
         ng-click="ctrl.func = !ctrl.func" value="1" id="ctrl.func" /><span ng-click="ctrl.func = !ctrl.func">func</span>
-        <button ng-click="ctrl.messages=[]">Clear</button>        
+        <button ng-click="ctrl.messages=[]">Clear</button>
         <br>
         <input type="checkbox" ng-checked="ctrl.model.log_cache"
         ng-click="ctrl.model.log_cache = !ctrl.model.log_cache; ctrl.submit()" value="1" id="ctrl.model.log_cache" /><span ng-click="ctrl.model.log_cache = !ctrl.model.log_cache; ctrl.submit()">cache</span>
@@ -89,6 +89,7 @@ tr:nth-child(even){background-color: #f2f2f2}
         ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()" value="1" id="ctrl.model.log_verbose" /><span ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()">verbose</span>
         <input type="checkbox" ng-checked="ctrl.model.log_silly"
         ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()" value="1" id="ctrl.model.log_silly" /><span ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()">silly</span>
+        <button ng-click="ctrl.ClearCache()">Clear cache</button>
         <br> Click on message to copy log object with all properties to clipboard
         <br>
         search <input type="text" ng-model="ctrl.searchstring" placeholder="Search string" />

@@ -4923,6 +4923,9 @@ export class Message {
                 } else {
                     wi.state = msg.state
                 }
+                if (oldstate != "processing" && msg.state == "processing") {
+                    wi.lastrun = new Date(new Date().toISOString());
+                }
             }
             if (msg.files) {
                 for (var i = 0; i < msg.files.length; i++) {
@@ -5419,6 +5422,10 @@ export class Message {
                 case "killwebsocketclient":
                     if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
                     amqpwrapper.Instance().send("openflow", "", { "command": "killwebsocketclient", "id": msg.id }, 10000, null, "", parent, 1);
+                    break;
+                case "clearcache":
+                    if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                    Logger.DBHelper.clearCache("user requested clear cache", parent);
                     break;
                 case "webpushmessage":
                     // @ts-ignore

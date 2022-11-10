@@ -7387,6 +7387,14 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    async ClearCache() {
+        try {
+            await NoderedUtil.CustomCommand({ command: "clearcache" });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
     hasprop(name) {
         return this.messages.filter(x => !NoderedUtil.IsNullEmpty(x[name])).length > 0
     }
