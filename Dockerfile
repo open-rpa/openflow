@@ -24,4 +24,5 @@ RUN npm install --omit=dev
 ENTRYPOINT ["/usr/local/bin/node", "index.js"]
 # ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
 
+# docker buildx build --platform linux/amd64 -t openiap/openflow:edge . --push
 # docker buildx build --platform linux/amd64 -t openiap/openflow:dev . --push

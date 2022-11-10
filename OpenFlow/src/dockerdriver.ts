@@ -93,9 +93,9 @@ export class dockerdriver implements i_nodered_driver {
             }
 
 
+            // "com.docker.compose.project": Config.namespace,
+            // "com.docker.compose.service": Config.namespace,
             const Labels = {
-                "com.docker.compose.project": Config.namespace,
-                "com.docker.compose.service": Config.namespace,
                 "userid": _id,
                 "billed": hasbilling.toString(),
             };
@@ -103,12 +103,14 @@ export class dockerdriver implements i_nodered_driver {
             let HostConfig: Dockerode.HostConfig = undefined;
             HostConfig = {};
             if (me != null) {
-                if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
-                if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
-                if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
-                if (me.Labels["com.docker.compose.project.working_dir"]) Labels["com.docker.compose.project.working_dir"] = me.Labels["com.docker.compose.project.working_dir"];
-                if (me.Labels["com.docker.compose.service"]) Labels["com.docker.compose.service"] = me.Labels["com.docker.compose.service"];
-                if (me.Labels["com.docker.compose.version"]) Labels["com.docker.compose.version"] = me.Labels["com.docker.compose.version"];
+                if (Config.nodered_docker_use_project) {
+                    if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
+                    if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
+                    if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
+                    if (me.Labels["com.docker.compose.project.working_dir"]) Labels["com.docker.compose.project.working_dir"] = me.Labels["com.docker.compose.project.working_dir"];
+                    if (me.Labels["com.docker.compose.service"]) Labels["com.docker.compose.service"] = me.Labels["com.docker.compose.service"];
+                    if (me.Labels["com.docker.compose.version"]) Labels["com.docker.compose.version"] = me.Labels["com.docker.compose.version"];
+                }
                 if (me.NetworkSettings && me.NetworkSettings.Networks) {
                     const keys = Object.keys(me.NetworkSettings.Networks);
                     HostConfig.NetworkMode = keys[0];
