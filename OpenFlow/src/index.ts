@@ -413,20 +413,16 @@ const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
 var server: http.Server = null;
 (async function (): Promise<void> {
-    clog("Configure logging");
     try {
         await Logger.configure(false, false);
     } catch (error) {
         console.error(error);
         process.exit(404);
     }
-    clog("Configure database connection");
     Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);
     const span: Span = Logger.otel.startSpan("openflow.startup", null, null);
     try {
-        clog("Connect to database");
         await Config.db.connect(span);
-        clog("Configure amqp");
         await initamqp(span);
         Logger.instanse.info("VERSION: " + Config.version, span);
         if (Logger.License.validlicense) {
