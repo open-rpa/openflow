@@ -4,6 +4,7 @@ function clog(message) {
     console.log(dts + " " + message);
 }
 clog("Starting @openiap/openflow");
+require('cache-require-paths');
 import { Logger } from "./Logger";
 import * as http from "http";
 import { WebServer } from "./WebServer";
@@ -321,7 +322,6 @@ async function initDatabase(parent: Span): Promise<boolean> {
     }
 }
 
-clog("register process hooks");
 process.on('beforeExit', (code) => {
     Logger.instanse.error(code as any, null);
 });
@@ -394,7 +394,6 @@ function handle(signal, value) {
 }
 Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
-clog("require gp");
 let GrafanaProxy: any = null;
 try {
     GrafanaProxy = require("./ee/grafana-proxy");

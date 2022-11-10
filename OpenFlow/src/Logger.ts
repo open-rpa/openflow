@@ -1,23 +1,10 @@
-function clog(message) {
-    let dt = new Date();
-    let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
-    console.log(dts + " " + message);
-}
-clog("Logger, do imports. os");
 import * as os from "os";
-clog("Logger, do imports. NoderedUtil");
 import { NoderedUtil } from "@openiap/openflow-api";
-clog("Logger, do imports. interfaces");
 import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
-clog("Logger, do imports. config");
 import { Config } from "./Config";
-clog("Logger, do imports. dockerdriver");
 import { dockerdriver } from "./dockerdriver";
-clog("Logger, do imports. DBHelper");
 import { DBHelper } from './DBHelper';
-clog("Logger, do imports. amqpwrapper");
 import { amqpwrapper } from "./amqpwrapper";
-clog("Logger, do imports. WebSocketServerClient");
 import { WebSocketServerClient } from "./WebSocketServerClient";
 const fs = require('fs');
 const path = require('path');
