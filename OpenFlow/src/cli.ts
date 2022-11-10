@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // npm link --force
 // npm i npm install --global --production windows-build-tools
+require('cache-require-paths');
 import * as fs from "fs";
 import { Logger } from './Logger';
 import { Config } from "./Config";

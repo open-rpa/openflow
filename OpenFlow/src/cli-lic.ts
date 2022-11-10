@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('cache-require-paths');
 import * as fs from "fs";
 import { Logger } from './Logger';
 import { Config } from "./Config";
