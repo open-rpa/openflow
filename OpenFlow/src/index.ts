@@ -17,7 +17,7 @@ import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
 import { Message } from "./Messages/Message";
-
+clog("Done loading imports");
 let amqp: amqpwrapper = null;
 async function initamqp(parent: Span) {
     const span: Span = Logger.otel.startSubSpan("initamqp", parent);
