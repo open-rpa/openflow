@@ -7278,6 +7278,7 @@ export class WebsocketClientsCtrl extends entitiesCtrl<Base> {
         await NoderedUtil.CustomCommand({ "command": "dumpwebsocketclients" });
         await new Promise(resolve => { setTimeout(resolve, 1000) });
         this.loading = false;
+        this.page = 0;
         this.loadData();
     }
     async KillClient(id): Promise<void> {
