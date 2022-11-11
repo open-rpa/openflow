@@ -131,7 +131,7 @@ export class dbConfig extends Base {
         Config.log_silly = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_silly) ? conf.log_silly : Config.getEnv("log_silly", "false"));
         Config.log_to_exchange = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_to_exchange) ? conf.log_to_exchange : Config.getEnv("log_to_exchange", "false"));
         Config.client_heartbeat_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_heartbeat_timeout) ? conf.client_heartbeat_timeout.toString() : Config.getEnv("client_heartbeat_timeout", "60"));
-        Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "60"));
+        Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "120"));
         Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
         Config.api_bypass_perm_check = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.api_bypass_perm_check) ? conf.api_bypass_perm_check : Config.getEnv("api_bypass_perm_check", "false"));
 
@@ -306,7 +306,7 @@ export class Config {
         Config.socket_error_rate_limit_duration = parseInt(Config.getEnv("socket_error_rate_limit_duration", "2"));
 
         Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
-        Config.client_signin_timeout = parseInt(Config.getEnv("client_signin_timeout", "60"));
+        Config.client_signin_timeout = parseInt(Config.getEnv("client_signin_timeout", "120"));
         Config.client_disconnect_signin_error = Config.parseBoolean(Config.getEnv("client_disconnect_signin_error", "false"));
 
 
@@ -532,7 +532,7 @@ export class Config {
     public static socket_error_rate_limit_duration: number = parseInt(Config.getEnv("socket_error_rate_limit_duration", "1"));
 
     public static client_heartbeat_timeout: number = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
-    public static client_signin_timeout: number = parseInt(Config.getEnv("client_signin_timeout", "60"));
+    public static client_signin_timeout: number = parseInt(Config.getEnv("client_signin_timeout", "120"));
     public static client_disconnect_signin_error: boolean = Config.parseBoolean(Config.getEnv("client_disconnect_signin_error", "false"));
 
     public static expected_max_roles: number = parseInt(Config.getEnv("expected_max_roles", "20000"));

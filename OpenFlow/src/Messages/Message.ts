@@ -223,6 +223,16 @@ export class Message {
                 this.tuser = User.assign(await Crypt.verityToken(this.jwt, cli));
             } catch (error) {
                 if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, Logger.parsecli(cli));
+                if (this.command == "signin") {
+                    try {
+                        var msg = SigninMessage.assign(this.data);
+                        if (cli != null) {
+                            if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
+                            if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+                        }
+                    } catch (error) {
+                    }
+                }
                 this.Reply("error");
                 this.data = JSON.stringify({ "error": (error.message ? error.message : error) });
                 cli?.Send(this);

@@ -27,8 +27,8 @@ EXPOSE 5859
 
 WORKDIR /data
 
-ENTRYPOINT ["/usr/local/bin/node", "index.js"]
-# ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5859", "index.js"]
+# ENTRYPOINT ["/usr/local/bin/node", "index.js"]
+ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5859", "index.js"]
 
 
 # docker buildx build --platform linux/amd64 -t openiap/nodered:dev --file ./OpenFlowNodeRED/Dockerfile . --load
