@@ -235,7 +235,9 @@ export class Message {
                 }
                 this.Reply("error");
                 this.data = JSON.stringify({ "error": (error.message ? error.message : error) });
-                cli?.Send(this);
+                setTimeout(() => {
+                    cli?.Send(this);    
+                }, 1000);                
                 return false;
             }
         }

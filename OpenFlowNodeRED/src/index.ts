@@ -214,10 +214,14 @@ let server: http.Server = null;
                 let closemsg: any = (error.message ? error.message : error);
                 Logger.instanse.error("index", "", closemsg);
                 socket.close(1000, closemsg);
-                socket.connect().catch(reason => {
-                    Logger.instanse.error("index", "", reason);
+                if (closemsg.indexOf("jwt expired") > -1) {
                     process.exit(404);
-                })
+                } else {
+                    socket.connect().catch(reason => {
+                        Logger.instanse.error("index", "", reason);
+                        process.exit(404);
+                    })
+                }
             }
         });
     } catch (error) {
