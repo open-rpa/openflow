@@ -30,7 +30,8 @@ export class noderedcontribmiddlewareauth {
         return null;
     }
 
-    public static async process(socket: WebSocketClient, req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> {
+    // public static async process(socket: WebSocketClient, req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> {
+    public static async process(socket: WebSocketClient, req: any, res: express.Response, next: express.NextFunction): Promise<void> {
         if (Config.api_allow_anonymous) {
             return next();
         }

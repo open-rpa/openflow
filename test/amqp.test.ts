@@ -46,22 +46,23 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
                     msg = "hi";
                 } else {
                     msg = "unknown message";
-                }
-                await this.amqp.send(options.exchange, options.replyTo, msg, 1500, options.correlationId, options.routingKey, 1);
+                }                
+                // console.log("send reply to " + options.replyTo + " / " + options.routingKey);
+                await this.amqp.send(options.exchangename, options.replyTo, msg, 1500, options.correlationId, options.routingKey, null, 1);
             }
             ack();
         }, null);
         assert.ok(!NoderedUtil.IsNullUndefinded(q));
         assert.ok(!NoderedUtil.IsNullEmpty(q.queuename));
 
-        reply = await this.amqp.sendWithReply(null, queuename, "hi mom, i miss you", 300, null, null);
+        reply = await this.amqp.sendWithReply(null, queuename, "hi mom, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "hi");
 
 
-        var reply = await this.amqp.sendWithReply(null, queuename, "hi mom, i miss you", 300, null, null);
+        var reply = await this.amqp.sendWithReply(null, queuename, "hi mom, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "hi");
         await this.amqp.RemoveQueueConsumer(this.testUser, q, null);
-        reply = await this.amqp.sendWithReply("", "bogusName", "hi mom, i miss you", 300, null, null);
+        reply = await this.amqp.sendWithReply("", "bogusName", "hi mom, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "timeout");
 
         // why does this die ? after sending to bogusName
@@ -69,7 +70,8 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         // assert.strictEqual(reply, "timeout");
     }
     @timeout(5000)
-    @test async 'personalqueuetest'() {
+    @test
+    async 'personalqueuetest'() {
         var q = await this.amqp.AddQueueConsumer(this.testUser, this.testUser._id, null, this.rootToken, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                 if (msg == "hi mom, i miss you") {
@@ -77,16 +79,16 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
                 } else {
                     msg = "unknown message";
                 }
-                await this.amqp.send(options.exchange, options.replyTo, msg, 1500, options.correlationId, options.routingKey, 1);
+                await this.amqp.send(options.exchangename, options.replyTo, msg, 1500, options.correlationId, options.routingKey, null, 1);
             }
             ack();
         }, null);
         assert.ok(!NoderedUtil.IsNullUndefinded(q));
         assert.ok(!NoderedUtil.IsNullEmpty(q.queuename));
-        var reply = await this.amqp.sendWithReply(null, this.testUser._id, "hi mom, i miss you", 300, null, null);
+        var reply = await this.amqp.sendWithReply(null, this.testUser._id, "hi mom, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "hi");
         await this.amqp.RemoveQueueConsumer(this.testUser, q, null);
-        reply = await this.amqp.sendWithReply("", "bogusName", "hi mom, i miss you", 300, null, null);
+        reply = await this.amqp.sendWithReply("", "bogusName", "hi mom, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "timeout");
 
         // why does this die ? after sending to bogusName
@@ -94,7 +96,8 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         // assert.strictEqual(reply, "timeout");
     }
     @timeout(5000)
-    @test async 'exchangetest'() {
+    @test
+    async 'exchangetest'() {
         const exchangename = "demotestexchange";
         var q = await this.amqp.AddExchangeConsumer(this.testUser, exchangename, "direct", "", null, this.rootToken, true, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
@@ -103,17 +106,17 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
                 } else {
                     msg = "unknown message";
                 }
-                await this.amqp.send("", options.replyTo, msg, 1500, options.correlationId, "", 1);
+                await this.amqp.send("", options.replyTo, msg, 1500, options.correlationId, "", null, 1);
             }
             ack();
         }, null);
         // Give rabbitmq a little room
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        var reply = await this.amqp.sendWithReply(exchangename, "", "hi mom, i miss you", 300, null, null);
+        var reply = await this.amqp.sendWithReply(exchangename, "", "hi mom, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "hi");
-        var reply = await this.amqp.sendWithReply(exchangename, "", "hi dad, i miss you", 300, null, null);
+        var reply = await this.amqp.sendWithReply(exchangename, "", "hi dad, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "unknown message");
-        var reply = await this.amqp.sendWithReply(exchangename, "", "hi mom, i miss you", 300, null, null);
+        var reply = await this.amqp.sendWithReply(exchangename, "", "hi mom, i miss you", 300, null, null, null);
         assert.strictEqual(reply, "hi");
         await this.amqp.RemoveQueueConsumer(this.testUser, q.queue, null);
         await assert.rejects(this.amqp.RemoveQueueConsumer(this.testUser, null, null));

@@ -3,14 +3,27 @@ import { TokenUser, Base, Rights, NoderedUtil } from "@openiap/openflow-api";
 import { Crypt } from "./Crypt";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
+import { DatabaseConnection } from "./DatabaseConnection";
+import { UpDownCounter } from "@opentelemetry/api-metrics";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type loginProvider = "saml" | "google" | "openid" | "local" | "websocket";
 export type clientType = "browser" | "openrpa" | "nodered" | "webapp" | "openflow" | "powershell" | "mobileapp" | "samlverify" | "googleverify" | "aiotmobileapp" | "aiotwebapp";
 export class Audit {
+    public static openflow_logins: UpDownCounter = null;
+    public static ensure_openflow_logins() {
+        if (!NoderedUtil.IsNullUndefinded(Audit.openflow_logins)) return;
+        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
+            Audit.openflow_logins = Logger.otel.meter.createUpDownCounter('openflow_logins', {
+                description: 'Number of login attempts'
+            });
+        }
+    }
     public static async LoginSuccess(user: TokenUser, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginSuccess", parent);
         try {
+            Audit.ensure_openflow_logins();
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "success", clientagent });
             const log: Singin = new Singin();
             Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
             log.remoteip = remoteip;
@@ -25,8 +38,7 @@ export class Audit {
             log.clientversion = clientversion;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error("Audit", "DoSign", error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -35,6 +47,8 @@ export class Audit {
     public static async ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.ImpersonateSuccess", parent);
         try {
+            Audit.ensure_openflow_logins();
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "impersonate", clientagent });
             const log: Singin = new Singin();
             Base.addRight(log, user._id, user.name, [Rights.read]);
             Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -51,8 +65,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error("Audit", "DoSign", error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -61,6 +74,8 @@ export class Audit {
     public static async ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.ImpersonateFailed", parent);
         try {
+            Audit.ensure_openflow_logins();
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "impersonatefailed", clientagent });
             const log: Singin = new Singin();
             Base.addRight(log, user._id, user.name, [Rights.read]);
             Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -76,8 +91,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error("Audit", "DoSign", error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -86,6 +100,8 @@ export class Audit {
     public static async LoginFailed(username: string, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginFailed", parent);
         try {
+            Audit.ensure_openflow_logins();
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "failed", clientagent });
             const log: Singin = new Singin();
             log.remoteip = remoteip;
             log.ip = Audit.dot2num(log.remoteip);
@@ -98,8 +114,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error("Audit", "LoginFailed", error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -127,8 +142,7 @@ export class Audit {
             if (!NoderedUtil.IsNullEmpty(instancename)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error("Audit", "NoderedAction", error);
-            span?.recordException(error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);

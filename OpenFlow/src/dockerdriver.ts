@@ -14,13 +14,13 @@ export class dockerdriver implements i_nodered_driver {
             await docker.listContainers();
             return true;
         } catch (error) {
-            Logger.instanse.error("dockerdriver", "detect", error);
+            Logger.instanse.error(error, null);
         }
         return false;
     }
     public async EnsureNoderedInstance(jwt: string, tuser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
-        Logger.instanse.debug("dockerdriver", "EnsureNoderedInstance", "[" + tuser.username + "] EnsureNoderedInstance");
+        Logger.instanse.debug("[" + tuser.username + "] EnsureNoderedInstance", span);
         if (_id === null || _id === undefined || _id === "") _id = tuser._id;
 
         const users = await Config.db.query<NoderedUser>({ query: { _id: _id }, top: 1, collectionname: "users", jwt: jwt }, span);
@@ -81,8 +81,10 @@ export class dockerdriver implements i_nodered_driver {
             if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
 
             let hasbilling: boolean = false;
-            let assigned: ResourceUsage[] = await Config.db.db.collection("config")
-                .find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray() as any;
+            // let assigned: ResourceUsage[] = await Config.db.db.collection("config")
+            //     .find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray() as any;
+            let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByUserID(user._id, span);
+            assigned = assigned.filter(x => x.resource == "Nodered Instance");
             if (assigned.length > 0) {
                 let usage: ResourceUsage = assigned[0];
                 if (usage.quantity > 0 && !NoderedUtil.IsNullEmpty(usage.siid)) {
@@ -91,9 +93,9 @@ export class dockerdriver implements i_nodered_driver {
             }
 
 
+            // "com.docker.compose.project": Config.namespace,
+            // "com.docker.compose.service": Config.namespace,
             const Labels = {
-                "com.docker.compose.project": Config.namespace,
-                "com.docker.compose.service": Config.namespace,
                 "userid": _id,
                 "billed": hasbilling.toString(),
             };
@@ -101,12 +103,14 @@ export class dockerdriver implements i_nodered_driver {
             let HostConfig: Dockerode.HostConfig = undefined;
             HostConfig = {};
             if (me != null) {
-                if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
-                if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
-                if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
-                if (me.Labels["com.docker.compose.project.working_dir"]) Labels["com.docker.compose.project.working_dir"] = me.Labels["com.docker.compose.project.working_dir"];
-                if (me.Labels["com.docker.compose.service"]) Labels["com.docker.compose.service"] = me.Labels["com.docker.compose.service"];
-                if (me.Labels["com.docker.compose.version"]) Labels["com.docker.compose.version"] = me.Labels["com.docker.compose.version"];
+                if (Config.nodered_docker_use_project) {
+                    if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
+                    if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
+                    if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
+                    if (me.Labels["com.docker.compose.project.working_dir"]) Labels["com.docker.compose.project.working_dir"] = me.Labels["com.docker.compose.project.working_dir"];
+                    if (me.Labels["com.docker.compose.service"]) Labels["com.docker.compose.service"] = me.Labels["com.docker.compose.service"];
+                    if (me.Labels["com.docker.compose.version"]) Labels["com.docker.compose.version"] = me.Labels["com.docker.compose.version"];
+                }
                 if (me.NetworkSettings && me.NetworkSettings.Networks) {
                     const keys = Object.keys(me.NetworkSettings.Networks);
                     HostConfig.NetworkMode = keys[0];
@@ -127,7 +131,7 @@ export class dockerdriver implements i_nodered_driver {
             if (!NoderedUtil.IsNullEmpty(Config.nodered_ws_url)) api_ws_url = Config.nodered_ws_url;
             if (!api_ws_url.endsWith("/")) api_ws_url += "/";
 
-            const nodereduser = await Logger.DBHelper.FindById(_id, jwt, span);
+            const nodereduser = await Logger.DBHelper.FindById(_id, span);
             const tuser: TokenUser = TokenUser.From(nodereduser);
             const nodered_jwt: string = Crypt.createToken(tuser, Config.personalnoderedtoken_expires_in);
 
@@ -189,13 +193,14 @@ export class dockerdriver implements i_nodered_driver {
                 "amqp_enabled_exchange=" + Config.amqp_enabled_exchange.toString(),
                 "noderedcatalogues=" + Config.noderedcatalogues,
                 "log_with_colors=" + Config.log_with_colors.toString(),
-                "TZ=" + tz
+                "TZ=" + tz,
+                "allow_start_from_cache=false"
             ]
 
             if (tzvolume != null) {
                 HostConfig.Binds = ["/etc/localtime", tzvolume]
             }
-            await this._pullImage(docker, nodered_image);
+            await this._pullImage(docker, nodered_image, span);
             instance = await docker.createContainer({
                 Image: nodered_image, name, Labels, Env, NetworkingConfig, HostConfig
             })
@@ -242,7 +247,7 @@ export class dockerdriver implements i_nodered_driver {
                         const a: number = (date as any) - (Created as any);
                         const diffhours = a / (1000 * 60 * 60);
                         if (billed != "true" && diffhours > runtime) {
-                            Logger.instanse.warn("dockerdriver", "GetNoderedInstance", "[" + tokenUser.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours");
+                            Logger.instanse.warn("[" + tokenUser.username + "] Remove un billed nodered instance " + name + " that has been running for " + diffhours + " hours", span);
                             await this.DeleteNoderedInstance(rootjwt, rootuser, _id, name, span);
                             deleted = true;
                         }
@@ -269,8 +274,7 @@ export class dockerdriver implements i_nodered_driver {
             }
             return result;
         } catch (error) {
-            span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);
@@ -297,14 +301,13 @@ export class dockerdriver implements i_nodered_driver {
                 await container.restart();
             }
         } catch (error) {
-            span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);
         }
     }
-    _pullImage(docker: Dockerode, imagename: string) {
+    _pullImage(docker: Dockerode, imagename: string, span: Span) {
         return new Promise<void>((resolve, reject) => {
             docker.pull(imagename, function (err, stream) {
                 if (err)
@@ -313,15 +316,15 @@ export class dockerdriver implements i_nodered_driver {
                 docker.modem.followProgress(stream, onFinished, onProgress);
 
                 function onFinished(err2, output) {
-                    Logger.instanse.debug("dockerdriver", "_pullImage", output);
+                    Logger.instanse.debug(output, span);
                     if (err2) {
-                        Logger.instanse.error("dockerdriver", "_pullImage", err2);
+                        Logger.instanse.error(err2, null);
                         return reject(err2);
                     }
                     return resolve();
                 }
                 function onProgress(event) {
-                    Logger.instanse.debug("dockerdriver", "_pullImage", event);
+                    Logger.instanse.debug(event, span);
                 }
             });
         })
@@ -357,8 +360,7 @@ export class dockerdriver implements i_nodered_driver {
             if (result == null) result = "";
             return result;
         } catch (error) {
-            span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);
@@ -371,7 +373,7 @@ export class dockerdriver implements i_nodered_driver {
     public async DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.dockerDeleteNoderedPod", parent);
         try {
-            Logger.instanse.debug("dockerdriver", "DeleteNoderedPod", "[" + user.username + "] dockerDeleteNoderedPod");
+            Logger.instanse.debug("[" + user.username + "] dockerDeleteNoderedPod", span);
 
             if (NoderedUtil.IsNullEmpty(podname)) podname = name;
 
@@ -390,8 +392,7 @@ export class dockerdriver implements i_nodered_driver {
                 }
             }
         } catch (error) {
-            span?.recordException(error);
-            throw new Error(error.message ? error.message : error)
+            throw error
         }
         finally {
             Logger.otel.endSpan(span);

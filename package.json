@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.4.29",
+  "version": "1.4.30",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -19,7 +19,7 @@
   "author": "OpenIAP ApS / Allan Zimmermann",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/open-rpa/openflow/issues"
+    "url": "https://community.openiap.io/"
   },
   "homepage": "https://github.com/open-rpa/openflow",
   "funding": "https://github.com/sponsors/skadefro",
@@ -33,7 +33,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "0.17.0",
-    "@openiap/openflow-api": "^2.1.2",
+    "@openiap/openflow-api": "^2.1.6",
     "@opentelemetry/api-metrics": "^0.32.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.32.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.32.0",
@@ -47,6 +47,7 @@
     "body-parser": "^1.20.0",
     "cache-manager": "^4.1.0",
     "cache-manager-ioredis": "^2.1.0",
+    "cache-require-paths": "^0.3.0",
     "command-line-args": "^5.2.1",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
@@ -66,7 +67,6 @@
     "jsonwebtoken": "^8.5.1",
     "mimetype": "0.0.8",
     "mongodb": "^4.9.0",
-    "morgan": "^1.10.0",
     "multer": "^1.4.2",
     "multer-gridfs-storage": "^5.0.2",
     "nodemailer": "^6.7.8",
@@ -86,6 +86,7 @@
     "request": "^2.88.2",
     "saml20": "^0.1.14",
     "samlp": "^6.0.2",
+    "web-push": "^3.5.0",
     "ws": "^8.8.1"
   },
   "devDependencies": {

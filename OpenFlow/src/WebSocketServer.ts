@@ -44,30 +44,17 @@ export class WebSocketServer {
             this._clients = [];
             this._socketserver = new WebSocket.Server({ server: server });
             this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
-                let remoteip: string = "unknown";
-                if (Config.otel_trace_connection_ips) {
-                    if (!NoderedUtil.IsNullUndefinded(req)) {
-                        remoteip = WebSocketServerClient.remoteip(req);
-                    }
-                    remoteip = remoteip.split(":").join("-");
+                try {
+                    var sock = new WebSocketServerClient();
+                    if (await sock.Initialize(socketObject, req)) {
+                        this._clients.push(sock);
+                    }                    
+                } catch (error) {
+                    Logger.instanse.error(error, null);    
                 }
-                if (!this.total_connections_count[remoteip]) this.total_connections_count[remoteip] = 0;
-                this.total_connections_count[remoteip]++;
-
-                if (await WebServer.isBlocked(req)) {
-                    remoteip = WebSocketServerClient.remoteip(req);
-                    Logger.instanse.error("WebSocketServer", "connection", remoteip + " is blocked");
-                    try {
-                        socketObject.close()
-                    } catch (error) {
-                        Logger.instanse.error("WebSocketServer", "connection", error);
-                    }
-                    return;
-                }
-                this._clients.push(new WebSocketServerClient(socketObject, req));
             });
             this._socketserver.on("error", (error: Error): void => {
-                Logger.instanse.error("WebSocketServer", "configure", error);
+                Logger.instanse.error(error, null);
             });
             if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
@@ -92,8 +79,7 @@ export class WebSocketServer {
                                 }
                             }
                         } catch (error) {
-                            span?.recordException(error);
-                            Logger.instanse.error("WebSocketServer", "observeClients", error);
+                            Logger.instanse.error(error, null);
                         }
                     }
                     keys = Object.keys(p_all);
@@ -164,15 +150,14 @@ export class WebSocketServer {
             }
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
         } catch (error) {
-            span?.recordException(error);
-            Logger.instanse.error("WebSocketServer", "configure", error);
+            Logger.instanse.error(error, span);
             return;
         } finally {
             Logger.otel.endSpan(span);
         }
 
     }
-    public static async DumpClients(): Promise<void> {
+    public static async DumpClients(parent: Span): Promise<void> {
         try {
             const jwt = Crypt.rootToken();
             const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
@@ -193,46 +178,70 @@ export class WebSocketServer {
                 c.user = cli.user;
                 c.username = cli.username;
                 c.watches = cli.watches;
+                if (NoderedUtil.IsNullEmpty(c.username)) c.username = "";
+                if (NoderedUtil.IsNullEmpty(c.clientagent)) c.clientagent = "";
+                if (NoderedUtil.IsNullEmpty(c.id)) c.id = "";
+                c.name = (c.username + "/" + c.clientagent + "/" + c.id).trim();
                 clients.push(c);
             }
-            Logger.instanse.info("WebSocketServer", "DumpClients", "Insert " + clients.length + " clients");
-            await Config.db.InsertMany(clients, "websocketclients", 1, false, jwt, null)
+            Logger.instanse.info("Insert " + clients.length + " clients", parent);
+            await Config.db.InsertMany(clients, "websocketclients", 1, false, jwt, parent)
         } catch (error) {
-            Logger.instanse.error("WebSocketServer", "DumpClients", error);
+            Logger.instanse.error(error, parent);
         }
     }
     private static lastUserUpdate = Date.now();
     private static async pingClients(): Promise<void> {
-        const span: Span = (Config.otel_trace_pingclients ? Logger.otel.startSpan("WebSocketServer.pingClients") : null);
+        const span: Span = (Config.otel_trace_pingclients ? Logger.otel.startSpan("WebSocketServer.pingClients", null, null) : null);
         try {
             let count: number = WebSocketServer._clients.length;
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
                 try {
                     if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-                        const payload = Crypt.decryptToken(cli.jwt);
-                        const clockTimestamp = Math.floor(Date.now() / 1000);
-                        if ((payload.exp - clockTimestamp) < 60) {
-                            Logger.instanse.debug("WebSocketServer", "pingClients", "Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
-                            const tuser: TokenUser = await Message.DoSignin(cli, null);
-                            if (tuser != null) {
-                                span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
-                                const l: SigninMessage = new SigninMessage();
-                                cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                                l.jwt = cli.jwt;
-                                l.user = tuser;
-                                const m: Message = new Message(); m.command = "refreshtoken";
-                                m.data = JSON.stringify(l);
-                                cli.Send(m);
-                            } else {
-                                cli.Close();
+                        try {
+                            const payload = Crypt.decryptToken(cli.jwt);
+                            const clockTimestamp = Math.floor(Date.now() / 1000);
+                            if ((payload.exp - clockTimestamp) < 60) {
+                                Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client", span);
+                                const tuser: TokenUser = await Message.DoSignin(cli, null, span);
+                                if (tuser != null) {
+                                    span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                                    const l: SigninMessage = new SigninMessage();
+                                    cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                                    l.jwt = cli.jwt;
+                                    l.user = tuser;
+                                    const m: Message = new Message(); m.command = "refreshtoken";
+                                    m.data = JSON.stringify(l);
+                                    cli.Send(m);
+                                } else {
+                                    cli.Close(span);
+                                }
                             }
+                        } catch (error) {
+                            try {
+                                Logger.instanse.debug(cli.id + "/" + cli.user?.name + "/" + cli.clientagent + " ERROR: " + (error.message || error), span);
+                                if (cli != null) cli.Close(span);
+                            } catch (error) {                                
+                            }
+                        }
+                    } else {
+                        const now = new Date();
+                        const seconds = (now.getTime() - cli.created.getTime()) / 1000;
+                        if (seconds >= Config.client_signin_timeout) {
+                            if (cli.user != null) {
+                                span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection", span);
+                            } else {
+                                span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection", span);
+                            }
+                            cli.Close(span);
                         }
                     }
                 } catch (error) {
-                    span?.recordException(error);
-                    Logger.instanse.error("WebSocketServer", "pingClients", error);
-                    cli.Close();
+                    Logger.instanse.error(error, span);
+                    cli.Close(span);
                 }
                 const now = new Date();
                 const seconds = (now.getTime() - cli.lastheartbeat.getTime()) / 1000;
@@ -240,33 +249,32 @@ export class WebSocketServer {
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
                         span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.debug("WebSocketServer", "pingClients", "client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down", span);
                     } else {
                         span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.debug("WebSocketServer", "pingClients", "client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
+                        Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down", span);
                     }
-                    cli.Close();
+                    cli.Close(span);
                 }
                 cli.ping(span);
                 if (!cli.connected() && cli.queuecount() == 0) {
                     if (cli.user != null) {
-                        Logger.instanse.debug("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent, span);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
                     } else {
-                        Logger.instanse.debug("WebSocketServer", "pingClients", "removing disconnected client " + cli.id + "/" + cli.clientagent);
+                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.clientagent, span);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
                     }
                     try {
                         cli.CloseConsumers(span);
                         WebSocketServer._clients.splice(i, 1);
                     } catch (error) {
-                        span?.recordException(error);
-                        Logger.instanse.error("WebSocketServer", "pingClients", error);
+                        Logger.instanse.error(error, span);
                     }
                 }
             }
             if (count !== WebSocketServer._clients.length) {
-                Logger.instanse.debug("WebSocketServer", "pingClients", "new client count: " + WebSocketServer._clients.length);
+                Logger.instanse.debug("new client count: " + WebSocketServer._clients.length, span);
                 span?.setAttribute("clientcount", WebSocketServer._clients.length)
             }
             const p_all = {};
@@ -281,7 +289,7 @@ export class WebSocketServer {
                                 p_all[cli.clientagent] += 1;
                             }
                         }
-                        var updateDoc = await Logger.DBHelper.UpdateHeartbeat(cli);
+                        var updateDoc = Logger.DBHelper.UpdateHeartbeat(cli);
                         if (updateDoc != null) {
                             bulkUpdates.push({
                                 updateOne: {
@@ -292,8 +300,7 @@ export class WebSocketServer {
                         }
                     }
                 } catch (error) {
-                    span?.recordException(error);
-                    Logger.instanse.error("WebSocketServer", "pingClients", error);
+                    Logger.instanse.error(error, span);
                 }
             }
 
@@ -304,8 +311,7 @@ export class WebSocketServer {
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_updatemany, { collection: "users" });
             }
         } catch (error) {
-            span?.recordException(error);
-            Logger.instanse.error("WebSocketServer", "pingClients", error);
+            Logger.instanse.error(error, span);
         } finally {
             Logger.otel.endSpan(span);
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);

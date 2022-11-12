@@ -130,44 +130,44 @@ gulp.task("browserify", function () {
         minify: minify,
         output: './dist/public/bundle.css'
         ,
-        processRelativeUrl: function (relativeUrl) {
-            if (relativeUrl.indexOf('..\\..\\..\\OpenFlow') > -1) {
-                relativeUrl = relativeUrl.replace('..\\..\\..\\OpenFlow\\src\\public', '.');
-            }
-            try {
-                var stripQueryStringAndHashFromPath = function (url) {
-                    return url.split('?')[0].split('#')[0];
-                };
-                var rootDir = path.resolve(process.cwd(), 'OpenFlow/src/public');
-                var relativePath = stripQueryStringAndHashFromPath(relativeUrl);
-                var queryStringAndHash = relativeUrl.substring(relativePath.length);
+        // processRelativeUrl: function (relativeUrl) {
+        //     if (relativeUrl.indexOf('..\\..\\..\\OpenFlow') > -1) {
+        //         relativeUrl = relativeUrl.replace('..\\..\\..\\OpenFlow\\src\\public', '.');
+        //     }
+        //     try {
+        //         var stripQueryStringAndHashFromPath = function (url) {
+        //             return url.split('?')[0].split('#')[0];
+        //         };
+        //         var rootDir = path.resolve(process.cwd(), 'OpenFlow/src/public');
+        //         var relativePath = stripQueryStringAndHashFromPath(relativeUrl);
+        //         var queryStringAndHash = relativeUrl.substring(relativePath.length);
 
-                // var prefix = '../node_modules/';
-                var prefix = '..\\..\\..\\node_modules\\';
-                if (relativeUrl.startsWith(relativePath, prefix)) {
-                    var vendorPath = 'vendor/' + relativePath.substring(prefix.length);
-                    vendorPath = vendorPath.replace("@", "");
-                    console.log("vendorPath: " + vendorPath)
-                    var source = path.join(rootDir, relativePath);
-                    var target = path.join(rootDir, vendorPath);
-                    if (fs.existsSync(source)) {
-                        fs.mkdirSync(path.dirname(target), { recursive: true });
-                        fs.copyFileSync(source, target);
-                    } else if (source.indexOf('fontawesome-webfont') > -1) {
-                        // console.error(source + " WHAT?????")
-                    } else {
-                        console.error(source + " not found")
-                    }
+        //         // var prefix = '../node_modules/';
+        //         var prefix = '..\\..\\..\\node_modules\\';
+        //         if (relativeUrl.startsWith(relativePath, prefix)) {
+        //             var vendorPath = 'vendor/' + relativePath.substring(prefix.length);
+        //             vendorPath = vendorPath.replace("@", "");
+        //             console.log("vendorPath: " + vendorPath)
+        //             var source = path.join(rootDir, relativePath);
+        //             var target = path.join(rootDir, vendorPath);
+        //             if (fs.existsSync(source)) {
+        //                 fs.mkdirSync(path.dirname(target), { recursive: true });
+        //                 fs.copyFileSync(source, target);
+        //             } else if (source.indexOf('fontawesome-webfont') > -1) {
+        //                 // console.error(source + " WHAT?????")
+        //             } else {
+        //                 console.error(source + " not found")
+        //             }
 
-                    // Returns a new path string with original query string and hash fragments
-                    return vendorPath + queryStringAndHash;
-                }
-            } catch (error) {
-                console.error(error);
+        //             // Returns a new path string with original query string and hash fragments
+        //             return vendorPath + queryStringAndHash;
+        //         }
+        //     } catch (error) {
+        //         console.error(error);
 
-            }
-            return relativeUrl;
-        }
+        //     }
+        //     return relativeUrl;
+        // }
     })
         ;
     // .transform('browserify-shim', { global: true })
@@ -220,39 +220,39 @@ gulp.task("browserify", function () {
 //     // docker buildx use default
 //     // docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 -t openiap/openflow:edge .
 //     `echo "docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push ."`,
-//     `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push ."`,
-//     `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f Dockerfilepuppeteer ."`,
-//     `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f Dockerfiletagui ."`,
+//     `echo "docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --file ./OpenFlowNodeRED/Dockerfile ."`,
+//     `echo "docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer ."`,
+//     `echo "docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui ."`,
 //     `docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .`,
-//     `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .`,
-//     `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f Dockerfilepuppeteer .`,
-//     `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f Dockerfiletagui .`,
+//     `docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --file ./OpenFlowNodeRED/Dockerfile --push .`,
+//     `docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer .`,
+//     `docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui .`,
 // ]));
 gulp.task("compose", shell.task([
     // docker buildx create --name openiap --use
     // docker buildx use default
     // docker buildx build --platform linux/amd64 -t openiap/openflow:edge .
     `docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push .`,
-    `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push .`,
+    `docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push --file ./OpenFlowNodeRED/Dockerfile .`,
     // `echo "docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push ."`,
-    // `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push ."`,
-    // `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f Dockerfilepuppeteer ."`,
-    // `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f Dockerfiletagui ."`,
+    // `echo "docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push --file ./OpenFlowNodeRED/Dockerfile ."`,
+    // `echo "docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer ."`,
+    // `echo "docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui ."`,
     // `docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push .`,
-    // `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push .`,
-    // `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f Dockerfilepuppeteer .`,
-    // `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f Dockerfiletagui .`,
+    // `docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push --file ./OpenFlowNodeRED/Dockerfile .`,
+    // `docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer .`,
+    // `docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui .`,
 ]));
 
 gulp.task("latest", shell.task([
     `echo "docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push ."`,
-    `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push ."`,
-    `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f Dockerfilepuppeteer ."`,
-    `echo "cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f Dockerfiletagui ."`,
+    `echo "docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --file ./OpenFlowNodeRED/Dockerfile ."`,
+    `echo "docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer ."`,
+    `echo "docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui ."`,
     `docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .`,
-    `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .`,
-    `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f Dockerfilepuppeteer .`,
-    `cd OpenFlowNodeRED && docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f Dockerfiletagui .`,
+    `docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --file ./OpenFlowNodeRED/Dockerfile .`,
+    `docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer .`,
+    `docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui .`,
 ]));
 
 gulp.task("bumpyml1", function () {

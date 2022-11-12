@@ -93,7 +93,7 @@ export class WebSocketClientService {
                 const result = await NoderedUtil.SigninWithToken({ jwt: data.jwt, rawAssertion: data.rawAssertion });
 
                 this.customer = null;
-                if (!NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
+                if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user) && !NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
                     const customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", "$or": [{ "_id": WebSocketClient.instance.user.selectedcustomerid }, { "_id": WebSocketClient.instance.user.customerid }] } });
                     if (customers && customers.length > 0 && (WebSocketClient.instance.user.selectedcustomerid != null)) {
                         if (WebSocketClient.instance.user.selectedcustomerid != null) {

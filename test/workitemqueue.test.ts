@@ -17,12 +17,12 @@ import { Logger } from '../OpenFlow/src/Logger';
 
 @suite class workitemqueue {
     private socket: WebSocketClient = null;
-    @timeout(10000)
+    @timeout(2000)
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, false);
-        if (!this.socket) this.socket = new WebSocketClient(null, "wss://pc.openiap.io", true);
+        if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true);
         // if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true, true);
         this.socket.agent = "test-cli";
         await this.socket.Connect();
@@ -111,7 +111,7 @@ import { Logger } from '../OpenFlow/src/Logger';
 
         item = await NoderedUtil.AddWorkitem({
             name: "Test Work Item with files", payload: { "find": "me" }, wiq: q.name,
-            files: await NoderedUtil.CreateWorkitemFilesArray([__filename], true)
+            files: await workitemqueue.CreateWorkitemFilesArray([__filename], true)
         });
         assert.notStrictEqual(item, null, "Failed adding Test Work Item with files");
         assert.notStrictEqual(item, undefined, "Failed adding Test Work Item with files");
@@ -128,7 +128,7 @@ import { Logger } from '../OpenFlow/src/Logger';
 
         item = await NoderedUtil.UpdateWorkitem({
             _id: item._id,
-            files: await NoderedUtil.CreateWorkitemFilesArray([path.join(__dirname, 'tsconfig.json')], false)
+            files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, 'tsconfig.json')], false)
         });
 
         let testitem = await NoderedUtil.PopWorkitem({ wiq: q.name });
@@ -162,9 +162,9 @@ import { Logger } from '../OpenFlow/src/Logger';
         } while (item != null)
 
         const items: AddWorkitem[] = [];
-        items.push(AddWorkitem.parse({ name: "multi item 1", files: await NoderedUtil.CreateWorkitemFilesArray([__filename], true) }));
-        items.push(AddWorkitem.parse({ name: "multi item 2", files: await NoderedUtil.CreateWorkitemFilesArray([__filename], true) }));
-        items.push(AddWorkitem.parse({ name: "multi item 3", files: await NoderedUtil.CreateWorkitemFilesArray([__filename], true) }));
+        items.push(AddWorkitem.parse({ name: "multi item 1", files: await workitemqueue.CreateWorkitemFilesArray([__filename], true) }));
+        items.push(AddWorkitem.parse({ name: "multi item 2", files: await workitemqueue.CreateWorkitemFilesArray([__filename], true) }));
+        items.push(AddWorkitem.parse({ name: "multi item 3", files: await workitemqueue.CreateWorkitemFilesArray([__filename], true) }));
 
 
         await NoderedUtil.AddWorkitems({ items, wiq: q.name })
@@ -178,7 +178,7 @@ import { Logger } from '../OpenFlow/src/Logger';
 
             item = await NoderedUtil.UpdateWorkitem({
                 _id: item._id,
-                files: await NoderedUtil.CreateWorkitemFilesArray([path.join(__dirname, 'tsconfig.json')], false)
+                files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, 'tsconfig.json')], false)
             });
             assert.strictEqual(item.files.length, 2);
             await NoderedUtil.UpdateWorkitem({ _id: item._id, state: "successful" });

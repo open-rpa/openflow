@@ -1,10 +1,14 @@
+import * as os from "os";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
 import { dockerdriver } from "./dockerdriver";
 import { DBHelper } from './DBHelper';
+import { amqpwrapper } from "./amqpwrapper";
+import { WebSocketServerClient } from "./WebSocketServerClient";
 const fs = require('fs');
 const path = require('path');
+import { Span } from "@opentelemetry/api";
 
 const MAX_RETRIES_DEFAULT = 5
 export async function promiseRetry<T>(
@@ -38,8 +42,13 @@ export class Logger {
     public static log_with_trace: boolean = false;
     public static enabled: any = {}
     public static usecolors: boolean = true;
+    private static _hostname: string = "";
 
-    public prefix(lvl: level, cls: string, func: string, message: string | unknown): string {
+    public static parsecli(cli: WebSocketServerClient) {
+        if (NoderedUtil.IsNullUndefinded(cli)) return {};
+        return { user: cli.username, agent: cli.clientagent, version: cli.clientversion, cid: cli.id, ip: cli.remoteip }
+    }
+    public prefix(lvl: level, cls: string, func: string, message: string | unknown, collection: string, user: string, ms: number): string {
         let White = Console.Reset + Console.Bright + Console.FgWhite;
         let Grey = Console.Reset + Console.Dim + Console.FgWhite;
         let Red = Console.Reset + Console.Bright + Console.FgRed;
@@ -59,19 +68,25 @@ export class Logger {
         if (lvl == level.Error) color = Red;
         if (lvl == level.Warning) color = darkYellow;
         if (cls != "") {
-            // DatabaseConnection
-            // WebSocketServerClient
             let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
             if (Logger.usecolors) {
-                prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "] ");
+                prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "]");
+                if (!NoderedUtil.IsNullEmpty(collection)) prefix += ("[" + collection + "]");
+                if (!NoderedUtil.IsNullEmpty(user)) prefix += ("[" + user + "]");
+                if (!NoderedUtil.IsNullEmpty(ms)) prefix += ("[" + ms + "ms]");
+                prefix += (" ");
                 let spaces = 0;
                 if (prefix.length < 60) spaces = 60 - prefix.length;
                 prefix = Green +
                     dts.padEnd(13, " ") + White + "[" + darkYellow + cls.padEnd(21) + White + "][" + darkYellow + func + White + "] ";
                 if (spaces > 0) prefix += "".padEnd(spaces, " ");
-
             } else {
-                prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "] ").padEnd(60, " ");
+                prefix = dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "]";
+                if (!NoderedUtil.IsNullEmpty(collection)) prefix += ("[" + collection + "]");
+                if (!NoderedUtil.IsNullEmpty(user)) prefix += ("[" + user + "]");
+                if (!NoderedUtil.IsNullEmpty(ms)) prefix += ("[" + ms + "ms]");
+                prefix += (" ");
+                prefix = prefix.padEnd(60, " ");
             }
         }
         if (Logger.usecolors) {
@@ -79,62 +94,184 @@ export class Logger {
         }
         return prefix + message;
     }
-    public error(cls: string, func: string, message: string | Error | unknown) {
+    public json(obj, span: Span) {
         if (Config.unittesting) return;
+        const { cls, func, message, lvl } = obj;
+        if (!NoderedUtil.IsNullEmpty(func) && span != null && span.isRecording()) {
+            var stringifyError = function (err, filter, space) {
+                var plainObject = {};
+                Object.getOwnPropertyNames(err).forEach(function (key) {
+                    plainObject[key] = err[key];
+                });
+                return JSON.stringify(plainObject, filter, space);
+            };
+            if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
+            if (lvl == level.Error) {
+                span.setStatus({ code: 2, message: obj.message });
+                span.recordException(message)
+            }
+            span.addEvent(obj.message, obj)
+        }
         if (Logger.enabled[cls]) {
-            if (Logger.enabled[cls] < level.Error) return;
+            if (Logger.enabled[cls] < lvl) return;
+        } else {
+            if (Config.log_silly) {
+                if (lvl > level.Silly) return;
+            }
+            else if (Config.log_debug) {
+                if (lvl > level.Debug) return;
+            }
+            else if (Config.log_verbose) {
+                if (lvl > level.Verbose) return;
+            } else if (lvl > level.Information) {
+                if (Config.log_database_queries && obj.ms != null && obj.ms != "") {
+                    if (obj.ms < Config.log_database_queries_ms) return;
+                } else {
+                    return;
+                }
+            }
         }
         if (message instanceof Error) {
             console.error(message);
-            return;
+        } else if (lvl == level.Error) {
+            console.error(this.prefix(lvl, cls, func, message, obj.collection, obj.user, obj.ms));
+        } else if (lvl == level.Warning) {
+            console.warn(this.prefix(lvl, cls, func, message, obj.collection, obj.user, obj.ms));
+        } else if (lvl == level.Verbose || lvl == level.Silly) {
+            console.debug(this.prefix(lvl, cls, func, message, obj.collection, obj.user, obj.ms));
+        } else {
+            console.log(this.prefix(lvl, cls, func, message, obj.collection, obj.user, obj.ms));
         }
-        if (Logger.log_with_trace) return console.trace(this.prefix(level.Error, cls, func, message));
-        console.error(this.prefix(level.Error, cls, func, message));
-    }
-    public info(cls: string, func: string, message: string) {
-        if (Config.unittesting) return;
-        if (!Config.log_information) {
-            if (!Logger.enabled[cls]) return;
-            if (Logger.enabled[cls] < level.Information) return;
+        var stringifyError = function (err, filter, space) {
+            var plainObject = {};
+            Object.getOwnPropertyNames(err).forEach(function (key) {
+                plainObject[key] = err[key];
+            });
+            return JSON.stringify(plainObject, filter, space);
+        };
+        if (Config.log_to_exchange && !Config.unittesting) {
+            if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
+                if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
+                amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", span, 1);
+            }
         }
-        if (Logger.log_with_trace) return console.trace(this.prefix(level.Information, cls, func, message));
-        console.info(this.prefix(level.Information, cls, func, message));
     }
-    public warn(cls: string, func: string, message: string) {
-        if (Config.unittesting) return;
-        // if (!Logger.enabled[cls]) return;
-        // if (Logger.enabled[cls] < level.Warning) return;
-        // if (Logger.log_with_trace) return console.trace(this.prefix(cls, func, message));
-        console.warn(this.prefix(level.Warning, cls, func, message));
-    }
-    public debug(cls: string, func: string, message: string) {
-        if (Config.unittesting) return;
-        if (!Config.log_debug) {
-            if (!Logger.enabled[cls]) return;
-            if (Logger.enabled[cls] < level.Debug) return;
+    public error(message: string | Error | unknown, span: Span, options?: any) {
+        var s = Logger.getStackInfo(0);
+        if (s.method == "") s = Logger.getStackInfo(1);
+        if (s.method == "") s = Logger.getStackInfo(2);
+        var obj = { cls: "", func: "", message, lvl: level.Error };
+        if (options != null) obj = { ...obj, ...options };
+        if (s.method.indexOf(".") > 1 && s.method.indexOf("<anonymous>") == -1) {
+            obj.func = s.method.substring(s.method.indexOf(".") + 1);
+            obj.cls = s.method.substring(0, s.method.indexOf("."));
+        } else {
+            obj.func = s.method;
+            obj.cls = "";
+            if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (Logger.log_with_trace) return console.trace(this.prefix(level.Debug, cls, func, message));
-        console.debug(this.prefix(level.Debug, cls, func, message));
-    }
-    public verbose(cls: string, func: string, message: string) {
-        if (Config.unittesting) return;
-        if (!Config.log_verbose) {
-            if (!Logger.enabled[cls]) return;
-            if (Logger.enabled[cls] < level.Verbose) return;
+        if (obj.cls == "") {
+            var c = obj.cls;
         }
-        if (Logger.log_with_trace) return console.trace(this.prefix(level.Verbose, cls, func, message));
-        console.debug(this.prefix(level.Verbose, cls, func, message));
+        this.json(obj, span);
     }
-    public silly(cls: string, func: string, message: string) {
-        if (Config.unittesting) return;
-        if (!Config.log_silly) {
-            if (!Logger.enabled[cls]) return;
-            if (Logger.enabled[cls] < level.Silly) return;
+    public info(message: string, span: Span, options?: any) {
+        var s = Logger.getStackInfo(0);
+        if (s.method == "") s = Logger.getStackInfo(1);
+        if (s.method == "") s = Logger.getStackInfo(2);
+        var obj = { cls: "", func: "", message, lvl: level.Information };
+        if (options != null) obj = { ...obj, ...options };
+        if (s.method.indexOf(".") > 1) {
+            obj.func = s.method.substring(s.method.indexOf(".") + 1);
+            obj.cls = s.method.substring(0, s.method.indexOf("."));
+            if (s.file != '') obj.cls = s.file.replace(".js", "");
+        } else {
+            obj.func = s.method;
+            obj.cls = "";
+            if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (Logger.log_with_trace) return console.trace(this.prefix(level.Silly, cls, func, message));
-        console.debug(this.prefix(level.Silly, cls, func, message));
+        if (obj.cls == "") {
+            var c = obj.cls;
+        }
+        this.json(obj, span);
     }
-
+    public warn(message: string, span: Span, options?: any) {
+        var s = Logger.getStackInfo(0);
+        if (s.method == "") s = Logger.getStackInfo(1);
+        if (s.method == "") s = Logger.getStackInfo(2);
+        var obj = { cls: "", func: "", message, lvl: level.Warning };
+        if (options != null) obj = { ...obj, ...options };
+        if (s.method.indexOf(".") > 1) {
+            obj.func = s.method.substring(s.method.indexOf(".") + 1);
+            obj.cls = s.method.substring(0, s.method.indexOf("."));
+        } else {
+            obj.func = s.method;
+            obj.cls = "";
+            if (s.file != '') obj.cls = s.file.replace(".js", "");
+        }
+        if (obj.cls == "") {
+            var c = obj.cls;
+        }
+        this.json(obj, span);
+    }
+    public debug(message: string, span: Span, options?: any) {
+        var s = Logger.getStackInfo(0);
+        if (s.method == "") s = Logger.getStackInfo(1);
+        if (s.method == "") s = Logger.getStackInfo(2);
+        var obj = { cls: "", func: "", message, lvl: level.Debug };
+        if (options != null) obj = { ...obj, ...options };
+        if (s.method.indexOf(".") > 1) {
+            obj.func = s.method.substring(s.method.indexOf(".") + 1);
+            obj.cls = s.method.substring(0, s.method.indexOf("."));
+        } else {
+            obj.func = s.method;
+            obj.cls = "";
+            if (s.file != '') obj.cls = s.file.replace(".js", "");
+        }
+        if (obj.cls == "") {
+            var c = obj.cls;
+        }
+        this.json(obj, span);
+    }
+    public verbose(message: string, span: Span, options?: any) {
+        var s = Logger.getStackInfo(0);
+        if (s.method == "") s = Logger.getStackInfo(1);
+        if (s.method == "") s = Logger.getStackInfo(2);
+        var obj = { cls: "", func: "", message, lvl: level.Verbose };
+        if (options != null) obj = { ...obj, ...options };
+        if (s.method.indexOf(".") > 1) {
+            obj.func = s.method.substring(s.method.indexOf(".") + 1);
+            obj.cls = s.method.substring(0, s.method.indexOf("."));
+        } else {
+            obj.func = s.method;
+            obj.cls = "";
+            if (s.file != '') obj.cls = s.file.replace(".js", "");
+        }         
+        if (obj.cls == "") {
+            var c = obj.cls;
+        }
+        this.json(obj, span);
+    }
+    public silly(message: string, span: Span, options?: any) {
+        var s = Logger.getStackInfo(0);
+        if (s.method == "") s = Logger.getStackInfo(1);
+        if (s.method == "") s = Logger.getStackInfo(2);
+        var obj = { cls: "", func: "", message, lvl: level.Silly };
+        if (options != null) obj = { ...obj, ...options };
+        if (s.method.indexOf(".") > 1) {
+            obj.func = s.method.substring(s.method.indexOf(".") + 1);
+            obj.cls = s.method.substring(0, s.method.indexOf("."));
+        } else {
+            obj.func = s.method;
+            obj.cls = "";
+            if (s.file != '') obj.cls = s.file.replace(".js", "");
+        }         
+        if (obj.cls == "") {
+            var c = obj.cls;
+        }
+        this.json(obj, span);
+    }
 
     public static async shutdown() {
         Logger.License.shutdown();
@@ -160,6 +297,8 @@ export class Logger {
         if (Config.otel_debug_log) Logger.enabled["WebSocketServerClient"] = level.Verbose;
         if (Config.otel_warn_log) Logger.enabled["WebSocketServerClient"] = level.Warning;
         if (Config.otel_err_log) Logger.enabled["WebSocketServerClient"] = level.Error;
+        if (Config.log_database_queries) Logger.enabled["log_database_queries"] = level.Verbose;
+
     }
     static hasDockerEnv(): boolean {
         try {
@@ -192,7 +331,7 @@ export class Logger {
         return true;
     }
 
-    static configure(skipotel: boolean, skiplic: boolean): void {
+    static async configure(skipotel: boolean, skiplic: boolean): Promise<void> {
         Logger.DBHelper = new DBHelper();
         Logger.reload() 
 
@@ -228,43 +367,6 @@ export class Logger {
             Logger.License.shutdown = () => undefined;
         }
 
-        this.nodereddriver = null;
-        if (!Logger.isKubernetes() && Logger.isDocker()) {
-            if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
-                try {
-                    this.nodereddriver = new dockerdriver();
-                    if (!this.nodereddriver.detect()) {
-                        this.nodereddriver = null;
-                    }
-                } catch (error) {
-                    this.nodereddriver = null;
-                    Logger.instanse.error("Logger", "configure", error);
-                }
-            }
-        }
-        if (this.nodereddriver == null) {
-            let _driver: any = null;
-            try {
-                _driver = require("./ee/kubedriver");
-            } catch (error) {
-            }
-            try {
-                if (_driver != null) {
-                    this.nodereddriver = new _driver.kubedriver();
-                } else {
-                    this.nodereddriver = new dockerdriver();
-                }
-                if (!this.nodereddriver.detect()) {
-                    this.nodereddriver = null;
-                }
-            } catch (error) {
-                this.nodereddriver = null;
-                Logger.instanse.error("Logger", "configure", error);
-            }
-        }
-
-
-
         let _otel_require: any = null;
         try {
             if (!skipotel) _otel_require = require("./ee/otel");
@@ -272,7 +374,7 @@ export class Logger {
 
         }
         if (_otel_require != null) {
-            Logger.otel = _otel_require.otel.configure();
+            Logger.otel = await _otel_require.otel.configure();
         } else {
             const fakespan = {
                 context: () => undefined,
@@ -303,6 +405,42 @@ export class Logger {
                     }
                 } as any;
         }
+
+
+        this.nodereddriver = null;
+        if (!Logger.isKubernetes() && Logger.isDocker()) {
+            if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
+                try {
+                    this.nodereddriver = new dockerdriver();
+                    if (!this.nodereddriver.detect()) {
+                        this.nodereddriver = null;
+                    }
+                } catch (error) {
+                    this.nodereddriver = null;
+                    Logger.instanse.error(error, null);
+                }
+            }
+        }
+        if (this.nodereddriver == null) {
+            let _driver: any = null;
+            try {
+                _driver = require("./ee/kubedriver");
+            } catch (error) {
+            }
+            try {
+                if (_driver != null) {
+                    this.nodereddriver = new _driver.kubedriver();
+                } else {
+                    this.nodereddriver = new dockerdriver();
+                }
+                if (!this.nodereddriver.detect()) {
+                    this.nodereddriver = null;
+                }
+            } catch (error) {
+                this.nodereddriver = null;
+                Logger.instanse.error(error, null);
+            }
+        }
     }
     static instanse: Logger = null;
     private static _ofid = null;
@@ -330,11 +468,20 @@ export class Logger {
 
         if (sp && sp.length === 5) {
             return {
-                method: sp[1],
+                method: sp[1] || "",
                 relativePath: path.relative(__dirname, sp[2]),
                 line: sp[3],
                 pos: sp[4],
                 file: path.basename(sp[2]),
+                stack: stacklist.join('\n')
+            }
+        } else {
+            return {
+                method: "",
+                relativePath: "",
+                line: "",
+                pos: "",
+                file: "",
                 stack: stacklist.join('\n')
             }
         }

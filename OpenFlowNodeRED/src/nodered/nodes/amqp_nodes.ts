@@ -4,6 +4,7 @@ import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, SigninMessage, Message, QueueMessage } from "@openiap/openflow-api";
 import { Util } from "./Util";
 import { Logger } from "../../Logger";
+import { log_message, WebServer } from "../../WebServer";
 
 export interface Iamqp_connection {
     name: string;
@@ -149,14 +150,15 @@ export class amqp_consumer_node {
         }
     }
     async OnMessage(msg: any, ack: any) {
+        const data: any = msg.data;
+        var span = Logger.otel.startSpan("Consumer Node Received", data.traceId, data.spanId);
         try {
-            const data: any = msg.data;
             if (this.config.autoack) {
                 const data: any = Object.assign({}, msg.data);
                 delete data.jwt;
                 delete data.__jwt;
                 delete data.__user;
-                ack(true, data);
+                ack(true, data, data.traceId, data.spanId);
             } else {
                 data.amqpacknowledgment = ack;
             }
@@ -169,9 +171,11 @@ export class amqp_consumer_node {
                 delete data.__jwt;
             }
             this.node.send(data);
-            ack();
+            if (!this.config.autoack) ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
         }
     }
     async onclose(removed: boolean, done: any) {
@@ -269,9 +273,10 @@ export class amqp_publisher_node {
         }
     }
     async OnMessage(msg: any, ack: any) {
+        let data = msg.data;
+        var span = Logger.otel.startSpan("Publish Node Receive", data.traceId, data.spanId);
         try {
             let result: any = {};
-            let data = msg.data;
             if (!NoderedUtil.IsNullEmpty(data._msgid)) {
                 if (amqp_publisher_node.payloads && amqp_publisher_node.payloads[data._msgid]) {
                     result = Object.assign(amqp_publisher_node.payloads[data._msgid], data);
@@ -289,9 +294,18 @@ export class amqp_publisher_node {
             ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
         }
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("Publish Node Send", traceId, spanId);
         try {
             this.node.status({});
             if (this.websocket() == null || !this.websocket().isConnected()) {
@@ -310,6 +324,7 @@ export class amqp_publisher_node {
             if (!NoderedUtil.IsNullEmpty(msg.striptoken)) { striptoken = msg.striptoken; }
 
             const data: any = {};
+            const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
             data.payload = msg.payload;
             data.jwt = msg.jwt;
             data._id = msg._id;
@@ -317,7 +332,7 @@ export class amqp_publisher_node {
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_message_ttl);
             this.node.status({ fill: "blue", shape: "dot", text: "Sending message ..." });
             try {
-                await NoderedUtil.Queue({ websocket: this.websocket(), exchangename, routingkey, queuename, replyto: this.localqueue, data, expiration, striptoken, priority });
+                await NoderedUtil.Queue({ websocket: this.websocket(), exchangename, routingkey, queuename, replyto: this.localqueue, data, expiration, striptoken, priority, traceId, spanId });
                 amqp_publisher_node.payloads[msg._msgid] = msg;
             } catch (error) {
                 data.error = error;
@@ -326,6 +341,11 @@ export class amqp_publisher_node {
             this.node.status({ fill: "green", shape: "dot", text: "Connected " + this.localqueue });
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     async onclose(removed: boolean, done: any) {
@@ -356,6 +376,13 @@ export class amqp_acknowledgment_node {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("cknowledgment node", traceId, spanId);
         try {
             this.node.status({});
             if (msg.amqpacknowledgment) {
@@ -363,12 +390,17 @@ export class amqp_acknowledgment_node {
                 data.payload = msg.payload;
                 data.jwt = msg.jwt;
                 data._msgid = msg._msgid;
-                msg.amqpacknowledgment(true, data);
+                msg.amqpacknowledgment(true, data, traceId, spanId);
             }
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -472,7 +504,7 @@ export class amqp_exchange_node {
                 delete data.__jwt;
             }
             this.node.send(data);
-            ack();
+            if (!this.config.autoack) ack();
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
         }

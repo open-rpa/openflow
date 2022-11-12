@@ -3,7 +3,7 @@ const path = require("path");
 const env = path.join(process.cwd(), 'config', '.env');
 const crypto = require('crypto');
 require("dotenv").config({ path: env }); // , debug: false 
-import { AddWorkitem, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
+import { AddWorkitem, ApiConfig, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
 import { suite, test, timeout } from '@testdeck/mocha';
 import assert = require('assert');
 import { Config } from '../OpenFlow/src/Config';
@@ -36,11 +36,23 @@ import { Logger } from '../OpenFlow/src/Logger';
     public async createandconnect(i: number) {
         try {
             console.log("Creating client " + i);
-            var websocket = new WebSocketClient(null, "wss://pc.openiap.io", true);
+            var logger: any =
+            {
+                info(msg) { console.log(i + ") " + msg); },
+                verbose(msg) { console.debug(i + ") " + msg); },
+                error(msg) { console.error(i + ") " + msg); },
+                debug(msg) { console.log(i + ") " + msg); },
+                silly(msg) { console.log(i + ") " + msg); }
+            }
+            // ApiConfig.log_trafic_verbose = true;
+            // ApiConfig.log_trafic_silly = true;
+            // ApiConfig.log_information = true;
+            var websocket = new WebSocketClient(logger, "wss://pc.openiap.io", true);
             let randomNum = crypto.randomInt(1, 5)
             websocket.agent = "openrpa";
             if (randomNum == 1) websocket.agent = "nodered";
             if (randomNum == 3) websocket.agent = "webapp";
+            websocket.agent = websocket.agent + i;
             await websocket.Connect();
             if (NoderedUtil.IsNullEmpty(this.jwt)) {
                 var signin = await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser", websocket });
@@ -61,18 +73,19 @@ import { Logger } from '../OpenFlow/src/Logger';
                 }
             }, 1000 * randomNum)
         } catch (error) {
-            console.error(error.message ? error.message : error);
+            console.error("unknwon error", error);
+            // console.error(error.message ? error.message : error);
         }
     }
 
     @timeout(6000000)
-    @test
+    // @test
     async 'crud connection load test'() {
         await this.createandconnect(0);
         var Promises: Promise<any>[] = [];
-        for (var i = 0; i < 500; i++) {
+        for (var i = 0; i < 200; i++) {
             Promises.push(this.createandconnect(i));
-            if (i && i % 100 == 0) {
+            if (i && i % 10 == 0) {
                 await Promise.all(Promises.map(p => p.catch(e => e)))
                 Promises = [];
             }

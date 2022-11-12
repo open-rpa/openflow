@@ -166,7 +166,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     }
     @timeout(5000)
     @test async 'Many'() {
-        await Config.db.DeleteMany({}, null, "entities", null, this.userToken, null);
+        await Config.db.DeleteMany({}, null, "entities", null, false, this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         var items = await Config.db.query({ query: {}, collectionname: "entities", top: 100, jwt: this.userToken }, null);
         assert.notDeepStrictEqual(items, null);
@@ -182,7 +182,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.strictEqual(items[0].name, "Item 0");
         assert.ok(!NoderedUtil.IsNullEmpty(items[0]._id));
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        await Config.db.DeleteMany({}, null, "entities", null, this.userToken, null);
+        await Config.db.DeleteMany({}, null, "entities", null, false, this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         var items = await Config.db.query({ query: {}, collectionname: "entities", top: 100, jwt: this.userToken }, null);
         assert.notDeepStrictEqual(items, null);

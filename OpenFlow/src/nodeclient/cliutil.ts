@@ -1,7 +1,6 @@
 import { Logger } from "../Logger";
 import { Config } from "../Config";
 import * as fs from "fs";
-export const logger = Logger.configure(true, true);
 const path = require('path');
 const envfile = require('envfile')
 export const envfilename = ".env";
@@ -54,7 +53,7 @@ export function hassourceenv(): boolean {
     return fs.existsSync(sourceenv);
 }
 export function loadenv() {
-    Logger.instanse.info("cliutil", "", "NodeJS version " + process.version + " Config " + envfilepathname);
+    Logger.instanse.info("NodeJS version " + process.version + " Config " + envfilepathname, null);
     let parsedFile = envfile.parse(fs.readFileSync(envfilepathname));
     for (const k in parsedFile) {
         process.env[k] = parsedFile[k];

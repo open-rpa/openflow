@@ -433,7 +433,8 @@ export class userdata {
         this.data = {};
     }
 }
-export class copytext implements ng.IDirective {
+// implements ng.IDirective
+export class copytext {
     restrict = 'A';
     require = '?ngModel';
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
@@ -457,7 +458,8 @@ export class copytext implements ng.IDirective {
         return directive;
     }
 }
-export class jsonText implements ng.IDirective {
+// implements ng.IDirective
+export class jsonText {
     restrict = 'A';
     require = '?ngModel';
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
@@ -480,8 +482,8 @@ export class jsonText implements ng.IDirective {
         return directive;
     }
 }
-
-export class fileread implements ng.IDirective {
+// implements ng.IDirective
+export class fileread {
     restrict = 'A';
     require = '?ngModel';
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
@@ -523,7 +525,7 @@ export class entitiesCtrl<T> {
     public orderby: any = {};
     public autorefresh: boolean = false;
     public autorefreshinterval: number = 30 * 1000;
-    public pagesize: number = 100;
+    public pagesize: number = 50;
     public autorefreshpromise: any = null;
     public preloadData: any = null;
     public postloadData: any = null;

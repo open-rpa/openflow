@@ -37,15 +37,8 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         // await assert.rejects(DBHelper.FindByUsername(null, this.rootToken, null));
     }
     @test async 'FindById'() {
-        var user = await Logger.DBHelper.FindById(this.testUser._id, this.rootToken, null);
+        var user = await Logger.DBHelper.FindById(this.testUser._id, null);
         assert.notStrictEqual(user, null, "Failed locating test user as root")
-        user = await Logger.DBHelper.FindById(this.testUser._id, this.userToken, null);
-        assert.notStrictEqual(user, null, "Failed locating test user as self")
-        user = await Logger.DBHelper.FindById("nonexisting", this.userToken, null);
-        assert.strictEqual(user, null, "returned something with illegal id")
-        user = await Logger.DBHelper.FindById(null, this.rootToken, null);
-        assert.strictEqual(user, null, "Returned user with null as id")
-        // await assert.rejects(DBHelper.FindById(null, this.rootToken, null));
     }
     @test async 'FindByUsernameOrFederationid'() {
         var user = await Logger.DBHelper.FindByUsernameOrFederationid(this.testUser.username, null, null);

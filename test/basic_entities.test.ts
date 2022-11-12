@@ -10,18 +10,19 @@ import { Logger } from '../OpenFlow/src/Logger';
 
 @suite class basic_entities {
     private socket: WebSocketClient = null;
-    @timeout(10000)
+    @timeout(2000)
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         Logger.configure(true, false);
-        if (!this.socket) this.socket = new WebSocketClient(null, "wss://pc.openiap.io", true);
+        if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true);
         // if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true, true);
         this.socket.agent = "test-cli";
         try {
             await this.socket.Connect();
             await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser" });
         } catch (error) {
+            if (error == null) error = new Error("Failed connecting to pc.openiap.io")
             throw error;
         }
     }
@@ -32,7 +33,7 @@ import { Logger } from '../OpenFlow/src/Logger';
         await Logger.shutdown();
         // wtf.dump()
     }
-    @timeout(5000)
+    @timeout(500000)
     @test async 'validate collectioname'() {
         await assert.rejects(NoderedUtil.Query({ query: { "_type": "test" }, collectionname: null }));
         await assert.rejects(NoderedUtil.Query({ query: { "_type": "test" }, collectionname: undefined }));

@@ -112,10 +112,10 @@ export class OAuthProvider {
             });
         });
     }
-    public static async LoadClients() {
+    public static async LoadClients(parent: Span) {
         const instance = OAuthProvider.instance;
 
-        const span = Logger.otel.startSpan("OAuthProvider.LoadClients");
+        const span = Logger.otel.startSubSpan("OAuthProvider.LoadClients", parent);
         try {
             const jwksresults = await Config.db.query<Base>({ query: { _type: "jwks" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
             let jwks = null;
@@ -282,7 +282,7 @@ export class OAuthProvider {
                                 const tuserimpostor = tuser;
                                 _user = User.assign(items[0] as User);
                                 tuser = TokenUser.From(_user);
-                                Logger.instanse.info("Message", "Signin", tuser.username + " successfully impersonated");
+                                Logger.instanse.info(tuser.username + " successfully impersonated", span);
                                 await Audit.ImpersonateSuccess(tuser, tuserimpostor, "browser", Config.version, span);
                             }
                         }
@@ -329,8 +329,7 @@ export class OAuthProvider {
                 }
             });
         } catch (error) {
-            span?.recordException(error);
-            Logger.instanse.error("OAuthProvider", "LoadClients", error);
+            Logger.instanse.error(error, span);
         }
         finally {
             Logger.otel.endSpan(span);
@@ -347,16 +346,15 @@ export class OAuthProvider {
                 instance.app = app;
                 // @ts-ignore
                 this.LoadClients().catch(error => {
-                    Logger.instanse.error("OAuthProvider", "configure", error);
+                    Logger.instanse.error(error, span);
                 });
             } catch (error) {
-                Logger.instanse.error("OAuthProvider", "configure", error);
+                Logger.instanse.error(error, span);
                 throw error;
             }
             return instance;
         } catch (error) {
-            span?.recordException(error);
-            Logger.instanse.error("OAuthProvider", "configure", error);
+            Logger.instanse.error(error, span);
             return OAuthProvider.instance;
         } finally {
             Logger.otel.endSpan(span);
@@ -368,7 +366,7 @@ export class OAuthProvider {
 
 export class Account {
     constructor(public accountId: string, public user: TokenUser) {
-        Logger.DBHelper.DeleteKey("users" + accountId);
+        Logger.DBHelper.UserRoleUpdateId(accountId, false, null);
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
         // node-bb username hack
@@ -395,9 +393,10 @@ export class Account {
         return this.user;
     }
     static async findAccount(ctx: KoaContextWithOIDC, id, test): Promise<any> {
-        let acc = await Logger.DBHelper.memoryCache.get("oidc" + id);
+        var key = ("oidc_" + id).toString();
+        let acc = await Logger.DBHelper.memoryCache.get(key);
         if (acc == null) {
-            acc = await Logger.DBHelper.FindById(id, undefined, undefined);
+            acc = await Logger.DBHelper.FindById(id, undefined);
         }
         var res = new Account(id, TokenUser.From(acc))
         return res;
@@ -406,20 +405,20 @@ export class Account {
         try {
             let role = client.defaultrole;
             const keys: string[] = Object.keys(client.rolemappings);
-            Logger.instanse.debug("OAuthProvider", "AddAccount", "[" + tuser.username + "] Lookup roles for " + tuser.username);
+            Logger.instanse.debug("[" + tuser.username + "] Lookup roles for " + tuser.username, null);
             for (let i = 0; i < keys.length; i++) {
                 if (tuser.HasRoleName(keys[i])) {
-                    Logger.instanse.debug("OAuthProvider", "AddAccount", "[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]]);
+                    Logger.instanse.debug("[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]], null);
                     role = client.rolemappings[keys[i]];
                 }
             }
             (tuser as any).role = role;
-            Logger.DBHelper.memoryCache.set("oidc" + tuser._id, tuser);
-            // DBHelper.DeleteKey("user" + tuser._id);
+            var key = ("oidc_" + tuser._id).toString();
+            Logger.DBHelper.memoryCache.set(key, tuser);
             var res = new Account(tuser._id, tuser);
             return res;
         } catch (error) {
-            Logger.instanse.error("OAuthProvider", "AddAccount", error);
+            Logger.instanse.error(error, null);
         }
         return undefined;
     }

@@ -32,13 +32,7 @@
             "program": "${workspaceRoot}/OpenFlow/src/index.ts",
             "request": "launch",
             "runtimeArgs": [
-                "--nolazy",
-                "--trace-warnings",
-                "--inspect",
-                "--preserve-symlinks"
             ],
-            "showAsyncStacks": true,
-            "trace": true,
             "runtimeExecutable": null,
             "sourceMaps": true,
             "stopOnEntry": false,

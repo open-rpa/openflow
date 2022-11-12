@@ -2,6 +2,8 @@ import * as RED from "node-red";
 import { Red } from "node-red";
 import { Config } from "../../Config";
 import { WebSocketClient, NoderedUtil, QueueMessage } from "@openiap/openflow-api";
+import { log_message, WebServer } from "../../WebServer";
+import { Logger } from "../../Logger";
 
 export interface Irpa_detector_node {
     queue: string;
@@ -88,6 +90,12 @@ export class rpa_detector_node {
     }
     async OnMessage(msg: any, ack: any) {
         try {
+            var _msgid = NoderedUtil.GetUniqueIdentifier();
+            if (!NoderedUtil.IsNullEmpty(msg.data?.traceId)) {
+                WebServer.log_messages[_msgid] = new log_message(_msgid);
+                WebServer.log_messages[_msgid].traceId = msg.data.traceId;
+                WebServer.log_messages[_msgid].spanId = msg.data.spanId;
+            }
             if (msg.data && !msg.payload) {
                 msg.payload = msg.data;
                 delete msg.data;
@@ -111,6 +119,7 @@ export class rpa_detector_node {
                 msg.jwt = msg.__jwt;
                 delete msg.__jwt;
             }
+            msg._msgid = _msgid;
             this.node.send(msg);
             ack();
         } catch (error) {
@@ -277,6 +286,13 @@ export class rpa_workflow_node {
     }
     static messages: any[] = [];
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("rpa node", traceId, spanId);
         try {
             this.node.status({});
             if (WebSocketClient.instance == null || !WebSocketClient.instance.isConnected()) {
@@ -327,7 +343,7 @@ export class rpa_workflow_node {
                 data: { payload: msg.payload }
             }
             const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_workflow_out_expiration);
-            await NoderedUtil.Queue({ queuename: queue, replyto: this.localqueue, data: rpacommand, correlationId, expiration, priority, striptoken: false });
+            await NoderedUtil.Queue({ queuename: queue, replyto: this.localqueue, data: rpacommand, correlationId, expiration, priority, striptoken: false, traceId, spanId });
             this.node.status({ fill: "yellow", shape: "dot", text: "Pending " + this.localqueue });
         } catch (error) {
             // NoderedUtil.HandleError(this, error);
@@ -336,6 +352,11 @@ export class rpa_workflow_node {
                 msg.error = error;
                 this.node.send([null, null, msg]);
             } catch (error) {
+            }
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
             }
         }
     }

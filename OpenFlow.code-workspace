@@ -4,5 +4,10 @@
 			"name": "OpenFlow",
 			"path": "."
 		}
-	]
+	],
+	"settings": {
+		"yaml.schemas": {
+			"https://json.schemastore.org/yamllint.json": "file:///c%3A/code/openflow/OpenFlowNodeRED/Dockerfilepuppeteer"
+		}
+	}
 }

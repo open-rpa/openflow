@@ -20,7 +20,7 @@ import { noderedcontribauthsaml } from "./node-red-contrib-auth-saml";
 import { WebSocketClient, NoderedUtil, Message } from "@openiap/openflow-api";
 import { Histogram, Counter, Observable, ObservableResult } from "@opentelemetry/api-metrics"
 import { HrTime, Span } from "@opentelemetry/api";
-import { hrTime } from "@opentelemetry/core";
+import { hrTime, hrTimeToMilliseconds } from "@opentelemetry/core";
 import * as RED from "node-red";
 import { Red } from "node-red";
 import { Logger } from "./Logger";
@@ -51,24 +51,74 @@ export class log_message_node {
     }
 }
 export class log_message {
-    public timestamp: Date;
     public hrtimestamp: HrTime;
-    public span: Span;
     public nodes: { [key: string]: log_message_node; } = {};
     public node: Red;
     public name: string;
+    public traceId: string;
+    public spanId: string;
     // public nodes: object = {}
-    constructor(public msgid: string, public nodeid: string) {
-        this.node = RED.nodes.getNode(nodeid);
-        this.timestamp = new Date();
-        this.name = this.node.name || this.node.type;
+    constructor(public msgid: string) {
         this.hrtimestamp = hrTime();
         this.nodes = {};
-        this.span = Logger.otel.startSpan(this.name);
-        this.span?.setAttribute("msgid", msgid);
-        this.span?.setAttribute("nodeid", this.nodeid);
-        this.span?.setAttribute("nodetype", this.node.type)
-        this.span?.setAttribute("name", this.name)
+    }
+    public static nodeexpire(msgid: string, nodeid: string) {
+        if (WebServer.log_messages[msgid] == undefined) return;
+        const logmessage = WebServer.log_messages[msgid];
+        if (!logmessage.nodes[nodeid]) return;
+
+        const nodemessage = logmessage.nodes[nodeid];
+        if (nodemessage.span) {
+            // end time is NOT working, so sadly we need to discard this span :-(
+            // nodemessage.span?.end(logmessage.hrtimestamp);
+            delete nodemessage.span;
+        }
+        if (nodemessage.end) {
+            // Logger.otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
+            WebServer.openflow_nodered_node_duration.record(1 / 5, { nodetype: nodemessage.nodetype })
+            delete nodemessage.end;
+        }
+        delete logmessage.nodes[nodeid];
+    }
+    public static nodeend(msgid: string, nodeid: string) {
+        if (WebServer.log_messages[msgid] == undefined) return;
+        const logmessage = WebServer.log_messages[msgid];
+        if (!logmessage.nodes[nodeid]) return;
+        logmessage.hrtimestamp = hrTime();
+
+        const nodemessage = logmessage.nodes[nodeid];
+        if (nodemessage.span) {
+            Logger.otel.endSpan(nodemessage.span, null);
+            delete nodemessage.span;
+        }
+        if (nodemessage.end) {
+            Logger.otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
+            delete nodemessage.end;
+        }
+        delete logmessage.nodes[nodeid];
+    }
+    public static nodestart(msgid: string, nodeid: string): log_message_node {
+        if (WebServer.log_messages[msgid] == undefined) WebServer.log_messages[msgid] = new log_message(msgid);
+        const logmessage = WebServer.log_messages[msgid];
+        if (!logmessage.nodes[msgid]) logmessage.nodes[nodeid] = new log_message_node(nodeid);
+        // Update last activity 
+        logmessage.hrtimestamp = hrTime();
+
+        const nodemessage = logmessage.nodes[nodeid];
+        nodemessage.end = Logger.otel.startTimer();
+
+        nodemessage.span = Logger.otel.startSpan(nodemessage.name, logmessage.traceId, logmessage.spanId);
+        nodemessage.span?.setAttributes(Logger.otel.defaultlabels);
+        nodemessage.span?.setAttribute("msgid", msgid);
+        nodemessage.span?.setAttribute("nodeid", nodeid);
+        nodemessage.span?.setAttribute("nodetype", nodemessage.nodetype)
+        nodemessage.span?.setAttribute("name", nodemessage.name)
+        const [traceId, spanId] = Logger.otel.GetTraceSpanId(nodemessage.span);
+        //if (NoderedUtil.IsNullEmpty(logmessage.traceId)) {
+        logmessage.traceId = traceId;
+        logmessage.spanId = spanId;
+        //}
+        return nodemessage;
     }
 }
 export class WebServer {
@@ -191,19 +241,15 @@ export class WebServer {
                     const keys = Object.keys(WebServer.log_messages);
                     keys.forEach(key => {
                         const msg = WebServer.log_messages[key];
-                        var from = new Date(msg.timestamp);
-                        const now = new Date();
-                        const seconds = (now.getTime() - from.getTime()) / 1000;
-                        if (seconds > Config.otel_trace_max_node_time_seconds) {
+
+                        const performanceTimeOriginms = hrTimeToMilliseconds(msg.hrtimestamp);
+                        const Milliseconds = (hrTimeToMilliseconds(hrTime()) - performanceTimeOriginms)
+                        const Seconds = Milliseconds / 1000;
+                        if (Seconds > Config.otel_trace_max_node_time_seconds) {
                             const keys = Object.keys(msg.nodes);
                             for (let i = 0; i < keys.length; i++) {
                                 const nodemessage = msg.nodes[keys[i]];
-                                if (nodemessage.span) Logger.otel.endSpan(nodemessage.span, msg.hrtimestamp);
-                                if (nodemessage.end) Logger.otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
-                            }
-                            if (msg.span) {
-                                Logger.otel.endSpan(msg.span, msg.hrtimestamp);
-                                delete msg.span;
+                                log_message.nodeexpire(msg.msgid, nodemessage.nodeid);
                             }
                             delete WebServer.log_messages[key];
                         }
@@ -218,58 +264,15 @@ export class WebServer {
                                 if (!NoderedUtil.IsNullEmpty(msg.msgid) && msg.event.startsWith("node.")) {
                                     msg.event = msg.event.substring(5);
                                     if (msg.event.endsWith(".receive")) {
-                                        // if (!NoderedUtil.IsNullUndefinded(WebServer.openflow_nodered_node_activations))
-                                        //     WebServer.openflow_nodered_node_activations.bind({ ...Logger.otel.defaultlabels, nodetype: msg.event }).add(1);
-
-                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.nodeid);
-                                        const logmessage = WebServer.log_messages[msg.msgid];
-                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node(msg.nodeid);
-                                        logmessage.timestamp = new Date();
-                                        logmessage.hrtimestamp = hrTime();
-
-                                        const nodemessage = logmessage.nodes[msg.nodeid];
-                                        nodemessage.startspan(logmessage.span, msg.msgid);
-                                        nodemessage.end = Logger.otel.startTimer();
+                                        log_message.nodestart(msg.msgid, msg.nodeid);
                                     }
                                     if (msg.event.endsWith(".send")) {
                                         msg.event = msg.event.substring(0, msg.event.length - 5);
-                                        if (WebServer.log_messages[msg.msgid] == undefined) WebServer.log_messages[msg.msgid] = new log_message(msg.msgid, msg.nodeid);
-                                        const logmessage = WebServer.log_messages[msg.msgid];
-                                        if (!logmessage.nodes[msg.nodeid]) logmessage.nodes[msg.nodeid] = new log_message_node(msg.nodeid);
-                                        logmessage.timestamp = new Date();
-                                        logmessage.hrtimestamp = hrTime();
-
-                                        const nodemessage = logmessage.nodes[msg.nodeid];
-
-                                        if (nodemessage.span) {
-                                            Logger.otel.endSpan(nodemessage.span, null); delete nodemessage.span;
-                                        } else {
-                                            nodemessage.startspan(logmessage.span, msg.msgid);
-                                            // Need to end it, since not all nodes trigger a "done" message :-/
-                                            Logger.otel.endSpan(nodemessage.span, null);
-                                            delete nodemessage.span;
-                                            // nodemessage.span = Logger.otel.startSpan2(msg.event, msg.msgid);
-                                        }
-                                        if (nodemessage.end) {
-                                            Logger.otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
-                                            delete nodemessage.end;
-                                        } else {
-                                            nodemessage.end = Logger.otel.startTimer();
-                                            // Need to end it, since not all nodes trigger a "done" message :-/
-                                            Logger.otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype });
-                                            delete nodemessage.end;
-                                        }
+                                        log_message.nodeend(msg.msgid, msg.nodeid);
+                                        log_message.nodestart(msg.msgid, msg.nodeid);
                                     }
                                     if (msg.event.endsWith(".done")) {
-                                        if (WebServer.log_messages[msg.msgid] == undefined) return;
-                                        const logmessage = WebServer.log_messages[msg.msgid];
-                                        if (!logmessage.nodes[msg.nodeid]) return;
-                                        logmessage.timestamp = new Date();
-                                        logmessage.hrtimestamp = hrTime();
-
-                                        const nodemessage = logmessage.nodes[msg.nodeid];
-                                        if (nodemessage.span) { Logger.otel.endSpan(nodemessage.span, null); delete nodemessage.span; }
-                                        if (nodemessage.end) { Logger.otel.endTimer(nodemessage.end, WebServer.openflow_nodered_node_duration, { nodetype: nodemessage.nodetype }); delete nodemessage.end; }
+                                        log_message.nodeend(msg.msgid, msg.nodeid);
                                     }
                                 }
                             } catch (error) {

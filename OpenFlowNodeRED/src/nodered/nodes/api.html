@@ -278,7 +278,6 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             collectiontype: { value: "" },
             entitiestype: { value: "" },
             entities: { value: "payload", validate: validate("entities") },
-            entitiestype: { value: "" },
             entitytype: { value: "" },
             entitytypetype: { value: "" },
 
@@ -777,11 +776,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
-        <select id="node-input-targetid-select">
-            <option>Loading...</option>
-        </select>
-        <input id="node-input-targetid" type="hidden">
+        <label ><i class="fa fa-tag"></i> Target</label>
+        <input type="text" id="node-lookup-targetid" placeholder="Leave empty, to get from msg.targetid ">
+        <input type="hidden" id="node-input-targetid">
     </div>
     <div class="form-row">
         <label for="node-input-typed-entities"><i class="fa fa-list"></i> Entities</label>
@@ -808,7 +805,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
-            targetid: { value: "result._id", required: true },
+            targetid: { value: "" },
             entities: { value: "payload", required: true },
             bits: { value: "", required: true }
         },
@@ -826,26 +823,50 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             $("#node-input-typed-entities").typedInput('value', this.entities);
 
 
-            $.getJSON('api_roles', function (data) {
-                $('#node-input-targetid-select').empty();
-                $('#node-input-targetid-select').append($('<option>', {
-                    value: "from msg.targetid",
-                    text: "from msg.targetid"
-                }));
+            try {
+                $("#node-lookup-targetid").autocomplete("destroy");
+            } catch (error) {
+            }
+            var targetidvalues = [];
+            $.getJSON('api_userroles', function (data) {
+                targetidvalues.push({
+                    value: null,
+                    label: "from msg.targetid"
+                })
                 $.each(data, function (i, ele) {
-                    $('#node-input-targetid-select').append($('<option>', {
-                        value: ele._id,
-                        text: ele.name
-                    }));
+                    targetidvalues.push({
+                        id: ele._id,
+                        value: ele.name,
+                        label: ele.name
+                    })
+                    if (ele._id == $("#node-input-targetid").val()) {
+                        $("#node-lookup-targetid").val(ele.name);
+
+                    }
                 });
-                $('#node-input-targetid-select').val($('#node-input-targetid').val());
-            }).error(function (jqXHR, textStatus, errorThrown) {
-                alert("error:" + jqXHR.responseText);
+            });
+            $("#node-lookup-targetid").focus(() => {
+                $("#node-lookup-targetid").autocomplete("search", $("#node-lookup-targetid").val());
+            })
+            $("#node-lookup-targetid").autocomplete({
+                source: targetidvalues,
+                minLength: 0,
+                select: function (event, ui) {
+                    $("#node-input-targetid").val(ui.item.id);
+                    $("#node-lookup-targetid").val(ui.item.label);
+                    return false; // Prevent the widget from inserting the value.
+                },
+                close: function (event, ui) {
+                    $.each(targetidvalues, function (i, ele) {
+                        if (ele.id == $("#node-input-targetid").val()) {
+                            $("#node-lookup-targetid").val(ele.label);
+                        }
+                    });
+                },
             });
 
         },
         oneditsave: function () {
-            $('#node-input-targetid').val($('#node-input-targetid-select').val());
             $("#node-input-entities").val($("#node-input-typed-entities").typedInput('value'));
         }
 
@@ -864,11 +885,9 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-targetid"><i class="fa fa-tasks"></i> Target</label>
-        <select id="node-input-targetid-select">
-            <option>Loading...</option>
-        </select>
-        <input id="node-input-targetid" type="hidden">
+        <label ><i class="fa fa-tag"></i> Target</label>
+        <input type="text" id="node-lookup-targetid" placeholder="Leave empty, to get from msg.targetid ">
+        <input type="hidden" id="node-input-targetid">
     </div>
     <div class="form-row">
         <label for="node-input-typed-entities"><i class="fa fa-list"></i> Entities</label>
@@ -895,7 +914,7 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         icon: "font-awesome/fa-key",
         defaults: {
             name: { value: "" },
-            targetid: { value: "result._id", required: true },
+            targetid: { value: "" },
             entities: { value: "payload", required: true },
             bits: { value: "", required: true }
         },
@@ -913,26 +932,51 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             $("#node-input-typed-entities").typedInput('value', this.entities);
 
 
-            $.getJSON('api_roles', function (data) {
-                $('#node-input-targetid-select').empty();
-                $('#node-input-targetid-select').append($('<option>', {
-                    value: "from msg.targetid",
-                    text: "from msg.targetid"
-                }));
+            
+            try {
+                $("#node-lookup-targetid").autocomplete("destroy");
+            } catch (error) {
+            }
+            var targetidvalues = [];
+            $.getJSON('api_userroles', function (data) {
+                targetidvalues.push({
+                    value: null,
+                    label: "from msg.targetid"
+                })
                 $.each(data, function (i, ele) {
-                    $('#node-input-targetid-select').append($('<option>', {
-                        value: ele._id,
-                        text: ele.name
-                    }));
+                    targetidvalues.push({
+                        id: ele._id,
+                        value: ele.name,
+                        label: ele.name
+                    })
+                    if (ele._id == $("#node-input-targetid").val()) {
+                        $("#node-lookup-targetid").val(ele.name);
+
+                    }
                 });
-                $('#node-input-targetid-select').val($('#node-input-targetid').val());
-            }).error(function (jqXHR, textStatus, errorThrown) {
-                alert("error:" + jqXHR.responseText);
+            });
+            $("#node-lookup-targetid").focus(() => {
+                $("#node-lookup-targetid").autocomplete("search", $("#node-lookup-targetid").val());
+            })
+            $("#node-lookup-targetid").autocomplete({
+                source: targetidvalues,
+                minLength: 0,
+                select: function (event, ui) {
+                    $("#node-input-targetid").val(ui.item.id);
+                    $("#node-lookup-targetid").val(ui.item.label);
+                    return false; // Prevent the widget from inserting the value.
+                },
+                close: function (event, ui) {
+                    $.each(targetidvalues, function (i, ele) {
+                        if (ele.id == $("#node-input-targetid").val()) {
+                            $("#node-lookup-targetid").val(ele.label);
+                        }
+                    });
+                },
             });
 
         },
         oneditsave: function () {
-            $('#node-input-targetid').val($('#node-input-targetid-select').val());
             $("#node-input-entities").val($("#node-input-typed-entities").typedInput('value'));
         }
 
@@ -1878,5 +1922,96 @@ you can set filename using msg.filename<br>
         labelStyle: function () {
             return this.name ? "node_label_italic" : "";
         },
+    });
+</script>
+Command
+
+<script type="text/x-red" data-template-name="api custom">
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Command</label>
+        <input type="hidden" id="node-input-commandtype">
+        <input style="width:70%" type="text" id="node-input-command">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Payload</label>
+        <input type="hidden" id="node-input-payloadtype">
+        <input style="width:70%" type="text" id="node-input-payload">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Id</label>
+        <input type="hidden" id="node-input-commandidtype">
+        <input style="width:70%" type="text" id="node-input-commandid">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-list"></i> Command Name</label>
+        <input type="hidden" id="node-input-commandtype">
+        <input style="width:70%" type="text" id="node-input-command">
+    </div>
+    <div class="form-row">
+        <label><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/x-red" data-help-name="api custom">
+    <p>Do openflow custom <br>
+    </p>
+</script>
+<script type="text/javascript">
+    // https://fontawesome.com/v4.7/icon/list
+    RED.nodes.registerType('api custom', {
+        category: 'api',
+        color: "#E9967A",
+        paletteLabel: 'custom',
+        icon: "font-awesome/fa-list",
+        defaults: {
+            name: { value: "" },
+            command: { value: "command", validate: validate("commandtype"), required: true },
+            commandtype: { value: "msg", required: true },
+            payload: { value: "payload", validate: validate("payloadtype"), required: true },
+            payloadtype: { value: "msg", required: true },
+            commandid: { value: "commandid", validate: validate("commandidtype"), required: true },
+            commandidtype: { value: "msg", required: true },
+            command: { value: "command", validate: validate("commandtype"), required: true },
+            commandtype: { value: "msg", required: true },
+        },
+        inputs: 1,
+        outputs: 1,
+        label: function () {
+            return this.name || "custom";
+        },
+        labelStyle: function () {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditprepare: function () {
+            if (this.commandtype === null) $("#node-input-commandtype").val('msg');
+            if (this.commandtype === 'val') $("#node-input-commandtype").val('str');
+            $("#node-input-command").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-commandtype"),
+                types: ['msg', 'str']
+            });
+            if (this.payloadtype === null) $("#node-input-payloadtype").val('msg');
+            if (this.payloadtype === 'val') $("#node-input-payloadtype").val('str');
+            $("#node-input-payload").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-payloadtype"),
+                types: ['msg', 'str']
+            });
+            if (this.commandidtype === null) $("#node-input-commandidtype").val('msg');
+            if (this.commandidtype === 'val') $("#node-input-commandidtype").val('str');
+            $("#node-input-commandid").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-commandidtype"),
+                types: ['msg', 'str']
+            });
+            if (this.commandtype === null) $("#node-input-commandtype").val('msg');
+            if (this.commandtype === 'val') $("#node-input-commandtype").val('str');
+            $("#node-input-command").typedInput({
+                default: 'msg',
+                typeField: $("#node-input-commandtype"),
+                types: ['msg', 'str']
+            });
+        }
+
     });
 </script>

@@ -4,6 +4,8 @@ import { Crypt } from "../../nodeclient/Crypt";
 import { Config } from "../../Config";
 import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, mapFunc, reduceFunc, finalizeFunc, UpdateOneMessage } from "@openiap/openflow-api";
 import { Util } from "./Util";
+import { log_message, WebServer } from "../../WebServer";
+import { Logger } from "../../Logger";
 const pako = require('pako');
 
 export interface Iapi_credentials {
@@ -48,6 +50,13 @@ export class api_get_jwt {
         return !isNaN(num)
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api get jwt", traceId, spanId);
         try {
             this.node.status({});
 
@@ -93,6 +102,8 @@ export class api_get_jwt {
             }
             this.node.status({ fill: "blue", shape: "dot", text: "Requesting token" });
             const _msg: Message = new Message();
+            _msg.traceId = traceId;
+            _msg.spanId = spanId;
             _msg.command = "signin"; _msg.data = JSON.stringify(q);
             const result: SigninMessage = await WebSocketClient.instance.Send<SigninMessage>(_msg, priority);
             msg.jwt = result.jwt;
@@ -104,6 +115,11 @@ export class api_get_jwt {
             // this.node.error(new Error(message), msg);
             NoderedUtil.HandleError(this, message, msg);
             this.node.status({ fill: 'red', shape: 'dot', text: message.toString().substr(0, 32) });
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -132,6 +148,13 @@ export class api_get {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api get jwt", traceId, spanId);
         try {
             if (!WebSocketClient.instance.isConnected) {
                 await new Promise(r => setTimeout(r, 2000));
@@ -196,7 +219,7 @@ export class api_get {
                 if ((result.length + take) > top) {
                     take = top - result.length;
                 }
-                subresult = await NoderedUtil.Query({ collectionname, query, projection, orderby, top: take, skip, jwt: msg.jwt, priority });
+                subresult = await NoderedUtil.Query({ collectionname, query, projection, orderby, top: take, skip, jwt: msg.jwt, priority, traceId, spanId });
                 skip += take;
                 result = result.concat(subresult);
                 if (result.length > top) {
@@ -211,6 +234,11 @@ export class api_get {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -241,6 +269,13 @@ export class api_add {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
@@ -264,6 +299,10 @@ export class api_add {
                 _data = msg[this.config.inputfield];
             } else {
                 _data = await Util.EvaluateNodeProperty<Base[]>(this, msg, "entities");
+                if (_data as any == "payload") {
+                    _data = msg["payload"];
+
+                }
             }
 
             if (!NoderedUtil.IsNullUndefinded(_data)) {
@@ -282,7 +321,7 @@ export class api_add {
                     if (!NoderedUtil.IsNullEmpty(entitytype)) {
                         element._type = entitytype;
                     }
-                    Promises.push(NoderedUtil.InsertOne({ collectionname, item: element, w: writeconcern, j: journal, jwt: msg.jwt, priority }));
+                    Promises.push(NoderedUtil.InsertOne({ collectionname, item: element, w: writeconcern, j: journal, jwt: msg.jwt, priority, traceId, spanId }));
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
@@ -308,6 +347,11 @@ export class api_add {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -340,6 +384,13 @@ export class api_addmany {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
@@ -391,7 +442,7 @@ export class api_addmany {
                         subitems.push(element);
                     }
                     this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
-                    results = results.concat(await NoderedUtil.InsertMany({ collectionname, items: subitems, w: writeconcern, j: journal, skipresults, jwt: msg.jwt, priority }));
+                    results = results.concat(await NoderedUtil.InsertMany({ collectionname, items: subitems, w: writeconcern, j: journal, skipresults, jwt: msg.jwt, priority, traceId, spanId }));
                 }
                 data = results;
             }
@@ -405,6 +456,11 @@ export class api_addmany {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -437,6 +493,13 @@ export class api_update {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
 
@@ -470,19 +533,33 @@ export class api_update {
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
             let Promises: Promise<any>[] = [];
             let results: any[] = [];
+            // for (let y: number = 0; y < data.length; y += 50) {
+            //     for (let i: number = y; i < (y + 50) && i < data.length; i++) {
+            //         const element: any = data[i];
+            //         if (!NoderedUtil.IsNullEmpty(entitytype)) {
+            //             element._type = entitytype;
+            //         }
+            //         Promises.push(NoderedUtil.UpdateOne({ collectionname, item: element, w: writeconcern, j: journal, jwt: msg.jwt, priority, traceId, spanId }));
+            //     }
+            //     this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
+            //     const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+            //     results = results.concat(tempresults);
+            //     Promises = [];
+            // }
             for (let y: number = 0; y < data.length; y += 50) {
+                let items = [];
                 for (let i: number = y; i < (y + 50) && i < data.length; i++) {
                     const element: any = data[i];
                     if (!NoderedUtil.IsNullEmpty(entitytype)) {
                         element._type = entitytype;
                     }
-                    Promises.push(NoderedUtil.UpdateOne({ collectionname, item: element, w: writeconcern, j: journal, jwt: msg.jwt, priority }));
+                    items.push(element);
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
-                const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
+                var tempresults = await NoderedUtil.InsertOrUpdateMany({ collectionname, uniqeness: "_id", items, skipresults: false, j: journal, w: writeconcern, jwt: msg.jwt, priority, traceId, spanId });
                 results = results.concat(tempresults);
-                Promises = [];
             }
+
             data = results;
 
 
@@ -503,6 +580,11 @@ export class api_update {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -537,6 +619,13 @@ export class api_addorupdate {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
             const collectionname = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
@@ -598,7 +687,7 @@ export class api_addorupdate {
                     items.push(element);
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
-                var tempresults = await NoderedUtil.InsertOrUpdateMany({ collectionname, uniqeness, items, skipresults, j: journal, w: writeconcern, jwt: msg.jwt, priority })
+                var tempresults = await NoderedUtil.InsertOrUpdateMany({ collectionname, uniqeness, items, skipresults, j: journal, w: writeconcern, jwt: msg.jwt, priority, traceId, spanId })
                 results = results.concat(tempresults);
             }
             if (!skipresults) {
@@ -621,6 +710,11 @@ export class api_addorupdate {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -650,6 +744,13 @@ export class api_delete {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
             const collectionname = await Util.EvaluateNodeProperty<string>(this, msg, "collection");
@@ -679,7 +780,7 @@ export class api_delete {
                     const element: any = data[i];
                     let id: string = element;
                     if (NoderedUtil.isObject(element)) { id = element._id; }
-                    Promises.push(NoderedUtil.DeleteOne({ collectionname, id, jwt: msg.jwt, priority }));
+                    Promises.push(NoderedUtil.DeleteOne({ collectionname, id, jwt: msg.jwt, priority, traceId, spanId }));
                 }
                 this.node.status({ fill: "blue", shape: "dot", text: (y + 1) + " to " + (y + 50) + " of " + data.length });
                 const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
@@ -698,6 +799,11 @@ export class api_delete {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -726,6 +832,13 @@ export class api_deletemany {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
             let priority: number = 1;
@@ -747,11 +860,16 @@ export class api_deletemany {
                 query = null;
             }
             this.node.status({ fill: "blue", shape: "dot", text: "processing ..." });
-            const affectedrows = await NoderedUtil.DeleteMany({ collectionname, query, ids, jwt: msg.jwt, priority });
+            const affectedrows = await NoderedUtil.DeleteMany({ collectionname, query, ids, jwt: msg.jwt, priority, traceId, spanId });
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "deleted " + affectedrows + " rows" });
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -786,6 +904,13 @@ export class api_map_reduce {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
             let collection = this.config.collection;
@@ -822,6 +947,11 @@ export class api_map_reduce {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -941,6 +1071,13 @@ export class api_updatedocument {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
 
@@ -973,7 +1110,7 @@ export class api_updatedocument {
                 const q: UpdateOneMessage = new UpdateOneMessage(); q.collectionname = collectionname;
                 q.item = (updatedocument as any); q.jwt = jwt;
                 q.w = writeconcern; q.j = journal; q.query = (query as any);
-                const q2 = await NoderedUtil._UpdateOne(q, priority, WebSocketClient.instance);
+                const q2 = await NoderedUtil._UpdateOne(q, priority, WebSocketClient.instance, traceId, spanId);
                 msg.payload = q2.result;
                 msg.opresult = q2.opresult;
             } else {
@@ -985,6 +1122,11 @@ export class api_updatedocument {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -1014,6 +1156,13 @@ export class grant_permission {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
 
@@ -1044,7 +1193,7 @@ export class grant_permission {
                 this.config.bits[i] = parseInt(this.config.bits[i]);
             }
 
-            const result: any[] = await NoderedUtil.Query({ collectionname: 'users', query: { _id: targetid }, projection: { name: 1 }, orderby: { name: -1 }, top: 1, jwt: msg.jwt, priority })
+            const result: any[] = await NoderedUtil.Query({ collectionname: 'users', query: { _id: targetid }, projection: { name: 1 }, orderby: { name: -1 }, top: 1, jwt: msg.jwt, priority, traceId, spanId })
             if (result.length === 0) { return NoderedUtil.HandleError(this, "Target " + targetid + " not found ", msg); }
             const found = result[0];
 
@@ -1078,6 +1227,11 @@ export class grant_permission {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -1104,6 +1258,13 @@ export class revoke_permission {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
 
@@ -1165,6 +1326,11 @@ export class revoke_permission {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -1191,6 +1357,13 @@ export class download_file {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
 
@@ -1204,7 +1377,7 @@ export class download_file {
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Getting file" });
-            const file = await NoderedUtil.GetFile({ filename, id: fileid, jwt, priority, compress: asbuffer });
+            const file = await NoderedUtil.GetFile({ filename, id: fileid, jwt, priority, compress: asbuffer, traceId, spanId });
             var result = null;
             if (asbuffer) {
                 var data = Buffer.from(file.file, 'base64');
@@ -1224,6 +1397,11 @@ export class download_file {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -1249,6 +1427,13 @@ export class upload_file {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
 
@@ -1260,7 +1445,7 @@ export class upload_file {
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Saving file" });
-            const file = await NoderedUtil.SaveFile({ filename, mimeType, metadata: msg.metadata, file: filecontent, jwt, priority });
+            const file = await NoderedUtil.SaveFile({ filename, mimeType, metadata: msg.metadata, file: filecontent, jwt, priority, traceId, spanId });
             if (!NoderedUtil.IsNullEmpty(file.error)) { throw new Error(file.error); }
 
             Util.SetMessageProperty(msg, this.config.entity, file.result);
@@ -1269,6 +1454,11 @@ export class upload_file {
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -1299,6 +1489,13 @@ export class api_aggregate {
         this.node.on("close", this.onclose);
     }
     async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api update", traceId, spanId);
         try {
             this.node.status({});
             // if (NoderedUtil.IsNullEmpty(msg.jwt)) { return NoderedUtil.HandleError(this, "Missing jwt token"); }
@@ -1310,12 +1507,17 @@ export class api_aggregate {
             if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running aggregate" });
-            const result = await NoderedUtil.Aggregate({ collectionname, aggregates, jwt: msg.jwt, priority });
+            const result = await NoderedUtil.Aggregate({ collectionname, aggregates, jwt: msg.jwt, priority, traceId, spanId });
             msg.payload = result;
             this.node.send(msg);
             this.node.status({});
         } catch (error) {
             NoderedUtil.HandleError(this, error, msg);
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
         }
     }
     onclose() {
@@ -1365,6 +1567,12 @@ export class api_watch {
     onevent(event: any) {
         event.payload = event.fullDocument;
         delete event.fullDocument;
+        event._msgid = NoderedUtil.GetUniqueIdentifier();
+
+        WebServer.log_messages[event._msgid] = new log_message(event._msgid);
+        WebServer.log_messages[event._msgid].traceId = event.traceId;
+        WebServer.log_messages[event._msgid].spanId = event.spanId;
+        // log_message.nodestart(event._msgid, this.node.id);
         this.node.send(event);
     }
     async oninput(msg: any) {
@@ -1503,6 +1711,49 @@ export class housekeeping {
 
             this.node.status({ fill: "blue", shape: "dot", text: "Running house keeping" });
             await NoderedUtil.HouseKeeping({ skipnodered, skipcalculatesize, skipupdateusersize, jwt: msg.jwt, priority });
+            this.node.send(msg);
+            this.node.status({ fill: "green", shape: "dot", text: "Complete" });
+        } catch (error) {
+            NoderedUtil.HandleError(this, error, msg);
+        }
+    }
+    onclose() {
+    }
+}
+
+
+
+export interface Icustom {
+    name: string;
+    payload: string;
+}
+export class custom {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Icustom) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        try {
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+
+            const command: any = await Util.EvaluateNodeProperty<string>(this, msg, "command");
+            const commandname: any = await Util.EvaluateNodeProperty<string>(this, msg, "commandname");
+            const commandid: any = await Util.EvaluateNodeProperty<string>(this, msg, "commandid");
+
+            this.node.status({ fill: "blue", shape: "dot", text: "Send " + command });
+            var result = await NoderedUtil.CustomCommand({ command, data: msg.payload, id: commandid, name: commandname });
+
+            if (this.config.payload == null) {
+                Util.SetMessageProperty(msg, this.config.payload, result);
+            }
+
+            msg.payload = result;
             this.node.send(msg);
             this.node.status({ fill: "green", shape: "dot", text: "Complete" });
         } catch (error) {

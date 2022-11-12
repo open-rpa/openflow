@@ -1,5 +1,5 @@
 import { Crypt } from "./Crypt";
-import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser } from "@openiap/openflow-api";
+import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue, Resource, ResourceUsage } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Span } from "@opentelemetry/api";
 import { Observable } from '@opentelemetry/api-metrics';
@@ -9,6 +9,7 @@ import { WebSocketServerClient } from "./WebSocketServerClient";
 import { LoginProvider, Provider } from "./LoginProvider";
 import * as cacheManager from "cache-manager";
 import { TokenRequest } from "./TokenRequest";
+import { amqpwrapper } from "./amqpwrapper";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 var mongoStore = require('@skadefro/cache-manager-mongodb');
@@ -48,7 +49,7 @@ export class DBHelper {
             // listen for redis connection error event
             var redisClient = this.memoryCache.store.getClient();
             redisClient.on('error', (error) => {
-                Logger.instanse.error("DBHelper", "init", error);
+                Logger.instanse.error(error, null);
             });
 
             this.ensureotel();
@@ -62,7 +63,7 @@ export class DBHelper {
         });
         this.ensureotel();
     }
-    public async clearCache(reason: string) {
+    public async clearCache(reason: string, span: Span) {
         await this.init();
         var keys: string[];
         if (Config.cache_store_type == "redis") {
@@ -75,12 +76,7 @@ export class DBHelper {
                 this.memoryCache.del(keys[i]);
             }
         }
-        Logger.instanse.debug("DBHelper", "clearCache", "clearCache called with reason: " + reason);
-    }
-    public async DeleteKey(key) {
-        await this.init();
-        Logger.instanse.debug("DBHelper", "DeleteKey", "Remove from cache : " + key);
-        await this.memoryCache.del(key);
+        Logger.instanse.debug("clearCache called with reason: " + reason, span);
     }
     public item_cache: Observable = null;
     public ensureotel() {
@@ -107,33 +103,74 @@ export class DBHelper {
             })
         }
     }
-    public async FindById(_id: string, jwt: string, parent: Span): Promise<User> {
+    async FindByIdWrap(_id, span: Span) {
+        Logger.instanse.debug("Add user to cache : " + _id, span);
+        return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
+    }
+    public async FindById(_id: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("users" + _id, () => {
-                Logger.instanse.debug("DBHelper", "FindById", "Add user to cache : " + _id);
-                return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
-            });
+            var key = ("users_" + _id).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindByIdWrap(_id, span) });
             this.ensureotel();
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (NoderedUtil.IsNullUndefinded(item)) {
+                Logger.instanse.debug("No user matches " + _id, span);
+                return null;
+            }
+            Logger.instanse.silly("Return user " + _id + " " + item.formvalidated, span);
             var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
             return res2;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
     }
+    public GetResourcesWrap(span: Span) {
+        Logger.instanse.debug("Add resources user to cache", span);
+        return Config.db.query<Resource>({ query: { "_type": "resource" }, collectionname: "config", jwt: Crypt.rootToken() }, span);
+    }
+    public async GetResources(parent: Span): Promise<Resource[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetResources", parent);
+        try {
+            let items = await this.memoryCache.wrap("resource", () => { return this.GetResourcesWrap(span) });
+            Logger.instanse.silly("Return " + items.length + " resources", span);
+            return items;
+        } catch (error) {
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public GetResourceUsageByUserIDWrap(userid: string, span: Span) {
+        Logger.instanse.debug("Add user resources to cache : " + userid, span);
+        return Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", userid }, collectionname: "config", jwt: Crypt.rootToken() }, span);
+    }
+    public async GetResourceUsageByUserID(userid: string, parent: Span): Promise<ResourceUsage[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetResourceUsageByUserID", parent);
+        try {
+            var key = ("resourceusage_" + userid).toString().toLowerCase();
+            let items = await this.memoryCache.wrap(key, () => { return this.GetResourceUsageByUserIDWrap(userid, span) });
+            Logger.instanse.silly("Return resources for user " + userid, span);
+            return items;
+        } catch (error) {
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public GetProvidersWrap(span) {
+        return Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);
+    }
     public async GetProviders(parent: Span): Promise<Provider[]> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetProviders", parent);
         try {
-            let items = await this.memoryCache.wrap("providers", () => {
-                return Config.db.query<Provider>({ query: { _type: "provider" }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
-            });
+            let items = await this.memoryCache.wrap("providers", () => { return this.GetProvidersWrap(span) });
             // const result: Provider[] = [];
             // https://www.w3schools.com/icons/fontawesome5_icons_brands.asp
             items.forEach(provider => {
@@ -150,7 +187,6 @@ export class DBHelper {
             }
             return items;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -170,7 +206,6 @@ export class DBHelper {
                 return await this.mongoCache.get("requesttoken" + key);
             }
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -186,7 +221,6 @@ export class DBHelper {
                 return await this.mongoCache.set("requesttoken" + key, data);
             }
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -202,150 +236,163 @@ export class DBHelper {
                 return await this.mongoCache.del("requesttoken" + key);
             }
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
     }
-    public async FindByAuthorization(authorization: string, jwt: string, parent: Span): Promise<User> {
+    public FindByAuthorizationWrap(token, jwt, span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add authentication header to cache", span);
+        return LoginProvider.validateToken(token, span);
+    }
+    public FindByAuthorizationWrap2(login, password, jwt, span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add basicauth header to cache", span);
+        return Auth.ValidateByPassword(login, password, span);
+    }
+    public async FindByAuthorization(authorization: string, jwt: string, span: Span): Promise<User> {
         if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
             (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
-            const token = authorization.split(" ")[1];
-            let item: User = await this.memoryCache.wrap(token, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindByAuthorization", "Add authentication header to cache");
-                return LoginProvider.validateToken(token, parent);
-            });
+            const token = authorization.split(" ")[1].toString();
+            let item: User = await this.memoryCache.wrap(token, () => { return this.FindByAuthorizationWrap(token, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
-            return this.DecorateWithRoles(User.assign(item), parent);
+            return this.DecorateWithRoles(User.assign(item), span);
         }
-        const b64auth = (authorization || '').split(' ')[1] || ''
+        const b64auth = (authorization || '').split(' ')[1].toString() || ''
         // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
         const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
         if (!NoderedUtil.IsNullEmpty(login) && !NoderedUtil.IsNullEmpty(password)) {
-            let item: User = await this.memoryCache.wrap(b64auth, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindByAuthorization", "Add basicauth header to cache");
-                return Auth.ValidateByPassword(login, password, parent);
-            });
+            let item: User = await this.memoryCache.wrap(b64auth, () => { return this.FindByAuthorizationWrap2(login, password, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
-            return this.DecorateWithRoles(User.assign(item), parent);
+            return this.DecorateWithRoles(User.assign(item), span);
         }
+    }
+    public FindQueueByIdWrap(_id, jwt, span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add queue to cache : " + _id, span);
+        return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
     }
     public async FindQueueById(_id: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("mq" + _id, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindQueueById", "Add queue to cache : " + _id);
-                return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
-            });
+            var key = ("mq_" + _id).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindQueueByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public FindQueueByNameWrap(name, jwt, span: Span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add queue to cache : " + name, span);
+        return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
     }
     public async FindQueueByName(name: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(name)) return null;
-            let item = await this.memoryCache.wrap("queuename_" + name, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindQueueByName", "Add queue to cache : " + name);
-                return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
-            });
+            var key = ("queuename_" + name).toString();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindQueueByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public FindExchangeByIdWrap(_id: string, jwt: string, span: Span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add exchange to cache : " + _id, span);
+        return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
     }
     public async FindExchangeById(_id: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("mq" + _id, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindExchangeById", "Add exchange to cache : " + _id);
-                return Config.db.getbyid<User>(_id, "mq", jwt, true, span);
-            });
+            var key = ("mq_" + _id).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindExchangeByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public FindExchangeByNameWrap(name: string, jwt: string, span: Span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add exchange to cache : " + name, span);
+        return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
     }
     public async FindExchangeByName(name: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(name)) return null;
-            let item = await this.memoryCache.wrap("exchangename_" + name, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindExchangeByName", "Add exchange to cache : " + name);
-                return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
-            });
+            var key = ("exchangename_" + name).toString();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindExchangeByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public FindRoleByIdWrap(_id: string, jwt: string, span: Span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add role to cache : " + _id, span);
+        return Config.db.getbyid<User>(_id, "users", jwt, true, span);
     }
     public async FindRoleById(_id: string, jwt: string, parent: Span): Promise<Role> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
             if (NoderedUtil.IsNullEmpty(_id)) return null;
-            let item = await this.memoryCache.wrap("users" + _id, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindRoleById", "Add role to cache : " + _id);
-                return Config.db.getbyid<User>(_id, "users", jwt, true, span);
-            });
+            var key = ("users_" + _id).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindRoleByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return Role.assign(item);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public FindByUsernameWrap(username: string, jwt: string, span: Span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add user to cache by username : " + username, span);
+        return Config.db.getbyusername<User>(username, null, jwt, true, span);
     }
     public async FindByUsername(username: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
             if (NoderedUtil.IsNullEmpty(username)) return null;
-            let item = await this.memoryCache.wrap("username_" + username, () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindByUsername", "Add user to cache : " + username);
-                return Config.db.getbyusername<User>(username, null, jwt, true, span);
-            });
+            var key = ("username_" + username).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindByUsernameWrap(username, jwt, span); });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public GetDisposableDomainWrap(domain: string, span: Span) {
+        const jwt = Crypt.rootToken();
+        Logger.instanse.debug("Add to cache : " + domain, span);
+        const query = { name: domain, "_type": "disposable" };
+        return Config.db.GetOne<Base>({ query, collectionname: "domains", jwt }, span);
     }
     public async GetDisposableDomain(domain: string, parent: Span): Promise<Base> {
         await this.init();
@@ -355,40 +402,98 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
             if (NoderedUtil.IsNullEmpty(domain)) return null;
-            let item = await this.memoryCache.wrap("disposable_" + domain, () => {
-                const jwt = Crypt.rootToken();
-                Logger.instanse.debug("DBHelper", "IsDisposableDomain", "Add to cache : " + domain);
-                const query = { name: domain, "_type": "disposable" };
-                return Config.db.GetOne<Base>({ query, collectionname: "domains", jwt }, span);
-            });
+            var key = ("disposable_" + domain).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.GetDisposableDomainWrap(domain, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return item;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public FindByUsernameOrFederationidWrap(username: string, issuer: string, span: Span) {
+        const jwt = Crypt.rootToken();
+        Logger.instanse.debug("Add federationid to cache : " + username, span);
+        return Config.db.getbyusername<User>(username, issuer, jwt, true, span);
     }
     public async FindByUsernameOrFederationid(username: string, issuer: string, parent: Span): Promise<User> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
             if (NoderedUtil.IsNullEmpty(username)) return null;
-            let item = await this.memoryCache.wrap("federation_" + username, () => {
-                const jwt = Crypt.rootToken();
-                Logger.instanse.debug("DBHelper", "FindByUsername", "Add user to cache : " + username);
-                return Config.db.getbyusername<User>(username, issuer, jwt, true, span);
-            });
+            var key = ("federation_" + username).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindByUsernameOrFederationidWrap(username, issuer, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
 
+    }
+    DecorateWithRolesWrap(user, span: Span) {
+        Logger.instanse.debug("Add userroles to cache : " + user._id + " " + user.name, span);
+        const pipe: any = [{ "$match": { "_id": user._id } },
+            {
+                "$graphLookup": {
+                    from: "users",
+                    startWith: "$_id",
+                    connectFromField: "_id",
+                    connectToField: "members._id",
+                    as: "roles",
+                    maxDepth: Config.max_recursive_group_depth,
+                    depthField: "depth"
+                    , restrictSearchWithMatch: { "_type": "role" }
+                    // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
+                }
+            }, {
+                "$graphLookup": {
+                    from: "users",
+                    startWith: "$_id",
+                    connectFromField: "members._id",
+                    connectToField: "members._id",
+                    as: "roles2",
+                    maxDepth: 0,
+                    depthField: "depth",
+                    restrictSearchWithMatch: { "_type": "role" }
+                }
+            },
+            {
+                "$project": {
+                    _id: 1,
+                    name: 1,
+                    username: 1,
+                    roles: {
+                        $map: {
+                            input: "$roles",
+                            as: "roles",
+                            in: {
+                                "name": "$$roles.name",
+                                "_id": "$$roles._id"
+                            }
+                        }
+                    },
+                    roles2: {
+                        $map: {
+                            input: "$roles2",
+                            as: "roles2",
+                            in: {
+                                "name": "$$roles2.name",
+                                "_id": "$$roles2._id"
+                            }
+                        }
+                    }
+
+                }
+            }
+        ]
+        return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
+    }
+    public DecorateWithRolesAllRolesWrap(span: Span) {
+        Logger.instanse.debug("Add all roles", span);
+        return Config.db.query<Role>({ query: { _type: "role" }, projection: { "name": 1, "members": 1 }, top: Config.expected_max_roles, collectionname: "users", jwt: Crypt.rootToken() }, span);
     }
     public async DecorateWithRoles<T extends TokenUser | User>(user: T, parent: Span): Promise<T> {
         await this.init();
@@ -397,86 +502,57 @@ export class DBHelper {
             if (NoderedUtil.IsNullUndefinded(user)) return null;
             if (!Config.decorate_roles_fetching_all_roles) {
                 if (!user.roles) user.roles = [];
-                const results = await this.memoryCache.wrap("userroles_" + user._id, () => {
-                    Logger.instanse.debug("DBHelper", "DecorateWithRoles", "Add userroles to cache : " + user.name);
-                    const pipe: any = [{ "$match": { "_id": user._id } },
-                    {
-                        "$graphLookup": {
-                            from: "users",
-                            startWith: "$_id",
-                            connectFromField: "_id",
-                            connectToField: "members._id",
-                            as: "roles",
-                            maxDepth: Config.max_recursive_group_depth,
-                            depthField: "depth"
-                            , restrictSearchWithMatch: { "_type": "role" }
-                            // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
-                        }
-                    }, {
-                        "$graphLookup": {
-                            from: "users",
-                            startWith: "$_id",
-                            connectFromField: "members._id",
-                            connectToField: "members._id",
-                            as: "roles2",
-                            maxDepth: 0,
-                            depthField: "depth",
-                            restrictSearchWithMatch: { "_type": "role" }
-                        }
-                    },
-                    {
-                        "$project": {
-                            _id: 1,
-                            name: 1,
-                            username: 1,
-                            roles: {
-                                $map: {
-                                    input: "$roles",
-                                    as: "roles",
-                                    in: {
-                                        "name": "$$roles.name",
-                                        "_id": "$$roles._id"
-                                    }
-                                }
-                            },
-                            roles2: {
-                                $map: {
-                                    input: "$roles2",
-                                    as: "roles2",
-                                    in: {
-                                        "name": "$$roles2.name",
-                                        "_id": "$$roles2._id"
-                                    }
-                                }
-                            }
-
-                        }
-                    }
-                    ]
-                    return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
-                });
+                var key = ("userroles_" + user._id).toString().toLowerCase();
+                const results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap(user, span) });
+                var key = ("userroles_" + WellknownIds.users).toString().toLowerCase();
+                const users_results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap({ "_id": WellknownIds.users, "name": "users" }, span) });
 
                 if (results.length > 0) {
                     user.roles = [];
                     results[0].roles.forEach(r => {
                         const exists = user.roles.filter(x => x._id == r._id);
-                        if (exists.length == 0) user.roles.push(r);
+                        if (exists.length == 0) {
+                            user.roles.push(r);
+                            Logger.instanse.silly("adding (from roles) " + r.name + " " + r._id, span);
+                        }
                     });
                     results[0].roles2.forEach(r => {
                         const exists = user.roles.filter(x => x._id == r._id);
-                        if (exists.length == 0) user.roles.push(r);
+                        if (exists.length == 0) {
+                            user.roles.push(r);
+                            Logger.instanse.silly("adding (from roles2) " + r.name + " " + r._id, span);
+                        }
                     });
+                    if (users_results.length > 0) {
+                        users_results[0].roles.forEach(r => {
+                            const exists = user.roles.filter(x => x._id == r._id);
+                            if (exists.length == 0) {
+                                user.roles.push(r);
+                                Logger.instanse.silly("also adding (from users roles) " + r.name + " " + r._id, span);
+                            }
+                        });
+                        users_results[0].roles2.forEach(r => {
+                            const exists = user.roles.filter(x => x._id == r._id);
+                            if (exists.length == 0) {
+                                user.roles.push(r);
+                                Logger.instanse.silly("also adding (from users roles2) " + r.name + " " + r._id, span);
+                            }
+                        });
+                    }
                 }
                 let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
                 if (hasusers.length == 0) {
                     user.roles.push(new Rolemember("users", WellknownIds.users));
+                    Logger.instanse.verbose("also adding user to users " + WellknownIds.users, span);
+                    // Logger.instanse.debug(user.name + " missing from users, adding it", span);
+                    // await Config.db.db.collection("users").updateOne(
+                    //     { _id: WellknownIds.users },
+                    //     { "$push": { members: new Rolemember(user.name, user._id) } }
+                    // );
                 }
                 return user;
             }
-            let cached_roles = await this.memoryCache.wrap("allroles", () => {
-                Logger.instanse.debug("DBHelper", "DecorateWithRoles", "Add all roles");
-                return Config.db.query<Role>({ query: { _type: "role" }, projection: { "name": 1, "members": 1 }, top: Config.expected_max_roles, collectionname: "users", jwt: Crypt.rootToken() }, span);
-            });
+            let cached_roles = await this.memoryCache.wrap("allroles", () => { return this.DecorateWithRolesAllRolesWrap(span) });
             if (cached_roles.length === 0 && user.username !== "root") {
                 throw new Error("System has no roles !!!!!!");
             }
@@ -511,26 +587,148 @@ export class DBHelper {
             } while (updated)
             user.roles.sort((a, b) => a.name.localeCompare(b.name));
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
         return user as any;
     }
+    public FindRoleByNameWrap(name: string, jwt: string, span: Span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add role to cache : " + name, span);
+        return Config.db.GetOne<Role>({ query: { name: name, "_type": "role" }, collectionname: "users", jwt }, span)
+    }
     public async FindRoleByName(name: string, jwt: string, parent: Span): Promise<Role> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
-            let item = await this.memoryCache.wrap("rolename_" + name, async () => {
-                if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
-                Logger.instanse.debug("DBHelper", "FindRoleByName", "Add role to cache : " + name);
-                return Config.db.GetOne<Role>({ query: { name: name, "_type": "role" }, collectionname: "users", jwt }, parent)
-            });
+            var key = ("rolename_" + name).toString();
+            let item = await this.memoryCache.wrap(key, async () => { return this.FindRoleByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return Role.assign(item);
         } catch (error) {
-            span?.recordException(error);
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async UserRoleUpdateId(id: string, watch: boolean, span: Span) {
+        if (!NoderedUtil.IsNullEmpty(id)) return;
+        var u = new Base(); u._id = id;
+        return this.UserRoleUpdate(u, watch, span);
+    }
+    public async DeleteKey(key: string, watch: boolean, span: Span): Promise<void> {
+        if (!this._doClear(watch, span)) return;
+        if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
+            if (!Config.unittesting) {
+                Logger.instanse.debug("Send clearcache command for " + key, span);
+                amqpwrapper.Instance().send("openflow", "", { "command": "clearcache", "key": key }, 20000, null, "", span, 1);
+            }
+        }
+        await Logger.DBHelper.memoryCache.del(key);
+    }
+    private _doClear(watch: boolean, span: Span) {
+        var doit: boolean = false;
+        if (watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
+            doit = true;
+        } else if (!watch && (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb")) {
+            doit = true;
+        }
+        return doit;
+    }
+    public async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean, span: Span) {
+        if (NoderedUtil.IsNullUndefinded(userrole)) return;
+        if (userrole._type == "user") {
+            Logger.instanse.debug("Remove user from cache : " + userrole._id, span);
+            let u: User = userrole as any;
+            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("users_" + u._id).toString(), watch, span);
+            if (!NoderedUtil.IsNullEmpty(u.username)) await this.DeleteKey(("username_" + u.username).toString(), watch, span);
+            if (!NoderedUtil.IsNullEmpty(u.email)) await this.DeleteKey(("username_" + u.email).toString(), watch, span);
+            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("userroles_" + u._id).toString(), watch, span);
+            if (u.federationids != null && Array.isArray(u.federationids)) {
+                for (var i = 0; i < u.federationids.length; i++) {
+                    var fed = u.federationids[i];
+                    if (fed == null) continue;
+                    // has self property with value id
+                    if (fed.hasOwnProperty("id")) {
+                        await this.DeleteKey(("federation_" + fed.id).toString(), watch, span);
+                    } else {
+                        await this.DeleteKey(("federation_" + fed).toString(), watch, span);
+                    }
+                }
+            }
+            await this.DeleteKey("allroles", watch, span);
+        } else if (userrole._type == "role") {
+            let r: Role = userrole as any;
+            if (!NoderedUtil.IsNullEmpty(r._id)) await this.DeleteKey(("users_" + r._id).toString(), watch, span);
+            if (!NoderedUtil.IsNullEmpty(r.name)) await this.DeleteKey(("rolename_" + r.name).toString(), watch, span);
+            if (userrole._id != WellknownIds.users) {
+                if (r.members != null && Array.isArray(r.members)) {
+                    for (var i = 0; i < r.members.length; i++) {
+                        var member = r.members[i];
+                        this.UserRoleUpdate(member as any, watch, span);
+                    }
+                }
+            }
+            await this.DeleteKey("allroles", watch, span);
+        } else if (userrole._type == "customer") {
+            if (!NoderedUtil.IsNullEmpty(userrole._id)) await this.DeleteKey(("users_" + userrole._id).toString(), watch, span);
+        }
+
+    }
+    public async QueueUpdate(_id: string, name: string, watch: boolean, span: Span) {
+        Logger.instanse.debug("Clear queue cache : " + name + " " + _id, span);
+        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("queuename_" + name).toString(), watch, span);
+        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, span);
+    }
+    public async ExchangeUpdate(_id: string, name: string, watch: boolean, span: Span) {
+        Logger.instanse.debug("Clear exchange cache : " + name + " " + _id, span);
+        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("exchangename_" + name).toString(), watch, span);
+        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, span);
+    }
+    public async WorkitemQueueUpdate(wiqid: string, watch: boolean, span: Span) {
+        Logger.instanse.debug("Clear workitem queue cache : " + wiqid, span);
+        await this.DeleteKey("pushablequeues", watch, span);
+        if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, span);
+    }
+    public GetPushableQueuesWrap(span: Span) {
+        Logger.instanse.debug("Add pushable queues", span);
+        return Config.db.query<WorkitemQueue>({
+            query: {
+                "$or": [
+                    { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
+                    { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
+            }, collectionname: "mq", jwt: Crypt.rootToken()
+        }, span);
+    }
+    public async GetPushableQueues(parent: Span): Promise<WorkitemQueue[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
+        try {
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) });
+            return items;
+        } catch (error) {
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public GetPendingWorkitemsCountWrap(wiqid: string, span: Span) {
+        Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
+        // TODO: skip nextrun ? or accept neextrun will always be based of cache TTL or substract the TTL ?
+        const query = { "wiqid": wiqid, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
+        return Config.db.count({
+            query, collectionname: "workitems", jwt: Crypt.rootToken()
+        }, span);
+    }
+    public async GetPendingWorkitemsCount(wiqid: string, parent: Span): Promise<number> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
+        try {
+            var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
+            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); });
+            return count;
+        } catch (error) {
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -542,29 +740,28 @@ export class DBHelper {
     public async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
-            Logger.instanse.verbose("DBHelper", "EnsureRole", `FindRoleByName ${name}`);
+            Logger.instanse.verbose(`FindRoleByName ${name}`, span);
             let role: Role = await this.FindRoleByName(name, jwt, span);
             if (role == null) {
-                Logger.instanse.verbose("DBHelper", "EnsureRole", `EnsureRole FindRoleById ${name}`);
+                Logger.instanse.verbose(`EnsureRole FindRoleById ${name}`, span);
                 role = await this.FindRoleById(id, null, span);
             }
             if (role !== null && (role._id === id || NoderedUtil.IsNullEmpty(id))) { return role; }
             if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) {
-                Logger.instanse.warn("DBHelper", "EnsureRole", `Deleting ${name} with ${role._id} not matcing expected id ${id}`);
+                Logger.instanse.warn(`Deleting ${name} with ${role._id} not matcing expected id ${id}`, span);
                 await Config.db.DeleteOne(role._id, "users", false, jwt, span);
             }
             role = new Role(); role.name = name; role._id = id;
-            Logger.instanse.verbose("DBHelper", "EnsureRole", `Adding new role ${name}`);
+            Logger.instanse.verbose(`Adding new role ${name}`, span);
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
             role = Role.assign(role);
-            Base.addRight(role, WellknownIds.admins, "admins", [Rights.full_control]);
+            if (Config.force_add_admins) Base.addRight(role, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(role, role._id, role.name, [Rights.full_control]);
-            Base.removeRight(role, role._id, [Rights.delete]);
-            Logger.instanse.verbose("DBHelper", "EnsureRole", `Updating ACL for new role ${name}`);
+            if (Config.force_add_admins) Base.removeRight(role, role._id, [Rights.delete]);
+            Logger.instanse.verbose(`Updating ACL for new role ${name}`, span);
             await this.Save(role, jwt, span);
             return Role.assign(role);
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -574,16 +771,16 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.ensureUser", parent);
         try {
             span?.addEvent("FindByUsernameOrId");
-            Logger.instanse.verbose("DBHelper", "EnsureUser", `FindById ${name} ${id}`);
-            let user = await this.FindById(id, null, span);
+            Logger.instanse.verbose(`FindById ${name} ${id}`, span);
+            let user = await this.FindById(id, span);
             if (user == null) {
-                Logger.instanse.verbose("DBHelper", "EnsureUser", `FindByUsername ${username}`);
+                Logger.instanse.verbose(`FindByUsername ${username}`, span);
                 user = await this.FindByUsername(username, null, span);
             }
             if (user !== null && (user._id === id || id === null)) { return user; }
             if (user !== null && id !== null) {
                 span?.addEvent("Deleting");
-                Logger.instanse.warn("DBHelper", "EnsureUser", `Deleting ${name} with ${user._id} not matcing expected id ${id}`);
+                Logger.instanse.warn(`Deleting ${name} with ${user._id} not matcing expected id ${id}`, span);
                 await Config.db.DeleteOne(user._id, "users", false, jwt, span);
             }
             user = new User();
@@ -597,16 +794,15 @@ export class DBHelper {
                 await Crypt.SetPassword(user, Math.random().toString(36).substr(2, 9), span);
             }
             span?.addEvent("Insert user");
-            Logger.instanse.verbose("DBHelper", "EnsureUser", `Adding new user ${name}`);
+            Logger.instanse.verbose(`Adding new user ${name}`, span);
             user = await Config.db.InsertOne(user, "users", 0, false, jwt, span);
             user = User.assign(user);
             span?.addEvent("DecorateWithRoles");
-            Logger.instanse.verbose("DBHelper", "EnsureRole", `Decorating new user ${name} with roles`);
+            Logger.instanse.verbose(`Decorating new user ${name} with roles`, span);
             user = await this.DecorateWithRoles(user, span);
             span?.addEvent("return user");
             return user;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);
@@ -647,10 +843,12 @@ export class DBHelper {
             }
         }
     }
-    public async UpdateHeartbeat(cli: WebSocketServerClient): Promise<any> {
+    public UpdateHeartbeat(cli: WebSocketServerClient): any {
+        if (NoderedUtil.IsNullUndefinded(cli) || NoderedUtil.IsNullUndefinded(cli.user)) return null;
         const dt = new Date(new Date().toISOString());
-        const updatedoc = { _heartbeat: dt, lastseen: dt, clientagent: cli.clientagent, clientversion: cli.clientagent, remoteip: cli.remoteip };
-        cli.user._heartbeat = dt; cli.user.lastseen = dt;
+        const updatedoc = { _heartbeat: dt, lastseen: dt, clientagent: cli.clientagent, clientversion: cli.clientversion, remoteip: cli.remoteip };
+        cli.user._heartbeat = dt;
+        cli.user.lastseen = dt;
         if (cli.clientagent == "openrpa") {
             cli.user._rpaheartbeat = dt;
             return { $set: { ...updatedoc, _rpaheartbeat: new Date(new Date().toISOString()), _lastopenrpaclientversion: cli.clientversion } };
@@ -681,17 +879,17 @@ export class DBHelper {
             return { $set: updatedoc };
         }
     }
+    public GetIPBlockListWrap(span) {
+        return Config.db.query<Base>({ query: { _type: "ipblock" }, projection: { "ips": 1 }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
+    }
     public async GetIPBlockList(parent: Span): Promise<Base[]> {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetIPBlockList", parent);
         try {
-            let items = await this.memoryCache.wrap("ipblock", () => {
-                return Config.db.query<Base>({ query: { _type: "ipblock" }, projection: { "ips": 1 }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
-            });
+            let items = await this.memoryCache.wrap("ipblock", () => { return this.GetIPBlockListWrap(span) });
             if (NoderedUtil.IsNullUndefinded(items)) items = [];
             return items;
         } catch (error) {
-            span?.recordException(error);
             throw error;
         } finally {
             Logger.otel.endSpan(span);

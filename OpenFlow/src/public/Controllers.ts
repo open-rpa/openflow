@@ -6,6 +6,7 @@ import { WebSocketClientService } from "./WebSocketClientService";
 import * as jsondiffpatch from "jsondiffpatch";
 import * as ofurl from "./formsio_of_provider";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
+import { RegisterExchangeResponse } from "@openiap/openflow-api/lib/node/nodeclient/NoderedUtil";
 
 
 declare let $: any;
@@ -112,12 +113,12 @@ export class MenuCtrl {
             this.customer = this.WebSocketClientService.customer;
 
             this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
-            if (!NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
+            if (this.customers != null && !NoderedUtil.IsNullEmpty(this.user.selectedcustomerid)) {
                 if (this.customers.filter(x => x._id == this.user.selectedcustomerid).length == 0) {
                     this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.selectedcustomerid } })).concat(this.customers);
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(this.user.customerid)) {
+            if (this.customers != null && !NoderedUtil.IsNullEmpty(this.user.customerid)) {
                 if (this.customers.filter(x => x._id == this.user.customerid).length == 0) {
                     this.customers = (await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer", _id: this.user.customerid } })).concat(this.customers);
                 }
@@ -379,7 +380,7 @@ export class MenuCtrl {
                 id: '0'
             });
 
-            if (this.WebSocketClientService.multi_tenant && this.customer == null && this.customers.length == 0) this.NewFeaturesTour.addStep({
+            if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length == 0) this.NewFeaturesTour.addStep({
                 title: 'Enable multi tenancy',
                 text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
                 attachTo: {
@@ -1993,6 +1994,7 @@ export class LoginCtrl {
         console.debug("LoginCtrl::constructor");
         this.domain = window.location.hostname;
         WebSocketClientService.getJSON("/loginproviders", async (error: any, data: any) => {
+            if (NoderedUtil.IsNullUndefinded(data)) return;
             this.forgot_pass_emails = WebSocketClientService.forgot_pass_emails;
             this.providers = data;
             this.allow_user_registration = WebSocketClientService.allow_user_registration;
@@ -2287,7 +2289,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
         console.debug("UsersCtrl");
         this.basequery = { _type: "user" };
         this.collection = "users";
-        this.searchfields = ["name", "username"];
+        this.searchfields = ["name", "username", "federationids", "federationids.id"];
         this.postloadData = this.processData;
         if (this.userdata.data.UsersCtrl) {
             this.basequery = this.userdata.data.UsersCtrl.basequery;
@@ -2607,27 +2609,38 @@ export class UserCtrl extends entityCtrl<TokenUser> {
             }
             if (this.removedmembers.length > 0) {
                 for (let i = 0; i < this.removedmembers.length; i++) {
-                    const roles = await NoderedUtil.Query({ collectionname: "users", query: { _type: "role", _id: this.removedmembers[i]._id }, orderby: { _type: -1, name: 1 }, top: 5 });
-                    if (roles.length > 0) {
-                        const memberof = roles[i];
-                        const exists = memberof.members.filter(x => x._id == this.model._id);
-                        if (exists.length > 0) {
-                            memberof.members = memberof.members.filter(x => x._id != this.model._id);
-                            try {
-                                await NoderedUtil.UpdateOne({ collectionname: "users", item: memberof });
-                            } catch (error) {
-                                console.error("Error updating " + memberof.name, error);
+                    var roles;
+                    var role;
+                    try {
+                        roles = await NoderedUtil.Query({ collectionname: "users", query: { _type: "role", _id: this.removedmembers[i]._id }, orderby: { _type: -1, name: 1 }, top: 5 });
+                        if (roles.length > 0) {
+                            role = roles[0];
+                            if (role.members === null || role.members === undefined) {
+                                console.log("role.members is null", role);
+                                continue;
                             }
+                            const exists = role.members.filter(x => x._id == this.model._id);
+                            if (exists.length > 0) {
+                                console.log("Updating role", role.name);
+                                role.members = role.members.filter(x => x._id != this.model._id);
+                                try {
+                                    await NoderedUtil.UpdateOne({ collectionname: "users", item: role });
+                                } catch (error) {
+                                    console.error("Error updating " + role.name, error);
+                                }
+                            }
+
                         }
-
+                    } catch (error) {
+                        console.log(roles, roles)
+                        console.error(error);
                     }
-
                 }
-
             }
             this.loading = false;
             this.$location.path("/Users");
         } catch (error) {
+            console.error(error);
             this.loading = false;
             this.errormessage = error.message ? error.message : error;
         }
@@ -4077,8 +4090,6 @@ export class EntityCtrl extends entityCtrl<Base> {
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
-        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
-
         if (this.collection == "files") {
             (this.model as any).metadata._acl.push(ace);
         } else {
@@ -4087,74 +4098,22 @@ export class EntityCtrl extends entityCtrl<Base> {
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
-
-    isBitSet(base64: string, bit: number): boolean {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        return (currentValue & mask) != 0;
+    isBitSet(item: Ace, bit: number): boolean {
+        return Ace.isBitSet(item, bit);
     }
-    setBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue | mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    setBit(item: Ace, bit: number): void {
+        Ace.setBit(item, bit);
     }
-    unsetBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        let currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue &= ~mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    unsetBit(item: Ace, bit: number): void {
+        Ace.unsetBit(item, bit);
     }
-    toogleBit(a: any, bit: number) {
-        if (this.isBitSet(a.rights, bit)) {
-            a.rights = this.unsetBit(a.rights, bit);
+    toogleBit(a: Ace, bit: number) {
+        if (this.isBitSet(a, bit)) {
+            this.unsetBit(a, bit);
         } else {
-            a.rights = this.setBit(a.rights, bit);
+            this.setBit(a, bit);
         }
-        const buf2 = this._base64ToArrayBuffer(a.rights);
-        const view2 = new Uint8Array(buf2);
     }
-    _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        const binary_string = window.atob(string_base64);
-        const len = binary_string.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            //const ascii = string_base64.charCodeAt(i);
-            const ascii = binary_string.charCodeAt(i);
-            bytes[i] = ascii;
-        }
-        return bytes.buffer;
-    }
-    _arrayBufferToBase64(array_buffer): string {
-        let binary = '';
-        const bytes = new Uint8Array(array_buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i])
-        }
-        return window.btoa(binary);
-    }
-
-
-
-
     restrictInput(e) {
         if (e.keyCode == 13) {
             e.preventDefault();
@@ -4890,11 +4849,13 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
     ) {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = false;
-        this.baseprojection = { name: 1, username: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1 };
+        this.baseprojection = null;
+        // this.baseprojection = { name: 1, username: 1, type: 1, _type: 1, impostorname: 1, clientagent: 1, clientversion: 1, _created: 1, success: 1, remoteip: 1, metadata: 1 };
         this.searchfields = ["name", "impostorname", "clientagent", "type"];
         console.debug("AuditlogsCtrl");
-        // this.pagesize = 20;
+        this.pagesize = 20;
         // this.basequery = { _type: "role" };
+        // this.orderby = { "_created": -1 };
         this.collection = "audit";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -5079,15 +5040,10 @@ export class CredentialCtrl extends entityCtrl<Base> {
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
-        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
         if (WebSocketClient.instance.user._id != ace._id) {
-            ace.rights = this.unsetBit(ace.rights, 1);
-            ace.rights = this.setBit(ace.rights, 2);
-            ace.rights = this.unsetBit(ace.rights, 3);
-            ace.rights = this.unsetBit(ace.rights, 4);
-            ace.rights = this.unsetBit(ace.rights, 5);
+            Ace.resetnone(ace);
+            this.setBit(ace, 2);
         }
-
         if (this.collection == "files") {
             (this.model as any).metadata._acl.push(ace);
         } else {
@@ -5096,74 +5052,22 @@ export class CredentialCtrl extends entityCtrl<Base> {
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
-
-    isBitSet(base64: string, bit: number): boolean {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        return (currentValue & mask) != 0;
+    isBitSet(item: Ace, bit: number): boolean {
+        return Ace.isBitSet(item, bit);
     }
-    setBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue | mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    setBit(item: Ace, bit: number): void {
+        Ace.setBit(item, bit);
     }
-    unsetBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        let currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue &= ~mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    unsetBit(item: Ace, bit: number): void {
+        Ace.unsetBit(item, bit);
     }
-    toogleBit(a: any, bit: number) {
-        if (this.isBitSet(a.rights, bit)) {
-            a.rights = this.unsetBit(a.rights, bit);
+    toogleBit(a: Ace, bit: number) {
+        if (this.isBitSet(a, bit)) {
+            this.unsetBit(a, bit);
         } else {
-            a.rights = this.setBit(a.rights, bit);
+            this.setBit(a, bit);
         }
-        const buf2 = this._base64ToArrayBuffer(a.rights);
-        const view2 = new Uint8Array(buf2);
     }
-    _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        const binary_string = window.atob(string_base64);
-        const len = binary_string.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            //const ascii = string_base64.charCodeAt(i);
-            const ascii = binary_string.charCodeAt(i);
-            bytes[i] = ascii;
-        }
-        return bytes.buffer;
-    }
-    _arrayBufferToBase64(array_buffer): string {
-        let binary = '';
-        const bytes = new Uint8Array(array_buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i])
-        }
-        return window.btoa(binary);
-    }
-
-
-
-
     restrictInput(e) {
         if (e.keyCode == 13) {
             e.preventDefault();
@@ -6420,13 +6324,9 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
-        // ace.rights = "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=";
         if (WebSocketClient.instance.user._id != ace._id) {
-            ace.rights = this.setBit(ace.rights, 1);
-            ace.rights = this.unsetBit(ace.rights, 2);
-            ace.rights = this.unsetBit(ace.rights, 3);
-            ace.rights = this.unsetBit(ace.rights, 4);
-            ace.rights = this.unsetBit(ace.rights, 5);
+            Ace.resetnone(ace);
+            this.setBit(ace, 1);
         }
 
         if (this.collection == "files") {
@@ -6437,69 +6337,21 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
-
-    isBitSet(base64: string, bit: number): boolean {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        return (currentValue & mask) != 0;
+    isBitSet(item: Ace, bit: number): boolean {
+        return Ace.isBitSet(item, bit);
     }
-    setBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        const currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue | mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    setBit(item: Ace, bit: number): void {
+        Ace.setBit(item, bit);
     }
-    unsetBit(base64: string, bit: number) {
-        bit--;
-        const buf = this._base64ToArrayBuffer(base64);
-        const view = new Uint8Array(buf);
-        const octet = Math.floor(bit / 8);
-        let currentValue = view[octet];
-        const _bit = (bit % 8);
-        const mask = Math.pow(2, _bit);
-        const newValue = currentValue &= ~mask;
-        view[octet] = newValue;
-        return this._arrayBufferToBase64(view);
+    unsetBit(item: Ace, bit: number): void {
+        Ace.unsetBit(item, bit);
     }
-    toogleBit(a: any, bit: number) {
-        if (this.isBitSet(a.rights, bit)) {
-            a.rights = this.unsetBit(a.rights, bit);
+    toogleBit(a: Ace, bit: number) {
+        if (this.isBitSet(a, bit)) {
+            this.unsetBit(a, bit);
         } else {
-            a.rights = this.setBit(a.rights, bit);
+            this.setBit(a, bit);
         }
-        const buf2 = this._base64ToArrayBuffer(a.rights);
-        const view2 = new Uint8Array(buf2);
-    }
-    _base64ToArrayBuffer(string_base64): ArrayBuffer {
-        const binary_string = window.atob(string_base64);
-        const len = binary_string.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            //const ascii = string_base64.charCodeAt(i);
-            const ascii = binary_string.charCodeAt(i);
-            bytes[i] = ascii;
-        }
-        return bytes.buffer;
-    }
-    _arrayBufferToBase64(array_buffer): string {
-        let binary = '';
-        const bytes = new Uint8Array(array_buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i])
-        }
-        return window.btoa(binary);
     }
     searchFilteredList: Role[] = [];
     searchSelectedItem: Role = null;
@@ -6842,7 +6694,7 @@ export class ResourceCtrl extends entityCtrl<Resource> {
 
 export class WorkitemsCtrl extends entitiesCtrl<Base> {
     public queue: string = "";
-    public workitemqueues: Base[];
+    public workitemqueues: Base[] = [];
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -6876,8 +6728,12 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
             this.basequery["wiq"] = this.queue;
         }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } });
-            this.workitemqueues.unshift({ "name": "" } as any)
+            // this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } });
+            NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } }).then((result) => {
+                this.workitemqueues = result;
+                this.workitemqueues.unshift({ "name": "" } as any)
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            });
             this.loadData();
         });
     }
@@ -6980,6 +6836,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                 this.workitemqueues.unshift({ "name": "" } as any)
                 this.model = new Workitem();
                 this.model.retries = 0;
+                this.model.state = "new";
                 this.model.payload = {};
                 if (this.userdata.data && this.userdata.data.WorkitemsCtrl) this.model.wiq = this.userdata.data.WorkitemsCtrl.queue;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -7222,6 +7079,10 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         try {
             var model: any = this.model;
             this.loading = true;
+            if (model.success_wiq == null) model.success_wiq = "";
+            if (model.success_wiqid == null) model.success_wiqid = "";
+            if (model.failed_wiq == null) model.failed_wiq = "";
+            if (model.failed_wiqid == null) model.failed_wiqid = "";
             try {
                 if (NoderedUtil.IsNullEmpty(this.model._id)) {
                     const q: AddWorkitemQueueMessage = new AddWorkitemQueueMessage();
@@ -7416,11 +7277,164 @@ export class WebsocketClientsCtrl extends entitiesCtrl<Base> {
     async DumpClients(): Promise<void> {
         await NoderedUtil.CustomCommand({ "command": "dumpwebsocketclients" });
         await new Promise(resolve => { setTimeout(resolve, 1000) });
+        this.loading = false;
+        this.page = 0;
         this.loadData();
     }
     async KillClient(id): Promise<void> {
         await NoderedUtil.CustomCommand({ "command": "killwebsocketclient", id });
+        this.loading = false;
         this.loadData();
     }
 
+}
+
+
+export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
+    public arguments: any;
+    public users: TokenUser[];
+    public user: TokenUser;
+    public messages: any[] = [];
+    public watchid: string = "";
+    public timeout: string = (60 * 1000).toString(); // 1 min;
+    public lines: string = "100";
+    public exchange: RegisterExchangeResponse = null;
+    public paused: boolean = false;
+    public host: boolean = false;
+    public agent: boolean = false;    
+    public cls: boolean = false;
+    public func: boolean = true;
+    public searchstring: string = "";
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("ConsoleCtrl");
+        this.collection = "config";
+        this.basequery = { "_type": "config" }
+        this.messages = [];
+        WebSocketClientService.onSignedin(async (_user: TokenUser) => {
+            await this.RegisterQueue();
+            this.loadData();
+            this.$scope.$on('signin', (event, data) => {
+                this.RegisterQueue();
+                this.loadData();
+            });
+        });
+    }
+    async RegisterQueue() {
+        try {
+            if (this.exchange != null) {
+                try {
+                    await NoderedUtil.CloseQueue({ queuename: this.exchange.queuename });
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+            this.exchange = await NoderedUtil.RegisterExchange({
+                algorithm: "fanout", exchangename: "openflow_logs", callback: (data: QueueMessage, ack: any) => {
+                    ack();
+                    if (this.paused) return;
+                    if (data.data.lvl == 0) data.data.lvl = "inf"
+                    if (data.data.lvl == 1) data.data.lvl = "err"
+                    if (data.data.lvl == 2) data.data.lvl = "war"
+                    if (data.data.lvl == 3) data.data.lvl = "inf"
+                    if (data.data.lvl == 4) data.data.lvl = "dbg"
+                    if (data.data.lvl == 5) data.data.lvl = "ver"
+                    if (data.data.lvl == 6) data.data.lvl = "sil"
+                    this.messages.unshift(data.data);
+                    var lines = parseInt(this.lines);
+                    // if messages has more than 1000 rows, then remove the last 500 rows
+                    if (this.messages.length >= lines) this.messages.splice(lines - 1);
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }, closedcallback: (msg) => {
+                    console.debug("rabbitmq disconnected, start reconnect")
+                    setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
+            });
+            if (!NoderedUtil.IsNullEmpty(this.watchid)) {
+                await NoderedUtil.UnWatch({ id: this.watchid });
+            }
+            this.watchid = await NoderedUtil.Watch({
+                aggregates: [{ "$match": { "fullDocument._type": "config" } }], collectionname: "config", callback: (data) => {
+                    console.log(data);
+                    this.loadData();
+                }
+            })
+            console.debug("exchange: ", this.exchange);
+            console.debug("watchid: ", this.watchid);
+        } catch (error) {
+            console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
+            setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+        }
+    }
+    async submit(): Promise<void> {
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+            } else {
+                await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+            }
+            // this.$location.path("/Providers");
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async ClearCache() {
+        try {
+            await NoderedUtil.CustomCommand({ command: "clearcache" });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    hasprop(name) {
+        return this.messages.filter(x => !NoderedUtil.IsNullEmpty(x[name])).length > 0
+    }
+    ismatch(model) {
+        if (this.searchstring == '') return true;
+        if (model.func && model.func.indexOf(this.searchstring) > -1) return true;
+        if (model.collection && model.collection.indexOf(this.searchstring) > -1) return true;
+        if (model.user && model.user.indexOf(this.searchstring) > -1) return true;
+        var message = model.message;
+        if (typeof message == "object") {
+            if (message.hasOwnProperty("stack") && message.hasOwnProperty("message")) {
+                message = message.message;
+            } else {
+                message = JSON.stringify(message);
+            }
+        }
+        if (message && message.indexOf(this.searchstring) > -1) return true;
+        return false;
+    }
+    highlight(message) {
+        if (typeof message == "object") {
+            if (message.hasOwnProperty("stack") && message.hasOwnProperty("message")) {
+                message = message.message;
+            } else {
+                message = JSON.stringify(message);
+            }
+        }
+        if (this.searchstring == null || this.searchstring == "") return message;
+        if (message == null || message == "") return "";
+        return message.replace(
+            new RegExp(this.searchstring + '(?!([^<]+)?<)', 'gi'),
+            '<span class="highlight">$&</span>'
+        )
+    }
+    CopySecret(model) {
+        navigator.clipboard.writeText(JSON.stringify(model, null, 2)).then(function () {
+            console.log('Async: Copying to clipboard was successful!');
+        }, function (err) {
+            console.error('Async: Could not copy text: ', err);
+        });
+    }
 }
