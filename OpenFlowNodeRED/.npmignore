@@ -5,3 +5,8 @@ tsconfig.json
 .yml
 .cache-require-paths.json
 .devcontainer.old
+Dockerfile
+Dockerfilepuppeteer
+Dockerfiletagui
+dockerignore
+docker-package.json
