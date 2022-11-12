@@ -5,3 +5,4 @@ dist
 *license*
 ee
 package-lock.json
+.cache-require-paths.json

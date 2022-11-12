@@ -3,3 +3,5 @@ src
 package-lock.json
 tsconfig.json
 .yml
+.cache-require-paths.json
+.devcontainer.old
