@@ -5374,6 +5374,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     public keys: string[] = [];
     async processdata() {
+        this.errormessage = "";
         if (this.models.length > 0) {
             this.keys = Object.keys(this.models[0]);
             for (let i: number = this.keys.length - 1; i >= 0; i--) {
@@ -5396,6 +5397,17 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
                 group._id[field] = "$" + field;
             }
         });
+        if (!NoderedUtil.IsNullEmpty(this.searchstring)) {
+            try {
+                var json = JSON.parse(this.searchstring);
+                aggregates.push({ "$match": json });
+            } catch (error) {
+                this.errormessage = error
+                this.loading = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+        }
         aggregates.push({ "$group": group });
         aggregates.push({ "$match": { "count": { "$gte": 2 } } });
         aggregates.push({ "$limit": 100 });

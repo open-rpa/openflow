@@ -5,8 +5,17 @@
 <div class=" col-md-6 text-right">
 </div>
 
-<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 
+<div class="form-group form-horizontal">
+  <div class="col-sm">
+    <label class="sr-only">Query</label>
+    <div class="input-group unframed-addons">
+      <input ng-model="ctrl.searchstring" ng-change="ctrl.loadData()" class="form-control input-md"
+        ng-model-options="{debounce: 400}" placeholder="Filter result by mongodb query" />
+      </div>
+    </div>
+  </div>
+</div>
 <div class="form-group form-horizontal">
   <div class="col-sm">
     <label class="sr-only">Uniqeness</label>
@@ -26,6 +35,7 @@
     </div>
   </div>
 </div>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
 <div class="form-group form-horizontal">
   <div class="input-group unframed-addons col-sm-9" ng-show="ctrl.keys.length < 8">
     <div ng-repeat="model in ctrl.keys" class="border">
