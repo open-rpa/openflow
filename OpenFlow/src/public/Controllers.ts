@@ -2867,7 +2867,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         this.searchfields = ["metadata.name"];
         this.orderby = { "metadata._created": -1 }
         this.collection = "files";
-        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, length: 1 };
         const elem = document.getElementById("myBar");
         elem.style.width = '0%';
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -7391,6 +7391,14 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     async ClearCache() {
         try {
             await NoderedUtil.CustomCommand({ command: "clearcache" });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async MemoryDump() {
+        try {
+            await NoderedUtil.CustomCommand({ command: "heapdump" });
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }
