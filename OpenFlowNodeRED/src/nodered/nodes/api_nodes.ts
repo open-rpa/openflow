@@ -1,3 +1,4 @@
+import * as os from "os";
 import * as RED from "node-red";
 import { Red } from "node-red";
 import { Crypt } from "../../nodeclient/Crypt";
@@ -6,6 +7,7 @@ import { NoderedUtil, SigninMessage, TokenUser, Message, WebSocketClient, Base, 
 import { Util } from "./Util";
 import { log_message, WebServer } from "../../WebServer";
 import { Logger } from "../../Logger";
+import { Span } from "@opentelemetry/api";
 const pako = require('pako');
 
 export interface Iapi_credentials {
@@ -1721,6 +1723,122 @@ export class housekeeping {
     }
 }
 
+
+export interface Imemorydump {
+    name: string;
+    nodered: boolean
+    openflow: boolean;
+}
+export class memorydump {
+    public node: Red = null;
+    public name: string;
+    constructor(public config: Imemorydump) {
+        RED.nodes.createNode(this, config);
+        this.node = this;
+        this.name = config.name;
+        this.node.on("input", this.oninput);
+        this.node.on("close", this.onclose);
+    }
+    async oninput(msg: any) {
+        let traceId: string; let spanId: string
+        let logmsg = WebServer.log_messages[msg._msgid];
+        if (logmsg != null) {
+            traceId = logmsg.traceId;
+            spanId = logmsg.spanId;
+        }
+        let span = Logger.otel.startSpan("api get jwt", traceId, spanId);
+        try {
+            let priority: number = 1;
+            if (!NoderedUtil.IsNullEmpty(msg.priority)) { priority = msg.priority; }
+
+            const { nodered, openflow } = this.config;
+
+            if (nodered) {
+                this.node.status({ fill: "blue", shape: "dot", text: "Creating heap dump" });
+                // wait one second, to allow the status to be sent
+                await new Promise(resolve => { setTimeout(resolve, 1000) });
+                await this.createheapdump(msg.jwt, span);
+
+            }
+            if (openflow) {
+                this.node.status({ fill: "blue", shape: "dot", text: "Running house keeping" });
+                await NoderedUtil.CustomCommand({ command: "heapdump", jwt: msg.jwt, priority });
+            }
+
+            this.node.send(msg);
+            if (!nodered) {
+                this.node.status({ fill: "green", shape: "dot", text: "Complete" });
+            }
+        } catch (error) {
+            let message = error.message ? error.message : error;
+            // this.node.error(new Error(message), msg);
+            NoderedUtil.HandleError(this, message, msg);
+            this.node.status({ fill: 'red', shape: 'dot' });
+        } finally {
+            span?.end();
+            if (logmsg != null) {
+                log_message.nodeend(msg._msgid, this.node.id);
+            }
+        }
+    }
+    onclose() {
+    }
+
+    createheapdump(jwt: string, parent: Span): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const [traceId, spanId] = Logger.otel.GetTraceSpanId(parent);
+
+            Logger.instanse.info("api_nodes", "createheapdump", "createheapdump");
+            const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            const filename = `${hostname}.${Date.now()}.heapsnapshot`;
+            const inspector = require('node:inspector');
+            const fs = require('node:fs');
+            const session = new inspector.Session();
+
+            const fd = fs.openSync(filename, 'w');
+
+            session.connect();
+
+            session.on('HeapProfiler.addHeapSnapshotChunk', (m) => {
+                fs.writeSync(fd, m.params.chunk);
+            });
+
+            session.post('HeapProfiler.takeHeapSnapshot', null, async (err, r) => {
+                try {
+                    Logger.instanse.info("api_nodes", "createheapdump", "createheapdump completed");
+                    try {
+                        session.disconnect();
+                        fs.closeSync(fd);
+                    } catch (error) {
+                    }
+                    if (err) { reject(err); return; }
+                    var msg = new Message();
+                    var compressed = false;
+                    // var filecontent = fs.readFileSync(filename, { encoding: 'base64' });
+                    var filecontent = Buffer.from(pako.deflate(fs.readFileSync(filename, null))).toString('base64');
+                    compressed = true;
+                    // var filecontent = fs.readFileSync(filename); // Buffer, will block event loop
+                    // var filecontent = fs.createReadStream(filename); // Stream, will not block event loop
+                    Logger.instanse.info("api_nodes", "createheapdump", "Uploading " + filename);
+                    this.node.status({ fill: "blue", shape: "dot", text: "Uploading " + filename });
+
+                    await new Promise(resolve => { setTimeout(resolve, 1000) });
+                    const savemsg = await NoderedUtil.SaveFile({ compressed, filename, mimeType: "application/json", file: filecontent, jwt, priority: 2, traceId, spanId });
+                    Logger.instanse.info("api_nodes", "createheapdump", "uploaded " + filename + " as " + savemsg.id);
+                    this.node.status({ fill: "green", shape: "dot", text: "Uploaded " + filename });
+                    fs.unlinkSync(filename);
+                    resolve(savemsg.id);
+                } catch (error) {
+                    try {
+                        fs.unlinkSync(filename);
+                    } catch (error) {
+                    }
+                    reject(error);
+                }
+            });
+        })
+    }
+}
 
 
 export interface Icustom {
