@@ -69,6 +69,7 @@ export interface i_otel {
     endTimer(startTime: HrTime, recorder: Histogram, labels?: Object): number;
     setdefaultlabels(): void;
     shutdown(): Promise<void>;
+    createheapdump(parent: Span): Promise<string>
 }
 
 export interface i_nodered_driver {
