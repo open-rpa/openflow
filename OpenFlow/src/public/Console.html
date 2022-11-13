@@ -12,7 +12,7 @@ input[type="checkbox"] {
 }
 
 
-.inf { color: #0000ff; }
+.inf { color: #197575; }
 .err { color: #ff0000; }
 .war { color: #ff8000; }
 .dbg { color: #808080; }
@@ -90,6 +90,7 @@ tr:nth-child(even){background-color: #f2f2f2}
         <input type="checkbox" ng-checked="ctrl.model.log_silly"
         ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()" value="1" id="ctrl.model.log_silly" /><span ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()">silly</span>
         <button ng-click="ctrl.ClearCache()">Clear cache</button>
+        <button ng-click="ctrl.MemoryDump()">memory dump</button>
         <br> Click on message to copy log object with all properties to clipboard
         <br>
         search <input type="text" ng-model="ctrl.searchstring" placeholder="Search string" />
