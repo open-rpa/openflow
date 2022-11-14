@@ -46,9 +46,8 @@ export class WebSocketServer {
             this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
                 try {
                     var sock = new WebSocketServerClient();
-                    if (await sock.Initialize(socketObject, req)) {
-                        this._clients.push(sock);
-                    }                    
+                    this._clients.push(sock);
+                    await sock.Initialize(socketObject, req);
                 } catch (error) {
                     Logger.instanse.error(error, null);    
                 }
@@ -266,7 +265,7 @@ export class WebSocketServer {
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
                     }
                     try {
-                        cli.CloseConsumers(span);
+                        cli.Close(span)
                         WebSocketServer._clients.splice(i, 1);
                     } catch (error) {
                         Logger.instanse.error(error, span);

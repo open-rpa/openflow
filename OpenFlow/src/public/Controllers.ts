@@ -2867,7 +2867,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         this.searchfields = ["metadata.name"];
         this.orderby = { "metadata._created": -1 }
         this.collection = "files";
-        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, length: 1 };
         const elem = document.getElementById("myBar");
         elem.style.width = '0%';
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -5374,6 +5374,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     public keys: string[] = [];
     async processdata() {
+        this.errormessage = "";
         if (this.models.length > 0) {
             this.keys = Object.keys(this.models[0]);
             for (let i: number = this.keys.length - 1; i >= 0; i--) {
@@ -5396,6 +5397,17 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
                 group._id[field] = "$" + field;
             }
         });
+        if (!NoderedUtil.IsNullEmpty(this.searchstring)) {
+            try {
+                var json = JSON.parse(this.searchstring);
+                aggregates.push({ "$match": json });
+            } catch (error) {
+                this.errormessage = error
+                this.loading = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                return;
+            }
+        }
         aggregates.push({ "$group": group });
         aggregates.push({ "$match": { "count": { "$gte": 2 } } });
         aggregates.push({ "$limit": 100 });
@@ -7391,6 +7403,14 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     async ClearCache() {
         try {
             await NoderedUtil.CustomCommand({ command: "clearcache" });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async MemoryDump() {
+        try {
+            await NoderedUtil.CustomCommand({ command: "heapdump" });
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }

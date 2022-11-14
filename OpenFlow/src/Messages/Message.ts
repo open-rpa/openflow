@@ -2208,7 +2208,7 @@ export class Message {
         });
     }
 
-    public async _addFile(file: string, filename: string, mimeType: string, metadata: Base, compressed: boolean, jwt: string): Promise<string> {
+    public async _addFile(file: string | Buffer, filename: string, mimeType: string, metadata: Base, compressed: boolean, jwt: string): Promise<string> {
         if (NoderedUtil.IsNullEmpty(filename)) throw new Error("Filename is mandatory");
         if (NoderedUtil.IsNullEmpty(file)) throw new Error("file is mandatory");
         if (process.platform === "win32") {
@@ -2228,9 +2228,16 @@ export class Message {
         (metadata as any).path = path.dirname(filename);
         if ((metadata as any).path == ".") (metadata as any).path = "";
 
-        const readable = new Readable();
-        if (file && (!compressed)) {
-            const buf: Buffer = Buffer.from(file, 'base64');
+        let readable = new Readable();
+        // if file is stream, save to mongodb gridfs
+        if (file instanceof Stream) {
+            readable = (file as any);
+        } else if (file instanceof Buffer) {
+            readable._read = () => { };
+            readable.push(file);
+            readable.push(null);
+        } else if (file && (!compressed)) {
+            const buf: Buffer = Buffer.from(file as string, 'base64');
             readable._read = () => { }; // _read is required but you can noop it
             readable.push(buf);
             readable.push(null);
@@ -2238,7 +2245,7 @@ export class Message {
             try {
                 let result: Buffer;
                 try {
-                    var data = Buffer.from(file, 'base64')
+                    var data = Buffer.from(file as string, 'base64')
                     result = pako.inflate(data);
                 } catch (error) {
                     Logger.instanse.error(error, null);
@@ -5429,15 +5436,37 @@ export class Message {
                 case "dumpwebsocketclients":
                     if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
                     await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, false, jwt, parent);
-                    amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", parent, 1);
+                    if (Config.enable_openflow_amqp) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", parent, 1);
+                    } else {
+                        WebSocketServer.DumpClients(parent);
+                    }
                     break;
                 case "killwebsocketclient":
                     if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
-                    amqpwrapper.Instance().send("openflow", "", { "command": "killwebsocketclient", "id": msg.id }, 10000, null, "", parent, 1);
+                    if (Config.enable_openflow_amqp) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "killwebsocketclient", "id": msg.id }, 10000, null, "", parent, 1);
+                    } else {
+                        for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
+                            const cli: WebSocketServerClient = WebSocketServer._clients[i];
+                            if (cli.id == msg.id) {
+                                Logger.instanse.warn("Killing websocket client " + msg.id, parent);
+                                cli.Close(parent);
+                            }
+                        }
+                    }
                     break;
                 case "clearcache":
                     if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
                     Logger.DBHelper.clearCache("user requested clear cache", parent);
+                    break;
+                case "heapdump":
+                    if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                    if (Config.enable_openflow_amqp) {
+                        amqpwrapper.Instance().send("openflow", "", { "command": "heapdump" }, 10000, null, "", parent, 1);
+                    } else {
+                        Logger.otel.createheapdump(parent);
+                    }
                     break;
                 case "webpushmessage":
                     // @ts-ignore

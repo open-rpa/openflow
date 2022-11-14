@@ -33,6 +33,7 @@
         <th scope="col" ng-click="ctrl.ToggleOrder('contentType')"><strong translate lib="web">type</strong></th>
         <th scope="col" ng-click="ctrl.ToggleOrder('metadata._createdby')"><strong translate lib="web">createdby</strong></th>
         <th scope="col" ng-click="ctrl.ToggleOrder('metadata._created')"><strong translate lib="web">created</strong></th>
+        <th scope="col" ng-click="ctrl.ToggleOrder('length')"><strong translate lib="web">size</strong></th>
         <th></th>
         <th></th>
         <th></th>
@@ -46,6 +47,9 @@
         <td>{{model.metadata._createdby}}</td>
         <td>
           <timesince ng-model="model.metadata._created" />
+        </td>
+        <td>
+          <format-bytes ng-model="model.length" />
         </td>
         <td class="btn-cell">
           <a ng-href="/download/{{model._id}}" class="table-btn">

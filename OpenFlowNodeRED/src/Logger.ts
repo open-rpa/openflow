@@ -1,6 +1,7 @@
 import { NoderedUtil } from "@openiap/openflow-api";
 import { i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
+import { Span } from "@opentelemetry/api";
 const path = require('path');
 
 const MAX_RETRIES_DEFAULT = 5
@@ -173,6 +174,8 @@ export class Logger {
                 {
                     startSpan: () => fakespan,
                     startSubSpan: () => fakespan,
+                startSpanExpress: () => fakespan,
+                GetTraceSpanId(span: Span): () => [string, string] { return () => ["", ""]; },
                     endSpan: () => undefined,
                     startTimer: () => undefined,
                     endTimer: () => undefined,
@@ -182,6 +185,7 @@ export class Logger {
                         createHistogram: () => undefined,
                         createCounter: () => undefined,
                         createObservableUpDownCounter: () => undefined,
+                        createUpDownCounter: () => undefined,
                         createValueObserver: () => undefined,
                         createObservableGauge: () => undefined,
                     }

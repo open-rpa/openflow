@@ -1,0 +1,98 @@
+version: "3.3"
+services:
+  registry:
+    image: registry:2
+    restart: always
+    ports:
+      - "5000:5000"
+  mongodb:
+    image: "mongo"
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+  traefik:
+    image: "traefik"
+    container_name: "traefik"
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+    restart: always
+    volumes:
+      - "//var/run/docker.sock:/var/run/docker.sock:ro"
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: "rabbitmq"
+    restart: always
+  api:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`localhost.openiap.io`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.services.api.loadbalancer.server.port=3000"
+      - "traefik.frontend.passHostHeader=true"
+    image: localhost:5000/openiap/openflow:staging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # entrypoint: sleep infinity
+    deploy:
+      replicas: 1
+    pull_policy: always
+    restart: always
+    volumes:
+      - "//var/run/docker.sock:/var/run/docker.sock"
+    depends_on:
+      - rabbitmq
+      - mongodb
+    environment:
+      - auto_create_users=true
+      - auto_create_domains=
+      - allow_personal_nodered=true
+      - websocket_package_size=25000
+      - websocket_max_package_count=1048576
+      - protocol=http
+      - port=3000
+      - domain=localhost.openiap.io
+      - log_with_colors=false
+      - enable_web_tours=false
+      - enable_nodered_tours=false
+
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+
+      - enable_openflow_amqp=true
+      - amqp_prefetch=25
+      - socket_rate_limit=true
+      - socket_rate_limit_points=1000
+      - socket_rate_limit_points_disconnect=2500
+
+      - nodered_images=[{"name":"Latest Plain Nodered",
+        "image":"localhost:5000/openiap/nodered:staging"}]
+      - nodered_ws_url=ws://api:3000
+      - saml_federation_metadata=http://api:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
+      - nodered_saml_entrypoint=http://localhost.openiap.io/issue
+      - amqp_url=amqp://guest:guest@rabbitmq
+      - mongodb_url=mongodb://mongodb:27017
+      - mongodb_db=openrpa
+
+      - skip_history_collections=audit,openrpa_instances,workflow_instances
+      - allow_skiphistory=false
+
+      - saml_issuer=uri:localhost.openiap.io
+      - aes_secret=7TXsxf7cn9EkUqm5h4MEWGjzkxkNCk2K
+      - signing_crt=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURZRENDQWtpZ0F3SUJBZ0lKQUsrSll6OGQ1bURxTUEwR0NTcUdTSWIzRFFFQkN3VUFNRVV4Q3pBSkJnTlYKQkFZVEFrRlZNUk13RVFZRFZRUUlEQXBUYjIxbExWTjBZWFJsTVNFd0h3WURWUVFLREJoSmJuUmxjbTVsZENCWAphV1JuYVhSeklGQjBlU0JNZEdRd0hoY05NVGt3TnpFd01UZ3dPVEl4V2hjTk1Ua3dPREE1TVRnd09USXhXakJGCk1Rc3dDUVlEVlFRR0V3SkJWVEVUTUJFR0ExVUVDQXdLVTI5dFpTMVRkR0YwWlRFaE1COEdBMVVFQ2d3WVNXNTAKWlhKdVpYUWdWMmxrWjJsMGN5QlFkSGtnVEhSa01JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQgpDZ0tDQVFFQTZrcEo4eHFUUU9pRzVmTUt4T1U5VzZDbVVSSWJnb2ZoSHZwVVZWVDBoMnRsakFsc2Z2cWRzSk5MClZBd3dySW55V2ZNYlVHZGE3M21MTG9XdEM0L3RYUlNEQktnK2J6MXhRSHNzcjVaMmVueDhYdGtRSDVHZ1crOVQKajdhbVNZL0l0SUFiME5qL1NRaVozK0JPN0tpeTJpMWFVdlJBeVp5UVpVcyt1aWlIRkNJekhBbXltV0ovNXdrdwptb2ZUYjUxWWlqZ2xiaGdZVllUcXdVdmpscEIvbWFnWjV3VENuOWpmbG16bGY1aSs5aTAxSHU1U1RXNW9JSnovCm9oQ25Mam4wM2c4NXA5dllFaTJLUkM2dW84Nnp5Y1pxL1lKQzVNTlVPTzZRanlZYXQ4RjBYWVVQNzhzS1l2OCsKYTF3WmlDNFZhSWt2OEFaOUJua0hFbllBRnhpZ2RRSURBUUFCbzFNd1VUQWRCZ05WSFE0RUZnUVVsenEzdDBOWQowckpwSmpIMXRoQitlV0M2SGJZd0h3WURWUjBqQkJnd0ZvQVVsenEzdDBOWTBySnBKakgxdGhCK2VXQzZIYll3CkR3WURWUjBUQVFIL0JBVXdBd0VCL3pBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQW8rOHJDVllXOFc5UzZxUDQKdzVoSEMyTk5WMGJIVmgyQ3FZbmp3RXVTTjM4NWgvUWd3TmlIZE5NQzJXUHd4VytwSmZ4Q0Y1ZGZOMzUrZ085YworOTg1UHYzYVoyZ3BmcWVaRTFKZ2JqUTFiTkVWT3BqRDV0dVlNRE55YWpraS9oWVdDaVBSams5ZG1nQVV4cHdpCkZuTUdlemk4K080dXQyRW1DaHhUYlZUQ1psRnJwRWpqSTF1WUVmQ2l5NmZaUXV2bnpCeU5QZ3FUQS9RWXhMZkIKRWE4cFpOMk5LNm5IdEF0clhyRkYveFh6OHJRYWlyVFYrVm9yQXQxdzYzZ1VTWGc1VU55R2JZaDErdFRzWTdoYQpNamkwSFNYQkxtL0dHb05XaHBDVVpDVDU0NWJ6SmdJNjJwd2hKcVlyWm5jYlBDRzRaWXhHZzIxTVZLdkJaL29pCkFYcStpQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+      - singing_key=LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRRHFTa256R3BOQTZJYmwKOHdyRTVUMWJvS1pSRWh1Q2grRWUrbFJWVlBTSGEyV01DV3grK3Ayd2swdFVERENzaWZKWjh4dFFaMXJ2ZVlzdQpoYTBMaisxZEZJTUVxRDV2UFhGQWV5eXZsblo2Zkh4ZTJSQWZrYUJiNzFPUHRxWkpqOGkwZ0J2UTJQOUpDSm5mCjRFN3NxTExhTFZwUzlFREpuSkJsU3o2NktJY1VJak1jQ2JLWlluL25DVENhaDlOdm5WaUtPQ1Z1R0JoVmhPckIKUytPV2tIK1pxQm5uQk1LZjJOK1diT1YvbUw3MkxUVWU3bEpOYm1nZ25QK2lFS2N1T2ZUZUR6bW4yOWdTTFlwRQpMcTZqenJQSnhtcjlna0xrdzFRNDdwQ1BKaHEzd1hSZGhRL3Z5d3BpL3o1clhCbUlMaFZvaVMvd0JuMEdlUWNTCmRnQVhHS0IxQWdNQkFBRUNnZ0VBTXVEZkhrUHZKbkZZbWljbGQ0eXd2bTBzc1A1VnF3c0hBRXNzZFR0MXZ0SzcKd3FWcFFrbjZaSllZRGJCNEFZQVRlU1VxRVZQZ2s1QzVnT2pXbzJRbUQ4aWNpeTVlSUpvZk5mbUp3cmZTRXRkbAp5dE1vaFRLQ3VIUkltVFQ0OTVDWjdWakVzWjN1RWxZajFGSkowV3J4TENBZE5WYUZtMEs4dU1LV1pLYllicTUwCk40SkdBVVA4cXpzVGsxMFcwL1JsVkhjN3MxcVJMYmhUaHVmeWZqdkFsWlRDUStzNld2Z1FzNTljZis5ZkRpenEKeDlFYTRmclN4SkFzdmhEZ3lmd0FCSHVYcEl5ZGFJNEQ1UkZYRXBGQW1SYkZGRkFhNW9Zam5XT1BiQmVKUHJUUApMckxmcU03NkVaZ1pXclU5UmgwN2VXeVMwdlAyVEhmNGo4eTNYWEpFQVFLQmdRRDVyVTFnQlNLdXhxZVZkWFZRCkp1RXVIVnVFTEkzS0hITVRGb1R1cEFKU2R1b3VSMXNmYjZHc1RPQWFmamp6QlpHdFFFa3R4c3pEemFTTVh5OHYKYU5mT1QvcTlZYXFwdSt3cno5dXp4dnBhY1pQZHg3TGJUWGwwYmRKR2FPRHdNYWY3bHRDcmo1WVZ6Vk9GSGsvZgpCYndGV1ZQTUJORldCMEZMZzU1dGN6cjFGUUtCZ1FEd09UdEp2TXNtZVZFVU1aUnFnNjB0U2FyN0pjeHJKRklrCno5ZFdIUW1xS1dpNzFob3krbHBqM0FwRnhBQ3lPY2dmZE03VFQyb25rcXB1c0NUNlliZThXT3BrWWxIMGlpUmQKWkVISC9zakhySzNEaktJWEIvSEVyVEdrOVJNaTdiNUd4NGYweVVkM2hqd0E2Y2dGRDlyd0l6VyszMjM0Z2xlNwphdzlIRFpxVjRRS0JnQVBiOXVjMkRSd3dlK1NtaFNLeEJ5Z0VVaWJQM1gwelJXQVZLQWJjU0NEb0w2UjVlK0lYCmdxTThLUGFmM3RkNnpZNmxBTHlSWnhiYnRlQnBsRHdpWGJ1VnB1V0lmZS9UdE1uVWs2dkt0cEh4VVh6TEdtdWoKWGU0N3lGVklSN25PdXE3NzNNdmFFMUxROHFxTEZtYjNHcm5tY0pJbHZPcWNnQmpmdHZJd0pzZ2xBb0dBU1RtWQoyZlJEbEptOFhrUnlzamtySzdmZDk2cGc4blBpMmpmRXN3b3M3UUtzV3oxN1JQak5YczB2RUc4YnF6Z3p5V3JvCnRMN3JZOTZ3TndkWWJqNGxMTE9KMTBtbEk3Nk1NUytqWVp4SGhaNGNaWlJUd0dONmpmSWhST0F6a2gwWU9Da1EKUjB5bmpVYU11ZGFKVXdtdk9pM3hieHBhUWpzeEZQOGdiQTg0aE9FQ2dZRUExbXZjSStZeDZITW00WkVjMU9yaworNXJoUHJrdGNMT0JHR3pZZGZIZGRZMytVdFZydUpCRmt5R2pCU2t2YmVtcUZxRlluMHFZckpXZVlUS2hMbUlwClkyRk1Gd29abWxpSkpONTA1eStTemdPbUVxN2wzT1Z4R0NwTTd1ODNyWFBXRGRERnc5WVNYVU1ueFRDUGsyRW0KekEyUzVkWjlWRld2NlR6VHg3cTIyc2c9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
+  dummynodered:
+    image: localhost:5000/openiap/nodered:staging
+    build:
+      context: .
+      dockerfile: ./OpenFlowNodeRED/Dockerfile
+    # fake it, and keep it alive so we can push to local registry
+    entrypoint: sleep infinity
+volumes:
+  mongodb_data:
+    driver: local

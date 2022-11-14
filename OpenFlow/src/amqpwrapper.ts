@@ -599,6 +599,9 @@ export class amqpwrapper extends events.EventEmitter {
                                 }
                             }
                             break;
+                        case "heapdump":
+                            Logger.otel.createheapdump(span);
+                            break;
                         case "shutdown":
                             try {
                                 await Config.db.shutdown();

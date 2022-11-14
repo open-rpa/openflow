@@ -36,3 +36,4 @@ register.js
 .devcontainer.old
 docker-package.json
 .dockerignore
+*.heapsnapshot

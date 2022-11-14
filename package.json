@@ -1,13 +1,14 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.4.30",
+  "version": "1.4.31",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
     "test": "_mocha 'test/**/*.test.ts'",
     "coverage": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'",
     "oldtest": "ts-mocha --paths -p OpenFlow/tsconfig.json OpenFlow/**/*.spec.ts",
-    "build": "gulp build"
+    "rebuild": "docker-compose up registry -d && docker-compose build && docker-compose push --ignore-push-failures  && docker-compose up -d",
+    "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d"
   },
   "repository": {
     "type": "git",
