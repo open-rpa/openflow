@@ -8,5 +8,5 @@ tsconfig.json
 Dockerfile
 Dockerfilepuppeteer
 Dockerfiletagui
-dockerignore
-docker-package.json
+.dockerignore
+*.heapsnapshot

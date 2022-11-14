@@ -83,15 +83,18 @@ export class WebSocketServerClient {
     async Initialize(socketObject: WebSocket, req: express.Request): Promise<boolean> {
         const span: Span = Logger.otel.startSpanExpress("WebSocketServerClient.Initialize", req);
         try {
-            socketObject.on("open", this.open.bind(this));
-            socketObject.on("message", this.message.bind(this)); // e: MessageEvent
-            socketObject.on("error", this.error.bind(this));
-            socketObject.on("close", this.close.bind(this));
+            this._socketObject = socketObject;
+            this._socketObject.on("open", this.open.bind(this));
+            this._socketObject.on("message", this.message.bind(this)); // e: MessageEvent
+            this._socketObject.on("error", this.error.bind(this));
+            this._socketObject.on("close", this.close.bind(this));
             this._dbdisconnected = this.dbdisconnected.bind(this);
             this._dbconnected = this.dbconnected.bind(this);
             this._amqpdisconnected = this.amqpdisconnected.bind(this);
             this.id = NoderedUtil.GetUniqueIdentifier();
-            this.remoteip = WebSocketServerClient.remoteip(req);
+            if (!NoderedUtil.IsNullUndefinded(req)) {
+                this.remoteip = WebSocketServerClient.remoteip(req);
+            }
             let _remoteip = "unknown";
             if (Config.otel_trace_connection_ips) {
                 _remoteip = _remoteip.split(":").join("-");
@@ -103,7 +106,7 @@ export class WebSocketServerClient {
                 if (Config.log_blocked_ips) Logger.instanse.error(this.remoteip + " is blocked", null);
                 try {
                     if (Config.client_disconnect_signin_error) {
-                        socketObject.close()
+                        this._socketObject.close()
                         return false;
                     }
                 } catch (error) {
@@ -116,27 +119,14 @@ export class WebSocketServerClient {
                         await WebSocketServer.BaseRateLimiter.consume(this.remoteip);
                     } catch (error) {
                         Logger.instanse.error(error, null);
-                        socketObject.close()
+                        this._socketObject.close()
                         return false;
                     }
-
                 }
-            }
-            this._socketObject = socketObject;
-            this._receiveQueue = [];
-            this._sendQueue = [];
-            const sock: any = ((socketObject as any)._socket);
-            if (sock != undefined) {
-                this.remoteip = sock.remoteAddress;
-            }
-            //if (NoderedUtil.IsNullEmpty(this.remoteip) && !NoderedUtil.IsNullUndefinded(req) && !NoderedUtil.IsNullUndefinded(req.headers)) {
-            if (!NoderedUtil.IsNullUndefinded(req)) {
-                this.remoteip = WebSocketServerClient.remoteip(req);
             }
             Logger.instanse.debug("new client " + this.id + " from " + this.remoteip, span, Logger.parsecli(this));
             Config.db.on("disconnected", this._dbdisconnected);
             Config.db.on("connected", this._dbconnected);
-
             amqpwrapper.Instance().on("disconnected", this._amqpdisconnected);
             this.init_complete = true;
             this.ProcessQueue(null);
@@ -184,8 +174,6 @@ export class WebSocketServerClient {
         Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent, null, Logger.parsecli(this));
         this.init_complete = false;
         this.Close(null);
-        if (this._dbdisconnected != null) Config.db.removeListener("disconnected", this._dbdisconnected);
-        if (this._dbconnected != null) Config.db.removeListener("connected", this._dbconnected);
     }
     private error(e: Event): void {
         Logger.instanse.error(e, null, Logger.parsecli(this));
@@ -278,12 +266,12 @@ export class WebSocketServerClient {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.Close", parent);
         try {
             this.init_complete = false;
-            Config.db.removeListener("disconnected", this._dbdisconnected);
-            Config.db.removeListener("connected", this._dbconnected);
+            if (this._dbdisconnected != null) Config.db.removeListener("disconnected", this._dbdisconnected);
+            if (this._dbconnected != null) Config.db.removeListener("connected", this._dbconnected);
 
             await this.CloseConsumers(span);
             // await this.CloseStreams();
-            if (this._socketObject != null) {
+            if (!NoderedUtil.IsNullUndefinded(this._socketObject)) {
                 try {
                     this._socketObject.removeAllListeners();
                 } catch (error) {
@@ -309,10 +297,6 @@ export class WebSocketServerClient {
                 delete this.messageQueue[keys[i]].cb;
                 delete this.messageQueue[keys[i]];
             }
-            // this._receiveQueue
-            // this._sendQueue
-            // this._queues
-            // this._exchanges
         } catch (error) {
             Logger.instanse.error(error, span, Logger.parsecli(this));
             throw error;
