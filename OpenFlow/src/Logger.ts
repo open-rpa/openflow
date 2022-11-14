@@ -247,7 +247,7 @@ export class Logger {
             obj.func = s.method;
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
-        }         
+        }
         if (obj.cls == "") {
             var c = obj.cls;
         }
@@ -266,7 +266,7 @@ export class Logger {
             obj.func = s.method;
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
-        }         
+        }
         if (obj.cls == "") {
             var c = obj.cls;
         }
@@ -333,7 +333,7 @@ export class Logger {
 
     static async configure(skipotel: boolean, skiplic: boolean): Promise<void> {
         Logger.DBHelper = new DBHelper();
-        Logger.reload() 
+        Logger.reload()
 
         const filename = path.join(Config.logpath, "openflow.log");
         const options: any = {
@@ -391,6 +391,8 @@ export class Logger {
                 {
                     startSpan: () => fakespan,
                     startSubSpan: () => fakespan,
+                startSpanExpress: () => fakespan,
+                GetTraceSpanId(span: Span): () => [string, string] { return () => ["", ""]; },
                     endSpan: () => undefined,
                     startTimer: () => undefined,
                     endTimer: () => undefined,
@@ -400,6 +402,7 @@ export class Logger {
                         createHistogram: () => undefined,
                         createCounter: () => undefined,
                         createObservableUpDownCounter: () => undefined,
+                        createUpDownCounter: () => undefined,
                         createValueObserver: () => undefined,
                         createObservableGauge: () => undefined,
                     }
