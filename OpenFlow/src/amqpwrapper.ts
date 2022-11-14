@@ -585,7 +585,7 @@ export class amqpwrapper extends events.EventEmitter {
                             if (NoderedUtil.IsNullEmpty(msg.key)) {
                                 Logger.DBHelper.clearCache("amqp broadcast", span);
                             } else {
-                                Logger.DBHelper.DeleteKey(msg.key, false, span);
+                                Logger.DBHelper.DeleteKey(msg.key, false, true, span);
                             }
                             break;
                         case "housekeeping":
