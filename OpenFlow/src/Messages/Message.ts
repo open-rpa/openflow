@@ -1923,7 +1923,7 @@ export class Message {
                     }
                     span?.addEvent("memoryCache.delete users" + user._id);
                     Logger.DBHelper.UserRoleUpdate(user, false, span);
-                    if (NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                    if (!NoderedUtil.IsNullEmpty(tuser.impostor) && tuser.impostor != user._id) {
                         Logger.DBHelper.UserRoleUpdate(tuser as any, false, span);
                         span?.addEvent("memoryCache.delete users" + tuser.impostor);
                     }

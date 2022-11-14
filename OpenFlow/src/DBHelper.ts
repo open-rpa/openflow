@@ -617,21 +617,25 @@ export class DBHelper {
         var u = new Base(); u._id = id;
         return this.UserRoleUpdate(u, watch, span);
     }
-    public async DeleteKey(key: string, watch: boolean, span: Span): Promise<void> {
+    public async DeleteKey(key: string, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
         if (!this._doClear(watch, span)) return;
         if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            if (!Config.unittesting) {
+            if (!Config.unittesting && !frombroadcast) {
                 Logger.instanse.debug("Send clearcache command for " + key, span);
                 amqpwrapper.Instance().send("openflow", "", { "command": "clearcache", "key": key }, 20000, null, "", span, 1);
             }
+        } else if (!Config.enable_openflow_amqp) {
+            await Logger.DBHelper.memoryCache.del(key);
         }
-        await Logger.DBHelper.memoryCache.del(key);
     }
     private _doClear(watch: boolean, span: Span) {
         var doit: boolean = false;
-        if (watch && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-            doit = true;
-        } else if (!watch && (Config.cache_store_type == "redis" || Config.cache_store_type == "mongodb")) {
+        if (watch) {
+            doit = false;
+            if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
+                doit = true;
+            }
+        } else {
             doit = true;
         }
         return doit;
@@ -641,27 +645,27 @@ export class DBHelper {
         if (userrole._type == "user") {
             Logger.instanse.debug("Remove user from cache : " + userrole._id, span);
             let u: User = userrole as any;
-            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("users_" + u._id).toString(), watch, span);
-            if (!NoderedUtil.IsNullEmpty(u.username)) await this.DeleteKey(("username_" + u.username).toString(), watch, span);
-            if (!NoderedUtil.IsNullEmpty(u.email)) await this.DeleteKey(("username_" + u.email).toString(), watch, span);
-            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("userroles_" + u._id).toString(), watch, span);
+            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("users_" + u._id).toString(), watch, false, span);
+            if (!NoderedUtil.IsNullEmpty(u.username)) await this.DeleteKey(("username_" + u.username).toString(), watch, false, span);
+            if (!NoderedUtil.IsNullEmpty(u.email)) await this.DeleteKey(("username_" + u.email).toString(), watch, false, span);
+            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("userroles_" + u._id).toString(), watch, false, span);
             if (u.federationids != null && Array.isArray(u.federationids)) {
                 for (var i = 0; i < u.federationids.length; i++) {
                     var fed = u.federationids[i];
                     if (fed == null) continue;
                     // has self property with value id
                     if (fed.hasOwnProperty("id")) {
-                        await this.DeleteKey(("federation_" + fed.id).toString(), watch, span);
+                        await this.DeleteKey(("federation_" + fed.id).toString(), watch, false, span);
                     } else {
-                        await this.DeleteKey(("federation_" + fed).toString(), watch, span);
+                        await this.DeleteKey(("federation_" + fed).toString(), watch, false, span);
                     }
                 }
             }
-            await this.DeleteKey("allroles", watch, span);
+            await this.DeleteKey("allroles", watch, false, span);
         } else if (userrole._type == "role") {
             let r: Role = userrole as any;
-            if (!NoderedUtil.IsNullEmpty(r._id)) await this.DeleteKey(("users_" + r._id).toString(), watch, span);
-            if (!NoderedUtil.IsNullEmpty(r.name)) await this.DeleteKey(("rolename_" + r.name).toString(), watch, span);
+            if (!NoderedUtil.IsNullEmpty(r._id)) await this.DeleteKey(("users_" + r._id).toString(), watch, false, span);
+            if (!NoderedUtil.IsNullEmpty(r.name)) await this.DeleteKey(("rolename_" + r.name).toString(), watch, false, span);
             if (userrole._id != WellknownIds.users) {
                 if (r.members != null && Array.isArray(r.members)) {
                     for (var i = 0; i < r.members.length; i++) {
@@ -670,26 +674,26 @@ export class DBHelper {
                     }
                 }
             }
-            await this.DeleteKey("allroles", watch, span);
+            await this.DeleteKey("allroles", watch, false, span);
         } else if (userrole._type == "customer") {
-            if (!NoderedUtil.IsNullEmpty(userrole._id)) await this.DeleteKey(("users_" + userrole._id).toString(), watch, span);
+            if (!NoderedUtil.IsNullEmpty(userrole._id)) await this.DeleteKey(("users_" + userrole._id).toString(), watch, false, span);
         }
 
     }
     public async QueueUpdate(_id: string, name: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear queue cache : " + name + " " + _id, span);
-        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("queuename_" + name).toString(), watch, span);
-        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, span);
+        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("queuename_" + name).toString(), watch, false, span);
+        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
     }
     public async ExchangeUpdate(_id: string, name: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear exchange cache : " + name + " " + _id, span);
-        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("exchangename_" + name).toString(), watch, span);
-        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, span);
+        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("exchangename_" + name).toString(), watch, false, span);
+        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
     }
     public async WorkitemQueueUpdate(wiqid: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear workitem queue cache : " + wiqid, span);
-        await this.DeleteKey("pushablequeues", watch, span);
-        if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, span);
+        await this.DeleteKey("pushablequeues", watch, false, span);
+        if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
     public GetPushableQueuesWrap(span: Span) {
         Logger.instanse.debug("Add pushable queues", span);
