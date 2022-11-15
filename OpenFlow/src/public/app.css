@@ -546,33 +546,33 @@ textarea{
 
 @media (min-width: 1201px) {
   .container,
-.container-lg,
-.container-md,
-.container-sm,
-.container-xl {
+  .container-lg,
+  .container-md,
+  .container-sm,
+  .container-xl {
     max-width: 95%;
     padding-top: 2%;
   }
 }
 @media (min-width: 993px) {
   .container-lg,
-.container-md,
-.container-sm {
+  .container-md,
+  .container-sm {
     max-width: 95%;
     padding-top: 2%;
   }
 }
 @media (min-width: 769px) {
   .container,
-.container-md,
-.container-sm {
+  .container-md,
+  .container-sm {
     max-width: 95%;
     padding-top: 2%;
   }
 }
 @media (min-width: 577px) {
   .container,
-.container-sm {
+  .container-sm {
     max-width: 95%;
     padding-top: 2%;
   }

@@ -67,6 +67,9 @@ export class WebSocketServerClient {
     public _queuescurrentstr: string = "0";
     public _exchanges: amqpexchange[] = [];
     public devnull: boolean = false;
+    private _message: any = null;
+    private _error: any = null;
+    private _close: any = null;
     private _amqpdisconnected: any = null;
     private _dbdisconnected: any = null;
     private _dbconnected: any = null;
@@ -84,10 +87,13 @@ export class WebSocketServerClient {
         const span: Span = Logger.otel.startSpanExpress("WebSocketServerClient.Initialize", req);
         try {
             this._socketObject = socketObject;
-            this._socketObject.on("open", this.open.bind(this));
-            this._socketObject.on("message", this.message.bind(this)); // e: MessageEvent
-            this._socketObject.on("error", this.error.bind(this));
-            this._socketObject.on("close", this.close.bind(this));
+
+            this._message = this.message.bind(this);
+            this._error = this.error.bind(this);
+            this._close = this.close.bind(this);
+            this._socketObject.on("message", this._message);
+            this._socketObject.on("error", this._error);
+            this._socketObject.on("close", this._close);
             this._dbdisconnected = this.dbdisconnected.bind(this);
             this._dbconnected = this.dbconnected.bind(this);
             this._amqpdisconnected = this.amqpdisconnected.bind(this);
@@ -167,13 +173,10 @@ export class WebSocketServerClient {
         this._exchanges = [];
         this.CloseConsumers(null);
     }
-    private open(e: Event): void {
-        Logger.instanse.debug("Connection opened " + e + " " + this.id, null);
-    }
     private close(e: CloseEvent): void {
         Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent, null, Logger.parsecli(this));
         this.init_complete = false;
-        this.Close(null);
+        // this.Close(null);
     }
     private error(e: Event): void {
         Logger.instanse.error(e, null, Logger.parsecli(this));
@@ -186,9 +189,6 @@ export class WebSocketServerClient {
         if (this._socketObject == null) return false;
         if (this._socketObject.readyState === this._socketObject.OPEN || this._socketObject.readyState === this._socketObject.CONNECTING) {
             return true;
-        }
-        if (this._socketObject.readyState === this._socketObject.CLOSED) {
-            delete this._socketObject;
         }
         return false;
     }
@@ -221,7 +221,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    private _message(message: string): void {
+    private message(message: string): void {
         try {
             Logger.instanse.silly("WebSocket message received " + message, null, Logger.parsecli(this));
             let msg: SocketMessage = SocketMessage.fromjson(message);
@@ -236,15 +236,11 @@ export class WebSocketServerClient {
             if ((msg.index + 1) >= msg.count) this.ProcessQueue(null);
         } catch (error) {
             Logger.instanse.error(error, null, Logger.parsecli(this));
-        }
-    }
-    private async message(message: string): Promise<void> {
-        try {
-            this._message(message);
-        } catch (error) {
-            Logger.instanse.error(error, null, Logger.parsecli(this));
-            const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
-            this._socketObject.send(JSON.stringify(errormessage));
+            try {
+                const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
+                this._socketObject.send(JSON.stringify(errormessage));
+            } catch (error) {
+            }
         }
     }
     public async CloseConsumers(parent: Span): Promise<void> {
@@ -269,14 +265,12 @@ export class WebSocketServerClient {
             if (this._dbdisconnected != null) Config.db.removeListener("disconnected", this._dbdisconnected);
             if (this._dbconnected != null) Config.db.removeListener("connected", this._dbconnected);
 
+            if (this._message != null) Config.db.removeListener("disconnected", this._message);
+            if (this._error != null) Config.db.removeListener("disconnected", this._error);
+            if (this._close != null) Config.db.removeListener("disconnected", this._close);
+
             await this.CloseConsumers(span);
-            // await this.CloseStreams();
             if (!NoderedUtil.IsNullUndefinded(this._socketObject)) {
-                try {
-                    this._socketObject.removeAllListeners();
-                } catch (error) {
-                    Logger.instanse.error(error, span, Logger.parsecli(this));
-                }
                 try {
                     this._socketObject.close();
                 } catch (error) {

@@ -1,6 +1,6 @@
 {
   "name": "@openiap/nodered",
-  "version": "1.4.31",
+  "version": "1.4.32",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -43,7 +43,7 @@
     "jsonwebtoken": "^8.5.1",
     "morgan": "^1.10.0",
     "node-red": "^3.0.2",
-    "pako": "^2.0.4",
+    "pako": "^2.1.0",
     "passport-saml": "^3.2.1",
     "passport-saml-metadata": "^2.6.0",
     "pm2": "^5.2.2",
@@ -54,6 +54,6 @@
   },
   "devDependencies": {
     "@types/compression": "^1.7.2",
-    "@types/node": "^18.11.5"
+    "@types/node": "^18.11.9"
   }
 }
