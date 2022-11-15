@@ -202,10 +202,10 @@ export class WebSocketServer {
                             const payload = Crypt.decryptToken(cli.jwt);
                             const clockTimestamp = Math.floor(Date.now() / 1000);
                             if ((payload.exp - clockTimestamp) < 60) {
-                                Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client", span);
+                                Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client", span);
                                 const tuser: TokenUser = await Message.DoSignin(cli, null, span);
                                 if (tuser != null) {
-                                    span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " expires in less than 1 minute, send new jwt to client");
+                                    span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client");
                                     const l: SigninMessage = new SigninMessage();
                                     cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
                                     l.jwt = cli.jwt;
@@ -219,7 +219,7 @@ export class WebSocketServer {
                             }
                         } catch (error) {
                             try {
-                                Logger.instanse.debug(cli.id + "/" + cli.user?.name + "/" + cli.clientagent + " ERROR: " + (error.message || error), span);
+                                Logger.instanse.debug(cli.id + "/" + cli.user?.name + "/" + cli.clientagent + "/" + cli.remoteip + " ERROR: " + (error.message || error), span);
                                 if (cli != null) cli.Close(span);
                             } catch (error) {                                
                             }
@@ -229,11 +229,11 @@ export class WebSocketServer {
                         const seconds = (now.getTime() - cli.created.getTime()) / 1000;
                         if (seconds >= Config.client_signin_timeout) {
                             if (cli.user != null) {
-                                span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
-                                Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection", span);
+                                span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
                             } else {
-                                span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection");
-                                Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + " did not signin in after " + seconds + " seconds, close connection", span);
+                                span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
+                                Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
                             }
                             cli.Close(span);
                         }
@@ -247,26 +247,30 @@ export class WebSocketServer {
                 cli.lastheartbeatsec = seconds.toString();
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
-                        span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + " timeout, close down", span);
+                        span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down");
+                        Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down", span);
                     } else {
-                        span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down");
-                        Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + " timeout, close down", span);
+                        span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down");
+                        Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down", span);
                     }
                     cli.Close(span);
                 }
                 cli.ping(span);
                 if (!cli.connected() && cli.queuecount() == 0) {
                     if (cli.user != null) {
-                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent, span);
-                        span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent);
+                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip, span);
+                        span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip);
                     } else {
-                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.clientagent, span);
-                        span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent);
+                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip, span);
+                        span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip);
                     }
                     try {
                         cli.Close(span)
-                        WebSocketServer._clients.splice(i, 1);
+                        if (cli._socketObject == null || cli._socketObject.readyState === cli._socketObject.CLOSED) {
+                            WebSocketServer._clients.splice(i, 1);
+                        } else {
+                            Logger.instanse.silly("Not ready to remove client yet " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip, span);
+                        }
                     } catch (error) {
                         Logger.instanse.error(error, span);
                     }

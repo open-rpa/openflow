@@ -642,6 +642,7 @@ export class DBHelper {
     }
     public async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean, span: Span) {
         if (NoderedUtil.IsNullUndefinded(userrole)) return;
+        if (!this._doClear(watch, span)) return;
         if (userrole._type == "user") {
             Logger.instanse.debug("Remove user from cache : " + userrole._id, span);
             let u: User = userrole as any;

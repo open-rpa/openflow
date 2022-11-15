@@ -79,7 +79,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     }
 
     @timeout(6000000)
-    // @test
+    @test
     async 'crud connection load test'() {
         await this.createandconnect(0);
         var Promises: Promise<any>[] = [];
