@@ -19,7 +19,7 @@ EXPOSE 5858
 WORKDIR /data
 COPY --from=builder /app/package*.json .
 COPY --from=builder /app/dist/ .
-RUN npm install --omit=dev
+RUN npm install --omit=optional --omit=dev 
 
 # ENTRYPOINT ["/usr/local/bin/node", "index.js"]
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
