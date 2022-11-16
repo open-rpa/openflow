@@ -619,12 +619,15 @@ export class DBHelper {
     }
     public async DeleteKey(key: string, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
         if (!this._doClear(watch, span)) return;
+        // moght have more than one api node, but don't have shared cache, so broadcast to all
         if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
             if (!Config.unittesting && !frombroadcast) {
                 Logger.instanse.debug("Send clearcache command for " + key, span);
                 amqpwrapper.Instance().send("openflow", "", { "command": "clearcache", "key": key }, 20000, null, "", span, 1);
             }
-        } else if (!Config.enable_openflow_amqp) {
+        } else if (!Config.enable_openflow_amqp) { // only one api node, since not using queue, so remove key
+            await Logger.DBHelper.memoryCache.del(key);
+        } else if (!watch) { // more than one api node, but using shared cache, so only need to clear once
             await Logger.DBHelper.memoryCache.del(key);
         }
     }
