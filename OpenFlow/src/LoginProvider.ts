@@ -1002,6 +1002,7 @@ export class LoginProvider {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 Logger.instanse.debug("return user " + req.user._id, span);
+                await Logger.DBHelper.UserRoleUpdateId(req.user._id, false, span);
                 const user: User = await Logger.DBHelper.FindById(req.user._id, span);
                 user.validated = true;
                 if (Config.validate_user_form != "") {
