@@ -642,30 +642,6 @@ export class assign_workflow_node {
             NoderedUtil.HandleError(this, error, msg);
         }
     }
-    clone(obj: any) {
-        try {
-            var result = {};
-            var keys = Object.keys(obj);
-            keys.forEach(key => {
-                try {
-                    var val = obj[key];
-                    if (NoderedUtil.IsNullUndefinded(val)) {
-                        result[key] = val;
-                    } else if (Buffer.isBuffer(val)) {
-                    } else if (typeof (val) === "object") {
-                        result[key] = this.clone(val);
-                    } else {
-                        result[key] = val;
-                    }
-                } catch (error) {
-                    throw error;
-                }
-            });
-            return result;
-        } catch (error) {
-            throw error;
-        }
-    }
     async oninput(msg: any) {
         try {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
@@ -697,7 +673,7 @@ export class assign_workflow_node {
 
 
             msg.jwt = (await NoderedUtil.RenewToken({ jwt, longtoken: true })).jwt;
-            let cloned = this.clone(msg);
+            let cloned = Object.assign({}, msg);
 
             const runnerinstance = new Base();
             runnerinstance._type = "instance";
