@@ -59,7 +59,7 @@ export class Config {
         Config.flow_refresh_initial_interval = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
         Config.workflow_node_auto_cleanup = Config.parseBoolean(Config.getEnv("workflow_node_auto_cleanup", "true"));
 
-        Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
+        Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost");
         Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost");
         Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
         Config.amqp_workflow_out_expiration = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min
@@ -144,7 +144,7 @@ export class Config {
     public static flow_refresh_initial_interval: number = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
     public static workflow_node_auto_cleanup: boolean = Config.parseBoolean(Config.getEnv("workflow_node_auto_cleanup", "true"));
 
-    public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
+    public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
     // public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
     // public static amqp_workflow_out_expiration: number = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min

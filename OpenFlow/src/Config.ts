@@ -17,6 +17,9 @@ export class dbConfig extends Base {
     public version: string;
     public needsupdate: boolean;
     public updatedat: Date;
+    public skip_history_collections: string;
+    public history_delta_count: number;
+    public allow_skiphistory: boolean;
 
     public allow_personal_nodered: boolean;
     public amqp_enabled_exchange: boolean;
@@ -110,6 +113,10 @@ export class dbConfig extends Base {
         if (!NoderedUtil.IsNullEmpty(conf.amqp_enabled_exchange)) Config.amqp_enabled_exchange = Config.parseBoolean(conf.amqp_enabled_exchange);
 
         Logger.instanse.info("db version: " + conf.version, parent);
+
+        Config.skip_history_collections = (!NoderedUtil.IsNullEmpty(conf.skip_history_collections) ? conf.skip_history_collections : Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances"))
+        Config.history_delta_count = parseInt(!NoderedUtil.IsNullEmpty(conf.history_delta_count) ? conf.history_delta_count.toString() : Config.getEnv("history_delta_count", "1000"));
+        Config.allow_skiphistory = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.allow_skiphistory) ? conf.allow_skiphistory : Config.getEnv("allow_skiphistory", "false"));
 
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
@@ -235,7 +242,7 @@ export class Config {
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
         Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
-        Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "50"));
+        Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "25"));
         Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
         Config.enable_web_tours = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
         Config.enable_nodered_tours = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
@@ -332,11 +339,11 @@ export class Config {
         Config.force_dbusage_ts = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
         Config.migrate_audit_to_ts = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
 
-        Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
+        Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "25000"), 10);
         Config.websocket_max_package_count = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
         Config.websocket_message_callback_timeout = parseInt(Config.getEnv("websocket_message_callback_timeout", "3600"), 10);
         Config.protocol = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
-        Config.port = parseInt(Config.getEnv("port", "3000"));
+        Config.port = parseInt(Config.getEnv("port", "80"));
         Config.domain = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
         Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
 
@@ -362,9 +369,9 @@ export class Config {
         Config.mongodb_minpoolsize = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
         Config.mongodb_maxpoolsize = parseInt(Config.getEnv("mongodb_maxpoolsize", "25"));
 
-        Config.skip_history_collections = Config.getEnv("skip_history_collections", "");
+        Config.skip_history_collections = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
         Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
-        Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
+        Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
 
         Config.saml_issuer = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
         Config.aes_secret = Config.getEnv("aes_secret", "");
@@ -461,7 +468,7 @@ export class Config {
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
     public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
-    public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "50"));
+    public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "25"));
     public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
     public static enable_web_tours: boolean = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
     public static enable_nodered_tours: boolean = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
@@ -559,12 +566,12 @@ export class Config {
     public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
     public static migrate_audit_to_ts: boolean = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
 
-    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
-    public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "25000"), 10);
+    public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "25000"), 10);
     public static websocket_message_callback_timeout: number = parseInt(Config.getEnv("websocket_message_callback_timeout", "3600"), 10);    
     public static websocket_disconnect_out_of_sync: boolean = Config.parseBoolean(Config.getEnv("websocket_disconnect_out_of_sync", "false"));
     public static protocol: string = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
-    public static port: number = parseInt(Config.getEnv("port", "3000"));
+    public static port: number = parseInt(Config.getEnv("port", "80"));
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
     public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
     public static max_ace_count: number = parseInt(Config.getEnv("max_ace_count", "128"), 10);
@@ -591,9 +598,9 @@ export class Config {
     public static mongodb_minpoolsize: number = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
     public static mongodb_maxpoolsize: number = parseInt(Config.getEnv("mongodb_maxpoolsize", "25"));
 
-    public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
+    public static skip_history_collections: string = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
     public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count", "1000"));
-    public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
+    public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
     public static aes_secret: string = Config.getEnv("aes_secret", "");

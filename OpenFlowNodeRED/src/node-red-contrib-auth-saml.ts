@@ -6,6 +6,7 @@ import * as https from "https";
 import { Logger, promiseRetry } from "./Logger";
 import { Config } from "./Config";
 import { FileSystemCache } from "./file-system-cache";
+import { NoderedUtil } from "@openiap/openflow-api";
 
 // tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {
@@ -40,14 +41,19 @@ export class noderedcontribauthsaml {
     public static async configure(baseURL: string, saml_federation_metadata: string, issuer: string, customverify: any, saml_ca: string,
         identityProviderUrl: string, saml_cert: string): Promise<noderedcontribauthsaml> {
         const result: noderedcontribauthsaml = new noderedcontribauthsaml(baseURL);
-        if (saml_federation_metadata !== null && saml_federation_metadata !== undefined) {
+        if (!NoderedUtil.IsNullEmpty(saml_cert) && !NoderedUtil.IsNullEmpty(identityProviderUrl)) {
+            result.strategy.options.entryPoint = identityProviderUrl;
+            result.strategy.options.cert = saml_cert;
+            result.strategy.options.issuer = issuer;
+
+        } else {
+            if (NoderedUtil.IsNullEmpty(saml_federation_metadata)) {
+                saml_federation_metadata = "http://localhost/issue/FederationMetadata/2007-06/FederationMetadata.xml";
+            }
+
             const metadata: any = await noderedcontribauthsaml.parse_federation_metadata(saml_ca, saml_federation_metadata);
             result.strategy.options.entryPoint = metadata.identityProviderUrl;
             result.strategy.options.cert = metadata.cert;
-            result.strategy.options.issuer = issuer;
-        } else {
-            result.strategy.options.entryPoint = identityProviderUrl;
-            result.strategy.options.cert = saml_cert;
             result.strategy.options.issuer = issuer;
         }
         if (identityProviderUrl != null && identityProviderUrl != undefined && identityProviderUrl != "") {
