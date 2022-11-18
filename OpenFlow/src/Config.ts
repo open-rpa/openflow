@@ -38,6 +38,10 @@ export class dbConfig extends Base {
     public otel_debug_log: boolean;
     public otel_warn_log: boolean;
     public otel_err_log: boolean;
+    public otel_measure_queued_messages: boolean;
+    public otel_measure__mongodb_watch: boolean;
+    public otel_measure_onlineuser: boolean;
+    public otel_measure_nodeid: boolean;    
     public log_information: boolean;
     public log_debug: boolean;
     public log_verbose: boolean;
@@ -125,6 +129,12 @@ export class dbConfig extends Base {
         Config.otel_debug_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_debug_log) ? conf.otel_debug_log : Config.getEnv("otel_debug_log", "false"));
         Config.otel_warn_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_warn_log) ? conf.otel_warn_log : Config.getEnv("otel_warn_log", "false"));
         Config.otel_err_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_err_log) ? conf.otel_err_log : Config.getEnv("otel_err_log", "false"));
+        Config.otel_measure_queued_messages = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_queued_messages) ? conf.otel_measure_queued_messages : Config.getEnv("otel_measure_queued_messages", "false"));
+        Config.otel_measure__mongodb_watch = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure__mongodb_watch) ? conf.otel_measure__mongodb_watch : Config.getEnv("otel_measure__mongodb_watch", "false"));
+        Config.otel_measure_onlineuser = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_onlineuser) ? conf.otel_measure_onlineuser : Config.getEnv("otel_measure_onlineuser", "false"));
+        Config.otel_measure_nodeid = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_nodeid) ? conf.otel_measure_nodeid : Config.getEnv("otel_measure_nodeid", "false"));
+
+
         Config.log_information = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_information) ? conf.log_information : Config.getEnv("log_information", "true"));
         Config.log_debug = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_debug) ? conf.log_debug : Config.getEnv("log_debug", "false"));
         Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
@@ -389,10 +399,10 @@ export class Config {
         Config.nodered_liveness_timeoutseconds = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
         Config.noderedcatalogues = Config.getEnv("noderedcatalogues", "");
 
-        Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-        Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
-        Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
-        Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+        Config.otel_measure_nodeid = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+        Config.otel_measure_queued_messages = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
+        Config.otel_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
+        Config.otel_measure_onlineuser = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
 
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
@@ -620,10 +630,10 @@ export class Config {
     public static nodered_liveness_timeoutseconds: number = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
     public static noderedcatalogues: string = Config.getEnv("noderedcatalogues", "");
 
-    public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-    public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
-    public static prometheus_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
-    public static prometheus_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+    public static otel_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+    public static otel_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
+    public static otel_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
+    public static otel_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
     public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));

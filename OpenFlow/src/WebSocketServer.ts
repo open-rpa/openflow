@@ -115,7 +115,7 @@ export class WebSocketServer {
                     description: 'Total number messages waiting on reply from client'
                 }) // "clientid"
                 WebSocketServer.message_queue_count?.addCallback(res => {
-                    if (!Config.prometheus_measure_queued_messages) return;
+                    if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
                         const keys = Object.keys(cli.messageQueue);
@@ -126,7 +126,7 @@ export class WebSocketServer {
                     description: 'Total number af steams  watching for changes'
                 }) // "agent", "clientid"
                 WebSocketServer.mongodb_watch_count?.addCallback(res => {
-                    if (!Config.prometheus_measure__mongodb_watch) return;
+                    if (!Config.otel_measure__mongodb_watch) return;
                     if (NoderedUtil.IsNullUndefinded(WebSocketServer.mongodb_watch_count)) return;
                     const result: any = {};
                     let total: number = 0;
