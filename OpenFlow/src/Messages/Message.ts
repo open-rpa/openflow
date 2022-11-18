@@ -1669,9 +1669,11 @@ export class Message {
                         span?.addEvent("Failed resolving token");
                     }
                     if (tuser == null || user == null) {
-                        // Nodered will spam this, so to not strain the system to much force an 1 second delay
-                        await new Promise(resolve => { setTimeout(resolve, 1000) });
-                        throw new Error("Failed resolving token, could not find user by " + _id);
+                        if (!Config.auto_create_user_from_jwt) {
+                            // Nodered will spam this, so to not strain the system to much force an 1 second delay
+                            await new Promise(resolve => { setTimeout(resolve, 1000) });
+                            throw new Error("Failed resolving token, could not find user by " + _id);
+                        }
                     }
 
                     if (cli?.clientagent == "openrpa" && user.dblocked == true) {
@@ -4151,13 +4153,18 @@ export class Message {
                         ]
                     }
 
+                    await Config.db.ParseTimeseries(span);
                     const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
-                    if (!DatabaseConnection.istimeseries("dbusage")) {
-                        if (usemetadata) {
-                            Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, "metadata.collection": col.name });
-                        } else {
-                            Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
+                    try {
+                        if (!DatabaseConnection.istimeseries("dbusage")) {
+                            if (usemetadata) {
+                                await Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, "metadata.collection": col.name });
+                            } else {
+                                await Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
+                            }
                         }
+                    } catch (error) {
+                        Logger.instanse.error(error, span);
                     }
                     let usage = 0;
                     if (items.length > 0) {
