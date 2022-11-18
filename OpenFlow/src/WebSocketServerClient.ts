@@ -564,6 +564,7 @@ export class WebSocketServerClient {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
             }
             this._sendQueue.push(singlemessage);
+            this._cleanupMessageQueue();
             return;
         }
         if (NoderedUtil.IsNullEmpty(message.id)) { message.id = NoderedUtil.GetUniqueIdentifier(); }
@@ -574,8 +575,23 @@ export class WebSocketServerClient {
         if (NoderedUtil.IsNullEmpty(message.replyto)) {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
         }
+        this._cleanupMessageQueue();
         this.ProcessQueue(parent);
     }
+    // cleanup old messageQueue messages
+    private _cleanupMessageQueue(): void {
+        const keys: string[] = Object.keys(this.messageQueue);
+        keys.forEach(key => {
+            const msg: QueuedMessage = this.messageQueue[key];
+            if (msg != null) {
+                const now = new Date();
+                const seconds = (now.getTime() - msg.timestamp.getTime()) / 1000;
+                if (seconds > Config.websocket_message_callback_timeout) {
+                    delete this.messageQueue[key];
+                }
+            }
+        });
+    }    
     public chunkString(str: string, length: number): string[] | null {
         if (NoderedUtil.IsNullEmpty(str)) { return null; }
         // tslint:disable-next-line: quotemark
