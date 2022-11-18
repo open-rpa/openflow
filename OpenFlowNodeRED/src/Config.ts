@@ -82,10 +82,9 @@ export class Config {
 
         Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
         Config.otel_trace_max_node_time_seconds = parseInt(Config.getEnv("otel_trace_max_node_time_seconds", "300"));
-        Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-        Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+        Config.otel_measure_nodeid = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+        Config.otel_measure_queued_messages = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
         Config.max_message_queue_time_seconds = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
-        Config.prometheus_expose_metric = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
@@ -175,10 +174,9 @@ export class Config {
     public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
     public static otel_trace_max_node_time_seconds: number = parseInt(Config.getEnv("otel_trace_max_node_time_seconds", "300"));
 
-    public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-    public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+    public static otel_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+    public static otel_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
     public static max_message_queue_time_seconds: number = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
-    public static prometheus_expose_metric: boolean = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));

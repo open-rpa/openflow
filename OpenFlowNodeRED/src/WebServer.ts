@@ -421,7 +421,7 @@ export class WebServer {
         return null;
     }
     public static update_message_queue_count(res: ObservableResult) {
-        if (!Config.prometheus_measure_queued_messages) return;
+        if (!Config.otel_measure_queued_messages) return;
         if (!WebServer.message_queue_count) return;
         if (NoderedUtil.IsNullUndefinded(res) || NoderedUtil.IsNullUndefinded(res.observe)) return;
         var cli: WebSocketClient = WebSocketClient.instance;

@@ -68,6 +68,7 @@ export class dbConfig extends Base {
     public auto_create_domains: string[];
     public persist_user_impersonation: boolean;
     public ping_clients_interval: number;
+    public websocket_message_callback_timeout: number;
 
     public otel_trace_pingclients: boolean;
     public otel_trace_dashboardauth: boolean;
@@ -157,17 +158,15 @@ export class dbConfig extends Base {
 
 
         Config.ensure_indexes = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ensure_indexes) ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
-        // @ts-ignore
-        Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields : Config.getEnv("text_index_name_fields", "name,_names"))
+        Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields.toString() : Config.getEnv("text_index_name_fields", "name,_names"))
         Config.auto_create_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_users) ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
 
         Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
         Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
-        // @ts-ignore
-        Config.auto_create_domains = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.auto_create_domains) ? conf.auto_create_domains : Config.getEnv("auto_create_domains", ""))
+        Config.auto_create_domains = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.auto_create_domains) ? conf.auto_create_domains.toString() : Config.getEnv("auto_create_domains", ""))
         Config.persist_user_impersonation = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.persist_user_impersonation) ? conf.persist_user_impersonation : Config.getEnv("persist_user_impersonation", "true"))
-        // @ts-ignore
-        Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("ping_clients_interval", (10000).toString()))
+        Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval.toString() : Config.getEnv("ping_clients_interval", (10000).toString()))
+        Config.websocket_message_callback_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.websocket_message_callback_timeout) ? conf.websocket_message_callback_timeout.toString() : Config.getEnv("websocket_message_callback_timeout", (10000).toString()))
 
         Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("otel_trace_pingclients", "false"));
         Config.otel_trace_dashboardauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_dashboardauth) ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
@@ -335,6 +334,7 @@ export class Config {
 
         Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
         Config.websocket_max_package_count = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+        Config.websocket_message_callback_timeout = parseInt(Config.getEnv("websocket_message_callback_timeout", "3600"), 10);
         Config.protocol = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
         Config.port = parseInt(Config.getEnv("port", "3000"));
         Config.domain = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
@@ -561,6 +561,7 @@ export class Config {
 
     public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
     public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+    public static websocket_message_callback_timeout: number = parseInt(Config.getEnv("websocket_message_callback_timeout", "3600"), 10);    
     public static websocket_disconnect_out_of_sync: boolean = Config.parseBoolean(Config.getEnv("websocket_disconnect_out_of_sync", "false"));
     public static protocol: string = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
     public static port: number = parseInt(Config.getEnv("port", "3000"));
