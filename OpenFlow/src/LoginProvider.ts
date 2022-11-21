@@ -477,7 +477,7 @@ export class LoginProvider {
                     Logger.instanse.info("Saving local provider", span);
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     Logger.instanse.info("local provider created as " + result._id, span);
-                    await Logger.DBHelper.ClearProviders();
+                    await Logger.DBHelper.CheckCache("config", result, false, false, span);
                     const tuser: TokenUser = TokenUser.From(user);
                     done(null, tuser);
                     if (Logger.License.validlicense) {
@@ -662,7 +662,7 @@ export class LoginProvider {
                 if (_user.formvalidated) _user.validated = true;
                 const jwt: string = Crypt.rootToken();
                 await Logger.DBHelper.Save(_user, jwt, span);
-                await Logger.DBHelper.UserRoleUpdate(_user, false, span);
+                await Logger.DBHelper.CheckCache("users", _user, false, false, span);
             }
 
             if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -745,7 +745,7 @@ export class LoginProvider {
                     if (_user.formvalidated) _user.validated = true;
                     const jwt: string = Crypt.rootToken();
                     await Logger.DBHelper.Save(_user, jwt, span);
-                    await Logger.DBHelper.UserRoleUpdate(_user, false, span);
+                    await Logger.DBHelper.CheckCache("users", _user, false, false, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -808,7 +808,7 @@ export class LoginProvider {
                     if (_user.formvalidated) _user.validated = true;
                     const jwt: string = Crypt.rootToken();
                     await Logger.DBHelper.Save(_user, jwt, span);
-                    await Logger.DBHelper.UserRoleUpdate(_user, false, span);
+                    await Logger.DBHelper.CheckCache("users", _user, false, false, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1261,7 +1261,7 @@ export class LoginProvider {
             let user: User;
             let tuser: TokenUser;
             if (req.user) {
-                await Logger.DBHelper.UserRoleUpdate(req.user, false, span);
+                await Logger.DBHelper.CheckCache("users", req.user, false, false, span);
                 user = await Logger.DBHelper.FindById(req.user._id, span);
                 user.validated = true;
                 if (Config.validate_user_form != "") {
@@ -1281,7 +1281,7 @@ export class LoginProvider {
             if (!NoderedUtil.IsNullEmpty(validateurl)) {
                 if (tuser != null) {
                     if (tuser.validated) {
-                        Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                        await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                     }
                     if (!(tuser.validated == true) && Config.validate_user_form != "") {
                     } else {
@@ -1484,7 +1484,7 @@ export class LoginProvider {
 
                         Logger.instanse.debug("Update user " + tuser.name + " information", span);
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                        await Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                        await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                     }
                     if (!(tuser.validated == true) && Config.validate_user_form != "") {
                         Logger.instanse.debug("User not validated, return no token for user " + tuser.name, span);
@@ -1508,7 +1508,7 @@ export class LoginProvider {
                             const UpdateDoc: any = { "$set": {} };
                             UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
                             var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                            await Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                            await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                             res.end(JSON.stringify({ jwt: "" }));
                         } else {
                             res.end(JSON.stringify({ jwt: "" }));
@@ -1529,7 +1529,7 @@ export class LoginProvider {
                                 // UpdateDoc.$set["validated"] = true;
                                 // UpdateDoc.$set["emailvalidated"] = true;
                                 // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                                await Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                                await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
                                 return;
                             } else {
@@ -1577,7 +1577,7 @@ export class LoginProvider {
                 }
                 this.sendEmail("pwreset", user._id, email, 'Reset password request',
                     `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`, span);
-                await Logger.DBHelper.UserRoleUpdate(user, false, span);
+                await Logger.DBHelper.CheckCache("users", user, false, false, span);
                 return res.end(JSON.stringify({ id }));
             }
             else if (req.body && req.body.code && req.body.id && !req.body.password) {
@@ -1623,7 +1623,7 @@ export class LoginProvider {
                     if (!user.emailvalidated) user.validated = false;
                 }
                 await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
-                await Logger.DBHelper.UserRoleUpdate(user, false, span);
+                await Logger.DBHelper.CheckCache("users", user as any, false, false, span);
                 return res.end(JSON.stringify({ id }));
             }
             res.end(JSON.stringify({}));

@@ -683,7 +683,7 @@ export class Message {
                     const q = new Base(); q._type = "exchange";
                     q.name = msg.exchangename;
                     const res = await Config.db.InsertOne(q, "mq", 1, true, jwt, parent);
-                    await Logger.DBHelper.ExchangeUpdate(q._id, q.name, false, parent);
+                    await Logger.DBHelper.CheckCache("mq", res, false, false, parent);
                 }
 
             }
@@ -1096,10 +1096,10 @@ export class Message {
             }
             const _tuser = this.tuser;
             if (Config.enable_entity_restriction && !_tuser.HasRoleId(WellknownIds.admins)) {
-                await Config.db.loadEntityRestrictions(span);
-                if (Config.db.EntityRestrictions.length > 1) {
+                var EntityRestrictions = await Logger.DBHelper.GetEntityRestrictions(span);
+                if (EntityRestrictions.length > 1) {
                     const tuser = this.tuser;
-                    const authorized = Config.db.EntityRestrictions.filter(x => x.IsAuthorized(tuser));
+                    const authorized = EntityRestrictions.filter(x => x.IsAuthorized(tuser));
                     const allall = authorized.filter(x => x.collection == "");
                     if (allall.length == 0) {
                         const names = authorized.map(x => x.collection);
@@ -1924,9 +1924,9 @@ export class Message {
                         await Config.db._UpdateOne({ "_id": user._id }, newdoc, "users", 1, false, Crypt.rootToken(), span)
                     }
                     span?.addEvent("memoryCache.delete users" + user._id);
-                    Logger.DBHelper.UserRoleUpdate(user, false, span);
+                    await Logger.DBHelper.CheckCache("users", user, false, false, span);
                     if (!NoderedUtil.IsNullEmpty(tuser.impostor) && tuser.impostor != user._id) {
-                        Logger.DBHelper.UserRoleUpdate(tuser as any, false, span);
+                        await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                         span?.addEvent("memoryCache.delete users" + tuser.impostor);
                     }
                 }
@@ -3679,7 +3679,7 @@ export class Message {
         if (NoderedUtil.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
-        await Logger.DBHelper.UserRoleUpdate(cli.user, false, parent);
+        await Logger.DBHelper.CheckCache("users", cli.user, false, false, parent);
         cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
         cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;

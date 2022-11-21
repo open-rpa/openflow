@@ -317,34 +317,25 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname == "config" && NoderedUtil.IsNullUndefinded(item)) {
                 item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, span);
             }
-            // 
             if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
                 if (next.operationType == 'delete' && collectionname == "users") {
                     item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, span);
                     if (!NoderedUtil.IsNullUndefinded(item)) {
-                        await Logger.DBHelper.UserRoleUpdate(item, true, span);
+                        await Logger.DBHelper.CheckCache(collectionname, item, true, false, span);
                     }
                 }
             }
             if (!NoderedUtil.IsNullUndefinded(item)) {
                 _type = item._type;
-
+                await Logger.DBHelper.CheckCache(collectionname, item, true, false, span);
                 if (collectionname == "mq") {
                     discardspan = false;
-                    if (_type == "queue") await Logger.DBHelper.QueueUpdate(item._id, item.name, true, span);
-                    if (_type == "exchange") await Logger.DBHelper.ExchangeUpdate(item._id, item.name, true, span);
-                    if (_type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id, true, span);
                 }
                 if (collectionname == "workitems" && _type == "workitem") {
                     discardspan = false;
-                    await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid, true, span);
                 }
                 if (collectionname == "users" && (_type == "user" || _type == "role" || _type == "customer")) {
                     discardspan = false;
-                    if (_id != WellknownIds.root) {
-                        await Logger.DBHelper.UserRoleUpdate(item, true, span);
-                    }
-
                     if (_type == "user" && item.disabled == true) {
                         for (let i = 0; i < WebSocketServer._clients.length; i++) {
                             let _cli = WebSocketServer._clients[i];
@@ -365,16 +356,13 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (collectionname == "config" && (_type == "restriction" || _type == "resource" || _type == "resourceusage")) {
                     discardspan = false;
-                    Logger.DBHelper.clearCache("watch detected change in " + collectionname + " collection for a " + _type + " " + item.name, span);
                 }
                 if (collectionname == "config" && _type == "provider") {
                     discardspan = false;
-                    await Logger.DBHelper.ClearProviders();
                     await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl(), span);
                 }
                 if (collectionname == "config" && _type == "ipblock") {
                     discardspan = false;
-                    await Logger.DBHelper.ClearIPBlockList();
                     if (!NoderedUtil.IsNullUndefinded(item.ips) && item.ips.length > 0) {
                         for (let i = 0; i < WebSocketServer._clients.length; i++) {
                             let _cli = WebSocketServer._clients[i];
@@ -502,7 +490,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                             }
                                             msg.data = JSON.stringify(q);
                                             client._socketObject.send(msg.tojson(), (err) => {
-                                                if (err) Logger.instanse.error(err, subspan, { collection: collectionname });
+                                                if (err) Logger.instanse.warn(err, subspan, { collection: collectionname });
                                             });
                                         } catch (error) {
 
@@ -1785,7 +1773,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
                 if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
-                Logger.DBHelper.UserRoleUpdate(item, false, span);
+                await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
                 if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
             }
@@ -1793,7 +1781,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const r: Role = (item as any);
                 if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
-                Logger.DBHelper.UserRoleUpdate(item, false, span);
+                await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                 if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
             }
@@ -1880,14 +1868,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                 );
                                 doupdate = true;
                             }
-                            await Logger.DBHelper.UserRoleUpdate(customers[i], false, span);
+                            await Logger.DBHelper.CheckCache("users", customers[i], false, false, span);
                         }
                         if (doupdate) {
                             await this.db.collection("users").updateOne(
                                 { _id: item._id },
                                 userupdate
                             );
-                            await Logger.DBHelper.UserRoleUpdate(user2, false, span);
+                            await Logger.DBHelper.CheckCache("users", user2, false, false, span);
                         }
                     }
                 }
@@ -1908,24 +1896,13 @@ export class DatabaseConnection extends events.EventEmitter {
                 await this.db.collection(collectionname).replaceOne({ _id: item._id }, item);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_replace, DatabaseConnection.otel_label(collectionname, user, "replace"));
             }
-            if (collectionname === "users") {
-                await Logger.DBHelper.UserRoleUpdate(item, false, span);
-            }
-            if (collectionname === "mq") {
-                if (item._type == "queue") await Logger.DBHelper.QueueUpdate(item._id, item.name, false, span);
-                if (item._type == "exchange") await Logger.DBHelper.ExchangeUpdate(item._id, item.name, false, span);
-                if (item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(item._id, false, span);
-            }
+            await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
             if (collectionname === "config" && item._type === "oauthclient") {
                 if (user.HasRoleName("admins")) {
                     setTimeout(() => OAuthProvider.LoadClients(span), 1000);
                 }
             }
-            if (collectionname === "config" && item._type === "restriction") {
-                this.EntityRestrictions = null;
-            }
-            if (collectionname === "config" && item._type === "provider" && !Config.supports_watch) {
-                await Logger.DBHelper.ClearProviders();
+            if (collectionname === "config" && item._type === "provider") {
                 await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl(), span);
             }
             span?.addEvent("traversejsondecode");
@@ -2028,7 +2005,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (item._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
                         throw new Error("Username is mandatory for users")
                     }
-                    await Logger.DBHelper.UserRoleUpdate(item, false, span);
+                    await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
                 item._version = 0;
                 if (item._id != null) {
@@ -2139,8 +2116,10 @@ export class DatabaseConnection extends events.EventEmitter {
             if (hadWorkitemQueue) {
                 if (wiqids.length == 0) await Logger.DBHelper.WorkitemQueueUpdate(null, false, span);
                 for (var i = 0; i < wiqids.length; i++) {
-                    await Logger.DBHelper.WorkitemQueueUpdate(wiqids[i], false, span);
+                    // await Logger.DBHelper.WorkitemQueueUpdate(wiqids[i], false, span);
+                    await Logger.DBHelper.CheckCache(collectionname, wiqids[i], false, false, span);
                 }
+
             }
             result = items;            
             Logger.instanse.verbose("inserted " + counter + " items in database", span, { collection: collectionname, user: user.username, count: counter });
@@ -2222,9 +2201,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
 
-                if (q.collectionname == "users" && q.item._id != WellknownIds.root) {
-                    await Logger.DBHelper.UserRoleUpdate(original, false, span);
-                }
+                await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
 
                 if (q.collectionname === "users" && !NoderedUtil.IsNullEmpty(q.item._type) && !NoderedUtil.IsNullEmpty(q.item.name)) {
                     if ((q.item._type === "user" || q.item._type === "role") &&
@@ -2507,17 +2484,11 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item = await this.Cleanmembers(q.item as any, original, span);
                     }
                     if (q.collectionname === "mq") {
-                        if (q.item._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(q.item._id, false, span);
                         if (!NoderedUtil.IsNullEmpty(q.item.name)) {
                             if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
                             if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
                         }
-                        if (q.item._type == "queue") await Logger.DBHelper.QueueUpdate(q.item._id, q.item.name, false, span);
-                        if (q.item._type == "exchange") await Logger.DBHelper.ExchangeUpdate(q.item._id, q.item.name, false, span);
                     }
-                    // @ts-ignore
-                    if (q.collectionname == "workitems" && q.item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(q.item.wiqid, false, span);
-
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         try {
                             const ot_end = Logger.otel.startTimer();
@@ -2578,14 +2549,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else {
                     (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
                 }
-                if (q.collectionname === "config" && q.item._type === "restriction") {
-                    this.EntityRestrictions = null;
+                if (original != null) {
+                    await Logger.DBHelper.CheckCache(q.collectionname, original, false, false, span);
                 }
-                if (q.collectionname == "users" && original != null && q.item._id != WellknownIds.root) {
-                    await Logger.DBHelper.UserRoleUpdate(original, false, span);
-                }
-                if (q.collectionname === "config" && q.item._type === "provider" && !Config.supports_watch) {
-                    await Logger.DBHelper.ClearProviders();
+                if (q.collectionname === "config" && q.item._type === "provider") {
                     await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl(), span);
                 }
                 DatabaseConnection.traversejsondecode(q.item);
@@ -2642,7 +2609,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                     { _id: q.item._id },
                                     userupdate
                                 );
-                                await Logger.DBHelper.UserRoleUpdate(user2, false, span);
+                                await Logger.DBHelper.CheckCache("users", user2, false, false, span);
                             }
                         }
                     }
@@ -2656,7 +2623,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
                             custusers.AddMember(q.item);
                             await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
-                            await Logger.DBHelper.UserRoleUpdate(q.item, false, span);
+                            await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
                         }
                     } else {
                         // await Logger.DBHelper.UserRoleUpdate(q.item, false, span);
@@ -3185,21 +3152,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         this.DeleteOne(r._id, "config", false, jwt, span);
                     }
                 }
-                if (collectionname == "users") {
-                    await Logger.DBHelper.UserRoleUpdate(doc, false, span);
-                }
-                if (collectionname === "mq") {
-                    if (doc._type == "workitemqueue") await Logger.DBHelper.WorkitemQueueUpdate(doc._id, false, span);
-                    if (doc._type == "queue") await Logger.DBHelper.QueueUpdate(doc._id, doc.name, false, span);
-                    if (doc._type == "exchange") await Logger.DBHelper.ExchangeUpdate(doc._id, doc.name, false, span);
-                }
-                // @ts-ignore
-                if (collectionname == "workitems" && doc._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(doc.wiqid, false);
-
-                if (collectionname === "config" && doc._type === "provider" && !Config.supports_watch) {
-                    await Logger.DBHelper.ClearProviders();
-                    // await LoginProvider.RegisterProviders(WebServer.app, Config.baseurl());
-                }
+                await Logger.DBHelper.CheckCache(collectionname, doc, false, false, span);
             }
         } catch (error) {
             throw error;
@@ -3618,26 +3571,12 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return item;
     }
-    public EntityRestrictions: EntityRestriction[] = null;
-    async loadEntityRestrictions(parent: Span) {
-        if (this.EntityRestrictions == null) {
-            const rootjwt = Crypt.rootToken()
-            this.EntityRestrictions = await this.query<EntityRestriction>({ query: { "_type": "restriction" }, top: 1000, collectionname: "config", jwt: rootjwt }, parent);
-            let allowadmins = new EntityRestriction();
-            allowadmins.copyperm = false; allowadmins.collection = ""; allowadmins.paths = ["$."];
-            Base.addRight(allowadmins, WellknownIds.admins, "admins", [Rights.create]);
-            this.EntityRestrictions.push(allowadmins);
-            for (let i = 0; i < this.EntityRestrictions.length; i++) {
-                this.EntityRestrictions[i] = EntityRestriction.assign(this.EntityRestrictions[i]);
-            }
-        }
-    }
     async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
         if (!Config.enable_entity_restriction) return true;
-        await this.loadEntityRestrictions(parent);
+        var EntityRestrictions = await Logger.DBHelper.GetEntityRestrictions(parent);
         const defaultAllow: boolean = false;
         let result: boolean = false;
-        const authorized = this.EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collection || x.collection == ""));
+        const authorized = EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collection || x.collection == ""));
         const matches = authorized.filter(x => x.IsMatch(item) && (x.collection == collection || x.collection == ""));
         const copyperm = matches.filter(x => x.copyperm && (x.collection == collection || x.collection == ""));
         if (!defaultAllow && matches.length == 0) return false; // no hits, if not allowed return false
