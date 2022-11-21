@@ -279,6 +279,11 @@ export class WebSocketServerClient {
             if (this._message != null) Config.db.removeListener("disconnected", this._message);
             if (this._error != null) Config.db.removeListener("disconnected", this._error);
             if (this._close != null) Config.db.removeListener("disconnected", this._close);
+            try {
+                if (this._amqpdisconnected != null) amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
+            } catch (error) {
+                Logger.instanse.error(error, span, Logger.parsecli(this));
+            }
 
             await this.CloseConsumers(span);
             if (!NoderedUtil.IsNullUndefinded(this._socketObject)) {
@@ -287,11 +292,6 @@ export class WebSocketServerClient {
                 } catch (error) {
                     Logger.instanse.error(error, span, Logger.parsecli(this));
                 }
-            }
-            try {
-                if (this._amqpdisconnected != null) amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
-            } catch (error) {
-                Logger.instanse.error(error, span, Logger.parsecli(this));
             }
             var keys = Object.keys(this.watches);
             for (var i = 0; i < keys.length; i++) {
