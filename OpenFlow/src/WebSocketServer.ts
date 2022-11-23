@@ -94,6 +94,7 @@ export class WebSocketServer {
                     description: 'Total number of registered queues'
                 }) // "clientid"
                 WebSocketServer.websocket_queue_count?.addCallback(res => {
+                    if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
                         res.observe(cli._queues.length, { ...Logger.otel.defaultlabels, clientid: cli.id })
