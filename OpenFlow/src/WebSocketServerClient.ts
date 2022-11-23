@@ -584,8 +584,13 @@ export class WebSocketServerClient {
         const messages: string[] = this.chunkString(message.data, Config.websocket_package_size);
         if (NoderedUtil.IsNullUndefinded(messages) || messages.length === 0) {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
-            if (NoderedUtil.IsNullEmpty(message.replyto)) {
+            if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
+            } else {
+                try {
+                    if (cb != null) cb(message);
+                } catch (error) {
+                }
             }
             this._sendQueue.push(singlemessage);
             this._cleanupMessageQueue();
@@ -596,8 +601,13 @@ export class WebSocketServerClient {
             const _message: SocketMessage = SocketMessage.frommessage(message, messages[i], messages.length, i);
             this._sendQueue.push(_message);
         }
-        if (NoderedUtil.IsNullEmpty(message.replyto)) {
+        if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
+        } else {
+            try {
+                if (cb != null) cb(message);
+            } catch (error) {
+            }
         }
         this._cleanupMessageQueue();
         this.ProcessQueue(parent);
