@@ -6741,7 +6741,8 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
         }
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             // this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } });
-            NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } }).then((result) => {
+            NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 }, orderby: 'name' }).then((result) => {
+                // result = result.sort((a, b) => a.name.localeCompare(b.name))
                 this.workitemqueues = result;
                 this.workitemqueues.unshift({ "name": "" } as any)
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
