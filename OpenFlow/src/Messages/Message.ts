@@ -4932,7 +4932,8 @@ export class Message {
                 } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
                     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
                 }
-                if (msg.errortype == "business") msg.state = "failed";
+                if (msg.errortype == "business" && msg.state == "retry" && msg.ignoremaxretries == false) msg.state = "failed";
+                // if (msg.errortype == "business" && msg.ignoremaxretries == false) msg.state = "failed";
                 if (msg.state == "retry") {
                     if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
                     if (wi.retries < wiq.maxretries || msg.ignoremaxretries) {
@@ -5346,6 +5347,7 @@ export class Message {
             msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
 
             if (msg.purge) {
+                await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
                 await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
@@ -5394,6 +5396,7 @@ export class Message {
             user = this.tuser;
 
             if (msg.purge) {
+                await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
                 await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
                 var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
                 if (items.length > 0) {
