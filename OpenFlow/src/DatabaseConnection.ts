@@ -280,14 +280,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                 data: { "workitem": payload }
                             }
                         }
-                        if (payload != null && !NoderedUtil.IsNullEmpty(payload.name)) {
+                        if (payload != null) {
                             Logger.instanse.debug("Send workitem payload '" + payload.name + "' to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null, { workflowid: wiq.workflowid, wi: payload._id, name: payload.name });
+                            try {
+                                await client.Queue(JSON.stringify(sendthis), queueid, {} as any, null)
+                            } catch (error) {
+                            }
                         } else {
-                            Logger.instanse.debug("Send workitem with no payload name to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null, { workflowid: wiq.workflowid });
-                        }
-                        try {
-                            await client.Queue(JSON.stringify(sendthis), queueid, {} as any, null)
-                        } catch (error) {
+                            await Logger.DBHelper.CheckCache("mq", wiq, false, false, null);
                         }
                     }
                 }
