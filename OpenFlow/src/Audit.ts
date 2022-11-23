@@ -1,5 +1,5 @@
 import { Config } from "./Config";
-import { TokenUser, Base, Rights, NoderedUtil } from "@openiap/openflow-api";
+import { TokenUser, Base, Rights, NoderedUtil, WorkitemQueue } from "@openiap/openflow-api";
 import { Crypt } from "./Crypt";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -120,6 +120,27 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
+    public static async AuditWorkitemPurge(user: TokenUser, wiq: WorkitemQueue, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.LoginSuccess", parent);
+        try {
+            Audit.ensure_openflow_logins();
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "success" });
+            const log: auditWorkitem = new auditWorkitem();
+            Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
+            log.success = true;
+            log.userid = user._id;
+            log.name = user.name + " purged " + wiq.name;
+            log.username = user.username;
+            log.wiqid = wiq._id;
+            log.wiq = wiq.name;
+            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span);
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     public static async NoderedAction(user: TokenUser, success: boolean, name: string, type: string, image: string, instancename: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.NoderedAction", parent);
         try {
@@ -196,5 +217,25 @@ export class Nodered extends Base {
     constructor() {
         super();
         this._type = "nodered";
+    }
+}
+export class auditWorkitem extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public image: string;
+    public imagename: string;
+    public imageversion: string;
+    public instancename: string;
+    public remoteip: string;
+    public ip: number;
+    public clientagent: string;
+    public clientversion: string;
+    public wiqid: string;
+    public wiq: string;
+    constructor() {
+        super();
+        this._type = "workitemqueue";
     }
 }
