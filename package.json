@@ -34,7 +34,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "0.17.1",
-    "@openiap/openflow-api": "^2.1.6",
+    "@openiap/openflow-api": "^2.1.7",
     "@opentelemetry/api-metrics": "^0.32.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.32.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.32.0",
