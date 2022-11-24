@@ -782,6 +782,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
         try {
+            if (!Config.cache_workitem_queues) return await this.GetPushableQueuesWrap(span);
             let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) });
             return items;
         } catch (error) {
@@ -802,6 +803,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
         try {
+            if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
             var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
             let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); });
             return count;

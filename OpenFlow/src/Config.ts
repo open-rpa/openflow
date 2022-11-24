@@ -85,6 +85,8 @@ export class dbConfig extends Base {
     public otel_trace_mongodb_update_per_users: boolean;
     public otel_trace_mongodb_delete_per_users: boolean;
 
+    public cache_workitem_queues: boolean;
+
     public async Save(jwt: string, parent: Span): Promise<void> {
         if (this.needsupdate = true) {
             this.updatedat = new Date(new Date().toISOString());
@@ -186,6 +188,9 @@ export class dbConfig extends Base {
         Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_insert_per_users) ? conf.otel_trace_mongodb_insert_per_users : Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
         Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_update_per_users) ? conf.otel_trace_mongodb_update_per_users : Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
         Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_delete_per_users) ? conf.otel_trace_mongodb_delete_per_users : Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
+
+        Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
+
 
         Logger.reload();
         return conf;
@@ -304,6 +309,8 @@ export class Config {
         Config.cache_store_redis_host = Config.getEnv("cache_store_redis_host", "");
         Config.cache_store_redis_port = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
         Config.cache_store_redis_password = Config.getEnv("cache_store_redis_password", "");
+
+        Config.cache_workitem_queues = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
 
         Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "480"));
         Config.oidc_authorization_code_ttl = parseInt(Config.getEnv("oidc_authorization_code_ttl", "480"));
@@ -431,7 +438,9 @@ export class Config {
         Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
         Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
         Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
-    
+
+
+
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static load_drom_db(): void {
@@ -530,6 +539,7 @@ export class Config {
     public static cache_store_redis_host: string = Config.getEnv("cache_store_redis_host", "");
     public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
     public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
+    public static cache_workitem_queues: boolean = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
 
     public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "480")); // 8 hours
     public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "480")); // 8 hours
