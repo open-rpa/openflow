@@ -12,33 +12,25 @@ import { LoginProvider } from "./LoginProvider";
 import { Config } from "./Config";
 import { InsertOrUpdateOneMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
-import * as url from "url";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
 var _hostname = "";
-import { context, TraceFlags, trace, ROOT_CONTEXT, SpanContext } from '@opentelemetry/api';
-import { setSpan, getSpan } from "@opentelemetry/api/build/src/trace/context-utils";
-import opentelemetry = require('@opentelemetry/sdk-node');
 
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
     if (req.originalUrl.indexOf('/oidc') > -1) return next();
-    // var span = Logger.otel.startSpanExpress("rateLimiter", req);
     try {
         Logger.instanse.verbose("Validate for " + req.originalUrl, null);
         var e = await WebServer.BaseRateLimiter.consume(WebServer.remoteip(req))
         Logger.instanse.verbose("consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints, null);
         next();
     } catch (error) {
-        // const route = url.parse(req.url).pathname;
-        // if (!NoderedUtil.IsNullUndefinded(websocket_rate_limit)) websocket_rate_limit.bind({ ...Logger.otel.defaultlabels, route: route }).update(e.consumedPoints);
         var span = Logger.otel.startSpanExpress("rateLimiter", req);
         Logger.instanse.warn("API_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
         span.end();
         res.status(429).json({ response: 'RATE_LIMIT' });
     } finally {
-        // span.end();
     }
 };
 
@@ -93,11 +85,6 @@ export class WebServer {
         });
 
         try {
-            if (!NoderedUtil.IsNullUndefinded(Logger.otel)) {
-                // websocket_rate_limit = Logger.otel.meter.createObservableUpDownCounter("openflow_webserver_rate_limit_count", {
-                //     description: 'Total number of rate limited web request'
-                // }) // "route"
-            }
             span?.addEvent("Create Express");
             this.app = express();
             this.app.disable("x-powered-by");
@@ -128,7 +115,6 @@ export class WebServer {
 
             this.app.get("/livenessprobe", WebServer.get_livenessprobe.bind(this));
 
-            // https://scaleup.us/2020/06/21/how-to-block-ips-in-your-traefik-proxy-server/
             this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = LoginProvider.remoteip(req);
@@ -141,15 +127,8 @@ export class WebServer {
                 return res.status(200).send({ message: 'ok.' });
             });
 
-            // Add headers
             this.app.use(function (req, res, next) {
                 Logger.instanse.verbose("add for " + req.originalUrl, null);
-                // const origin: string = (req.headers.origin as any);
-                // if (NoderedUtil.IsNullEmpty(origin)) {
-                //     res.header('Access-Control-Allow-Origin', '*');
-                // } else {
-                //     res.header('Access-Control-Allow-Origin', origin);
-                // }
                 // Website you wish to allow to connect
                 res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -179,16 +158,8 @@ export class WebServer {
                 }
                 if (req.originalUrl.indexOf('/oidc') > -1) return next();
 
-
-                // Pass to next layer of middleware
                 next();
             });
-
-            // https://www.section.io/engineering-education/push-notification-in-nodejs-using-service-worker/
-            // https://github.com/mercymeave/code-space/tree/main/push-notifications/client
-
-            // https://swina.github.io/2019/02/vue-service-worker-for-webpush-notifications/
-
 
             //setting vapid keys details
             if (!NoderedUtil.IsNullEmpty(Config.wapid_pub) && !NoderedUtil.IsNullEmpty(Config.wapid_key)) {
@@ -314,26 +285,5 @@ export class WebServer {
         } finally {
             span.end();
         }
-        // https://lightrun.com/answers/googleapis-nodejs-pubsub-opentelemetry-integration-misses-the-point-we-need-to-propagate-the-spancontext
-        // https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-propagator-jaeger
-        // https://github.com/open-telemetry/opentelemetry-js/blob/main/packages/opentelemetry-propagator-jaeger/test/JaegerPropagator.test.ts
-        // tracer.startActiveSpan('findme22', {}, context, (span) => {
-        //     try {
-        //         if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
-        //         // @ts-ignore
-        //         const [ traceId, spanId ] = Logger.otel.GetTraceSpanId(span);
-        //         res.end(JSON.stringify({ "success": "true", "hostname": _hostname, traceId, spanId, traceFlags }));
-        //         res.end();
-        //         span.setStatus({ code: 200 });
-        //     } catch (error) {
-        //         console.error(error);
-        //         span.setStatus({
-        //             code: 500,
-        //             message: error instanceof Error ? error.message : undefined,
-        //         });
-        //     } finally {
-        //         span.end();
-        //     }
-        // });
     }
 }
