@@ -50,10 +50,11 @@ export class samlauthstrategyoptions {
     public issuer: string = "";
     public cert: string = null;
 
-    public audience: string = null;
+    public audience: any = false;
     public signatureAlgorithm: 'sha1' | 'sha256' | 'sha512' = "sha256";
     public callbackMethod: string = "POST";
     public verify: any;
+    public wantAuthnResponseSigned: boolean = false;
 }
 export class LoginProvider {
     public static _providers: any = {};
@@ -193,7 +194,7 @@ export class LoginProvider {
                 try {
                     if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                         if (provider.provider === "saml") {
-                            const metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
+                            const metadata: any = await Config.parse_federation_metadata(Config.tls_ca, provider.saml_federation_metadata);
                             LoginProvider._providers[provider.id] =
                                 LoginProvider.CreateSAMLStrategy(app, provider.id, metadata.cert,
                                     metadata.identityProviderUrl, provider.issuer, baseurl, span);
@@ -336,7 +337,8 @@ export class LoginProvider {
         options.issuer = issuer;
         options.callbackUrl = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
         options.verify = (LoginProvider.samlverify).bind(this);
-        const SamlStrategy = require('passport-saml').Strategy
+        options.wantAuthnResponseSigned = false;
+        const SamlStrategy = require('@node-saml/passport-saml').Strategy
         const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
@@ -1462,7 +1464,7 @@ export class LoginProvider {
                                     throw new Error("email already in use by another user");
                                 }
                             }
-                            if (email.indexOf("@") > -1) {
+                            if (email.indexOf("@") > -1 || Config.NODE_ENV != "production") {
                                 if (tuser.emailvalidated == true) {
                                     UpdateDoc.$set["validated"] = true;
                                     tuser.validated = true;

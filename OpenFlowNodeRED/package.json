@@ -24,6 +24,7 @@
     "openflow-nodered-cli": "./dist/cli.js"
   },
   "dependencies": {
+    "@node-saml/passport-saml": "^4.0.1",
     "@nodemailer/mailparser2": "^1.0.3",
     "@openiap/openflow-api": "^2.1.7",
     "@opentelemetry/api-metrics": "^0.32.0",
@@ -44,13 +45,12 @@
     "morgan": "^1.10.0",
     "node-red": "^3.0.2",
     "pako": "^2.1.0",
-    "passport-saml": "^3.2.1",
-    "passport-saml-metadata": "^2.6.0",
     "pm2": "^5.2.2",
     "ramda": "^0.28.0",
     "readline-sync": "^1.4.10",
     "request": "^2.88.2",
-    "smtp-server": "^3.11.0"
+    "smtp-server": "^3.11.0",
+    "xml2js": "^0.4.23"
   },
   "devDependencies": {
     "@types/compression": "^1.7.2",

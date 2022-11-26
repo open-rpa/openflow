@@ -34,6 +34,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "0.17.1",
+    "@node-saml/passport-saml": "^4.0.1",
     "@openiap/openflow-api": "^2.1.7",
     "@opentelemetry/api-metrics": "^0.32.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.32.0",
@@ -77,8 +78,6 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "passport-openidconnect": "^0.1.1",
-    "passport-saml": "^3.2.1",
-    "passport-saml-metadata": "^2.6.0",
     "pm2": "^5.2.2",
     "rate-limiter-flexible": "^2.4.1",
     "readline-sync": "^1.4.10",
@@ -86,13 +85,13 @@
     "saml20": "^0.1.14",
     "samlp": "^6.0.2",
     "web-push": "^3.5.0",
-    "ws": "^8.11.0"
+    "ws": "^8.11.0",
+    "xml2js": "^0.4.23"
   },
   "devDependencies": {
     "@testdeck/mocha": "0.3.2",
     "@types/angular": "^1.8.4",
     "@types/angular-route": "^1.7.2",
-    "@types/express": "^4.17.14",
     "@types/mocha": "10.0.0",
     "@types/passport": "^1.0.11",
     "angular": "^1.8.2",

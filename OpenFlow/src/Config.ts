@@ -1,4 +1,7 @@
-import { fetch, toPassportConfig } from "passport-saml-metadata";
+var xml2js = require('xml2js');
+import * as https from "https";
+import * as http from "http";
+// import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
 import * as path from "path";
 import { DatabaseConnection } from "./DatabaseConnection";
@@ -705,18 +708,74 @@ export class Config {
         if (!value || value === "") { value = defaultvalue; }
         return value;
     }
-    public static async parse_federation_metadata(url: string): Promise<any> {
-        // if anything throws, we retry
-        return promiseRetry(async () => {
-            const reader: any = await fetch({ url });
-            if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); }
-            const config: any = toPassportConfig(reader);
-            // we need this, for Office 365 :-/
-            if (reader.signingCerts && reader.signingCerts.length > 1) {
-                config.cert = reader.signingCerts;
+    public static get(url: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            var provider = http;
+            if (url.startsWith('https')) {
+                provider = https as any;
             }
-            return config;
-        }, 10, 1000);
+            provider.get(url, (resp) => {
+                let data = '';
+                resp.on('data', (chunk) => {
+                    data += chunk;
+                });
+                resp.on('end', () => {
+                    resolve(data);
+                });
+            }).on("error", (err) => {
+                reject(err);
+            });
+        })
+    }
+    public static async parse_federation_metadata(tls_ca: String, url: string): Promise<any> {
+        // try {
+        //     if (tls_ca !== null && tls_ca !== undefined && tls_ca !== "") {
+        //         const rootCas = require('ssl-root-cas/latest').create();
+        //         rootCas.push(tls_ca);
+        //         // rootCas.addFile( tls_ca );
+        //         https.globalAgent.options.ca = rootCas;
+        //         require('https').globalAgent.options.ca = rootCas;
+        //     }
+        // } catch (error) {
+        //     console.error(error);
+        // }
+        const metadata: any = await promiseRetry(async () => {
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            const data: string = await Config.get(url)
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
+            if (NoderedUtil.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
+            var xml = await xml2js.parseStringPromise(data);
+            if (xml && xml.EntityDescriptor && xml.EntityDescriptor.IDPSSODescriptor && xml.EntityDescriptor.IDPSSODescriptor.length > 0) {
+                // const reader: any = await fetch({ url });
+                // if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); }
+                // const _config: any = toPassportConfig(reader);
+                var IDPSSODescriptor = xml.EntityDescriptor.IDPSSODescriptor[0];
+                var identifierFormat = "urn:oasis:names:tc:SAML:2.0:attrname-format:uri";
+                if (IDPSSODescriptor.NameIDFormat && IDPSSODescriptor.NameIDFormat.length > 0) {
+                    identifierFormat = IDPSSODescriptor.NameIDFormat[0];
+                }
+                var signingCerts = [];
+                IDPSSODescriptor.KeyDescriptor.forEach(key => {
+                    if (key.$.use == "signing") {
+                        signingCerts.push(key.KeyInfo[0].X509Data[0].X509Certificate[0]);
+                    }
+                });
+                // var signingCerts = IDPSSODescriptor.KeyDescriptor[0].KeyInfo[0].X509Data[0].X509Certificate;
+                var identityProviderUrl = IDPSSODescriptor.SingleSignOnService[0].$.Location;
+                var logoutUrl = IDPSSODescriptor.SingleLogoutService[0].$.Location;
+                const config = {
+                    identityProviderUrl,
+                    entryPoint: identityProviderUrl,
+                    logoutUrl,
+                    cert: signingCerts,
+                    identifierFormat
+                }
+                return config;
+            } else {
+                throw new Error("Failed parsing metadata");
+            }
+        }, 50, 1000);
+        return metadata;
     }
     public static parseArray(s: string): string[] {
         let arr = s.split(",");

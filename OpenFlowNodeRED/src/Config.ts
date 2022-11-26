@@ -1,7 +1,9 @@
+var xml2js = require('xml2js');
 import * as https from "https";
+import * as http from "http";
+// import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
 import * as path from "path";
-import { fetch, toPassportConfig } from "passport-saml-metadata";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { promiseRetry } from "./Logger";
 const { networkInterfaces } = require('os');
@@ -253,35 +255,73 @@ export class Config {
             default: return Boolean(s);
         }
     }
-
-    public static async parse_federation_metadata(url: string): Promise<any> {
-        try {
-            if (Config.tls_ca !== "") {
-                const tls_ca: string = Buffer.from(Config.tls_ca, 'base64').toString('ascii')
-                const rootCas = require('ssl-root-cas/latest').create();
-                rootCas.push(tls_ca);
-                // rootCas.addFile( tls_ca );
-                https.globalAgent.options.ca = rootCas;
-                require('https').globalAgent.options.ca = rootCas;
+    public static get(url: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            var provider = http;
+            if (url.startsWith('https')) {
+                provider = https as any;
             }
-        } catch (error) {
-            console.error(error);
-        }
-
-        // if anything throws, we retry
+            provider.get(url, (resp) => {
+                let data = '';
+                resp.on('data', (chunk) => {
+                    data += chunk;
+                });
+                resp.on('end', () => {
+                    resolve(data);
+                });
+            }).on("error", (err) => {
+                reject(err);
+            });
+        })
+    }
+    public static async parse_federation_metadata(tls_ca: String, url: string): Promise<any> {
+        // try {
+        //     if (tls_ca !== null && tls_ca !== undefined && tls_ca !== "") {
+        //         const rootCas = require('ssl-root-cas/latest').create();
+        //         rootCas.push(tls_ca);
+        //         // rootCas.addFile( tls_ca );
+        //         https.globalAgent.options.ca = rootCas;
+        //         require('https').globalAgent.options.ca = rootCas;
+        //     }
+        // } catch (error) {
+        //     console.error(error);
+        // }
         const metadata: any = await promiseRetry(async () => {
-            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-            const reader: any = await fetch({ url });
-            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (reader === null || reader === undefined) { throw new Error("Failed getting result"); }
-            const config: any = toPassportConfig(reader);
-            // we need this, for Office 365 :-/
-            if (reader.signingCerts && reader.signingCerts.length > 1) {
-                config.cert = reader.signingCerts;
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            const data: string = await Config.get(url)
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
+            if (NoderedUtil.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
+            var xml = await xml2js.parseStringPromise(data);
+            if (xml && xml.EntityDescriptor && xml.EntityDescriptor.IDPSSODescriptor && xml.EntityDescriptor.IDPSSODescriptor.length > 0) {
+                // const reader: any = await fetch({ url });
+                // if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); }
+                // const _config: any = toPassportConfig(reader);
+                var IDPSSODescriptor = xml.EntityDescriptor.IDPSSODescriptor[0];
+                var identifierFormat = "urn:oasis:names:tc:SAML:2.0:attrname-format:uri";
+                if (IDPSSODescriptor.NameIDFormat && IDPSSODescriptor.NameIDFormat.length > 0) {
+                    identifierFormat = IDPSSODescriptor.NameIDFormat[0];
+                }
+                var signingCerts = [];
+                IDPSSODescriptor.KeyDescriptor.forEach(key => {
+                    if (key.$.use == "signing") {
+                        signingCerts.push(key.KeyInfo[0].X509Data[0].X509Certificate[0]);
+                    }
+                });
+                // var signingCerts = IDPSSODescriptor.KeyDescriptor[0].KeyInfo[0].X509Data[0].X509Certificate;
+                var identityProviderUrl = IDPSSODescriptor.SingleSignOnService[0].$.Location;
+                var logoutUrl = IDPSSODescriptor.SingleLogoutService[0].$.Location;
+                const config = {
+                    identityProviderUrl,
+                    entryPoint: identityProviderUrl,
+                    logoutUrl,
+                    cert: signingCerts,
+                    identifierFormat
+                }
+                return config;
+            } else {
+                throw new Error("Failed parsing metadata");
             }
-            return config;
-        }, 10, 1000);
+        }, 50, 1000);
         return metadata;
     }
-
 }
