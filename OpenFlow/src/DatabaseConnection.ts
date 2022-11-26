@@ -678,13 +678,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         for (var y = 0; y < Ace.ace_right_bits; y++) {
                             if (Ace.isBitSet(ace, y)) Ace.setBit(newace, y);
                         }
-                        // const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
-                        // (ace.rights as any) = b;
                         item._acl[i] = newace;
                         ace = newace;
                     }
                     if (ace.deny == false) delete ace.deny;
-                    //if (this.WellknownIdsArray.indexOf(ace._id) === -1) {
                     if (!skipNameLookup) {
                         let _user = await Logger.DBHelper.FindById(ace._id, span);
                         if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1856,7 +1853,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                 var ace: Ace = new Ace();
                                 ace._id = customers[i].users; ace.name = customers[i].name + " users";
                                 Ace.resetnone(ace); Ace.setBit(ace, Rights.read);
-                                // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                 if (!userupdate["$push"]["_acl"]) {
                                     userupdate["$push"]["_acl"] = { "$each": [] };
                                 }
@@ -1864,7 +1860,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                 var ace: Ace = new Ace();
                                 ace._id = customers[i].admins; ace.name = customers[i].name + " admins";
                                 Ace.resetfullcontrol(ace);
-                                // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                 userupdate["$push"]["_acl"]["$each"].push(ace);
                                 await this.db.collection("users").updateOne(
                                     { _id: customers[i].users },
@@ -2589,7 +2584,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                     var ace: Ace = new Ace();
                                     ace._id = customers[i].users; ace.name = customers[i].name + " users";
                                     Ace.resetnone(ace); Ace.setBit(ace, Rights.read);
-                                    // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                     if (!userupdate["$push"]["_acl"]) {
                                         userupdate["$push"]["_acl"] = { "$each": [] };
                                     }
@@ -2597,7 +2591,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                     var ace: Ace = new Ace();
                                     ace._id = customers[i].admins; ace.name = customers[i].name + " admins";
                                     Ace.resetfullcontrol(ace);
-                                    // ace.rights = (new Binary(Buffer.from(ace.rights as any, "base64"), 0) as any);
                                     userupdate["$push"]["_acl"]["$each"].push(ace);
                                     await this.db.collection("users").updateOne(
                                         { _id: customers[i].users },
@@ -2674,16 +2667,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 json = JSON.stringify(json);
             }
             q.item = JSON.parse(json, (key, value) => {
-                if (key === "_acl") {
-                    if (Array.isArray(value)) {
-                        for (let i = 0; i < value.length; i++) {
-                            const a = value[i];
-                            if (typeof a.rights === "string") {
-                                // a.rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
-                            }
-                        }
-                    }
-                }
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
@@ -3531,11 +3514,6 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.force_add_admins && item._id != WellknownIds.root) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
         }
-        item._acl.forEach((a, index) => {
-            if (typeof a.rights === "string") {
-                // item._acl[index].rights = (new Binary(Buffer.from(a.rights, "base64"), 0) as any);
-            }
-        });
         if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
             var _searchnames = [];
             var _searchname = "";

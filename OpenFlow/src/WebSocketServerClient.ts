@@ -542,12 +542,12 @@ export class WebSocketServerClient {
                             singleresult.Process(this);
                         }
                     } else {
-                        let buffer: string = "";
+                        let chunk: string = "";
                         msgs.forEach(msg => {
-                            if (!NoderedUtil.IsNullUndefinded(msg.data)) { buffer += msg.data; }
+                            if (!NoderedUtil.IsNullUndefinded(msg.data)) { chunk += msg.data; }
                         });
                         this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
-                        const result: Message = Message.frommessage(first, buffer);
+                        const result: Message = Message.frommessage(first, chunk);
                         result.priority = first.priority;
                         if (result.command != "ping" && result.command != "pong") {
                             result.Process(this);

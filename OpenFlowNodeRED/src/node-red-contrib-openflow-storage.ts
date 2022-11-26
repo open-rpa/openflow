@@ -65,7 +65,7 @@ export class noderedcontribopenflowstorage {
     //           the lengths of the arrays
     //
     private static iv_length: number = 16; // for AES, this is always 16
-    private static encryption_key: string = ("smurfkicks-to-anyone-hating-on-nodejs").substr(0, 32);
+    private static encryption_key: string = ("smurfkicks-to-anyone-hating-on-nodejs").substring(0, 32);
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(this.iv_length);
         let cipher: crypto.CipherGCM = crypto.createCipheriv('aes-256-gcm', Buffer.from(this.encryption_key), iv);

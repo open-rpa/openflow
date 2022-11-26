@@ -46,7 +46,7 @@ export class Crypt {
     }
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         let cipher: crypto.CipherGCM = crypto.createCipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
         let encrypted: Buffer = cipher.update((text as any));
         encrypted = Buffer.concat([encrypted, cipher.final()]);
@@ -60,7 +60,7 @@ export class Crypt {
         let authTag: Buffer = null;
         if (textParts.length > 0) authTag = Buffer.from(textParts.shift(), "hex");
         let decrypted: Buffer;
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         if (authTag != null) {
             let decipher: crypto.DecipherGCM = crypto.createDecipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
             decipher.setAuthTag(authTag);
@@ -114,7 +114,7 @@ export class Crypt {
         user.selectedcustomerid = item.selectedcustomerid;
         user.dblocked = item.dblocked;
 
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         const key = Crypt.encryption_key;
         if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
         if (NoderedUtil.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
@@ -126,7 +126,7 @@ export class Crypt {
             if (NoderedUtil.IsNullEmpty(token)) {
                 throw new Error('jwt must be provided');
             }
-            if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
+            if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
             const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
             let impostor: string = null;
             if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
@@ -163,7 +163,7 @@ export class Crypt {
         }
     }
     static decryptToken(token: string): any {
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substr(0, 32);
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         return jsonwebtoken.verify(token, Crypt.encryption_key);
     }
 }

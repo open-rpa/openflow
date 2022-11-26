@@ -2210,7 +2210,7 @@ export class Message {
         });
     }
 
-    public async _addFile(file: string | Buffer, filename: string, mimeType: string, metadata: Base, compressed: boolean, jwt: string): Promise<string> {
+    public async _addFile(file: string | Buffer | Stream, filename: string, mimeType: string, metadata: Base, compressed: boolean, jwt: string): Promise<string> {
         if (NoderedUtil.IsNullEmpty(filename)) throw new Error("Filename is mandatory");
         if (NoderedUtil.IsNullEmpty(file)) throw new Error("file is mandatory");
         if (process.platform === "win32") {
@@ -5526,11 +5526,4 @@ export class JSONfn {
             return (typeof value === 'function') ? value.toString() : value;
         });
     }
-    // insecure and unused, keep for reference
-    // public static parse(str) {
-    //     return JSON.parse(str, function (key, value) {
-    //         if (typeof value != 'string') return value;
-    //         return (value.substring(0, 8) == 'function') ? eval('(' + value + ')') : value;
-    //     });
-    // }
 }
