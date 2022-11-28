@@ -123,10 +123,14 @@ export class SamlProvider {
         });
 
         app.get("/issue/", samlp.auth(samlpoptions));
-        app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
-            issuer: Config.saml_issuer,
-            cert: cert,
-        }));
+        try {
+            app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
+                issuer: Config.saml_issuer,
+                cert: cert,
+            }));
+        } catch (error) {
+            Logger.instanse.error(error, null);
+        }
         // TODO: FIX !!!!
         app.get('/wssignout', async (req: any, res: any, next: any) => {
             req.logout();

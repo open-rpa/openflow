@@ -1,14 +1,14 @@
 FROM node:lts-alpine as builder
 
-RUN npm i gulp typescript browserify tsify -g
+RUN npm install --omit=optional gulp typescript browserify tsify -g
 RUN mkdir /app
 RUN mkdir /app/OpenFlowNodeRED
 WORKDIR /app
 COPY package*.json /app/
-RUN npm install
+RUN npm install --omit=optional
 COPY OpenFlowNodeRED/package*.json /app/OpenFlowNodeRED
 WORKDIR /app/OpenFlowNodeRED
-RUN npm install
+RUN npm install --omit=optional
 COPY . /app/
 RUN tsc --build tsconfig.json
 WORKDIR /app

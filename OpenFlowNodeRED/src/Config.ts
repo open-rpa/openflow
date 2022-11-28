@@ -1,7 +1,9 @@
+var xml2js = require('xml2js');
 import * as https from "https";
+import * as http from "http";
+// import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
 import * as path from "path";
-import { fetch, toPassportConfig } from "passport-saml-metadata";
 import { NoderedUtil } from "@openiap/openflow-api";
 import { promiseRetry } from "./Logger";
 const { networkInterfaces } = require('os');
@@ -59,7 +61,7 @@ export class Config {
         Config.flow_refresh_initial_interval = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
         Config.workflow_node_auto_cleanup = Config.parseBoolean(Config.getEnv("workflow_node_auto_cleanup", "true"));
 
-        Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost:3000");
+        Config.api_ws_url = Config.getEnv("api_ws_url", "ws://localhost");
         Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost");
         Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
         Config.amqp_workflow_out_expiration = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min
@@ -82,10 +84,9 @@ export class Config {
 
         Config.amqp_message_ttl = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
         Config.otel_trace_max_node_time_seconds = parseInt(Config.getEnv("otel_trace_max_node_time_seconds", "300"));
-        Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-        Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+        Config.otel_measure_nodeid = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+        Config.otel_measure_queued_messages = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
         Config.max_message_queue_time_seconds = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
-        Config.prometheus_expose_metric = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
@@ -145,7 +146,7 @@ export class Config {
     public static flow_refresh_initial_interval: number = parseInt(Config.getEnv("flow_refresh_initial_interval", "60000"));
     public static workflow_node_auto_cleanup: boolean = Config.parseBoolean(Config.getEnv("workflow_node_auto_cleanup", "true"));
 
-    public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost:3000");
+    public static api_ws_url: string = Config.getEnv("api_ws_url", "ws://localhost");
     public static amqp_url: string = Config.getEnv("amqp_url", "amqp://localhost");
     // public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration", (60 * 1000).toString())); // 1 min
     // public static amqp_workflow_out_expiration: number = parseInt(Config.getEnv("amqp_workflow_out_expiration", (60 * 1000).toString())); // 1 min
@@ -175,10 +176,9 @@ export class Config {
     public static amqp_message_ttl: number = parseInt(Config.getEnv("amqp_message_ttl", "20000"));
     public static otel_trace_max_node_time_seconds: number = parseInt(Config.getEnv("otel_trace_max_node_time_seconds", "300"));
 
-    public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-    public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
+    public static otel_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+    public static otel_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
     public static max_message_queue_time_seconds: number = parseInt(Config.getEnv("max_message_queue_time_seconds", "3600"));
-    public static prometheus_expose_metric: boolean = Config.parseBoolean(Config.getEnv("prometheus_expose_metric", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
@@ -255,35 +255,73 @@ export class Config {
             default: return Boolean(s);
         }
     }
-
-    public static async parse_federation_metadata(url: string): Promise<any> {
-        try {
-            if (Config.tls_ca !== "") {
-                const tls_ca: string = Buffer.from(Config.tls_ca, 'base64').toString('ascii')
-                const rootCas = require('ssl-root-cas/latest').create();
-                rootCas.push(tls_ca);
-                // rootCas.addFile( tls_ca );
-                https.globalAgent.options.ca = rootCas;
-                require('https').globalAgent.options.ca = rootCas;
+    public static get(url: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            var provider = http;
+            if (url.startsWith('https')) {
+                provider = https as any;
             }
-        } catch (error) {
-            console.error(error);
-        }
-
-        // if anything throws, we retry
+            provider.get(url, (resp) => {
+                let data = '';
+                resp.on('data', (chunk) => {
+                    data += chunk;
+                });
+                resp.on('end', () => {
+                    resolve(data);
+                });
+            }).on("error", (err) => {
+                reject(err);
+            });
+        })
+    }
+    public static async parse_federation_metadata(tls_ca: String, url: string): Promise<any> {
+        // try {
+        //     if (tls_ca !== null && tls_ca !== undefined && tls_ca !== "") {
+        //         const rootCas = require('ssl-root-cas/latest').create();
+        //         rootCas.push(tls_ca);
+        //         // rootCas.addFile( tls_ca );
+        //         https.globalAgent.options.ca = rootCas;
+        //         require('https').globalAgent.options.ca = rootCas;
+        //     }
+        // } catch (error) {
+        //     console.error(error);
+        // }
         const metadata: any = await promiseRetry(async () => {
-            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-            const reader: any = await fetch({ url });
-            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (reader === null || reader === undefined) { throw new Error("Failed getting result"); }
-            const config: any = toPassportConfig(reader);
-            // we need this, for Office 365 :-/
-            if (reader.signingCerts && reader.signingCerts.length > 1) {
-                config.cert = reader.signingCerts;
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            const data: string = await Config.get(url)
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
+            if (NoderedUtil.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
+            var xml = await xml2js.parseStringPromise(data);
+            if (xml && xml.EntityDescriptor && xml.EntityDescriptor.IDPSSODescriptor && xml.EntityDescriptor.IDPSSODescriptor.length > 0) {
+                // const reader: any = await fetch({ url });
+                // if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); }
+                // const _config: any = toPassportConfig(reader);
+                var IDPSSODescriptor = xml.EntityDescriptor.IDPSSODescriptor[0];
+                var identifierFormat = "urn:oasis:names:tc:SAML:2.0:attrname-format:uri";
+                if (IDPSSODescriptor.NameIDFormat && IDPSSODescriptor.NameIDFormat.length > 0) {
+                    identifierFormat = IDPSSODescriptor.NameIDFormat[0];
+                }
+                var signingCerts = [];
+                IDPSSODescriptor.KeyDescriptor.forEach(key => {
+                    if (key.$.use == "signing") {
+                        signingCerts.push(key.KeyInfo[0].X509Data[0].X509Certificate[0]);
+                    }
+                });
+                // var signingCerts = IDPSSODescriptor.KeyDescriptor[0].KeyInfo[0].X509Data[0].X509Certificate;
+                var identityProviderUrl = IDPSSODescriptor.SingleSignOnService[0].$.Location;
+                var logoutUrl = IDPSSODescriptor.SingleLogoutService[0].$.Location;
+                const config = {
+                    identityProviderUrl,
+                    entryPoint: identityProviderUrl,
+                    logoutUrl,
+                    cert: signingCerts,
+                    identifierFormat
+                }
+                return config;
+            } else {
+                throw new Error("Failed parsing metadata");
             }
-            return config;
-        }, 10, 1000);
+        }, 50, 1000);
         return metadata;
     }
-
 }

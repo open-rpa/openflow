@@ -180,7 +180,7 @@ export class WebSocketClientService {
     public auto_create_personal_nodered_group: boolean = false;
     public namespace: string = "";
     public nodered_domain_schema: string = "";
-    public websocket_package_size: number = 4096;
+    public websocket_package_size: number = 25000;
     public stripe_api_key: string = "";
     public validate_user_form: string = "";
     public validate_emails: boolean = false;

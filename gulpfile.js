@@ -297,9 +297,9 @@ gulp.task("bumpprojectfiles", function () {
     data.version = version;
     let json = JSON.stringify(data, null, 2);
     fs.writeFileSync("package.json", json);
-    data.version = "1.1.57";
-    json = JSON.stringify(data, null, 2);
-    fs.writeFileSync("docker-package.json", json); // keep a project file that is not changed so we dont need to rebuild everything every time
+    // data.version = "1.1.57";
+    // json = JSON.stringify(data, null, 2);
+    // fs.writeFileSync("docker-package.json", json); // keep a project file that is not changed so we dont need to rebuild everything every time
 
     data = require("./OpenFlowNodeRED/package.json");
     console.log(data.version + " updated to " + version);
@@ -307,9 +307,9 @@ gulp.task("bumpprojectfiles", function () {
     json = JSON.stringify(data, null, 2);
     fs.writeFileSync("OpenFlowNodeRED/package.json", json);
 
-    data.version = "1.1.57";
-    json = JSON.stringify(data, null, 2);
-    fs.writeFileSync("OpenFlowNodeRED/docker-package.json", json); // keep a project file that is not changed so we dont need to rebuild everything every time
+    // data.version = "1.1.57";
+    // json = JSON.stringify(data, null, 2);
+    // fs.writeFileSync("OpenFlowNodeRED/docker-package.json", json); // keep a project file that is not changed so we dont need to rebuild everything every time
 
     return gulp.src('.');
 

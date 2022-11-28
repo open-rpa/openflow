@@ -203,7 +203,7 @@ export class WebSocketServerClient {
                 return;
             }
             if (this._socketObject.readyState === this._socketObject.CLOSED || this._socketObject.readyState === this._socketObject.CLOSING) {
-                if (this.queuecount() > 0) {
+                if (this.queuecount() > 0 || this._exchanges.length > 0) {
                     this.CloseConsumers(span);
                 }
                 return;
@@ -248,12 +248,23 @@ export class WebSocketServerClient {
         for (let i = this._queues.length - 1; i >= 0; i--) {
             try {
                 // await this.CloseConsumer(this._queues[i]);
-                await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._queues[i], undefined);
+                await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._queues[i], parent);
                 this._queues.splice(i, 1);
                 this._queuescurrent--;
                 this._queuescurrentstr = this._queuescurrent.toString();
             } catch (error) {
                 Logger.instanse.error(error, parent, Logger.parsecli(this));
+            }
+        }
+        for (let i = this._exchanges.length - 1; i >= 0; i--) {
+            const e = this._exchanges[i];
+            if (e && e.queue != null) {
+                try {
+                    await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._exchanges[i].queue, parent);
+                    this._exchanges.splice(i, 1);
+                } catch (error) {
+                    Logger.instanse.error(error, parent, Logger.parsecli(this));
+                }
             }
         }
         semaphore.up();
@@ -268,6 +279,11 @@ export class WebSocketServerClient {
             if (this._message != null) Config.db.removeListener("disconnected", this._message);
             if (this._error != null) Config.db.removeListener("disconnected", this._error);
             if (this._close != null) Config.db.removeListener("disconnected", this._close);
+            try {
+                if (this._amqpdisconnected != null) amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
+            } catch (error) {
+                Logger.instanse.error(error, span, Logger.parsecli(this));
+            }
 
             await this.CloseConsumers(span);
             if (!NoderedUtil.IsNullUndefinded(this._socketObject)) {
@@ -276,11 +292,6 @@ export class WebSocketServerClient {
                 } catch (error) {
                     Logger.instanse.error(error, span, Logger.parsecli(this));
                 }
-            }
-            try {
-                if (this._amqpdisconnected != null) amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
-            } catch (error) {
-                Logger.instanse.error(error, span, Logger.parsecli(this));
             }
             var keys = Object.keys(this.watches);
             for (var i = 0; i < keys.length; i++) {
@@ -291,6 +302,7 @@ export class WebSocketServerClient {
                 delete this.messageQueue[keys[i]].cb;
                 delete this.messageQueue[keys[i]];
             }
+            this._exchanges = [];
         } catch (error) {
             Logger.instanse.error(error, span, Logger.parsecli(this));
             throw error;
@@ -302,7 +314,6 @@ export class WebSocketServerClient {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
         await semaphore.down();
         try {
-            var old = this._queues.length;
             for (let i = this._queues.length - 1; i >= 0; i--) {
                 const q = this._queues[i];
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
@@ -313,6 +324,19 @@ export class WebSocketServerClient {
                         this._queues.splice(i, 1);
                         this._queuescurrent--;
                         this._queuescurrentstr = this._queuescurrent.toString();
+                    } catch (error) {
+                        Logger.instanse.error(error, span, Logger.parsecli(this));
+                    }
+                }
+            }
+            for (let i = this._exchanges.length - 1; i >= 0; i--) {
+                const e = this._exchanges[i];
+                if (e && (e.queue != null && e.queue.queue == queuename || e.queue.queuename == queuename)) {
+                    try {
+                        amqpwrapper.Instance().RemoveQueueConsumer(user, this._exchanges[i].queue, span).catch((err) => {
+                            Logger.instanse.error(err, span, Logger.parsecli(this));
+                        });
+                        this._exchanges.splice(i, 1);
                     } catch (error) {
                         Logger.instanse.error(error, span, Logger.parsecli(this));
                     }
@@ -518,12 +542,12 @@ export class WebSocketServerClient {
                             singleresult.Process(this);
                         }
                     } else {
-                        let buffer: string = "";
+                        let chunk: string = "";
                         msgs.forEach(msg => {
-                            if (!NoderedUtil.IsNullUndefinded(msg.data)) { buffer += msg.data; }
+                            if (!NoderedUtil.IsNullUndefinded(msg.data)) { chunk += msg.data; }
                         });
                         this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
-                        const result: Message = Message.frommessage(first, buffer);
+                        const result: Message = Message.frommessage(first, chunk);
                         result.priority = first.priority;
                         if (result.command != "ping" && result.command != "pong") {
                             result.Process(this);
@@ -560,10 +584,16 @@ export class WebSocketServerClient {
         const messages: string[] = this.chunkString(message.data, Config.websocket_package_size);
         if (NoderedUtil.IsNullUndefinded(messages) || messages.length === 0) {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
-            if (NoderedUtil.IsNullEmpty(message.replyto)) {
+            if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
+            } else {
+                try {
+                    if (cb != null) cb(message);
+                } catch (error) {
+                }
             }
             this._sendQueue.push(singlemessage);
+            this._cleanupMessageQueue();
             return;
         }
         if (NoderedUtil.IsNullEmpty(message.id)) { message.id = NoderedUtil.GetUniqueIdentifier(); }
@@ -571,11 +601,31 @@ export class WebSocketServerClient {
             const _message: SocketMessage = SocketMessage.frommessage(message, messages[i], messages.length, i);
             this._sendQueue.push(_message);
         }
-        if (NoderedUtil.IsNullEmpty(message.replyto)) {
+        if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
+        } else {
+            try {
+                if (cb != null) cb(message);
+            } catch (error) {
+            }
         }
+        this._cleanupMessageQueue();
         this.ProcessQueue(parent);
     }
+    // cleanup old messageQueue messages
+    private _cleanupMessageQueue(): void {
+        const keys: string[] = Object.keys(this.messageQueue);
+        keys.forEach(key => {
+            const msg: QueuedMessage = this.messageQueue[key];
+            if (msg != null) {
+                const now = new Date();
+                const seconds = (now.getTime() - msg.timestamp.getTime()) / 1000;
+                if (seconds > Config.websocket_message_callback_timeout) {
+                    delete this.messageQueue[key];
+                }
+            }
+        });
+    }    
     public chunkString(str: string, length: number): string[] | null {
         if (NoderedUtil.IsNullEmpty(str)) { return null; }
         // tslint:disable-next-line: quotemark

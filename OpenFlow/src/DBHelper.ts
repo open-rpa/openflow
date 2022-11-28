@@ -10,6 +10,7 @@ import { LoginProvider, Provider } from "./LoginProvider";
 import * as cacheManager from "cache-manager";
 import { TokenRequest } from "./TokenRequest";
 import { amqpwrapper } from "./amqpwrapper";
+import { EntityRestriction } from "./DatabaseConnection";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 var mongoStore = require('@skadefro/cache-manager-mongodb');
@@ -103,6 +104,38 @@ export class DBHelper {
             })
         }
     }
+    public async CheckCache(collectionname: string, item: Base, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
+        await this.init();
+        if (watch && collectionname == "users" && item._id == WellknownIds.root) return;
+        if (collectionname == "config" && item._type == "resource") {
+            this.ResourceUpdate(item, watch, frombroadcast, span);
+        }
+        if (collectionname == "users" && (item._type == "user" || item._type == "role" || item._type == "customer")) {
+            this.UserRoleUpdate(item, watch, span);
+        }
+        if (collectionname == "mq") {
+            if (item._type == "queue") await this.QueueUpdate(item._id, item.name, watch, span);
+            if (item._type == "exchange") await this.ExchangeUpdate(item._id, item.name, watch, span);
+            if (item._type == "workitemqueue") await this.WorkitemQueueUpdate(item._id, watch, span);
+        }
+        if (collectionname == "workitems" && item._type == "workitem") {
+            // @ts-ignore
+            await this.WorkitemQueueUpdate(item.wiqid, true, span);
+        }
+        if (collectionname == "config" && (item._type == "restriction" || item._type == "resource" || item._type == "resourceusage")) {
+            this.clearCache("watch detected change in " + collectionname + " collection for a " + item._type + " " + item.name, span);
+        }
+        if (collectionname == "config" && item._type == "provider") {
+            await this.ClearProviders();
+        }
+        if (collectionname == "config" && item._type == "ipblock") {
+            await Logger.DBHelper.ClearIPBlockList();
+        }
+        if (collectionname === "config" && item._type === "restriction") {
+            await Logger.DBHelper.ClearEntityRestrictions();
+        }
+    }
+
     async FindByIdWrap(_id, span: Span) {
         Logger.instanse.debug("Add user to cache : " + _id, span);
         return Config.db.getbyid<User>(_id, "users", Crypt.rootToken(), true, span);
@@ -126,6 +159,16 @@ export class DBHelper {
             throw error;
         } finally {
             Logger.otel.endSpan(span);
+        }
+    }
+    private async ResourceUpdate(item: Base, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
+        await this.init();
+        if (item.hasOwnProperty("userid")) {
+            // @ts-ignore
+            var key = ("resourceusage_" + item.userid).toString().toLowerCase();
+            this.DeleteKey(key, watch, frombroadcast, span);
+        } else {
+            this.DeleteKey("resource", watch, frombroadcast, span);
         }
     }
     public GetResourcesWrap(span: Span) {
@@ -192,8 +235,34 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public async ClearProviders() {
+    private async ClearProviders() {
         await this.memoryCache.del("providers");
+    }
+    public GetEntityRestrictionsWrap(span) {
+        const rootjwt = Crypt.rootToken()
+        return Config.db.query<EntityRestriction>({ query: { "_type": "restriction" }, top: 1000, collectionname: "config", jwt: rootjwt }, span);
+    }
+    public async GetEntityRestrictions(parent: Span): Promise<EntityRestriction[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetProviders", parent);
+        try {
+            let items = await this.memoryCache.wrap("entityrestrictions", () => { return this.GetEntityRestrictionsWrap(span) });
+            let allowadmins = new EntityRestriction();
+            allowadmins.copyperm = false; allowadmins.collection = ""; allowadmins.paths = ["$."];
+            Base.addRight(allowadmins, WellknownIds.admins, "admins", [Rights.create]);
+            items.push(allowadmins);
+            for (let i = 0; i < items.length; i++) {
+                items[i] = EntityRestriction.assign(items[i]);
+            }
+            return items;
+        } catch (error) {
+            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async ClearEntityRestrictions() {
+        await this.memoryCache.del("entityrestrictions");
     }
     public async FindRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
         await this.init();
@@ -619,28 +688,33 @@ export class DBHelper {
     }
     public async DeleteKey(key: string, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
         if (!this._doClear(watch, span)) return;
+        // might have more than one api node, but don't have shared cache, so broadcast to all
         if (Config.enable_openflow_amqp && Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
             if (!Config.unittesting && !frombroadcast) {
                 Logger.instanse.debug("Send clearcache command for " + key, span);
                 amqpwrapper.Instance().send("openflow", "", { "command": "clearcache", "key": key }, 20000, null, "", span, 1);
             }
-        } else if (!Config.enable_openflow_amqp) {
+            await Logger.DBHelper.memoryCache.del(key);
+        } else if (!Config.enable_openflow_amqp) { // only one api node, since not using queue, so remove key
+            await Logger.DBHelper.memoryCache.del(key);
+        } else if (!watch) { // more than one api node, but using shared cache, so only need to clear once
             await Logger.DBHelper.memoryCache.del(key);
         }
     }
     private _doClear(watch: boolean, span: Span) {
-        var doit: boolean = false;
-        if (watch) {
-            doit = false;
-            if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-                doit = true;
-            }
-        } else {
-            doit = true;
-        }
-        return doit;
+        return true;
+        // var doit: boolean = false;
+        // if (watch) {
+        //     doit = false;
+        //     if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
+        //         doit = true;
+        //     }
+        // } else {
+        //     doit = true;
+        // }
+        // return doit;
     }
-    public async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean, span: Span) {
+    private async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean, span: Span) {
         if (NoderedUtil.IsNullUndefinded(userrole)) return;
         if (!this._doClear(watch, span)) return;
         if (userrole._type == "user") {
@@ -681,12 +755,12 @@ export class DBHelper {
         }
 
     }
-    public async QueueUpdate(_id: string, name: string, watch: boolean, span: Span) {
+    private async QueueUpdate(_id: string, name: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear queue cache : " + name + " " + _id, span);
         if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("queuename_" + name).toString(), watch, false, span);
         if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
     }
-    public async ExchangeUpdate(_id: string, name: string, watch: boolean, span: Span) {
+    private async ExchangeUpdate(_id: string, name: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear exchange cache : " + name + " " + _id, span);
         if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("exchangename_" + name).toString(), watch, false, span);
         if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
@@ -710,6 +784,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
         try {
+            if (!Config.cache_workitem_queues) return await this.GetPushableQueuesWrap(span);
             let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) });
             return items;
         } catch (error) {
@@ -730,6 +805,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
         try {
+            if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
             var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
             let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); });
             return count;
@@ -900,7 +976,7 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public async ClearIPBlockList() {
+    private async ClearIPBlockList() {
         await this.memoryCache.del("ipblock");
     }
 }

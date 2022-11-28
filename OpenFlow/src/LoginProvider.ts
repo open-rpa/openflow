@@ -50,10 +50,11 @@ export class samlauthstrategyoptions {
     public issuer: string = "";
     public cert: string = null;
 
-    public audience: string = null;
+    public audience: any = false;
     public signatureAlgorithm: 'sha1' | 'sha256' | 'sha512' = "sha256";
     public callbackMethod: string = "POST";
     public verify: any;
+    public wantAuthnResponseSigned: boolean = false;
 }
 export class LoginProvider {
     public static _providers: any = {};
@@ -193,7 +194,7 @@ export class LoginProvider {
                 try {
                     if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                         if (provider.provider === "saml") {
-                            const metadata: any = await Config.parse_federation_metadata(provider.saml_federation_metadata);
+                            const metadata: any = await Config.parse_federation_metadata(Config.tls_ca, provider.saml_federation_metadata);
                             LoginProvider._providers[provider.id] =
                                 LoginProvider.CreateSAMLStrategy(app, provider.id, metadata.cert,
                                     metadata.identityProviderUrl, provider.issuer, baseurl, span);
@@ -336,7 +337,8 @@ export class LoginProvider {
         options.issuer = issuer;
         options.callbackUrl = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
         options.verify = (LoginProvider.samlverify).bind(this);
-        const SamlStrategy = require('passport-saml').Strategy
+        options.wantAuthnResponseSigned = false;
+        const SamlStrategy = require('@node-saml/passport-saml').Strategy
         const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
         passport.use(key, strategy);
         strategy.name = key;
@@ -477,7 +479,7 @@ export class LoginProvider {
                     Logger.instanse.info("Saving local provider", span);
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     Logger.instanse.info("local provider created as " + result._id, span);
-                    await Logger.DBHelper.ClearProviders();
+                    await Logger.DBHelper.CheckCache("config", result, false, false, span);
                     const tuser: TokenUser = TokenUser.From(user);
                     done(null, tuser);
                     if (Logger.License.validlicense) {
@@ -662,7 +664,7 @@ export class LoginProvider {
                 if (_user.formvalidated) _user.validated = true;
                 const jwt: string = Crypt.rootToken();
                 await Logger.DBHelper.Save(_user, jwt, span);
-                await Logger.DBHelper.UserRoleUpdate(_user, false, span);
+                await Logger.DBHelper.CheckCache("users", _user, false, false, span);
             }
 
             if (!NoderedUtil.IsNullUndefinded(_user)) {
@@ -745,7 +747,7 @@ export class LoginProvider {
                     if (_user.formvalidated) _user.validated = true;
                     const jwt: string = Crypt.rootToken();
                     await Logger.DBHelper.Save(_user, jwt, span);
-                    await Logger.DBHelper.UserRoleUpdate(_user, false, span);
+                    await Logger.DBHelper.CheckCache("users", _user, false, false, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -808,7 +810,7 @@ export class LoginProvider {
                     if (_user.formvalidated) _user.validated = true;
                     const jwt: string = Crypt.rootToken();
                     await Logger.DBHelper.Save(_user, jwt, span);
-                    await Logger.DBHelper.UserRoleUpdate(_user, false, span);
+                    await Logger.DBHelper.CheckCache("users", _user, false, false, span);
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
@@ -1002,6 +1004,7 @@ export class LoginProvider {
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
                 Logger.instanse.debug("return user " + req.user._id, span);
+                await Logger.DBHelper.UserRoleUpdateId(req.user._id, false, span);
                 const user: User = await Logger.DBHelper.FindById(req.user._id, span);
                 user.validated = true;
                 if (Config.validate_user_form != "") {
@@ -1260,7 +1263,7 @@ export class LoginProvider {
             let user: User;
             let tuser: TokenUser;
             if (req.user) {
-                await Logger.DBHelper.UserRoleUpdate(req.user, false, span);
+                await Logger.DBHelper.CheckCache("users", req.user, false, false, span);
                 user = await Logger.DBHelper.FindById(req.user._id, span);
                 user.validated = true;
                 if (Config.validate_user_form != "") {
@@ -1280,7 +1283,7 @@ export class LoginProvider {
             if (!NoderedUtil.IsNullEmpty(validateurl)) {
                 if (tuser != null) {
                     if (tuser.validated) {
-                        Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                        await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                     }
                     if (!(tuser.validated == true) && Config.validate_user_form != "") {
                     } else {
@@ -1461,7 +1464,7 @@ export class LoginProvider {
                                     throw new Error("email already in use by another user");
                                 }
                             }
-                            if (email.indexOf("@") > -1) {
+                            if (email.indexOf("@") > -1 || Config.NODE_ENV != "production") {
                                 if (tuser.emailvalidated == true) {
                                     UpdateDoc.$set["validated"] = true;
                                     tuser.validated = true;
@@ -1483,7 +1486,7 @@ export class LoginProvider {
 
                         Logger.instanse.debug("Update user " + tuser.name + " information", span);
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                        await Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                        await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                     }
                     if (!(tuser.validated == true) && Config.validate_user_form != "") {
                         Logger.instanse.debug("User not validated, return no token for user " + tuser.name, span);
@@ -1507,7 +1510,7 @@ export class LoginProvider {
                             const UpdateDoc: any = { "$set": {} };
                             UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
                             var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                            await Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                            await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                             res.end(JSON.stringify({ jwt: "" }));
                         } else {
                             res.end(JSON.stringify({ jwt: "" }));
@@ -1528,7 +1531,7 @@ export class LoginProvider {
                                 // UpdateDoc.$set["validated"] = true;
                                 // UpdateDoc.$set["emailvalidated"] = true;
                                 // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
-                                await Logger.DBHelper.UserRoleUpdate(tuser, false, span);
+                                await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                                 res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
                                 return;
                             } else {
@@ -1576,7 +1579,7 @@ export class LoginProvider {
                 }
                 this.sendEmail("pwreset", user._id, email, 'Reset password request',
                     `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`, span);
-                await Logger.DBHelper.UserRoleUpdate(user, false, span);
+                await Logger.DBHelper.CheckCache("users", user, false, false, span);
                 return res.end(JSON.stringify({ id }));
             }
             else if (req.body && req.body.code && req.body.id && !req.body.password) {
@@ -1622,7 +1625,7 @@ export class LoginProvider {
                     if (!user.emailvalidated) user.validated = false;
                 }
                 await Logger.DBHelper.Save(user, Crypt.rootToken(), span);
-                await Logger.DBHelper.UserRoleUpdate(user, false, span);
+                await Logger.DBHelper.CheckCache("users", user as any, false, false, span);
                 return res.end(JSON.stringify({ id }));
             }
             res.end(JSON.stringify({}));

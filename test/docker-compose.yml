@@ -84,8 +84,6 @@ services:
       - tls_ca=
       - tls_passphrase=
       - api_bypass_perm_check=false
-      - websocket_package_size=25000
-      - websocket_max_package_count=1048576
       - protocol=http
       - port=3000
       - domain=localhost.openiap.io

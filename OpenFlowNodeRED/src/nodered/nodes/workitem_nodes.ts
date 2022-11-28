@@ -208,7 +208,7 @@ export class updateworkitem {
                 return;
             }
             let { _id, name, payload, errortype, errormessage } = workitem;
-            if (!NoderedUtil.IsNullEmpty(_errormessage) && NoderedUtil.IsNullEmpty(errormessage)) errormessage = _errormessage;
+            if (!NoderedUtil.IsNullEmpty(_errormessage) && NoderedUtil.IsNullEmpty(errormessage)) errormessage = _errormessage.toString();
 
             const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource, errortype, success_wiq, failed_wiq })
             if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {

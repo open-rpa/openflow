@@ -410,25 +410,13 @@ export class Logger {
         }
 
 
-        this.nodereddriver = null;
-        if (!Logger.isKubernetes() && Logger.isDocker()) {
-            if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) {
-                try {
-                    this.nodereddriver = new dockerdriver();
-                    if (!this.nodereddriver.detect()) {
-                        this.nodereddriver = null;
-                    }
-                } catch (error) {
-                    this.nodereddriver = null;
-                    Logger.instanse.error(error, null);
-                }
-            }
-        }
-        if (this.nodereddriver == null) {
+        this.nodereddriver = null; // with npm -omit=optional we need to install npm i openid-client
+        if (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"])) {
             let _driver: any = null;
             try {
                 _driver = require("./ee/kubedriver");
             } catch (error) {
+                console.log(error)
             }
             try {
                 if (_driver != null) {
@@ -436,6 +424,19 @@ export class Logger {
                 } else {
                     this.nodereddriver = new dockerdriver();
                 }
+                if (_driver != null) {
+                    if (!this.nodereddriver.detect()) {
+                        this.nodereddriver = null;
+                    }
+                }
+            } catch (error) {
+                this.nodereddriver = null;
+                Logger.instanse.error(error, null);
+            }
+        }
+        if (this.nodereddriver == null) {
+            try {
+                this.nodereddriver = new dockerdriver();
                 if (!this.nodereddriver.detect()) {
                     this.nodereddriver = null;
                 }
@@ -444,6 +445,7 @@ export class Logger {
                 Logger.instanse.error(error, null);
             }
         }
+
     }
     static instanse: Logger = null;
     private static _ofid = null;

@@ -1,23 +1,26 @@
+var xml2js = require('xml2js');
 import * as fs from "fs";
 import * as path from "path";
-import * as SAMLStrategy from "passport-saml";
-import { fetch, toPassportConfig } from "passport-saml-metadata";
+// import * as SAMLStrategy from "passport-saml";
+import * as SAMLStrategy from "@node-saml/passport-saml";
 import * as https from "https";
 import { Logger, promiseRetry } from "./Logger";
 import { Config } from "./Config";
 import { FileSystemCache } from "./file-system-cache";
+import { NoderedUtil } from "@openiap/openflow-api";
 
 // tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {
     public callbackUrl: string = "auth/strategy/callback/";
     public entryPoint: string = "";
     public issuer: string = "";
-    public audience: string = null;
+    public audience: any = false;
     public cert: string = "";
     public signatureAlgorithm: string = "sha256";
     public callbackMethod: string = "POST";
     public verify: any;
     public acceptedClockSkewMs: number;
+    public wantAuthnResponseSigned: boolean = false;
 }
 // tslint:disable-next-line: class-name
 export class samlauthstrategy {
@@ -40,14 +43,20 @@ export class noderedcontribauthsaml {
     public static async configure(baseURL: string, saml_federation_metadata: string, issuer: string, customverify: any, saml_ca: string,
         identityProviderUrl: string, saml_cert: string): Promise<noderedcontribauthsaml> {
         const result: noderedcontribauthsaml = new noderedcontribauthsaml(baseURL);
-        if (saml_federation_metadata !== null && saml_federation_metadata !== undefined) {
-            const metadata: any = await noderedcontribauthsaml.parse_federation_metadata(saml_ca, saml_federation_metadata);
-            result.strategy.options.entryPoint = metadata.identityProviderUrl;
-            result.strategy.options.cert = metadata.cert;
-            result.strategy.options.issuer = issuer;
-        } else {
+        result.strategy.options.wantAuthnResponseSigned = false;
+        if (!NoderedUtil.IsNullEmpty(saml_cert) && !NoderedUtil.IsNullEmpty(identityProviderUrl)) {
             result.strategy.options.entryPoint = identityProviderUrl;
             result.strategy.options.cert = saml_cert;
+            result.strategy.options.issuer = issuer;
+
+        } else {
+            if (NoderedUtil.IsNullEmpty(saml_federation_metadata)) {
+                saml_federation_metadata = "http://localhost/issue/FederationMetadata/2007-06/FederationMetadata.xml";
+            }
+
+            const metadata: any = await Config.parse_federation_metadata(saml_ca, saml_federation_metadata);
+            result.strategy.options.entryPoint = metadata.identityProviderUrl;
+            result.strategy.options.cert = metadata.cert;
             result.strategy.options.issuer = issuer;
         }
         if (identityProviderUrl != null && identityProviderUrl != undefined && identityProviderUrl != "") {
@@ -57,34 +66,6 @@ export class noderedcontribauthsaml {
         result.strategy.options.acceptedClockSkewMs = (1000 * 60) * 15; // 15 minutes, overkill ?
         result.customverify = customverify;
         return result;
-    }
-    public static async parse_federation_metadata(tls_ca: String, url: string): Promise<any> {
-        try {
-            if (tls_ca !== null && tls_ca !== undefined && tls_ca !== "") {
-                const rootCas = require('ssl-root-cas/latest').create();
-                rootCas.push(tls_ca);
-                // rootCas.addFile( tls_ca );
-                https.globalAgent.options.ca = rootCas;
-                require('https').globalAgent.options.ca = rootCas;
-            }
-        } catch (error) {
-            console.error(error);
-        }
-        // if anything throws, we retry
-        const metadata: any = await promiseRetry(async () => {
-            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-            const backupStore = new FileSystemCache(path.join(Config.logpath, '.cache-' + Config.nodered_id));
-            const reader: any = await fetch({ url, backupStore });
-            if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (reader === null || reader === undefined) { throw new Error("Failed getting result"); }
-            const config: any = toPassportConfig(reader);
-            // we need this, for Office 365 :-/
-            if (reader.signingCerts && reader.signingCerts.length > 1) {
-                config.cert = reader.signingCerts;
-            }
-            return config;
-        }, 50, 1000);
-        return metadata;
     }
     constructor(baseURL: string) {
         this.strategy.options.callbackUrl = baseURL + "auth/strategy/callback/";

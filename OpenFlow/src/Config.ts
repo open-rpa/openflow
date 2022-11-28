@@ -1,4 +1,7 @@
-import { fetch, toPassportConfig } from "passport-saml-metadata";
+var xml2js = require('xml2js');
+import * as https from "https";
+import * as http from "http";
+// import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
 import * as path from "path";
 import { DatabaseConnection } from "./DatabaseConnection";
@@ -17,6 +20,9 @@ export class dbConfig extends Base {
     public version: string;
     public needsupdate: boolean;
     public updatedat: Date;
+    public skip_history_collections: string;
+    public history_delta_count: number;
+    public allow_skiphistory: boolean;
 
     public allow_personal_nodered: boolean;
     public amqp_enabled_exchange: boolean;
@@ -38,6 +44,10 @@ export class dbConfig extends Base {
     public otel_debug_log: boolean;
     public otel_warn_log: boolean;
     public otel_err_log: boolean;
+    public otel_measure_queued_messages: boolean;
+    public otel_measure__mongodb_watch: boolean;
+    public otel_measure_onlineuser: boolean;
+    public otel_measure_nodeid: boolean;    
     public log_information: boolean;
     public log_debug: boolean;
     public log_verbose: boolean;
@@ -64,6 +74,7 @@ export class dbConfig extends Base {
     public auto_create_domains: string[];
     public persist_user_impersonation: boolean;
     public ping_clients_interval: number;
+    public websocket_message_callback_timeout: number;
 
     public otel_trace_pingclients: boolean;
     public otel_trace_dashboardauth: boolean;
@@ -76,6 +87,8 @@ export class dbConfig extends Base {
     public otel_trace_mongodb_insert_per_users: boolean;
     public otel_trace_mongodb_update_per_users: boolean;
     public otel_trace_mongodb_delete_per_users: boolean;
+
+    public cache_workitem_queues: boolean;
 
     public async Save(jwt: string, parent: Span): Promise<void> {
         if (this.needsupdate = true) {
@@ -106,6 +119,10 @@ export class dbConfig extends Base {
 
         Logger.instanse.info("db version: " + conf.version, parent);
 
+        Config.skip_history_collections = (!NoderedUtil.IsNullEmpty(conf.skip_history_collections) ? conf.skip_history_collections : Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances"))
+        Config.history_delta_count = parseInt(!NoderedUtil.IsNullEmpty(conf.history_delta_count) ? conf.history_delta_count.toString() : Config.getEnv("history_delta_count", "1000"));
+        Config.allow_skiphistory = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.allow_skiphistory) ? conf.allow_skiphistory : Config.getEnv("allow_skiphistory", "false"));
+
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
         Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
@@ -125,6 +142,12 @@ export class dbConfig extends Base {
         Config.otel_debug_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_debug_log) ? conf.otel_debug_log : Config.getEnv("otel_debug_log", "false"));
         Config.otel_warn_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_warn_log) ? conf.otel_warn_log : Config.getEnv("otel_warn_log", "false"));
         Config.otel_err_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_err_log) ? conf.otel_err_log : Config.getEnv("otel_err_log", "false"));
+        Config.otel_measure_queued_messages = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_queued_messages) ? conf.otel_measure_queued_messages : Config.getEnv("otel_measure_queued_messages", "false"));
+        Config.otel_measure__mongodb_watch = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure__mongodb_watch) ? conf.otel_measure__mongodb_watch : Config.getEnv("otel_measure__mongodb_watch", "false"));
+        Config.otel_measure_onlineuser = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_onlineuser) ? conf.otel_measure_onlineuser : Config.getEnv("otel_measure_onlineuser", "false"));
+        Config.otel_measure_nodeid = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_nodeid) ? conf.otel_measure_nodeid : Config.getEnv("otel_measure_nodeid", "false"));
+
+
         Config.log_information = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_information) ? conf.log_information : Config.getEnv("log_information", "true"));
         Config.log_debug = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_debug) ? conf.log_debug : Config.getEnv("log_debug", "false"));
         Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
@@ -147,17 +170,15 @@ export class dbConfig extends Base {
 
 
         Config.ensure_indexes = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ensure_indexes) ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
-        // @ts-ignore
-        Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields : Config.getEnv("text_index_name_fields", "name,_names"))
+        Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields.toString() : Config.getEnv("text_index_name_fields", "name,_names"))
         Config.auto_create_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_users) ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
 
         Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
         Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
-        // @ts-ignore
-        Config.auto_create_domains = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.auto_create_domains) ? conf.auto_create_domains : Config.getEnv("auto_create_domains", ""))
+        Config.auto_create_domains = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.auto_create_domains) ? conf.auto_create_domains.toString() : Config.getEnv("auto_create_domains", ""))
         Config.persist_user_impersonation = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.persist_user_impersonation) ? conf.persist_user_impersonation : Config.getEnv("persist_user_impersonation", "true"))
-        // @ts-ignore
-        Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("ping_clients_interval", (10000).toString()))
+        Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval.toString() : Config.getEnv("ping_clients_interval", (10000).toString()))
+        Config.websocket_message_callback_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.websocket_message_callback_timeout) ? conf.websocket_message_callback_timeout.toString() : Config.getEnv("websocket_message_callback_timeout", (10000).toString()))
 
         Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("otel_trace_pingclients", "false"));
         Config.otel_trace_dashboardauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_dashboardauth) ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
@@ -170,6 +191,9 @@ export class dbConfig extends Base {
         Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_insert_per_users) ? conf.otel_trace_mongodb_insert_per_users : Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
         Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_update_per_users) ? conf.otel_trace_mongodb_update_per_users : Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
         Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_delete_per_users) ? conf.otel_trace_mongodb_delete_per_users : Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
+
+        Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
+
 
         Logger.reload();
         return conf;
@@ -226,7 +250,7 @@ export class Config {
         Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
         Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
         Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
-        Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "50"));
+        Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "25"));
         Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
         Config.enable_web_tours = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
         Config.enable_nodered_tours = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
@@ -289,6 +313,8 @@ export class Config {
         Config.cache_store_redis_port = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
         Config.cache_store_redis_password = Config.getEnv("cache_store_redis_password", "");
 
+        Config.cache_workitem_queues = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
+
         Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "480"));
         Config.oidc_authorization_code_ttl = parseInt(Config.getEnv("oidc_authorization_code_ttl", "480"));
         Config.oidc_client_credentials_ttl = parseInt(Config.getEnv("oidc_client_credentials_ttl", "480"));
@@ -323,10 +349,11 @@ export class Config {
         Config.force_dbusage_ts = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
         Config.migrate_audit_to_ts = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
 
-        Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
+        Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "25000"), 10);
         Config.websocket_max_package_count = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+        Config.websocket_message_callback_timeout = parseInt(Config.getEnv("websocket_message_callback_timeout", "3600"), 10);
         Config.protocol = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
-        Config.port = parseInt(Config.getEnv("port", "3000"));
+        Config.port = parseInt(Config.getEnv("port", "80"));
         Config.domain = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
         Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
 
@@ -352,9 +379,9 @@ export class Config {
         Config.mongodb_minpoolsize = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
         Config.mongodb_maxpoolsize = parseInt(Config.getEnv("mongodb_maxpoolsize", "25"));
 
-        Config.skip_history_collections = Config.getEnv("skip_history_collections", "");
+        Config.skip_history_collections = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
         Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
-        Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
+        Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
 
         Config.saml_issuer = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
         Config.aes_secret = Config.getEnv("aes_secret", "");
@@ -389,10 +416,10 @@ export class Config {
         Config.nodered_liveness_timeoutseconds = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
         Config.noderedcatalogues = Config.getEnv("noderedcatalogues", "");
 
-        Config.prometheus_measure_nodeid = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-        Config.prometheus_measure_queued_messages = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
-        Config.prometheus_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
-        Config.prometheus_measure_onlineuser = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+        Config.otel_measure_nodeid = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+        Config.otel_measure_queued_messages = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
+        Config.otel_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
+        Config.otel_measure_onlineuser = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
 
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
@@ -414,7 +441,9 @@ export class Config {
         Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
         Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
         Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
-    
+
+
+
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
     public static load_drom_db(): void {
@@ -451,7 +480,7 @@ export class Config {
     public static openflow_uniqueid: string = Config.getEnv("openflow_uniqueid", "");
     public static enable_openflow_amqp: boolean = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
     public static openflow_amqp_expiration: number = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
-    public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "50"));
+    public static amqp_prefetch: number = parseInt(Config.getEnv("amqp_prefetch", "25"));
     public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
     public static enable_web_tours: boolean = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
     public static enable_nodered_tours: boolean = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
@@ -513,6 +542,7 @@ export class Config {
     public static cache_store_redis_host: string = Config.getEnv("cache_store_redis_host", "");
     public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
     public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
+    public static cache_workitem_queues: boolean = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
 
     public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "480")); // 8 hours
     public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "480")); // 8 hours
@@ -549,11 +579,12 @@ export class Config {
     public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
     public static migrate_audit_to_ts: boolean = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
 
-    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "4096"), 10);
-    public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
+    public static websocket_package_size: number = parseInt(Config.getEnv("websocket_package_size", "25000"), 10);
+    public static websocket_max_package_count: number = parseInt(Config.getEnv("websocket_max_package_count", "25000"), 10);
+    public static websocket_message_callback_timeout: number = parseInt(Config.getEnv("websocket_message_callback_timeout", "3600"), 10);    
     public static websocket_disconnect_out_of_sync: boolean = Config.parseBoolean(Config.getEnv("websocket_disconnect_out_of_sync", "false"));
     public static protocol: string = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
-    public static port: number = parseInt(Config.getEnv("port", "3000"));
+    public static port: number = parseInt(Config.getEnv("port", "80"));
     public static domain: string = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
     public static cookie_secret: string = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"); // Used to protect cookies
     public static max_ace_count: number = parseInt(Config.getEnv("max_ace_count", "128"), 10);
@@ -580,9 +611,9 @@ export class Config {
     public static mongodb_minpoolsize: number = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
     public static mongodb_maxpoolsize: number = parseInt(Config.getEnv("mongodb_maxpoolsize", "25"));
 
-    public static skip_history_collections: string = Config.getEnv("skip_history_collections", "");
+    public static skip_history_collections: string = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
     public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count", "1000"));
-    public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "true"));
+    public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
     public static aes_secret: string = Config.getEnv("aes_secret", "");
@@ -620,10 +651,10 @@ export class Config {
     public static nodered_liveness_timeoutseconds: number = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
     public static noderedcatalogues: string = Config.getEnv("noderedcatalogues", "");
 
-    public static prometheus_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_nodeid", "false"));
-    public static prometheus_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_queued_messages", "false"));
-    public static prometheus_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure__mongodb_watch", "false"));
-    public static prometheus_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("prometheus_measure_onlineuser", "false"));
+    public static otel_measure_nodeid: boolean = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
+    public static otel_measure_queued_messages: boolean = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
+    public static otel_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
+    public static otel_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
     public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
@@ -677,18 +708,74 @@ export class Config {
         if (!value || value === "") { value = defaultvalue; }
         return value;
     }
-    public static async parse_federation_metadata(url: string): Promise<any> {
-        // if anything throws, we retry
-        return promiseRetry(async () => {
-            const reader: any = await fetch({ url });
-            if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); }
-            const config: any = toPassportConfig(reader);
-            // we need this, for Office 365 :-/
-            if (reader.signingCerts && reader.signingCerts.length > 1) {
-                config.cert = reader.signingCerts;
+    public static get(url: string): Promise<string> {
+        return new Promise((resolve, reject) => {
+            var provider = http;
+            if (url.startsWith('https')) {
+                provider = https as any;
             }
-            return config;
-        }, 10, 1000);
+            provider.get(url, (resp) => {
+                let data = '';
+                resp.on('data', (chunk) => {
+                    data += chunk;
+                });
+                resp.on('end', () => {
+                    resolve(data);
+                });
+            }).on("error", (err) => {
+                reject(err);
+            });
+        })
+    }
+    public static async parse_federation_metadata(tls_ca: String, url: string): Promise<any> {
+        // try {
+        //     if (tls_ca !== null && tls_ca !== undefined && tls_ca !== "") {
+        //         const rootCas = require('ssl-root-cas/latest').create();
+        //         rootCas.push(tls_ca);
+        //         // rootCas.addFile( tls_ca );
+        //         https.globalAgent.options.ca = rootCas;
+        //         require('https').globalAgent.options.ca = rootCas;
+        //     }
+        // } catch (error) {
+        //     console.error(error);
+        // }
+        const metadata: any = await promiseRetry(async () => {
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            const data: string = await Config.get(url)
+            // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
+            if (NoderedUtil.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
+            var xml = await xml2js.parseStringPromise(data);
+            if (xml && xml.EntityDescriptor && xml.EntityDescriptor.IDPSSODescriptor && xml.EntityDescriptor.IDPSSODescriptor.length > 0) {
+                // const reader: any = await fetch({ url });
+                // if (NoderedUtil.IsNullUndefinded(reader)) { throw new Error("Failed getting result"); }
+                // const _config: any = toPassportConfig(reader);
+                var IDPSSODescriptor = xml.EntityDescriptor.IDPSSODescriptor[0];
+                var identifierFormat = "urn:oasis:names:tc:SAML:2.0:attrname-format:uri";
+                if (IDPSSODescriptor.NameIDFormat && IDPSSODescriptor.NameIDFormat.length > 0) {
+                    identifierFormat = IDPSSODescriptor.NameIDFormat[0];
+                }
+                var signingCerts = [];
+                IDPSSODescriptor.KeyDescriptor.forEach(key => {
+                    if (key.$.use == "signing") {
+                        signingCerts.push(key.KeyInfo[0].X509Data[0].X509Certificate[0]);
+                    }
+                });
+                // var signingCerts = IDPSSODescriptor.KeyDescriptor[0].KeyInfo[0].X509Data[0].X509Certificate;
+                var identityProviderUrl = IDPSSODescriptor.SingleSignOnService[0].$.Location;
+                var logoutUrl = IDPSSODescriptor.SingleLogoutService[0].$.Location;
+                const config = {
+                    identityProviderUrl,
+                    entryPoint: identityProviderUrl,
+                    logoutUrl,
+                    cert: signingCerts,
+                    identifierFormat
+                }
+                return config;
+            } else {
+                throw new Error("Failed parsing metadata");
+            }
+        }, 50, 1000);
+        return metadata;
     }
     public static parseArray(s: string): string[] {
         let arr = s.split(",");

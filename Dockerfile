@@ -1,11 +1,11 @@
 FROM node:lts-alpine as builder
 
-RUN npm i gulp typescript browserify tsify -g
+RUN npm install --omit=optional gulp typescript browserify tsify -g
 
 RUN mkdir /app
 WORKDIR /app
 COPY package*.json /app/
-RUN npm install
+RUN npm install --omit=optional
 COPY . /app/
 RUN gulp sass
 
@@ -19,7 +19,9 @@ EXPOSE 5858
 WORKDIR /data
 COPY --from=builder /app/package*.json .
 COPY --from=builder /app/dist/ .
-RUN npm install --omit=dev
+# RUN npm install --omit=optional --omit=dev 
+# RUN npm install mongodb
+RUN npm install --omit=dev --production
 
 # ENTRYPOINT ["/usr/local/bin/node", "index.js"]
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
