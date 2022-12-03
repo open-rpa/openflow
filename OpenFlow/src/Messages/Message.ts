@@ -4344,7 +4344,7 @@ export class Message {
                 Logger.instanse.error(error, span);
             }
         }
-        if (Config.multi_tenant) {
+        if (Config.multi_tenant && !skipUpdateUserSize) {
             try {
                 let index = 0;
                 const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
