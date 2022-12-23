@@ -2,14 +2,16 @@ version: "3.3"
 services:
   registry:
     image: registry:2
-    restart: always
+    # network_mode: "host"
     ports:
       - "5000:5000"
   mongodb:
     image: "mongo"
-    restart: always
     volumes:
       - mongodb_data:/data/db
+    # network_mode: "host"
+    ports:
+      - "27017:27017"
   traefik:
     image: "traefik"
     container_name: "traefik"
@@ -17,15 +19,18 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+    # network_mode: "host"
     ports:
       - "80:80"
-    restart: always
     volumes:
       - "//var/run/docker.sock:/var/run/docker.sock:ro"
   rabbitmq:
     image: "rabbitmq:3-management"
     container_name: "rabbitmq"
-    restart: always
+    # network_mode: "host"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
   api:
     labels:
       - "traefik.enable=true"
@@ -41,9 +46,8 @@ services:
     deploy:
       replicas: 1
     pull_policy: always
-    restart: always
     volumes:
-      - "//var/run/docker.sock:/var/run/docker.sock"
+      - "/var/run/docker.sock:/var/run/docker.sock"
     depends_on:
       - rabbitmq
       - mongodb
