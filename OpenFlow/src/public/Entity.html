@@ -123,11 +123,12 @@
         <input type="text" ng-class="{'form-control': true}" ng-model="ctrl.model._type" />
         </div>
     <div ng-repeat="key in ctrl.keys" class="form-group" ng-show="!ctrl.isobject(ctrl.model[key]) && key != 'name'">
-        <label>{{ key }}</label>
+        <label>{{ key }}</label> {{ ctrl.model[key] }}
+        <!-- no-model does not work for boolens if type has not been set before parsing ng-type -->
         <input ng-model="ctrl.model[key]"
+            type="{{ctrl.gettype(ctrl.model[key]) == 'boolean' ? 'checkbox' : ''}}" ng-model="ctrl.model[key]"
             ng-type step="{{ctrl.getstep(key, ctrl.model[key])}}"
             ng-class="{'form-control': ctrl.gettype(ctrl.model[key]) != 'boolean', 'secret': ctrl.model._encrypt.indexOf(key) > -1}" />
-            {{ ctrl.model[key] }}
     </div>
     <div ng-repeat="key in ctrl.keys" class="form-group" ng-show="ctrl.isobject(ctrl.model[key])">
         <label>{{ key }}</label>
