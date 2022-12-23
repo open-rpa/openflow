@@ -131,7 +131,7 @@ RED.nodes.registerType('workitem addworkitem', {
     });
     if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
     $("#node-input-priority").typedInput({
-      default: 'msg',
+      default: 'num',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
     });
@@ -237,7 +237,7 @@ RED.nodes.registerType('workitem addworkitems', {
     });
     if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
     $("#node-input-priority").typedInput({
-      default: 'msg',
+      default: 'num',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
     });
