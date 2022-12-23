@@ -3976,6 +3976,21 @@ export class EntityCtrl extends entityCtrl<Base> {
             }
         });
     }
+    cached = {}
+    getstep(key, obj) {
+        if(this.gettype(obj) == "number")
+        {
+            if (obj.toString().indexOf(".") > -1) {
+                var decimals = obj.toString().split(".")[1].length;
+                this.cached[key] = 1 / Math.pow(10, decimals);
+                return this.cached[key];
+            } else {
+                if (this.cached[key]) return this.cached[key];
+            }
+        }
+        this.cached[key] = 1;
+        return 1;
+    }
     gettype(obj) {
         return typeof obj;
     }

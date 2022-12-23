@@ -124,9 +124,10 @@
         </div>
     <div ng-repeat="key in ctrl.keys" class="form-group" ng-show="!ctrl.isobject(ctrl.model[key]) && key != 'name'">
         <label>{{ key }}</label>
-        <input type="{{ctrl.gettype(ctrl.model[key]) == 'boolean' ? 'checkbox' : 'text'}}" ng-model="ctrl.model[key]"
-            ng-type
+        <input ng-model="ctrl.model[key]"
+            ng-type step="{{ctrl.getstep(key, ctrl.model[key])}}"
             ng-class="{'form-control': ctrl.gettype(ctrl.model[key]) != 'boolean', 'secret': ctrl.model._encrypt.indexOf(key) > -1}" />
+            {{ ctrl.model[key] }}
     </div>
     <div ng-repeat="key in ctrl.keys" class="form-group" ng-show="ctrl.isobject(ctrl.model[key])">
         <label>{{ key }}</label>

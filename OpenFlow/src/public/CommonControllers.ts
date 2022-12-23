@@ -285,7 +285,7 @@ export class textarea implements ng.IDirective {
     }
 }
 
-export class ngtype implements ng.IDirective {
+export class ngtype  { // implements ng.IDirective
     restrict = 'A';
     require = '?ngModel';
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
@@ -295,24 +295,29 @@ export class ngtype implements ng.IDirective {
         var mytype = "";
         scope.$watch((newValue) => {
             if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
+            if(mytype != "") return;;
             if (typeof ngModelCtrl.$modelValue === 'number') {
                 mytype = "number";
                 element.attr("type", "number");
             } else if (typeof ngModelCtrl.$modelValue === 'boolean') {
                 mytype = "boolean";
                 element.attr("type", "checkbox");
+            } else {
+                mytype = "text";
+                element.attr("type", "text");
             }
+            
         });
 
         var toModelb = function (value) {
-            if (mytype == "text") {
-                return value;
-            } else if (mytype == "boolean") {
-                if (String(value).toLowerCase() == "true") { value = true; return true; }
-                { value = false; return false; }
+            if (mytype == "boolean") {
+                if (String(value).toLowerCase() == "true") { value = true; }
+                else { value = false; }
             } else if (mytype == "number") {
-                if (value === "" || value === null || value === undefined) return value;
-                return parseInt(value);
+                if(!NoderedUtil.IsNullEmpty(value)) {
+                    if(value.toString().indexOf(".")>=0) { value = parseFloat(value); } 
+                        else { value = parseInt(value); }
+                }
             }
             return value;
         }
@@ -329,14 +334,14 @@ export class ngtype implements ng.IDirective {
                     element.attr("type", "text");
                 }
             }
-            if (mytype == "text") {
-                return value;
-            } else if (mytype == "boolean") {
-                if (String(value).toLowerCase() == "true") { value = true; return true; }
-                { value = false; return false; }
+            if (mytype == "boolean") {
+                if (String(value).toLowerCase() == "true") { value = true; }
+                else { value = false; }
             } else if (mytype == "number") {
-                if (value === "" || value === null || value === undefined) return value;
-                return parseInt(value);
+                if(NoderedUtil.IsNullEmpty(value)) {
+                    if(value.toString().indexOf(".")>=0) { value = parseFloat(value); } 
+                        else { value = parseInt(value); }
+                }
             }
             return value;
         }
@@ -368,7 +373,7 @@ async function getString(locale: any, lib: string, key: string): Promise<any> {
     });
 }
 const global_translate_notfound: string[] = [];
-export class translate implements ng.IDirective {
+export class translate   { // implements ng.IDirective
     require = '?ngModel';
     replace = true;
 
