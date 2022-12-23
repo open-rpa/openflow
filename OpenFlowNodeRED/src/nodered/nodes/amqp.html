@@ -163,19 +163,16 @@ Remember that your <b>consumer queue</b> maybe get prefixed with your usename, i
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.queuetype === 'val') $("#node-input-queuetype").val('str');
             $("#node-input-queue").typedInput({
                 default: 'str',
                 typeField: $("#node-input-queuetype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.exchangetype === 'val') $("#node-input-exchangetype").val('str');
             $("#node-input-exchange").typedInput({
                 default: 'str',
                 typeField: $("#node-input-exchangetype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.routingkeytype === 'val') $("#node-input-routingkeytype").val('str');
             $("#node-input-routingkey").typedInput({
                 default: 'str',
                 typeField: $("#node-input-routingkeytype"),

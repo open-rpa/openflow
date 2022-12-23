@@ -171,43 +171,36 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.querytype === null) $("#node-input-querytype").val('str');
             $("#node-input-query").typedInput({
                 default: 'str',
                 typeField: $("#node-input-querytype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.projectiontype === null) $("#node-input-projectiontype").val('str');
             $("#node-input-projection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-projectiontype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.orderbytype === null) $("#node-input-orderbytype").val('str');
             $("#node-input-orderby").typedInput({
                 default: 'str',
                 typeField: $("#node-input-orderbytype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.collectiontype === null) $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.toptype === null) $("#node-input-toptype").val('num');
             $("#node-input-top").typedInput({
                 default: 'num',
                 typeField: $("#node-input-toptype"),
                 types: ['msg', 'num', 'flow', 'global']
             });
-            if (this.skiptype === null) $("#node-input-skiptype").val('num');
             $("#node-input-skip").typedInput({
                 default: 'num',
                 typeField: $("#node-input-skiptype"),
                 types: ['msg', 'num', 'flow', 'global']
             });
-            if (this.resultfieldtype === null) $("#node-input-resultfieldtype").val('msg');
             $("#node-input-resultfield").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-resultfieldtype"),
@@ -294,19 +287,16 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
             $("#node-input-entitytype").typedInput({
                 default: 'str',
                 typeField: $("#node-input-entitytypetype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
             $("#node-input-entities").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-entitiestype"),
@@ -398,19 +388,16 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
             $("#node-input-entitytype").typedInput({
                 default: 'str',
                 typeField: $("#node-input-entitytypetype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
             $("#node-input-entities").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-entitiestype"),
@@ -493,19 +480,16 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
             $("#node-input-entitytype").typedInput({
                 default: 'str',
                 typeField: $("#node-input-entitytypetype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
             $("#node-input-entities").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-entitiestype"),
@@ -602,25 +586,21 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
         },
 
         oneditprepare: function () {
-            if (this.entitytypetype === 'val') $("#node-input-entitytypetype").val('str');
             $("#node-input-entitytype").typedInput({
                 default: 'str',
                 typeField: $("#node-input-entitytypetype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
             $("#node-input-entities").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-entitiestype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.uniqenesstype === 'val') $("#node-input-uniqenesstype").val('str');
             $("#node-input-uniqeness").typedInput({
                 default: 'str',
                 typeField: $("#node-input-uniqenesstype"),
@@ -681,22 +661,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-
-            if (this.entitiestype === 'val') $("#node-input-entitiestype").val('str');
             $("#node-input-entities").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-entitiestype"),
                 types: ['msg']
             });
-
         },
-
     });
 </script>
 
@@ -749,21 +724,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
 
         // https://nodered.org/docs/api/ui/typedInput/
         oneditprepare: function () {
-            if (this.querytype === 'val') $("#node-input-querytype").val('str');
             $("#node-input-query").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-querytype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-
         }
-
     });
 </script>
 
@@ -1396,27 +1367,22 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-            if (this.querytype === 'val') $("#node-input-querytype").val('str');
             $("#node-input-query").typedInput({
                 default: 'str',
                 typeField: $("#node-input-querytype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.updatedocumenttype === 'val') $("#node-input-updatedocumenttype").val('str');
             $("#node-input-updatedocument").typedInput({
                 default: 'str',
                 typeField: $("#node-input-updatedocumenttype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-
         },
-
     });
 
 </script>
@@ -1476,21 +1442,17 @@ Request a JWT token for talking with API. Leave config blank to impersonate root
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.aggregatestype === 'val') $("#node-input-aggregatestype").val('str');
             $("#node-input-aggregates").typedInput({
                 default: 'json',
                 typeField: $("#node-input-aggregatestype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.collectiontype === 'val') $("#node-input-collectiontype").val('str');
             $("#node-input-collection").typedInput({
                 default: 'str',
                 typeField: $("#node-input-collectiontype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-
         },
-
     });
 
 </script>
@@ -1553,25 +1515,21 @@ you can set filename using msg.filename<br>
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.fileidtype === 'val') $("#node-input-fileidtype").val('str');
             $("#node-input-fileid").typedInput({
                 default: 'str',
                 typeField: $("#node-input-fileidtype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-            if (this.filenametype === 'val') $("#node-input-filenametype").val('str');
             $("#node-input-filename").typedInput({
                 default: 'str',
                 typeField: $("#node-input-filenametype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-            if (this.resulttype === 'val') $("#node-input-resulttype").val('str');
             $("#node-input-result").typedInput({
                 default: 'str',
                 typeField: $("#node-input-resulttype"),
                 types: ['msg', 'flow', 'global']
             });
-
         },
     });
 </script>
@@ -1637,25 +1595,21 @@ you can set filename using msg.filename<br>
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.filenametype === 'val') $("#node-input-filenametype").val('str');
             $("#node-input-filename").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-filenametype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.contenttype === 'val') $("#node-input-contenttype").val('str');
             $("#node-input-content").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-contenttype"),
                 types: ['msg']
             });
-            if (this.mimeTypetype === 'val') $("#node-input-mimeTypetype").val('str');
             $("#node-input-mimeType").typedInput({
                 default: 'str',
                 typeField: $("#node-input-mimeTypetype"),
                 types: ['msg', 'str', 'flow', 'global', 'json']
             });
-            if (this.entitytype === 'val') $("#node-input-entitytype").val('str');
             $("#node-input-entity").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-entitytype"),
@@ -1820,7 +1774,6 @@ you can set filename using msg.filename<br>
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.resultstype === 'val') $("#node-input-resultstype").val('str');
             $("#node-input-results").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-resultstype"),
@@ -1867,8 +1820,6 @@ you can set filename using msg.filename<br>
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.collectionametype === null) $("#node-input-collectionametype").val('msg');
-            if (this.collectionametype === 'val') $("#node-input-collectionametype").val('str');
             $("#node-input-collectioname").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-collectionametype"),
@@ -2032,29 +1983,21 @@ you can set filename using msg.filename<br>
             return this.name ? "node_label_italic" : "";
         },
         oneditprepare: function () {
-            if (this.commandtype === null) $("#node-input-commandtype").val('msg');
-            if (this.commandtype === 'val') $("#node-input-commandtype").val('str');
             $("#node-input-command").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-commandtype"),
                 types: ['msg', 'str']
             });
-            if (this.payloadtype === null) $("#node-input-payloadtype").val('msg');
-            if (this.payloadtype === 'val') $("#node-input-payloadtype").val('str');
             $("#node-input-payload").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-payloadtype"),
                 types: ['msg', 'str']
             });
-            if (this.commandidtype === null) $("#node-input-commandidtype").val('msg');
-            if (this.commandidtype === 'val') $("#node-input-commandidtype").val('str');
             $("#node-input-commandid").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-commandidtype"),
                 types: ['msg', 'str']
             });
-            if (this.commandtype === null) $("#node-input-commandtype").val('msg');
-            if (this.commandtype === 'val') $("#node-input-commandtype").val('str');
             $("#node-input-command").typedInput({
                 default: 'msg',
                 typeField: $("#node-input-commandtype"),

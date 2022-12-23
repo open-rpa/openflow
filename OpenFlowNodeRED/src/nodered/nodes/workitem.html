@@ -111,43 +111,36 @@ RED.nodes.registerType('workitem addworkitem', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.payloadtype === null) $("#node-input-payloadtype").val('msg');
     $("#node-input-payload").typedInput({
       default: 'msg',
       typeField: $("#node-input-payloadtype"),
       types: ['msg']
     });
-    if (this.topictype === null) $("#node-input-topictype").val('msg');
     $("#node-input-topic").typedInput({
       default: 'msg',
       typeField: $("#node-input-topictype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
     $("#node-input-nextrun").typedInput({
       default: 'msg',
       typeField: $("#node-input-nextruntype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
     $("#node-input-priority").typedInput({
       default: 'num',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
     });
-    if (this.filestype === null) $("#node-input-filestype").val('msg');
     $("#node-input-files").typedInput({
       default: 'msg',
       typeField: $("#node-input-filestype"),
       types: ['msg', 'flow', 'global']
     });
-    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
     $("#node-input-success_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-success_wiqtype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
     $("#node-input-failed_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-failed_wiqtype"),
@@ -223,31 +216,26 @@ RED.nodes.registerType('workitem addworkitems', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.workitemstype === null) $("#node-input-workitemstype").val('msg');
     $("#node-input-workitems").typedInput({
       default: 'msg',
       typeField: $("#node-input-workitemstype"),
       types: ['msg', 'json']
     });
-    if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
     $("#node-input-nextrun").typedInput({
       default: 'msg',
       typeField: $("#node-input-nextruntype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
     $("#node-input-priority").typedInput({
       default: 'num',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
     });
-    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
     $("#node-input-success_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-success_wiqtype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
     $("#node-input-failed_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-failed_wiqtype"),
@@ -342,37 +330,31 @@ RED.nodes.registerType('workitem updateworkitem', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
     $("#node-input-workitem").typedInput({
       default: 'msg',
       typeField: $("#node-input-workitemtype"),
       types: ['msg', 'str', 'flow', 'global', 'json']
     });
-    if (this.ignoremaxretriestype === null) $("#node-input-ignoremaxretriestype").val('msg');
     $("#node-input-ignoremaxretries").typedInput({
       default: 'msg',
       typeField: $("#node-input-ignoremaxretriestype"),
       types: ['msg', 'bool', 'flow', 'global']
     });
-    if (this.filestype === null) $("#node-input-filestype").val('msg');
     $("#node-input-files").typedInput({
       default: 'msg',
       typeField: $("#node-input-filestype"),
       types: ['msg', 'flow', 'global']
     });
-    if (this.errortype === null) $("#node-input-errortype").val('msg');
     $("#node-input-error").typedInput({
       default: 'msg',
       typeField: $("#node-input-errortype"),
       types: ['msg', 'flow', 'global']
     });
-    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
     $("#node-input-success_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-success_wiqtype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
     $("#node-input-failed_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-failed_wiqtype"),
@@ -435,13 +417,11 @@ RED.nodes.registerType('workitem popworkitem', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
     $("#node-input-workitem").typedInput({
       default: 'msg',
       typeField: $("#node-input-workitemtype"),
       types: ['msg']
     });
-    if (this.filestype === null) $("#node-input-filestype").val('msg');
     $("#node-input-files").typedInput({
       default: 'msg',
       typeField: $("#node-input-filestype"),
@@ -486,7 +466,6 @@ RED.nodes.registerType('workitem popworkitem', {
       return this.name ? "node_label_italic" : "";
     },
     oneditprepare: function () {
-      if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
       $("#node-input-workitem").typedInput({
         default: 'msg',
         typeField: $("#node-input-workitemtype"),

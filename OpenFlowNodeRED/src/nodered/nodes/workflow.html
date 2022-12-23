@@ -255,21 +255,16 @@ If you have buttons on the form, you can get the name of the button clicked in m
         },
 
         oneditprepare: function () {
-            if (this.topictype === 'val') $("#node-input-topictype").val('str');
             $("#node-input-topic").typedInput({
                 default: 'str',
                 typeField: $("#node-input-topictype"),
                 types: ['msg', 'str', 'flow', 'global']
             });
-
             let queue = $('#node-input-queue').val();
             if (queue === null || queue === undefined || queue === "") {
                 queue = generateUuid();
                 $('#node-input-queue').val(queue);
             }
-
-
-            
             try {
                 $("#node-lookup-workflowid").autocomplete("destroy");
             } catch (error) {
@@ -311,10 +306,6 @@ If you have buttons on the form, you can get the name of the button clicked in m
                     });
                 },
             });
-
-
-
-            
             try {
                 $("#node-lookup-targetid").autocomplete("destroy");
             } catch (error) {
@@ -356,10 +347,8 @@ If you have buttons on the form, you can get the name of the button clicked in m
                     });
                 },
             });
-
         },
         oneditsave: function () {
-            if (this.initialruntype === 'val') $("#node-input-initialruntype").val('str');
             $("#node-input-initialrun").typedInput({
                 default: 'bool',
                 typeField: $("#node-input-initialruntype"),
