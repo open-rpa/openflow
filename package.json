@@ -35,7 +35,7 @@
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "0.17.1",
     "@node-saml/passport-saml": "^4.0.1",
-    "@openiap/openflow-api": "^2.1.7",
+    "@openiap/openflow-api": "^2.1.8",
     "@opentelemetry/api-metrics": "^0.33.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.34.0",
     "@opentelemetry/sdk-metrics-base": "^0.31.0",

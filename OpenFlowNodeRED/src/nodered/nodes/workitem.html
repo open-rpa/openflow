@@ -1,3 +1,30 @@
+<script type="text/javascript">
+function validate(name) {
+  return function () {
+    if (name == "priority" && this[name] == null) {
+      this[name] = "wipriority";
+      this[name + "type"] = "msg";
+    } else if (name == "success_wiq" && this[name] == null) {
+      this[name] = "success_wiq";
+      this[name + "type"] = "msg";
+    } else if (name == "failed_wiq" && this[name] == null) {
+      this[name] = "failed_wiq";
+      this[name + "type"] = "msg";
+    }
+    // if (this[name] == null || this[name] == "") {
+    //   if (name == "entities" && this.inputfield != null) {
+    //     this[name] = this.inputfield; return true;
+    //     this[name + "type"] = "msg";
+    //   }
+    //   return false;
+    // }
+    // if(this[name + "type"] == null || this[name + "type"] == "") {
+    //   this[name] = "msg." + this[name];
+    // }
+    return RED.validators.typedInput(name);
+  }
+}
+</script>
 <script type="text/x-red" data-template-name="iworkitemqueue-config">
 <div class="form-row">
 <label><i class="icon-host"></i> wiq</label>
@@ -54,7 +81,7 @@ RED.nodes.registerType('iworkitemqueue-config', {
 <div class="form-row">
   <label><i class="fa fa-tag"></i> Priority</label>
   <input type="hidden" id="node-input-prioritytype">
-  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set how important this it is, 0 = higest, 99 lowest">
 </div>
 <div class="form-row">
   <label><i class="fa fa-tag"></i> Files</label>
@@ -86,19 +113,19 @@ RED.nodes.registerType('workitem addworkitem', {
   defaults: {
     name: { value: "" },
     config: { value: "", type: "iworkitemqueue-config", required: true },
-    payload: { value: "payload", validate: validate("payloadtype") },
+    payload: { value: "payload", validate: validate("payload") },
     payloadtype: { value: "" },
-    topic: { value: "topic", validate: validate("topictype") },
+    topic: { value: "topic", validate: validate("topic") },
     topictype: { value: "" },
-    nextrun: { value: "nextrun", validate: validate("nextruntype") },
+    nextrun: { value: "nextrun", validate: validate("nextrun") },
     nextruntype: { value: "" },
-    priority: { value: "3", validate: validate("prioritytype") },
+    priority: { value: "2", validate: validate("priority") },
     prioritytype: { value: "" },
-    files: { value: "files", validate: validate("filestype") },
+    files: { value: "files", validate: validate("files") },
     filestype: { value: "msg" },
-    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiq") },
     success_wiqtype: { value: "" },
-    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiq") },
     failed_wiqtype: { value: "" },
   },
   inputs: 1,
@@ -168,7 +195,7 @@ RED.nodes.registerType('workitem addworkitem', {
 <div class="form-row">
   <label><i class="fa fa-tag"></i> Priority</label>
   <input type="hidden" id="node-input-prioritytype">
-  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set how important this it is, 0 = higest, 99 lowest">
 </div>
 <div class="form-row">
   <label>Success Queue</label>
@@ -195,15 +222,15 @@ RED.nodes.registerType('workitem addworkitems', {
   defaults: {
     name: { value: "" },
     config: { value: "", type: "iworkitemqueue-config", required: true },
-    workitems: { value: "workitems", validate: validate("workitemstype") },
+    workitems: { value: "workitems", validate: validate("workitems") },
     workitemstype: { value: "" },
-    nextrun: { value: "nextrun", validate: validate("nextruntype") },
+    nextrun: { value: "nextrun", validate: validate("nextrun") },
     nextruntype: { value: "" },
-    priority: { value: "3", validate: validate("prioritytype") },
+    priority: { value: "2", validate: validate("priority") },
     prioritytype: { value: "" },
-    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiq") },
     success_wiqtype: { value: "" },
-    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiq") },
     failed_wiqtype: { value: "" },
   },
   inputs: 1,
@@ -278,6 +305,11 @@ RED.nodes.registerType('workitem addworkitems', {
   <input style="width:70%" type="text" id="node-input-files" placeholder="Set this to, to add or update files on this workitem">
 </div>
 <div class="form-row">
+  <label><i class="fa fa-tag"></i> Priority</label>
+  <input type="hidden" id="node-input-prioritytype">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set how important this it is, 0 = higest, 99 lowest">
+</div>
+<div class="form-row">
   <label><i class="fa fa-tag"></i> Error</label>
   <input type="hidden" id="node-input-errortype">
   <input style="width:70%" type="text" id="node-input-error" placeholder="Set this to, to add an error description when retrying or failing">
@@ -306,18 +338,20 @@ RED.nodes.registerType('workitem updateworkitem', {
   color: "#a6bbcf",
   defaults: {
     name: { value: "" },
-    workitem: { value: "payload", validate: validate("workitemtype") },
+    workitem: { value: "payload", validate: validate("workitem") },
     workitemtype: { value: "" },
-    ignoremaxretries: { value: "ignoremaxretries", validate: validate("ignoremaxretriestype") },
+    ignoremaxretries: { value: "ignoremaxretries", validate: validate("ignoremaxretries") },
     ignoremaxretriestype: { value: "" },
-    files: { value: "newfiles", validate: validate("filestype") },
+    files: { value: "newfiles", validate: validate("files") },
     filestype: { value: "msg" },
-    error: { value: "error", validate: validate("errortype") },
+    priority: { value: "wipriority", validate: validate("priority") },
+    prioritytype: { value: "msg" },
+    error: { value: "error", validate: validate("error") },
     errortype: { value: "msg" },
     state: { value: "successful", required: true },
-    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiq") },
     success_wiqtype: { value: "" },
-    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiq") },
     failed_wiqtype: { value: "" },
   },
   inputs: 1,
@@ -344,6 +378,11 @@ RED.nodes.registerType('workitem updateworkitem', {
       default: 'msg',
       typeField: $("#node-input-filestype"),
       types: ['msg', 'flow', 'global']
+    });
+    $("#node-input-priority").typedInput({
+      default: 'str',
+      typeField: $("#node-input-prioritytype"),
+      types: ['msg', 'num', 'flow', 'global']
     });
     $("#node-input-error").typedInput({
       default: 'msg',
@@ -401,9 +440,9 @@ RED.nodes.registerType('workitem popworkitem', {
     name: { value: "" },
     download: { value: "false", required: true },
     config: { value: "", type: "iworkitemqueue-config", required: true },
-    workitem: { value: "payload", validate: validate("workitemtype") },
+    workitem: { value: "payload", validate: validate("workitem") },
     workitemtype: { value: "" },
-    files: { value: "files", validate: validate("filestype") },
+    files: { value: "files", validate: validate("files") },
     filestype: { value: "msg" },
   },
   inputs: 1,
@@ -453,7 +492,7 @@ RED.nodes.registerType('workitem popworkitem', {
     color: "#a6bbcf",
     defaults: {
       name: { value: "" },
-      workitem: { value: "payload", validate: validate("workitemtype") },
+      workitem: { value: "payload", validate: validate("workitem") },
       workitemtype: { value: "" },
     },
     inputs: 1,

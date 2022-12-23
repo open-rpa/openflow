@@ -54,6 +54,7 @@
       <th ng-click="ctrl.ToggleOrder('name')"><strong translate lib="web">name</strong></th>
       <th class="w-100" ng-click="ctrl.ToggleOrder('state')"><strong translate lib="web">state</strong></th>
       <th class="w-100" ng-click="ctrl.ToggleOrder('retries')"><strong translate lib="web">retries</strong></th>
+      <th class="w-100" ng-click="ctrl.ToggleOrder('priority')"><strong translate lib="web">priority</strong></th>
       <th class="w-100" ng-click="ctrl.ToggleOrder('wiq')" ng-show="ctrl.queue == ''"><strong translate lib="web">queue</strong></th>
       <th class="w-100" ng-click="ctrl.ToggleOrder('lastrun')"><strong translate lib="web">lastrun</strong></th>
       <th class="w-100" ng-click="ctrl.ToggleOrder('nextrun')"><strong translate lib="web">nextrun</strong></th>
@@ -67,6 +68,7 @@
         {{model.name}}</a></td>
       <td class="text-truncate">{{model.state}}</td>
       <td class="text-truncate">{{model.retries}}</td>
+      <td class="text-truncate">{{model.priority}}</td>
       <td class="text-truncate" ng-show="ctrl.queue == ''">
         <a style="color: inherit; text-decoration: inherit;" ng-href="#/Workitems/{{model.wiq}}">
           {{model.wiq}}

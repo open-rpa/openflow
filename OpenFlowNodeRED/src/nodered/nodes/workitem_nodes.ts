@@ -58,7 +58,7 @@ export class addworkitem {
             const files = await Util.EvaluateNodeProperty<MessageWorkitemFile[]>(this, msg, "files");
             const topic = await Util.EvaluateNodeProperty<string>(this, msg, "topic");
             const nextrun = await Util.EvaluateNodeProperty<Date>(this, msg, "nextrun");
-            const priority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
+            const wipriority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
             const success_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "success_wiq");
             const failed_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "failed_wiq");
             const { wiq, wiqid } = this.workitemqueue_config;
@@ -81,7 +81,7 @@ export class addworkitem {
                     }
                 }
             }
-            const result = await NoderedUtil.AddWorkitem({ payload, files, wiqid, wiq, name: topic, nextrun, priority, success_wiq, failed_wiq })
+            const result = await NoderedUtil.AddWorkitem({ payload, files, wiqid, wiq, name: topic, nextrun, wipriority, success_wiq, failed_wiq })
             if (!NoderedUtil.IsNullEmpty(this.config.payload)) {
                 Util.SetMessageProperty(msg, this.config.payload, result);
             }
@@ -128,14 +128,14 @@ export class addworkitems {
             this.node.status({ fill: "blue", shape: "dot", text: "Processing" });
             const items = await Util.EvaluateNodeProperty<AddWorkitem[]>(this, msg, "workitems");
             const nextrun = await Util.EvaluateNodeProperty<Date>(this, msg, "nextrun");
-            const priority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
+            const wipriority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
             const success_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "success_wiq");
             const failed_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "failed_wiq");
             const { wiq, wiqid } = this.workitemqueue_config;
             if (!Array.isArray(items)) throw new Error("workitems must be an array of Workitems")
             items.forEach(item => {
                 if (!NoderedUtil.IsNullEmpty(nextrun)) item.nextrun = nextrun;
-                if (!NoderedUtil.IsNullEmpty(priority)) item.priority = priority;
+                if (!NoderedUtil.IsNullEmpty(wipriority)) item.priority = wipriority;
 
                 if (!NoderedUtil.IsNullUndefinded(item.files)) {
                     for (var i = 0; i < item.files.length; i++) {
@@ -197,6 +197,7 @@ export class updateworkitem {
             const workitem = await Util.EvaluateNodeProperty<Workitem>(this, msg, "workitem");
             const files = await Util.EvaluateNodeProperty<MessageWorkitemFile[]>(this, msg, "files");
             const state: any = await Util.EvaluateNodeProperty<string>(this, msg, "state");
+            const wipriority = await Util.EvaluateNodeProperty<number>(this, msg, "priority");
             const _errormessage = await Util.EvaluateNodeProperty<string>(this, msg, "error");
             const ignoremaxretries = await Util.EvaluateNodeProperty<boolean>(this, msg, "ignoremaxretries");
             const success_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "success_wiq");
@@ -210,7 +211,7 @@ export class updateworkitem {
             let { _id, name, payload, errortype, errormessage } = workitem;
             if (!NoderedUtil.IsNullEmpty(_errormessage) && NoderedUtil.IsNullEmpty(errormessage)) errormessage = _errormessage.toString();
 
-            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, errormessage, errorsource, errortype, success_wiq, failed_wiq })
+            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, wipriority, errormessage, errorsource, errortype, success_wiq, failed_wiq })
             if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                 Util.SetMessageProperty(msg, this.config.workitem, result);
             }

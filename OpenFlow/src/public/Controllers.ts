@@ -6738,7 +6738,7 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workitem" };
         this.collection = "workitems";
         this.searchfields = ["name", "state", "wiq"];
-        this.baseprojection = { name: 1, state: 1, wiq: 1, retries: 1, lastrun: 1, nextrun: 1 };
+        this.baseprojection = { name: 1, state: 1, wiq: 1, retries: 1, lastrun: 1, nextrun: 1, priority: 1 };
         this.postloadData = this.processData;
         if (this.userdata.data.WorkitemsCtrl) {
             this.basequery = this.userdata.data.WorkitemsCtrl.basequery;
@@ -6866,6 +6866,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                 this.model.retries = 0;
                 this.model.state = "new";
                 this.model.payload = {};
+                this.model.priority = 2;
                 if (this.userdata.data && this.userdata.data.WorkitemsCtrl) this.model.wiq = this.userdata.data.WorkitemsCtrl.queue;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
@@ -6896,6 +6897,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                     q.name = model.name;
                     q.wiq = model.wiq;
                     q.payload = model.payload;
+                    q.wipriority = model.priority;
                     _msg.command = 'addworkitem';
                     _msg.data = JSON.stringify(q);
                     const result: AddWorkitemMessage = await WebSocketClient.instance.Send<AddWorkitemMessage>(_msg, 1);
@@ -6906,6 +6908,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                     q.name = model.name;
                     q.state = model.state;
                     q.payload = model.payload;
+                    q.wipriority = model.priority;
                     _msg.command = 'updateworkitem';
                     _msg.data = JSON.stringify(q);
                     const result: UpdateWorkitemMessage = await WebSocketClient.instance.Send<UpdateWorkitemMessage>(_msg, 1);

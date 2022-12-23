@@ -82,6 +82,12 @@
             <input type="number" ng-model="ctrl.model.retries" class="input-md" ng-disabled="true" />
         </div>
     </div>
+    <div class="form-group">
+        <label for="name" class="col-sm-2 control-label" translate lib="web">priority</label>
+        <div class="col-sm-6">
+            <input type="number" ng-model="ctrl.model.priority" class="input-md" step=1 min=0 max=99  />
+        </div>
+    </div>
     <div class="form-group" ng-show="ctrl.model.errormessage && ctrl.model.errormessage != ''">
         <label for="newpassword" class="col-sm-2 control-label" translate lib="web">errormessage</label>
         <div class="col-sm-4">

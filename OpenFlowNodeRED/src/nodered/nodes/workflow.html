@@ -1,3 +1,17 @@
+<script type="text/javascript">
+    function validate(name) {
+        return function () {
+            if (this[name] == null || this[name] == "") {
+                if (name == "entities" && this.inputfield != null) {
+                    this[name] = this.inputfield; return true;
+                    this[name + "type"] = "msg";
+                }
+                return false;
+            }
+            return RED.validators.typedInput(name);
+        }
+    }
+</script>
 <script type="text/x-red" data-template-name="workflow in">
     <div class="form-row">
         <label ><i class="fa fa-tag"></i> Queue name</label>
