@@ -206,8 +206,8 @@ export class DatabaseConnection extends events.EventEmitter {
     public ensureQueueMonitoring() {
         if (Config.workitem_queue_monitoring_enabled) {
             if (this.queuemonitoringhandle == null) {
-                this.queuemonitoringhandle = setInterval(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-                // this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+                // this.queuemonitoringhandle = setInterval(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
+                this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
                 // } else {
                 //     Logger.instanse.warn("DatabaseConnection", "ensureQueueMonitoring", "queue monitoring restarted, clearing handle " + this.queuemonitoringhandle);
                 //     try {
@@ -222,8 +222,8 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.warn("queue monitoring stopeed, clearing enabled: " +
                 Config.workitem_queue_monitoring_enabled + " handle: " + this.queuemonitoringhandle, null);
             try {
-                clearInterval(this.queuemonitoringhandle);
-                // clearTimeout(this.queuemonitoringhandle);
+                // clearInterval(this.queuemonitoringhandle);
+                clearTimeout(this.queuemonitoringhandle);
             } catch (error) {
             }
             this.queuemonitoringhandle = null;
@@ -240,8 +240,10 @@ export class DatabaseConnection extends events.EventEmitter {
             const jwt = Crypt.rootToken();
             const collectionname = "workitems";
             var queues = await Logger.DBHelper.GetPushableQueues(null);
-            for (var _wiq = 0; _wiq < queues.length; _wiq++) {
-                const wiq = queues[_wiq];
+            var test = queues.find(x => x._id == "63b6a9b41e86860136c2cc8b");
+            // wiq._id == "63b6a9b41e86860136c2cc8b"
+            for (let i = 0; i < queues.length; i++) {
+                const wiq = queues[i];
                 const count = await Logger.DBHelper.GetPendingWorkitemsCount(wiq._id, null);
                 if (count < 1) continue;
                 const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
@@ -257,7 +259,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
                     queueid = wiq.amqpqueue.toLowerCase();
                 }
-                if (NoderedUtil.IsNullEmpty(queueid)) return;
+                if (NoderedUtil.IsNullEmpty(queueid)) { continue;}
                 for (var _cid = 0; _cid < WebSocketServer._clients.length; _cid++) {
                     const client = WebSocketServer._clients[_cid];
                     if (NoderedUtil.IsNullUndefinded(client.user)) continue;
@@ -296,8 +298,8 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error(error, null);
         }
         finally {
-            // this.queuemonitoringhandle = null;
-            // this.ensureQueueMonitoring();
+            this.queuemonitoringhandle = null;
+            this.ensureQueueMonitoring();
         }
     }
     async GlobalWatchCallback(collectionname: string, next: any) {
