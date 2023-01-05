@@ -6948,7 +6948,7 @@ export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workitemqueue" };
         this.collection = "mq";
         this.searchfields = ["name"];
-        this.baseprojection = { name: 1, maxretries: 1, projectid: 1, workflowid: 1, robotqueue: 1, amqpqueue: 1 };
+        this.baseprojection = { name: 1, maxretries: 1, projectid: 1, workflowid: 1, robotqueue: 1, amqpqueue: 1, _createdby:1 };
 
         this.postloadData = this.processData;
         if (this.userdata.data.WorkitemQueuesCtrl) {
@@ -7039,6 +7039,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
     public users: Base[] = [];
     public amqpqueues: Base[] = [];
     public workitemqueues: Base[] = [];
+    public stats: string = "calculating...";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7103,6 +7104,23 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         if (NoderedUtil.IsNullEmpty(this.model.success_wiqid)) this.model.success_wiqid = "";
         if (NoderedUtil.IsNullEmpty(this.model.failed_wiqid)) this.model.failed_wiqid = "";
         await this.loadselects();
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        var total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+        // this.stats = total + " items";
+        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        if(total > 0) {
+            var newitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "new" } });
+            var successfulitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "successful" } });
+            var faileditems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "failed" } });
+            var processingitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "processing" } });
+            this.stats = "";
+            if(newitems > 0) this.stats += "New: " + newitems;
+            if(successfulitems > 0) this.stats += " Successful: " + successfulitems;
+            if(faileditems > 0) this.stats += " Failed: " + faileditems;
+            if(processingitems > 0) this.stats += " Processing: " + processingitems;
+        } else {
+            this.stats = "No items";
+        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
