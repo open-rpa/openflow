@@ -26,7 +26,7 @@
   "dependencies": {
     "@node-saml/passport-saml": "^4.0.1",
     "@nodemailer/mailparser2": "^1.0.3",
-    "@openiap/openflow-api": "^2.1.8",
+    "@openiap/openflow-api": "^2.1.9",
     "@opentelemetry/api-metrics": "^0.33.0",
     "@opentelemetry/core": "^1.8.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.34.0",

@@ -202,6 +202,10 @@ export class updateworkitem {
             const ignoremaxretries = await Util.EvaluateNodeProperty<boolean>(this, msg, "ignoremaxretries");
             const success_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "success_wiq");
             const failed_wiq = await Util.EvaluateNodeProperty<string>(this, msg, "failed_wiq");
+            const _nextrun = await Util.EvaluateNodeProperty<string>(this, msg, "nextrun");
+            var nextrun = undefined;
+            if(!NoderedUtil.IsNullEmpty(_nextrun)) nextrun = new Date(_nextrun);
+            
             var errorsource: string = "";
 
             if (!NoderedUtil.IsNullEmpty(msg.error) && (NoderedUtil.IsNullUndefinded(workitem) || NoderedUtil.IsNullEmpty(workitem._id))) {
@@ -211,7 +215,7 @@ export class updateworkitem {
             let { _id, name, payload, errortype, errormessage } = workitem;
             if (!NoderedUtil.IsNullEmpty(_errormessage) && NoderedUtil.IsNullEmpty(errormessage)) errormessage = _errormessage.toString();
 
-            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, wipriority, errormessage, errorsource, errortype, success_wiq, failed_wiq })
+            const result = await NoderedUtil.UpdateWorkitem({ _id, name, files, state, payload, ignoremaxretries, wipriority, errormessage, errorsource, errortype, success_wiq, failed_wiq, nextrun })
             if (!NoderedUtil.IsNullEmpty(this.config.workitem)) {
                 Util.SetMessageProperty(msg, this.config.workitem, result);
             }

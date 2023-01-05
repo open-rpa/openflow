@@ -325,6 +325,11 @@ RED.nodes.registerType('workitem addworkitems', {
   <input style="width:70%" type="text" id="node-input-failed_wiq" placeholder="On failure add to this queue">
 </div>
 <div class="form-row">
+  <label>Next run</label>
+  <input type="hidden" id="node-input-nextruntype">
+  <input style="width:70%" type="text" id="node-input-nextrun" placeholder="Define a time when to next retry">
+</div>
+<div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
   <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -353,6 +358,8 @@ RED.nodes.registerType('workitem updateworkitem', {
     success_wiqtype: { value: "" },
     failed_wiq: { value: "failed_wiq", validate: validate("failed_wiq") },
     failed_wiqtype: { value: "" },
+    nextrun: { value: "nextrun", validate: validate("nextrun") },
+    nextruntype: { value: "" },
   },
   inputs: 1,
   outputs: 1,
@@ -397,6 +404,11 @@ RED.nodes.registerType('workitem updateworkitem', {
     $("#node-input-failed_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-failed_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    $("#node-input-nextrun").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-nextruntype"),
       types: ['msg', 'str', 'flow', 'global']
     });
   }

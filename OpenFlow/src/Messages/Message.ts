@@ -4948,6 +4948,9 @@ export class Message {
                         wi.username = null;
                         wi.nextrun = new Date(new Date().toISOString());
                         wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
+                        if(!NoderedUtil.IsNullEmpty(msg.nextrun)) {
+                            wi.nextrun = new Date(msg.nextrun);
+                        }
                     } else {
                         wi.state = "failed";
                     }
