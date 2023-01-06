@@ -16,6 +16,11 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
+
+const config = require('./proto/config');
+const { unpack, pack, init, protoRoot, sendMesssag, ReceiveFileContent, sendFileContent, serve, defaultprotocol, SetStream } = require('./proto/util');
+const { info, warn, err } = config
+
 var _hostname = "";
 
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -44,6 +49,7 @@ export class WebServer {
         return remoteip;
     }
     public static app: express.Express;
+    public static http: http.Server;
     public static BaseRateLimiter: any;
     public static server: http.Server = null;
     public static webpush = require('web-push');
@@ -250,6 +256,14 @@ export class WebServer {
                 WebServer.server = http.createServer(this.app);
             }
             await Config.db.connect(span);
+
+            await init();
+            var servers = [];
+            servers.push(serve("pipe", this.onConnected, this.onMessage, this.onDisconnected), 8080, WebServer.app, WebServer.server);
+            servers.push(serve("socket", this.onConnected, this.onMessage, this.onDisconnected, 8080, WebServer.app, WebServer.server));
+            servers.push(serve("ws", this.onConnected, this.onMessage, this.onDisconnected, Config.port, WebServer.app, WebServer.server));
+            servers.push(serve("grpc", this.onConnected, this.onMessage, this.onDisconnected, Config.port, WebServer.app, WebServer.server));
+            servers.push(serve("rest", this.onConnected, this.onMessage, this.onDisconnected, Config.port, WebServer.app, WebServer.server));
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -259,14 +273,87 @@ export class WebServer {
         }
     }
     public static Listen() {
-        WebServer.server.listen(Config.port).on('error', function (error) {
+        WebServer.http = WebServer.server.listen(Config.port).on('error', function (error) {
             Logger.instanse.error(error, null);
             if (Config.NODE_ENV == "production") {
                 WebServer.server.close();
                 process.exit(404);
             }
         });
+
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
+    }
+    public static async onConnected(socket: any) {
+        console.log("onConnected")
+    }
+    public static async onMessage(client: any, message: any) {
+        const [ command, msg, reply ] = unpack(message);
+        try {
+          if(command == "Noop") {
+          } else if(command == "GetElement") {
+            msg.xpath = "Did you say " + msg.xpath + " ?";
+            reply.data = pack(command, msg);
+          } else if(command == "Signin") {
+            delete msg.username; delete msg.password;
+            msg.jwt = "JWTsecretTOKEN"
+            reply.data = pack(command, msg);
+            client.user = msg;
+            client.signedin = true;
+          } else if(command == "Send") {
+            let len = msg.count;
+            reply.command = "GetElement"
+            for (var i = 1; i < len; i++) {
+              var payload = { ...reply, data: pack("GetElement", {xpath: "test" + (i + 1)}) };
+              sendMesssag(client, payload);
+            }
+            reply.data = pack("GetElement", {xpath: "test1"})
+      
+          } else if (command == "Upload") {
+            var filename = msg.filename;
+            let name = path.basename(filename);
+            name = "upload.png";
+            const result = await ReceiveFileContent(reply.rid, name, config.SendFileHighWaterMark);
+            reply.data = pack("Upload", result);
+            info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
+          } else if (command == "Download") {
+            var filename = msg.filename;
+            await sendFileContent(client, reply.rid, filename, config.SendFileHighWaterMark);
+            msg.filename = path.basename(filename);
+            reply.data = pack(command, msg);
+          } else if (command == "ClientConsole") {
+            var Readable = require('stream').Readable;
+            var rs = new Readable;
+            rs._read = function () {};
+            SetStream(rs, reply.rid);
+            sendMesssag(client, reply);
+            rs.pipe(process.stdout); // pipe the read stream to stdout
+          } else if (command == 'Console') {
+            var old = process.stdout.write;
+            const rid = reply.rid;
+            // @ts-ignore
+            process.stdout.write = (function(write) {
+              return function(string, encoding, fd) {
+                try {
+                  write.apply(process.stdout, arguments);
+                  sendMesssag(client, { rid, command: "stream", data: pack("stream", {data: Buffer.from(string)}) }, false);
+                } catch (error) {
+                  process.stdout.write = old;
+                  err(error);
+                }
+              }
+            })(process.stdout.write);
+          } else {
+            throw new Error("Unknown command " + command);
+          }
+        } catch (error) {
+          reply.command = "Error";
+          if(typeof error == "string") error = new Error(error);
+          reply.data = reply.data = pack("Error", error);
+        }
+        return reply;
+    }
+    public static async onDisconnected(stream: any, error: any) {
+        console.log("onDisconnected", error)
     }
     static get_livenessprobe(req: any, res: any, next: any): void {
         let span = Logger.otel.startSpanExpress("get_livenessprobe", req)

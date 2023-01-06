@@ -42,19 +42,25 @@ export class WebSocketServer {
             });
 
             this._clients = [];
-            this._socketserver = new WebSocket.Server({ server: server });
-            this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
-                try {
-                    var sock = new WebSocketServerClient();
-                    this._clients.push(sock);
-                    await sock.Initialize(socketObject, req);
-                } catch (error) {
-                    Logger.instanse.error(error, null);    
-                }
-            });
-            this._socketserver.on("error", (error: Error): void => {
-                Logger.instanse.error(error, null);
-            });
+            // this._socketserver = new WebSocket.Server({ server: server });
+            // this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
+            //     try {
+            //         const url = require('url');
+            //         const location = url.parse(req.url, true);
+            //         if(location.pathname == "/" || location.pathname == "/ws"|| location.pathname == "/ws/v1") {
+            //             var sock = new WebSocketServerClient();
+            //             this._clients.push(sock);
+            //             await sock.Initialize(socketObject, req);
+            //         } else {
+            //             socketObject.close(1000, "Invalid path");
+            //         }
+            //     } catch (error) {
+            //         Logger.instanse.error(error, null);    
+            //     }
+            // });
+            // this._socketserver.on("error", (error: Error): void => {
+            //     Logger.instanse.error(error, null);
+            // });
             if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
                     description: 'Total number of online websocket clients'

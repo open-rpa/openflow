@@ -1,0 +1,77 @@
+package openiap;
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+service grpcService {
+  rpc RPC (Envelope) returns (Envelope) {}
+  rpc ReceiveStream (Envelope) returns (stream Envelope) {}
+  rpc SendStream (stream Envelope) returns (Envelope) {}
+}
+message Envelope {
+  string command = 1;
+  int32 priority = 2;
+  int32 seq = 3;
+  string hash = 4;
+  string id = 5;
+  string rid = 6;
+  string traceid = 7;
+  string spanid = 8;
+  bytes data = 9;
+}
+message Noop {
+}
+message Error {
+  string message = 1;
+  int32 code = 2;
+  string stack = 3;
+}
+message GetElement {
+  string xpath = 1;
+}
+message Send {
+  int32 count = 1;
+}
+message Download {
+  string filename = 1;
+}
+message Upload {
+  string filename = 1;
+  int32 bytes = 2;
+  int32 chunks = 3;
+  float mb = 4;
+  int32 elapsedTime = 5;
+  float mbps = 6;
+}
+message Console { }
+message ClientConsole { }
+message beginstream { 
+  string checksum = 1;
+  stat stat = 2;
+}
+message stream { 
+  bytes data = 1;
+}
+message endstream { }
+
+message stat {
+  float birthtimeMs = 1;
+  int32 blksize = 2;
+  int32 blocks = 3;
+  google.protobuf.Timestamp ctime = 4;
+  float ctimeMs = 5;
+  int32 dev = 6;
+  int32 gid = 7;
+  int32 ino = 8;
+  int32 mode = 9;
+  google.protobuf.Timestamp mtime = 10;
+  float mtimeMs = 11;
+  int32 nlink = 12;
+  int32 rdev = 13;
+  int32 size = 14;
+  int32 uid = 15;
+}  
+message Signin {
+  string username = 1;
+  string password = 2;
+  string jwt = 3;
+}
