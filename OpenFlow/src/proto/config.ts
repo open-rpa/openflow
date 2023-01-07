@@ -4,9 +4,11 @@ export const EndstreamDelay = 0;
 export const BeginstreamDelay = 0;
 export const ChecksumCheckFiles = true;
 export const ChecksumCheckPackages = false;
+export const DoPing = true;
 export const doDumpStack = true;
 export const doDumpMesssages = true;
-export const doDumpMesssagesSeq = false;
+export const doDumpMesssagesSeq = true;
+export const doDumpMesssagesIds = true;
 export const doDumpTimestamp = false;
 export const doDumpMesssageStreams = true;
 export const doDumpMessageHexLines = 50
@@ -26,9 +28,21 @@ export const doDumpToFile = false;
 // with ChecksumCheckFiles = true
 // 1024 * 256       21 files (1730.14 Mb) in 13.82 seconds (125.21 Mb/s)
 // const SendFileHighWaterMark = 1024 * 256;
-export const SendFileHighWaterMark = 5 * 1024 * 1024;
 
-export var color = {
+// using ./message-parser.buffer.concat
+// with ChecksumCheckFiles = false
+// 1024 * 256       21 files (1730.14 Mb) in 3.87 seconds (447.30 Mb/s)
+// 1024 * 512       21 files (1730.14 Mb) in 4.25 seconds (407.09 Mb/s)
+// 1024 * 1024      21 files (1730.14 Mb) in 5.29 seconds (327.06 Mb/s)
+// 3 * 1024 * 1024  21 files (1730.14 Mb) in 9.50 seconds (182.12 Mb/s)
+// 5 * 1024 * 1024  21 files (1730.14 Mb) in 14.91 seconds (116.04 Mb/s)
+// 10 * 1024 * 1024 21 files (1730.14 Mb) in 25.97 seconds (66.61 Mb/s)
+// using ./message-parser.buffer.concat
+// with ChecksumCheckFiles = true
+// 1024 * 256       21 files (1730.14 Mb) in 13.81 seconds (125.26 Mb/s)
+export const SendFileHighWaterMark = 1024 * 256;
+
+var color = {
   Reset: "\x1b[0m",
   Bright: "\x1b[1m",
   Dim: "\x1b[2m",
@@ -70,6 +84,7 @@ export function err(error) {
 export function dumpmessage(direction, message) {
   if (!doDumpMesssages) return;
   let { id, rid, command } = message;
+  let sequence = message.seq;
   if (command == "beginstream" || command == "stream" || command == "endstream") {
     if (!doDumpMesssageStreams)
       return;
@@ -90,14 +105,14 @@ export function dumpmessage(direction, message) {
   var columns = process.stdout.columns;
   var sub = 3;
   if(!columns || columns < 50) columns = 50;
-  sub = `${ts()}[${role()}][${direction}]${seq(id, rid)}[${command}] `.length;
+  sub = `${ts()}[${role()}][${direction}]${seq(sequence, id, rid)}[${command}] `.length;
   if (data && data.length > columns) data = data.substr(0, columns - sub -3 ) + "...";
   if (direction == "SND") direction = col(direction, color.Dim + color.FgYellow);
   if (direction == "RCV") direction = col(direction, color.FgCyan);
   command = col(command, color.FgGreen);
   id = col(id, color.FgBlue);
   rid = col(rid, color.FgBlue);
-  console.log(`${ts()}[${colrole()}][${direction}]${seq(id, rid)}[${command}] ${data}`);
+  console.log(`${ts()}[${colrole()}][${direction}]${seq(sequence, id, rid)}[${command}] ${data}`);
   if (data) {
     if (message.command == "stream" && message.data.length > 6) {
       dumpdata(message.data);
@@ -132,7 +147,7 @@ export function dumpdata(data) {
     fs.appendFileSync(role() + '.hex', content);
   }
 }
-export var hex = function(buffer, bytes_per_line, bytes_per_group, radix, littleEndian) {
+var hex = function(buffer, bytes_per_line, bytes_per_group, radix, littleEndian) {
   var str = ""
   const delimiter = bytes_per_group == 0 ? "" : " "
   const group_len = maxnumberlen(bytes_per_group, radix)
@@ -171,7 +186,7 @@ export var hex = function(buffer, bytes_per_line, bytes_per_group, radix, little
   // str = rpad(str, self.hex_line_length)
   return str
 }
-export var maxnumberlen = function(bytes, radix) {
+var maxnumberlen = function(bytes, radix) {
   var result = 2
   if (bytes == 0) {
     bytes = 1
@@ -221,21 +236,27 @@ export var maxnumberlen = function(bytes, radix) {
 export function col(text, c) {
   return c + text + color.Reset;
 }
-export function colrole() {
+function colrole() {
   if (role() == "client") {
     return col(role(), color.Dim + color.FgBlue);
   }
   return col(role(), color.Dim + color.FgGreen);
 }
-export function ts() {
+function ts() {
   if(!doDumpTimestamp) return "";
   var dt = new Date();
   return "[" + dt.getHours().toString().padStart(2, '0') + ":" + dt.getMinutes().toString().padStart(2, '0') + ":" + 
   dt.getSeconds().toString().padStart(2, '0') + "." + dt.getMilliseconds().toString().padStart(3, '0') + "]";
 }
-export function seq(id, rid) {
-  if(!doDumpMesssagesSeq) return "";
-  return `[${id}][${rid}]`;
+function seq(sequence, id, rid) {
+  var result = "";
+  if(doDumpMesssagesSeq) {
+    result += `[${sequence}]`;
+  }
+  if(doDumpMesssagesIds) {
+    result += `[${id}][${rid}]`;
+  }
+  return result;
 }
 var _role = "client";
 export function role() { return _role; }

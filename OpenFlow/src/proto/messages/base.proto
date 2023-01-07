@@ -18,8 +18,9 @@ message Envelope {
   string spanid = 8;
   bytes data = 9;
 }
-message Noop {
-}
+message Noop {}
+message Ping {}
+message Pong {}
 message Error {
   string message = 1;
   int32 code = 2;
@@ -74,4 +75,6 @@ message Signin {
   string username = 1;
   string password = 2;
   string jwt = 3;
+  string clientagent = 4;
+  string clientversion = 5;
 }

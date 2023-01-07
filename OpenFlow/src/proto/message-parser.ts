@@ -1,12 +1,22 @@
-import * as config from "./config";
-import { err, warn, info, dumpdata, role }  from "./config";
-const { Transform } = require('stream');
+import * as  config from "./config";
+const { err, warn, info, dumpdata } = config;
+import { Transform } from "stream";
+import * as  crypto from "crypto";
+function getChecksum(buffer) {
+  const hash = crypto.createHash("sha256");
+  hash.update(buffer);
+  const checksum = hash.digest("hex");
+  return checksum;
+}
 
-class messageParser extends Transform {
+export class messageParser extends Transform {
   Envelope;
   seq;
   buffer;
   readPointer;
+  basebufferSize;
+  bufferSize;
+  bufferIncrement;
   writePointer;
   maxWritePointer;
   lastDecreased;
@@ -137,12 +147,4 @@ class messageParser extends Transform {
   _flush(callback) {
     callback();
   }
-}
-module.exports = messageParser;
-const crypto = require('crypto');
-function getChecksum(buffer) {
-  const hash = crypto.createHash('sha256');
-  hash.update(buffer);
-  const checksum = hash.digest('hex');
-  return checksum;
 }

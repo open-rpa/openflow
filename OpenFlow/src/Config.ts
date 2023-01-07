@@ -180,7 +180,7 @@ export class dbConfig extends Base {
         Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval.toString() : Config.getEnv("ping_clients_interval", (10000).toString()))
         Config.websocket_message_callback_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.websocket_message_callback_timeout) ? conf.websocket_message_callback_timeout.toString() : Config.getEnv("websocket_message_callback_timeout", (10000).toString()))
 
-        Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("otel_trace_pingclients", "false"));
+        Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_pingclients) ? conf.otel_trace_pingclients : Config.getEnv("otel_trace_pingclients", "false"));
         Config.otel_trace_dashboardauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_dashboardauth) ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
         Config.otel_trace_include_query = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_include_query) ? conf.otel_trace_include_query : Config.getEnv("otel_trace_include_query", "false"));
         Config.otel_trace_connection_ips = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_connection_ips) ? conf.otel_trace_connection_ips : Config.getEnv("otel_trace_connection_ips", "false"));
@@ -283,7 +283,7 @@ export class Config {
         Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
         Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
         Config.persist_user_impersonation = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
-        Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
+        Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
         Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
         Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
@@ -514,7 +514,7 @@ export class Config {
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
-    public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
+    public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
 
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
     public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
