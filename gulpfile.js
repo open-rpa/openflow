@@ -241,6 +241,8 @@ gulp.task("browserify", function () {
 // ]));
 gulp.task("compose", shell.task([
     // docker buildx create --name openiap --use
+    // linux workaround ?
+    // docker run -it --rm --privileged tonistiigi/binfmt --install all
     // docker buildx use default
     // docker buildx build --platform linux/amd64 -t openiap/openflow:edge .
     `docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push .`,

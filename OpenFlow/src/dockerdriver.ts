@@ -14,7 +14,8 @@ export class dockerdriver implements i_nodered_driver {
             await docker.listContainers();
             return true;
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.info("Docker not detected: " + error.message, null);
+            // Logger.instanse.error(error, null);
         }
         return false;
     }
