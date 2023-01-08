@@ -1,3 +1,30 @@
+<script type="text/javascript">
+function validate(name) {
+  return function () {
+    if (name == "priority" && this[name] == null) {
+      this[name] = "wipriority";
+      this[name + "type"] = "msg";
+    } else if (name == "success_wiq" && this[name] == null) {
+      this[name] = "success_wiq";
+      this[name + "type"] = "msg";
+    } else if (name == "failed_wiq" && this[name] == null) {
+      this[name] = "failed_wiq";
+      this[name + "type"] = "msg";
+    }
+    // if (this[name] == null || this[name] == "") {
+    //   if (name == "entities" && this.inputfield != null) {
+    //     this[name] = this.inputfield; return true;
+    //     this[name + "type"] = "msg";
+    //   }
+    //   return false;
+    // }
+    // if(this[name + "type"] == null || this[name + "type"] == "") {
+    //   this[name] = "msg." + this[name];
+    // }
+    return RED.validators.typedInput(name);
+  }
+}
+</script>
 <script type="text/x-red" data-template-name="iworkitemqueue-config">
 <div class="form-row">
 <label><i class="icon-host"></i> wiq</label>
@@ -54,7 +81,7 @@ RED.nodes.registerType('iworkitemqueue-config', {
 <div class="form-row">
   <label><i class="fa fa-tag"></i> Priority</label>
   <input type="hidden" id="node-input-prioritytype">
-  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set how important this it is, 0 = higest, 99 lowest">
 </div>
 <div class="form-row">
   <label><i class="fa fa-tag"></i> Files</label>
@@ -86,19 +113,19 @@ RED.nodes.registerType('workitem addworkitem', {
   defaults: {
     name: { value: "" },
     config: { value: "", type: "iworkitemqueue-config", required: true },
-    payload: { value: "payload", validate: validate("payloadtype") },
+    payload: { value: "payload", validate: validate("payload") },
     payloadtype: { value: "" },
-    topic: { value: "topic", validate: validate("topictype") },
+    topic: { value: "topic", validate: validate("topic") },
     topictype: { value: "" },
-    nextrun: { value: "nextrun", validate: validate("nextruntype") },
+    nextrun: { value: "nextrun", validate: validate("nextrun") },
     nextruntype: { value: "" },
-    priority: { value: "3", validate: validate("prioritytype") },
+    priority: { value: "2", validate: validate("priority") },
     prioritytype: { value: "" },
-    files: { value: "files", validate: validate("filestype") },
+    files: { value: "files", validate: validate("files") },
     filestype: { value: "msg" },
-    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiq") },
     success_wiqtype: { value: "" },
-    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiq") },
     failed_wiqtype: { value: "" },
   },
   inputs: 1,
@@ -111,43 +138,36 @@ RED.nodes.registerType('workitem addworkitem', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.payloadtype === null) $("#node-input-payloadtype").val('msg');
     $("#node-input-payload").typedInput({
       default: 'msg',
       typeField: $("#node-input-payloadtype"),
       types: ['msg']
     });
-    if (this.topictype === null) $("#node-input-topictype").val('msg');
     $("#node-input-topic").typedInput({
       default: 'msg',
       typeField: $("#node-input-topictype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
     $("#node-input-nextrun").typedInput({
       default: 'msg',
       typeField: $("#node-input-nextruntype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
     $("#node-input-priority").typedInput({
-      default: 'msg',
+      default: 'num',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
     });
-    if (this.filestype === null) $("#node-input-filestype").val('msg');
     $("#node-input-files").typedInput({
       default: 'msg',
       typeField: $("#node-input-filestype"),
       types: ['msg', 'flow', 'global']
     });
-    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
     $("#node-input-success_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-success_wiqtype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
     $("#node-input-failed_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-failed_wiqtype"),
@@ -175,7 +195,7 @@ RED.nodes.registerType('workitem addworkitem', {
 <div class="form-row">
   <label><i class="fa fa-tag"></i> Priority</label>
   <input type="hidden" id="node-input-prioritytype">
-  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set time when this can be processed">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set how important this it is, 0 = higest, 99 lowest">
 </div>
 <div class="form-row">
   <label>Success Queue</label>
@@ -202,15 +222,15 @@ RED.nodes.registerType('workitem addworkitems', {
   defaults: {
     name: { value: "" },
     config: { value: "", type: "iworkitemqueue-config", required: true },
-    workitems: { value: "workitems", validate: validate("workitemstype") },
+    workitems: { value: "workitems", validate: validate("workitems") },
     workitemstype: { value: "" },
-    nextrun: { value: "nextrun", validate: validate("nextruntype") },
+    nextrun: { value: "nextrun", validate: validate("nextrun") },
     nextruntype: { value: "" },
-    priority: { value: "3", validate: validate("prioritytype") },
+    priority: { value: "2", validate: validate("priority") },
     prioritytype: { value: "" },
-    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiq") },
     success_wiqtype: { value: "" },
-    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiq") },
     failed_wiqtype: { value: "" },
   },
   inputs: 1,
@@ -223,31 +243,26 @@ RED.nodes.registerType('workitem addworkitems', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.workitemstype === null) $("#node-input-workitemstype").val('msg');
     $("#node-input-workitems").typedInput({
       default: 'msg',
       typeField: $("#node-input-workitemstype"),
       types: ['msg', 'json']
     });
-    if (this.nextruntype === null) $("#node-input-nextruntype").val('msg');
     $("#node-input-nextrun").typedInput({
       default: 'msg',
       typeField: $("#node-input-nextruntype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.prioritytype === null) $("#node-input-prioritytype").val('num');
     $("#node-input-priority").typedInput({
-      default: 'msg',
+      default: 'num',
       typeField: $("#node-input-prioritytype"),
       types: ['msg', 'num', 'flow', 'global']
     });
-    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
     $("#node-input-success_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-success_wiqtype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
     $("#node-input-failed_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-failed_wiqtype"),
@@ -290,6 +305,11 @@ RED.nodes.registerType('workitem addworkitems', {
   <input style="width:70%" type="text" id="node-input-files" placeholder="Set this to, to add or update files on this workitem">
 </div>
 <div class="form-row">
+  <label><i class="fa fa-tag"></i> Priority</label>
+  <input type="hidden" id="node-input-prioritytype">
+  <input style="width:70%" type="text" id="node-input-priority" placeholder="Set how important this it is, 0 = higest, 99 lowest">
+</div>
+<div class="form-row">
   <label><i class="fa fa-tag"></i> Error</label>
   <input type="hidden" id="node-input-errortype">
   <input style="width:70%" type="text" id="node-input-error" placeholder="Set this to, to add an error description when retrying or failing">
@@ -305,6 +325,11 @@ RED.nodes.registerType('workitem addworkitems', {
   <input style="width:70%" type="text" id="node-input-failed_wiq" placeholder="On failure add to this queue">
 </div>
 <div class="form-row">
+  <label>Next run</label>
+  <input type="hidden" id="node-input-nextruntype">
+  <input style="width:70%" type="text" id="node-input-nextrun" placeholder="Define a time when to next retry">
+</div>
+<div class="form-row">
   <label ><i class="fa fa-tag"></i> Name</label>
   <input type="text" id="node-input-name" placeholder="Node name">
 </div>
@@ -318,19 +343,23 @@ RED.nodes.registerType('workitem updateworkitem', {
   color: "#a6bbcf",
   defaults: {
     name: { value: "" },
-    workitem: { value: "payload", validate: validate("workitemtype") },
+    workitem: { value: "payload", validate: validate("workitem") },
     workitemtype: { value: "" },
-    ignoremaxretries: { value: "ignoremaxretries", validate: validate("ignoremaxretriestype") },
+    ignoremaxretries: { value: "ignoremaxretries", validate: validate("ignoremaxretries") },
     ignoremaxretriestype: { value: "" },
-    files: { value: "newfiles", validate: validate("filestype") },
+    files: { value: "newfiles", validate: validate("files") },
     filestype: { value: "msg" },
-    error: { value: "error", validate: validate("errortype") },
+    priority: { value: "wipriority", validate: validate("priority") },
+    prioritytype: { value: "msg" },
+    error: { value: "error", validate: validate("error") },
     errortype: { value: "msg" },
     state: { value: "successful", required: true },
-    success_wiq: { value: "success_wiq", validate: validate("success_wiqtype") },
+    success_wiq: { value: "success_wiq", validate: validate("success_wiq") },
     success_wiqtype: { value: "" },
-    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiqtype") },
+    failed_wiq: { value: "failed_wiq", validate: validate("failed_wiq") },
     failed_wiqtype: { value: "" },
+    nextrun: { value: "nextrun", validate: validate("nextrun") },
+    nextruntype: { value: "" },
   },
   inputs: 1,
   outputs: 1,
@@ -342,40 +371,44 @@ RED.nodes.registerType('workitem updateworkitem', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
     $("#node-input-workitem").typedInput({
       default: 'msg',
       typeField: $("#node-input-workitemtype"),
       types: ['msg', 'str', 'flow', 'global', 'json']
     });
-    if (this.ignoremaxretriestype === null) $("#node-input-ignoremaxretriestype").val('msg');
     $("#node-input-ignoremaxretries").typedInput({
       default: 'msg',
       typeField: $("#node-input-ignoremaxretriestype"),
       types: ['msg', 'bool', 'flow', 'global']
     });
-    if (this.filestype === null) $("#node-input-filestype").val('msg');
     $("#node-input-files").typedInput({
       default: 'msg',
       typeField: $("#node-input-filestype"),
       types: ['msg', 'flow', 'global']
     });
-    if (this.errortype === null) $("#node-input-errortype").val('msg');
+    $("#node-input-priority").typedInput({
+      default: 'str',
+      typeField: $("#node-input-prioritytype"),
+      types: ['msg', 'num', 'flow', 'global']
+    });
     $("#node-input-error").typedInput({
       default: 'msg',
       typeField: $("#node-input-errortype"),
       types: ['msg', 'flow', 'global']
     });
-    if (this.success_wiqtype === null) $("#node-input-success_wiqtype").val('str');
     $("#node-input-success_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-success_wiqtype"),
       types: ['msg', 'str', 'flow', 'global']
     });
-    if (this.failed_wiqtype === null) $("#node-input-failed_wiqtype").val('str');
     $("#node-input-failed_wiq").typedInput({
       default: 'msg',
       typeField: $("#node-input-failed_wiqtype"),
+      types: ['msg', 'str', 'flow', 'global']
+    });
+    $("#node-input-nextrun").typedInput({
+      default: 'msg',
+      typeField: $("#node-input-nextruntype"),
       types: ['msg', 'str', 'flow', 'global']
     });
   }
@@ -419,9 +452,9 @@ RED.nodes.registerType('workitem popworkitem', {
     name: { value: "" },
     download: { value: "false", required: true },
     config: { value: "", type: "iworkitemqueue-config", required: true },
-    workitem: { value: "payload", validate: validate("workitemtype") },
+    workitem: { value: "payload", validate: validate("workitem") },
     workitemtype: { value: "" },
-    files: { value: "files", validate: validate("filestype") },
+    files: { value: "files", validate: validate("files") },
     filestype: { value: "msg" },
   },
   inputs: 1,
@@ -435,13 +468,11 @@ RED.nodes.registerType('workitem popworkitem', {
     return this.name ? "node_label_italic" : "";
   },
   oneditprepare: function () {
-    if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
     $("#node-input-workitem").typedInput({
       default: 'msg',
       typeField: $("#node-input-workitemtype"),
       types: ['msg']
     });
-    if (this.filestype === null) $("#node-input-filestype").val('msg');
     $("#node-input-files").typedInput({
       default: 'msg',
       typeField: $("#node-input-filestype"),
@@ -473,7 +504,7 @@ RED.nodes.registerType('workitem popworkitem', {
     color: "#a6bbcf",
     defaults: {
       name: { value: "" },
-      workitem: { value: "payload", validate: validate("workitemtype") },
+      workitem: { value: "payload", validate: validate("workitem") },
       workitemtype: { value: "" },
     },
     inputs: 1,
@@ -486,7 +517,6 @@ RED.nodes.registerType('workitem popworkitem', {
       return this.name ? "node_label_italic" : "";
     },
     oneditprepare: function () {
-      if (this.workitemtype === null) $("#node-input-workitemtype").val('msg');
       $("#node-input-workitem").typedInput({
         default: 'msg',
         typeField: $("#node-input-workitemtype"),

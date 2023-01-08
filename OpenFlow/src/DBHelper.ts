@@ -777,7 +777,7 @@ export class DBHelper {
                 "$or": [
                     { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
                     { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
-            }, collectionname: "mq", jwt: Crypt.rootToken()
+            }, top:1000, collectionname: "mq", jwt: Crypt.rootToken()
         }, span);
     }
     public async GetPushableQueues(parent: Span): Promise<WorkitemQueue[]> {

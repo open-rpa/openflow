@@ -3976,6 +3976,21 @@ export class EntityCtrl extends entityCtrl<Base> {
             }
         });
     }
+    cached = {}
+    getstep(key, obj) {
+        if(this.gettype(obj) == "number")
+        {
+            if (obj.toString().indexOf(".") > -1) {
+                var decimals = obj.toString().split(".")[1].length;
+                this.cached[key] = 1 / Math.pow(10, decimals);
+                return this.cached[key];
+            } else {
+                if (this.cached[key]) return this.cached[key];
+            }
+        }
+        this.cached[key] = 1;
+        return 1;
+    }
     gettype(obj) {
         return typeof obj;
     }
@@ -6723,7 +6738,7 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workitem" };
         this.collection = "workitems";
         this.searchfields = ["name", "state", "wiq"];
-        this.baseprojection = { name: 1, state: 1, wiq: 1, retries: 1, lastrun: 1, nextrun: 1 };
+        this.baseprojection = { name: 1, state: 1, wiq: 1, retries: 1, lastrun: 1, nextrun: 1, priority: 1 };
         this.postloadData = this.processData;
         if (this.userdata.data.WorkitemsCtrl) {
             this.basequery = this.userdata.data.WorkitemsCtrl.basequery;
@@ -6851,6 +6866,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                 this.model.retries = 0;
                 this.model.state = "new";
                 this.model.payload = {};
+                this.model.priority = 2;
                 if (this.userdata.data && this.userdata.data.WorkitemsCtrl) this.model.wiq = this.userdata.data.WorkitemsCtrl.queue;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
@@ -6881,6 +6897,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                     q.name = model.name;
                     q.wiq = model.wiq;
                     q.payload = model.payload;
+                    q.wipriority = model.priority;
                     _msg.command = 'addworkitem';
                     _msg.data = JSON.stringify(q);
                     const result: AddWorkitemMessage = await WebSocketClient.instance.Send<AddWorkitemMessage>(_msg, 1);
@@ -6891,6 +6908,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
                     q.name = model.name;
                     q.state = model.state;
                     q.payload = model.payload;
+                    q.wipriority = model.priority;
                     _msg.command = 'updateworkitem';
                     _msg.data = JSON.stringify(q);
                     const result: UpdateWorkitemMessage = await WebSocketClient.instance.Send<UpdateWorkitemMessage>(_msg, 1);
@@ -6930,7 +6948,7 @@ export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workitemqueue" };
         this.collection = "mq";
         this.searchfields = ["name"];
-        this.baseprojection = { name: 1, maxretries: 1, projectid: 1, workflowid: 1, robotqueue: 1, amqpqueue: 1 };
+        this.baseprojection = { name: 1, maxretries: 1, projectid: 1, workflowid: 1, robotqueue: 1, amqpqueue: 1, _createdby:1 };
 
         this.postloadData = this.processData;
         if (this.userdata.data.WorkitemQueuesCtrl) {
@@ -7021,6 +7039,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
     public users: Base[] = [];
     public amqpqueues: Base[] = [];
     public workitemqueues: Base[] = [];
+    public stats: string = "calculating...";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7085,6 +7104,23 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         if (NoderedUtil.IsNullEmpty(this.model.success_wiqid)) this.model.success_wiqid = "";
         if (NoderedUtil.IsNullEmpty(this.model.failed_wiqid)) this.model.failed_wiqid = "";
         await this.loadselects();
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        var total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+        // this.stats = total + " items";
+        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        if(total > 0) {
+            var newitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "new" } });
+            var successfulitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "successful" } });
+            var faileditems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "failed" } });
+            var processingitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "processing" } });
+            this.stats = "";
+            if(newitems > 0) this.stats += "New: " + newitems;
+            if(successfulitems > 0) this.stats += " Successful: " + successfulitems;
+            if(faileditems > 0) this.stats += " Failed: " + faileditems;
+            if(processingitems > 0) this.stats += " Processing: " + processingitems;
+        } else {
+            this.stats = "No items";
+        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 

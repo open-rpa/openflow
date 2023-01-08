@@ -4565,6 +4565,7 @@ export class Message {
             if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
             wi.priority = msg.priority;
             wi.nextrun = msg.nextrun;
+            if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
             wi.failed_wiq = msg.failed_wiq;
             wi.failed_wiqid = msg.failed_wiqid;
@@ -4760,6 +4761,8 @@ export class Message {
                 wi.payload = item.payload ? item.payload : {};
                 if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
                 wi.priority = item.priority;
+                if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
+                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
                 wi.nextrun = item.nextrun;
                 wi.state = "new"
                 wi.retries = 0;
@@ -4920,6 +4923,7 @@ export class Message {
                 if (NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = "application";
             }
             if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
+            if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
             var oldstate = wi.state;
@@ -4944,6 +4948,9 @@ export class Message {
                         wi.username = null;
                         wi.nextrun = new Date(new Date().toISOString());
                         wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
+                        if(!NoderedUtil.IsNullEmpty(msg.nextrun)) {
+                            wi.nextrun = new Date(msg.nextrun);
+                        }
                     } else {
                         wi.state = "failed";
                     }

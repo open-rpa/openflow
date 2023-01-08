@@ -21,6 +21,7 @@
       <th ng-click="ctrl.ToggleOrder('name')"><strong translate lib="web">name</strong></th>
       <th ng-click="ctrl.ToggleOrder('maxretries')"><strong translate lib="web">maxretries</strong></th>
       <th ng-click="ctrl.ToggleOrder('projectid')"><strong translate lib="web">projectid</strong></th>
+      <th ng-click="ctrl.ToggleOrder('_createdby')" class="w-150"><strong translate lib="web">createdby</strong></th>
       <th class="text-right"></th>
     </tr>
   </thead>
@@ -35,6 +36,7 @@
           {{model.projectid}}
         </a>
       </td>
+      <td class="text-truncate">{{model._createdby}}</td>
       <td>
         <div class="w-200 text-right">
           <a class="btn" ng-href="#/WorkitemQueue/{{model._id}}" title="Edit Workitem queue">
