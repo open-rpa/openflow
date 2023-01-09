@@ -303,9 +303,6 @@ export class WebSocketServerClient {
                 delete this.messageQueue[keys[i]];
             }
             this._exchanges = [];
-        } catch (error) {
-            Logger.instanse.error(error, span, Logger.parsecli(this));
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -342,8 +339,6 @@ export class WebSocketServerClient {
                     }
                 }
             }
-        } catch (error) {
-            throw error;
         } finally {
             semaphore.up();
             Logger.otel.endSpan(span);
@@ -407,8 +402,6 @@ export class WebSocketServerClient {
             if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
             return null;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -482,18 +475,13 @@ export class WebSocketServerClient {
                     this._queuescurrentstr = this._queuescurrent.toString();
                     this._queues.push(queue);
                 }
-            } catch (error) {
-                throw error
-            }
-            finally {
+            } finally {
                 if (queue) semaphore.up();
             }
             if (queue != null) {
                 return queue.queue;
             }
             return null;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -539,7 +527,11 @@ export class WebSocketServerClient {
                         const singleresult: Message = Message.frommessage(first, first.data);
                         singleresult.priority = first.priority;
                         if (singleresult.command != "ping" && singleresult.command != "pong") {
-                            singleresult.Process(this);
+                            singleresult.Process(this).then(msg=> {
+                                this.Send(msg);
+                            }) .catch((error) => {
+                                Logger.instanse.error(error, span, Logger.parsecli(this));
+                            });
                         }
                     } else {
                         let chunk: string = "";
@@ -550,7 +542,11 @@ export class WebSocketServerClient {
                         const result: Message = Message.frommessage(first, chunk);
                         result.priority = first.priority;
                         if (result.command != "ping" && result.command != "pong") {
-                            result.Process(this);
+                            result.Process(this).then(msg=> {
+                                this.Send(msg);
+                            }) .catch((error) => {
+                                Logger.instanse.error(error, span, Logger.parsecli(this));
+                            });
                         }
 
                     }

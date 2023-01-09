@@ -26,8 +26,6 @@ export class Crypt {
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -38,8 +36,6 @@ export class Crypt {
             if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }

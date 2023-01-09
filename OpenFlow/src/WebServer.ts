@@ -22,6 +22,7 @@ import * as config from "./proto/config"
 import { protowrap } from "./proto/protowrap"
 import { client } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
+import { Message } from "./Messages/Message";
 const { info, warn, err } = config
 
 var _hostname = "";
@@ -288,55 +289,57 @@ export class WebServer {
 
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
     }
-    public static async onMessage(client: any, message: any) {
-        const [command, msg, reply] = protowrap.unpack(message);
+    public static async onMessage(client: client, message: any) {
+        let command, msg, reply;
+        try {
+            [command, msg, reply] = protowrap.unpack(message);
+        } catch (error) {
+            message.command = "error";
+            if (typeof error == "string") error = new Error(error);
+            message.data = message.data = protowrap.pack("error", error);
+            return message;
+        }
         try {
             client.lastheartbeat = new Date();
             client.lastheartbeatstr = client.lastheartbeat.toISOString();
             client.lastheartbeatsec = (client.lastheartbeat.getTime() / 1000).toString();
-            if (command == "Noop" || command == "Pong") {
-                reply.command = "Noop";
-            } else if (command == "Ping") {
-                reply.command = "Pong";
-            } else if (command == "GetElement") {
+            if (command == "noop" || command == "pong") {
+                reply.command = "noop";
+            } else if (command == "ping") {
+                reply.command = "pong";
+            } else if (command == "getelement") {
                 msg.xpath = "Did you say " + msg.xpath + " ?";
                 reply.data = protowrap.pack(command, msg);
-            } else if (command == "Signin") {
-                delete msg.username; delete msg.password;
-                msg.jwt = "JWTsecretTOKEN"
-                reply.data = protowrap.pack(command, msg);
-                client.user = msg;
-                client.signedin = true;
-            } else if (command == "Send") {
+            } else if (command == "send") {
                 let len = msg.count;
-                reply.command = "GetElement"
+                reply.command = "getelement"
                 for (var i = 1; i < len; i++) {
-                    var payload = { ...reply, data: protowrap.pack("GetElement", { xpath: "test" + (i + 1) }) };
+                    var payload = { ...reply, data: protowrap.pack("getelement", { xpath: "test" + (i + 1) }) };
                     protowrap.sendMesssag(client, payload, null, true);
                 }
-                reply.data = protowrap.pack("GetElement", { xpath: "test1" })
+                reply.data = protowrap.pack("getelement", { xpath: "test1" })
 
-            } else if (command == "Upload") {
+            } else if (command == "upload") {
                 var filename = msg.filename;
                 let name = path.basename(filename);
                 name = "upload.png";
                 const result = await protowrap.ReceiveFileContent(client, reply.rid, name, config.SendFileHighWaterMark);
-                reply.data = protowrap.pack("Upload", result);
+                reply.data = protowrap.pack("upload", result);
                 // @ts-ignore
                 info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
-            } else if (command == "Download") {
+            } else if (command == "download") {
                 var filename = msg.filename;
                 await protowrap.sendFileContent(client, reply.rid, filename, config.SendFileHighWaterMark);
                 msg.filename = path.basename(filename);
                 reply.data = protowrap.pack(command, msg);
-            } else if (command == "ClientConsole") {
+            } else if (command == "clientconsole") {
                 var Readable = require('stream').Readable;
                 var rs = new Readable;
                 rs._read = function () { };
                 protowrap.SetStream(client, rs, reply.rid);
                 protowrap.sendMesssag(client, reply, null, true);
                 rs.pipe(process.stdout); // pipe the read stream to stdout
-            } else if (command == 'Console') {
+            } else if (command == "console") {
                 var old = process.stdout.write;
                 const rid = reply.rid;
                 // @ts-ignore
@@ -352,12 +355,21 @@ export class WebServer {
                     }
                 })(process.stdout.write);
             } else {
-                throw new Error("Unknown command " + command);
+                var _msg = Message.fromjson({ ...message, data: msg });
+                var result = await _msg.Process(client as any);
+                reply.command = result.command + "reply"
+                if(reply.command == "errorreply") reply.command = "error";
+                var res = JSON.parse(result.data);
+                delete res.password;
+                if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
+                if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
+                reply.data = protowrap.pack(reply.command, res);
+                // throw new Error("Unknown command " + command);
             }
         } catch (error) {
-            reply.command = "Error";
+            reply.command = "error";
             if (typeof error == "string") error = new Error(error);
-            reply.data = reply.data = protowrap.pack("Error", error);
+            reply.data = protowrap.pack("error", error);
         }
         return reply;
     }

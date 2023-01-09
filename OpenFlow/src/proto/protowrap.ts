@@ -25,7 +25,7 @@ export class protowrap {
   static PROTO_PATH: string;
   static packageDefinition: protoLoader.PackageDefinition;
   static openiap_proto: grpc.GrpcObject | grpc.ServiceClientConstructor | grpc.ProtobufTypeDefinition;
-  static Envelope: any; // = new protobuf.Type("Envelope");
+  static Envelope: any; // = new protobuf.Type("envelope");
   static protoRoot: any;
   static async init() {
     this.PROTO_PATH = path.join(__dirname, "messages/base.proto")
@@ -40,7 +40,7 @@ export class protowrap {
       });
     this.openiap_proto = grpc.loadPackageDefinition(this.packageDefinition).openiap;
     this.protoRoot = await protobuf.load(this.PROTO_PATH);
-    this.Envelope = this.protoRoot.lookupType("openiap.Envelope");
+    this.Envelope = this.protoRoot.lookupType("openiap.envelope");
   }
   static RPC(client: client, payload) {
     const [id, promise] = this._RPC(client, payload);
@@ -84,7 +84,7 @@ export class protowrap {
   
       const ws = fs.createWriteStream(name, { highWaterMark });
       const startTime = new Date().getTime();
-      const [rid, promise] = this._RPC(client, { command: "Download", data: this.pack("Download", {filename})  });
+      const [rid, promise] = this._RPC(client, { command: "download", data: this.pack("download", {filename})  });
       promise.catch((err) => {
         reject(err);
       });
@@ -173,7 +173,7 @@ export class protowrap {
   }
   static UploadFile(client:client, filename:string) {
     // Send upload command, server will respond, once upload is complete
-    const [rid, promise] = this._RPC(client, { command: "Upload", data: this.pack("Upload", {filename}) });
+    const [rid, promise] = this._RPC(client, { command: "upload", data: this.pack("upload", {filename}) });
     // send file content using the ID used for upload command
     var promise2 = this.sendFileContent(client, rid, filename, config.SendFileHighWaterMark);
     // catch errors doing streaming file content
@@ -221,63 +221,67 @@ export class protowrap {
     });
   }
   static IsPendingReply(client: client, payload: any) {
-    const [ command, msg, reply ] = this.unpack(payload);
-    const rid = payload.rid;
-    dumpmessage("RCV", payload);
-    if (rid == null || rid == "") return false;
-    if (client.replies[rid] && command != "beginstream" && command != "stream" && command != "endstream") {
-      const { resolve, reject, dt } = client.replies[rid];
-      if (resolve) {
-        try {
-          if (command == "Error") {
-            var er = new Error(msg.message);
-            var error = new ServerError(msg.message, msg.stack);
-            reject(error);
-          } else {
-            resolve(payload);
+    try {
+      const [ command, msg, reply ] = this.unpack(payload);
+      const rid = payload.rid;
+      dumpmessage("RCV", payload);
+      if (rid == null || rid == "") return false;
+      if (client.replies[rid] && command != "beginstream" && command != "stream" && command != "endstream") {
+        const { resolve, reject, dt } = client.replies[rid];
+        if (resolve) {
+          try {
+            if (command == "error") {
+              var er = new Error(msg.message);
+              var error = new ServerError(msg.message, msg.stack);
+              reject(error);
+            } else {
+              resolve(payload);
+            }
+          } catch (error) {
+            err(error);
+            return reject(error);
           }
-        } catch (error) {
-          err(error);
-          return reject(error);
         }
+        delete client.replies[rid];
+      } else if (client.streams[rid]) {
+        const { command } = payload;
+        if (command == "error") {
+          const s = client.streams[rid].stream;
+          s.emit("error", new Error(payload.data.toString()));
+        } else if (command == "stream") {
+          const s = client.streams[rid].stream;
+          if (s.push) {
+            s.push(msg.data)
+          } else {
+            s.write(msg.data)
+          }
+          client.streams[rid].chunks++;
+          s.bytes += payload.data.length;
+        } else if (command == "beginstream") {
+          client.streams[rid].stat  =  {}
+          if(msg.stat) client.streams[rid].stat = msg.stat;
+          if(msg.checksum) client.streams[rid].checksum = msg.checksum;
+        } else if (command == "endstream") {
+          const s = client.streams[rid].stream;
+          if (s.push) {
+            client.streams[rid].stream.push(null);
+          } else {
+            client.streams[rid].stream.end();
+          }
+          // streams[rid].stream.emit("finish");
+          // streams[rid].stream.end();
+          // streams[rid].stream.emit("end");
+          // streams[rid].stream.destroy();
+          // info("Stream ended for rid: " + rid + " chunks: " + streams[rid].chunks + " bytes: " + streams[rid].bytes);
+          delete client.streams[rid];
+        }
+      } else {
+        return false;
       }
-      delete client.replies[rid];
-    } else if (client.streams[rid]) {
-      const { command } = payload;
-      if (command == "Error") {
-        const s = client.streams[rid].stream;
-        s.emit("error", new Error(payload.data.toString()));
-      } else if (command == "stream") {
-        const s = client.streams[rid].stream;
-        if (s.push) {
-          s.push(msg.data)
-        } else {
-          s.write(msg.data)
-        }
-        client.streams[rid].chunks++;
-        s.bytes += payload.data.length;
-      } else if (command == "beginstream") {
-        client.streams[rid].stat  =  {}
-        if(msg.stat) client.streams[rid].stat = msg.stat;
-        if(msg.checksum) client.streams[rid].checksum = msg.checksum;
-      } else if (command == "endstream") {
-        const s = client.streams[rid].stream;
-        if (s.push) {
-          client.streams[rid].stream.push(null);
-        } else {
-          client.streams[rid].stream.end();
-        }
-        // streams[rid].stream.emit("finish");
-        // streams[rid].stream.end();
-        // streams[rid].stream.emit("end");
-        // streams[rid].stream.destroy();
-        // info("Stream ended for rid: " + rid + " chunks: " + streams[rid].chunks + " bytes: " + streams[rid].bytes);
-        delete client.streams[rid];
-      }
-    } else {
+      return true;
+    } catch (error) {
       return false;
     }
-    return true;
   }
   static get(url) {
     return new Promise((resolve, reject) => {
@@ -299,7 +303,7 @@ export class protowrap {
       });
     })
   }
-  static post(agent, url, body) {
+  static post(jwt, agent, url, body) {
     return new Promise((resolve, reject) => {
       try {
         var provider = http;
@@ -316,6 +320,9 @@ export class protowrap {
             "Content-Length": Buffer.byteLength(body)
           }
         };
+        if(jwt != null && jwt != "") {
+          options.headers["Authorization"] = "Bearer " + jwt;
+        }
         if (url.startsWith("https")) {
           delete options.agent;
           // @ts-ignore
@@ -380,7 +387,7 @@ export class protowrap {
       if (config.role() == "client") {
         var url = "http://localhost:" + client.port + "/v2/";
         if(client.port == 443) url = "https://localhost:" + client.port + "/v2/";
-        this.post(client.agent, url, JSON.stringify(payload)).then((data:any) => {
+        this.post(client.jwt, client.agent, url, JSON.stringify(payload)).then((data:any) => {
           var payload = JSON.parse(data);
           if (payload && payload.data && payload.data.type && payload.data.type.toLowerCase() == "buffer") {
             payload.data = Buffer.from(payload.data.data);
@@ -474,7 +481,7 @@ export class protowrap {
       });
       var url = "http://" + host + ":" + port + "/v2/";
       if(port == 443) url = "https://" + host + ":" + port + "/v2/";
-      this.post(result.agent, url, JSON.stringify({ "command": "Noop" })).then((data: any) => {
+      this.post(result.jwt, result.agent, url, JSON.stringify({ "command": "noop" })).then((data: any) => {
         result.connected = true;
         result.connecting = false;
         result.onConnected(result);
@@ -511,7 +518,7 @@ export class protowrap {
             if (message != null) {
               if (!this.IsPendingReply(result, message)) {
                 var _payload = await result.onMessage(result, message);
-                if (_payload && _payload.command != "Noop") this.sendMesssag(result, _payload, null, true);
+                if (_payload && _payload.command != "noop") this.sendMesssag(result, _payload, null, true);
               }  
             }
           } catch (error) {
@@ -544,7 +551,7 @@ export class protowrap {
             if (message != null) {
               if (!this.IsPendingReply(result, message)) {
                 var _payload = await result.onMessage(result, message);
-                if (_payload && _payload.command != "Noop") this.sendMesssag(result, _payload, null, true);
+                if (_payload && _payload.command != "noop") this.sendMesssag(result, _payload, null, true);
               }
             }
           } catch (error) {
@@ -596,7 +603,7 @@ export class protowrap {
           if (message != null) {
             if (!this.IsPendingReply(result, message)) {
               var _payload = await result.onMessage(result, message);
-              if (_payload && _payload.command != "Noop") this.sendMesssag(result, _payload, null, true);
+              if (_payload && _payload.command != "noop") this.sendMesssag(result, _payload, null, true);
             }
           }
         } catch (error) {
@@ -618,7 +625,7 @@ export class protowrap {
       );
       return result;
     } else {
-      throw Error("protocol not supported " + protocol);
+      throw new Error("protocol not supported " + protocol);
     }
   }
   static serve(protocol: clientType, onClientConnected, port, wss, app, http) {
@@ -639,6 +646,12 @@ export class protowrap {
         clientresult.connected = true; clientresult.connecting = false; clientresult.signedin = false;
         await clientresult.Initialize(null, null, null, req);
         onClientConnected(clientresult);
+        // extract Bearer token from authorization header
+        var token = req.headers.authorization;
+        if (token && token.startsWith("Bearer ")) {
+          token = token.slice(7, token.length);
+          clientresult.jwt = token;
+        }
 
         var payload = req.body;
         if (payload && payload.data && payload.data.type && payload.data.type.toLowerCase() == "buffer") {
@@ -706,7 +719,7 @@ export class protowrap {
             if (message != null) {
               if (!this.IsPendingReply(clientresult, message)) {
                 var payload = await clientresult.onMessage(clientresult, message);
-                if (payload && payload.command != "Noop") this.sendMesssag(clientresult, payload, null, true);
+                if (payload && payload.command != "noop") this.sendMesssag(clientresult, payload, null, true);
               }
             }
           } catch (error) {
@@ -750,7 +763,7 @@ export class protowrap {
           //   callback(null, payload);
           // } else if (!this.IsPendingReply(clientresult, payload)) {
           //   var paylad = await clientresult.onMessage(clientresult, payload)
-          //   if (payload && payload.command != "Noop") callback(null, paylad);
+          //   if (payload && payload.command != "noop") callback(null, paylad);
           // } else {
           //   callback(new Error("WHAT???"), null);
           // }
@@ -784,7 +797,7 @@ export class protowrap {
             if (!clientresult) return;
             if (!this.IsPendingReply(clientresult, payload)) {
               var _payload = await clientresult.onMessage(clientresult, payload)
-              if (_payload && _payload.command != "Noop") this.sendMesssag(clientresult, _payload, null, true);
+              if (_payload && _payload.command != "noop") this.sendMesssag(clientresult, _payload, null, true);
             }
           } catch (error) {
             try {
@@ -845,7 +858,7 @@ export class protowrap {
           if (!this.IsPendingReply(clientresult, message)) {
             try {
               var payload = await clientresult.onMessage(clientresult, message)
-              if (payload && payload.command != "Noop") this.sendMesssag(clientresult, payload, null, true);
+              if (payload && payload.command != "noop") this.sendMesssag(clientresult, payload, null, true);
             } catch (error) {
               err(error);
             }
@@ -873,7 +886,7 @@ export class protowrap {
       })
       return result;
     } else {
-      throw Error("Not supported protocol " + protocol);
+      throw new Error("Not supported protocol " + protocol);
     }
   }
   static getFileChecksum(filePath) {

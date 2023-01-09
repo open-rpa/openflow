@@ -3,7 +3,7 @@ import * as  net from "net";
 import * as  grpc from "@grpc/grpc-js";
 import * as  WebSocket from "ws";
 import { protowrap } from "./protowrap"
-import { err, warn, info } from "./config";
+import { err, warn, info, DoPing } from "./config";
 export type clientType = "socket" | "pipe" | "ws" | "grpc" | "rest";
 export type clientAgent = "node" | "browser" | "nodered" | "openrpa";
 export class client {
@@ -18,6 +18,7 @@ export class client {
   public lastheartbeatstr: string = new Date().toISOString();
   public lastheartbeatsec: string = "0";
   public user: any; // User
+  public jwt: string;
   public signedin: boolean = false;
   public connected: boolean = false;
   public connecting: boolean = false;
@@ -54,17 +55,19 @@ export class client {
   }
   async onMessage(client: client, message: any): Promise<any> {
     const [command, msg, reply] = protowrap.unpack(message);
-    if (command == "Ping") {
-      reply.command = "Pong";
+    if (command == "ping") {
+      reply.command = "pong";
     }
     return reply;
   }
   ping(span: any) {
-    info("ping " + this.id + " " + this.protocol + " " + this.remoteip + " " + this.agent);
-    this.lastheartbeat = new Date();
-    this.lastheartbeatstr = this.lastheartbeat.toISOString();
-    this.lastheartbeatsec = (this.lastheartbeat.getTime() / 1000).toString();
-    // noop
+    if(DoPing)  {
+      protowrap.sendMesssag(this, {"command": "ping"}, null, true);
+    } else {
+      this.lastheartbeat = new Date();
+      this.lastheartbeatstr = this.lastheartbeat.toISOString();
+      this.lastheartbeatsec = (this.lastheartbeat.getTime() / 1000).toString();
+      }
   }
   queuecount() {
     return this.queues.length;
@@ -75,8 +78,10 @@ export class client {
     if (this.call != null) this.call.cancel();
     if (this.SendStreamCall != null) this.SendStreamCall.cancel();
     if (this.ReceiveStreamCall != null) this.ReceiveStreamCall.cancel();
-
     info("close " + this.id + " " + this.protocol + " " + this.remoteip + " " + this.agent);
+    this.connected = false;
+    this.connecting = false;
+    // this.onDisconnected(this, null);
   }
 }
 export class changestream {

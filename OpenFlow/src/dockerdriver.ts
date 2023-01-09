@@ -274,10 +274,7 @@ export class dockerdriver implements i_nodered_driver {
                 }
             }
             return result;
-        } catch (error) {
-            throw error
-        }
-        finally {
+        } finally {
             Logger.otel.endSpan(span);
         }
     }
@@ -301,10 +298,7 @@ export class dockerdriver implements i_nodered_driver {
                 if (instance.State == "running") await container.stop();
                 await container.restart();
             }
-        } catch (error) {
-            throw error
-        }
-        finally {
+        } finally {
             Logger.otel.endSpan(span);
         }
     }
@@ -360,10 +354,7 @@ export class dockerdriver implements i_nodered_driver {
             }
             if (result == null) result = "";
             return result;
-        } catch (error) {
-            throw error
-        }
-        finally {
+        } finally {
             Logger.otel.endSpan(span);
         }
 
@@ -392,10 +383,7 @@ export class dockerdriver implements i_nodered_driver {
                     await container.remove();
                 }
             }
-        } catch (error) {
-            throw error
-        }
-        finally {
+        } finally {
             Logger.otel.endSpan(span);
         }
     }

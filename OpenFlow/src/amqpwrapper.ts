@@ -273,8 +273,6 @@ export class amqpwrapper extends events.EventEmitter {
             this.queues = this.queues.filter(q => q.consumerTag != this.replyqueue.consumerTag);
             this.channel.on('return', this.reply_queue_return.bind(this))
             this.channel.on('close', this.reply_queue_close.bind(this));
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -303,8 +301,6 @@ export class amqpwrapper extends events.EventEmitter {
                     this.queues = this.queues.filter(q => q.consumerTag != queue.consumerTag);
                 }
             }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -335,8 +331,6 @@ export class amqpwrapper extends events.EventEmitter {
                 throw new Error("Failed asserting Queue " + queue);
             }
             return q;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -365,8 +359,6 @@ export class amqpwrapper extends events.EventEmitter {
             }
             this.exchanges.push(q);
             return q;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -481,12 +473,8 @@ export class amqpwrapper extends events.EventEmitter {
             }
         } catch (error) {
         }
-        try {
-            if (typeof data !== 'string' && !(data instanceof String)) {
-                data = JSON.stringify(data);
-            }
-        } catch (error) {
-            throw error;            
+        if (typeof data !== 'string' && !(data instanceof String)) {
+            data = JSON.stringify(data);
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange, span);

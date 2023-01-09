@@ -228,8 +228,6 @@ export class LoginProvider {
                     passport.unuse(key);
                 }
             }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -951,8 +949,6 @@ export class LoginProvider {
             res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
             res.end('Unauthorized');
             return;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -1019,8 +1015,6 @@ export class LoginProvider {
                 res.end(JSON.stringify({}));
             }
             res.end();
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }

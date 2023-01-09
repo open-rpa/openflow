@@ -1,13 +1,16 @@
 package openiap;
 syntax = "proto3";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
+import "querys.proto";
 
 service grpcService {
-  rpc RPC (Envelope) returns (Envelope) {}
-  rpc ReceiveStream (Envelope) returns (stream Envelope) {}
-  rpc SendStream (stream Envelope) returns (Envelope) {}
+  rpc RPC (envelope) returns (envelope) {}
+  rpc ReceiveStream (envelope) returns (stream envelope) {}
+  rpc SendStream (stream envelope) returns (envelope) {}
 }
-message Envelope {
+message envelope {
   string command = 1;
   int32 priority = 2;
   int32 seq = 3;
@@ -18,24 +21,24 @@ message Envelope {
   string spanid = 8;
   bytes data = 9;
 }
-message Noop {}
-message Ping {}
-message Pong {}
-message Error {
+message noop {}
+message ping {}
+message pong {}
+message error {
   string message = 1;
   int32 code = 2;
   string stack = 3;
 }
-message GetElement {
+message getelement {
   string xpath = 1;
 }
-message Send {
+message send {
   int32 count = 1;
 }
-message Download {
+message download {
   string filename = 1;
 }
-message Upload {
+message upload {
   string filename = 1;
   int32 bytes = 2;
   int32 chunks = 3;
@@ -43,8 +46,8 @@ message Upload {
   int32 elapsedTime = 5;
   float mbps = 6;
 }
-message Console { }
-message ClientConsole { }
+message console { }
+message clientconsole { }
 message beginstream { 
   string checksum = 1;
   stat stat = 2;
@@ -70,11 +73,39 @@ message stat {
   int32 rdev = 13;
   int32 size = 14;
   int32 uid = 15;
-}  
-message Signin {
+}
+message customcommand {
+  string command = 1;
+  string id = 2;
+  string name = 3;
+  string data = 4;
+}
+message customcommandreply   {
+  bytes result = 1;
+}
+message signin {
   string username = 1;
   string password = 2;
   string jwt = 3;
-  string clientagent = 4;
-  string clientversion = 5;
+  user user = 4;
+}
+message signinreply {
+  string jwt = 3;
+  user user = 4;
+}
+message refreshtoken {
+  string username = 1;
+  string jwt = 2;
+  user user = 3;
+}
+message role {
+  string _id = 1;
+  string name = 2;
+}
+message user {
+  string _id = 1;
+  string name = 2;
+  string username = 3;
+  string email = 4;
+  repeated role roles = 5;
 }

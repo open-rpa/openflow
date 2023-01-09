@@ -340,18 +340,12 @@ export class OAuthProvider {
         const span: Span = Logger.otel.startSubSpan("OAuthProvider.configure", parent);
         try {
             const instance = new OAuthProvider();
-
-            try {
-                OAuthProvider.instance = instance;
-                instance.app = app;
-                // @ts-ignore
-                this.LoadClients().catch(error => {
-                    Logger.instanse.error(error, span);
-                });
-            } catch (error) {
+            OAuthProvider.instance = instance;
+            instance.app = app;
+            // @ts-ignore
+            this.LoadClients().catch(error => {
                 Logger.instanse.error(error, span);
-                throw error;
-            }
+            });
             return instance;
         } catch (error) {
             Logger.instanse.error(error, span);

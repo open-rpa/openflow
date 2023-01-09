@@ -1,0 +1,87 @@
+package openiap;
+syntax = "proto3";
+message listcollections {
+  bool includehist = 1;
+}
+message listcollectionsreply {
+  bytes result = 1;
+}
+message query {
+  string query = 1;
+  string collectionname = 2;
+  string projection = 3;
+  int32 top = 4; 
+  int32 skip = 5; 
+  string orderby = 6;
+  string queryas = 7;
+}
+message queryreply {
+  bytes result = 8;
+}
+message aggregate {
+  string collectionname = 1;
+  string aggregates = 2;
+  string queryas = 3;
+  string hint = 4;
+}
+message aggregatereply {
+  bytes result = 1;
+}
+message count {
+  string collectionname = 1;
+  string query = 2;
+  string queryas = 3;
+}
+message countreply {
+  int32 result = 1;
+}
+message insertone {
+  string collectionname = 1;
+  string item = 2;
+  int32 w = 3;
+  bool j = 4;
+}
+message insertonereply {
+  bytes result = 1;
+}
+message insertmany {
+  string collectionname = 1;
+  string items = 2;
+  int32 w = 3;
+  bool j = 4;
+  bool skipresults = 5;
+}
+message insertmanyreply {
+  bytes results = 1;
+}
+message insertorupdateone {
+  string collectionname = 1;
+  string uniqeness = 2;
+  string item = 3;
+  int32 w = 4;
+  bool j = 5;
+}
+message opresult {
+}
+message insertorupdateonereply {
+  bytes result = 1;
+  opresult opresult = 2;
+}
+message deleteone {
+  string collectionname = 1;
+  string id = 2;
+  bool recursive = 3;
+}
+message deleteonereply {
+  int32 affectedrows = 1;
+}
+message deletemany {
+  string collectionname = 1;
+  string query = 2;
+  bool recursive = 3;
+  repeated string ids = 4;
+}
+message deletemanyreply {
+  int32 affectedrows = 1;
+}
+
