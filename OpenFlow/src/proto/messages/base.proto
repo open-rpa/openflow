@@ -4,7 +4,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
 import "querys.proto";
-
+import "watch.proto";
 service grpcService {
   rpc RPC (envelope) returns (envelope) {}
   rpc ReceiveStream (envelope) returns (stream envelope) {}
@@ -88,6 +88,7 @@ message signin {
   string password = 2;
   string jwt = 3;
   user user = 4;
+  bool ping = 5;
 }
 message signinreply {
   string jwt = 3;

@@ -1,0 +1,17 @@
+package openiap;
+syntax = "proto3";
+message watch { 
+  string collectionname = 1;
+  string aggregates = 2;
+}
+message watchreply { 
+  string id = 1;
+}
+message watchevent {
+  string id = 1;
+  string result = 2;
+}
+message unwatch { 
+  string id = 1;
+}
+message unwatchreply { }

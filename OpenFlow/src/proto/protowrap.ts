@@ -496,7 +496,7 @@ export class protowrap {
       return result;
     } else if (protocol == "grpc") {
       // @ts-ignore
-      result.grpc = new this.openiap_proto.grpcService(host + ":50051", grpc.credentials.createInsecure());
+      result.grpc = new this.openiap_proto.grpcService(host + ":" + port, grpc.credentials.createInsecure());
       result.grpc.RPC({ "command": "hello" }, (error, response) => {
         if (error) {
           this.ClientCleanup(result, result.onDisconnected, error);
@@ -821,7 +821,7 @@ export class protowrap {
       // @ts-ignore
       result.server.addService(this.openiap_proto.grpcService.service, { RPC, ReceiveStream, SendStream });
       // @ts-ignore
-      result.server.bindAsync("0.0.0.0:50051", grpc.ServerCredentials.createInsecure(), () => {
+      result.server.bindAsync("0.0.0.0:" + port, grpc.ServerCredentials.createInsecure(), () => {
         // @ts-ignore
         result.server.start();
       });

@@ -1309,6 +1309,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
+            if(msg.items && typeof msg.items === "string") msg.items = JSON.parse(msg.items);
             msg.results = await Config.db.InsertOrUpdateMany(msg.items, msg.collectionname, msg.uniqeness, msg.skipresults, msg.w, msg.j, msg.jwt, span);
             if (msg.skipresults) msg.results = [];
             delete msg.items;
@@ -1734,6 +1735,11 @@ export class Message {
                         user.device = msg.device;
                     }
                     if (msg.validate_only !== true) {
+                        // @ts-ignore
+                        if(msg.ping == false || msg.ping == true) {
+                            // @ts-ignore
+                            cli.doping = msg.ping;
+                        }
                         Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent, span);
                         if (cli) cli.jwt = msg.jwt;
                         if (cli) cli.user = user;

@@ -477,32 +477,13 @@ export class DatabaseConnection extends events.EventEmitter {
                                     }
                                     if (notify) {
                                         discardspan = false;
-                                        let subspan: Span = Logger.otel.startSpan("Watch " + collectionname + " " + next.operationType + " " + _type, null, null);
-                                        try {
-                                            Logger.instanse.verbose("Notify " + tuser.username + " of " + next.operationType + " " + item.name, span, { collection: collectionname });
-                                            // Logger.instanse.info("Watch: " + JSON.stringify(next.documentKey), subspan);
-                                            const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
-                                            const q = new WatchEventMessage();
-                                            const [traceId, spanId] = Logger.otel.GetTraceSpanId(subspan);
-                                            q.traceId = traceId;
-                                            q.spanId = spanId;
-
-                                            q.id = ids[y];
-                                            q.result = next;
-                                            if (q.result && !q.result.fullDocument) q.result.fullDocument = item;
-                                            if (q.result && q.result.fullDocument) {
-                                                q.result.fullDocument = Config.db.decryptentity(q.result.fullDocument);
-                                                this.parseResult(q.result.fullDocument, client.clientagent, client.clientversion)
-                                            }
-                                            msg.data = JSON.stringify(q);
-                                            client._socketObject.send(msg.tojson(), (err) => {
-                                                if (err) Logger.instanse.warn(err, subspan, { collection: collectionname });
-                                            });
-                                        } catch (error) {
-
-                                        } finally {
-                                            subspan?.end();
+                                        if(!next.fullDocument) next.fullDocument = item;
+                                        if(next.fullDocument) {
+                                            next.fullDocument = Config.db.decryptentity(next.fullDocument);
+                                            this.parseResult(next.fullDocument, client.clientagent, client.clientversion)
+                                            client.SendWatch(stream, next, span);
                                         }
+                                        
                                     }
                                 }
 

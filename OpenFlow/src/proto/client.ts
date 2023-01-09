@@ -13,6 +13,7 @@ export class client {
   public agent: clientAgent;
   public protocol: clientType;
   public version: string;
+  public doping: boolean;
   public created: Date = new Date();
   public lastheartbeat: Date = new Date();
   public lastheartbeatstr: string = new Date().toISOString();
@@ -39,6 +40,7 @@ export class client {
     try {
       this.replies = {};
       this.streams = {};
+      this.doping = DoPing;
       if (ws != null) this.ws = ws;
       if (stream != null) this.stream = stream;
       if (call != null) this.call = call;
@@ -61,7 +63,7 @@ export class client {
     return reply;
   }
   ping(span: any) {
-    if(DoPing)  {
+    if(this.doping)  {
       protowrap.sendMesssag(this, {"command": "ping"}, null, true);
     } else {
       this.lastheartbeat = new Date();
@@ -72,6 +74,37 @@ export class client {
   queuecount() {
     return this.queues.length;
   }
+  async Watch(aggregates: object[], collectionname: string, jwt: string): Promise<string> {
+    if (typeof aggregates === "string") {
+      try {
+        aggregates = JSON.parse(aggregates);
+      } catch (error) {
+      }
+    }
+    // const stream: clsstream = new clsstream();
+    const id = Math.random().toString(36).substring(2, 11);
+    const stream: any = {id, collectionname, aggregates};
+    this.watches[id] = stream;
+    return id;
+  }
+  async UnWatch(id: string, jwt: string): Promise<void> {
+    if (this.watches[id]) {
+        delete this.watches[id];
+    }
+  }
+  SendWatch(watch: any, next: any, span: any) {
+    try {
+        info("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name);
+        var paylad = {"command": "watchevent",
+          "data": protowrap.pack("watchevent", {"id": watch.id, "result": JSON.stringify(next)})}
+        
+        protowrap.sendMesssag(this, paylad, null, true);
+    } catch (error) {
+        console.error(error);
+    } finally {
+    }
+}
+
   Close() {
     if (this.ws != null) this.ws.close();
     if (this.stream != null) this.stream.destroy();

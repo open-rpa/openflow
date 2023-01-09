@@ -61,11 +61,19 @@ message insertorupdateone {
   int32 w = 4;
   bool j = 5;
 }
-message opresult {
-}
 message insertorupdateonereply {
   bytes result = 1;
-  opresult opresult = 2;
+}
+message insertorupdatemany {
+  string collectionname = 1;
+  string uniqeness = 2;
+  string items = 3;
+  int32 w = 4;
+  bool j = 5;
+  bool skipresults = 6;
+}
+message insertorupdatemanyreply {
+  bytes results = 1;
 }
 message deleteone {
   string collectionname = 1;

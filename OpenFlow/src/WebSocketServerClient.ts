@@ -678,12 +678,36 @@ export class WebSocketServerClient {
         stream.aggregates = aggregates;
         if (id == null) id = NoderedUtil.GetUniqueIdentifier();
         this.watches[id] = {
-            aggregates, collectionname //, streamid: stream.id
+            aggregates, collectionname, id //, streamid: stream.id
         } as ClientWatch;
         return id;
     }
+    SendWatch(watch: ClientWatch, next: any, span: Span) {
+        var _type = next.fullDocument._type;
+        let subspan: Span = Logger.otel.startSpan("Watch " + watch.collectionname + " " + next.operationType + " " + _type, null, null);
+        try {
+            Logger.instanse.verbose("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name, span, { collection: watch.collectionname });
+            const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
+            const q = new WatchEventMessage();
+            const [traceId, spanId] = Logger.otel.GetTraceSpanId(subspan);
+            q.traceId = traceId;
+            q.spanId = spanId;
+
+            q.id = watch.id;
+            q.result = next;
+            msg.data = JSON.stringify(q);
+            this._socketObject.send(msg.tojson(), (err) => {
+                if (err) Logger.instanse.warn(err, subspan, { collection: watch.collectionname });
+            });
+        } catch (error) {
+            console.error(error);
+        } finally {
+            subspan?.end();
+        }
+    }
 }
 export class ClientWatch {
+    public id: string;
     public streamid: string;
     public aggregates: object[];
     public collectionname: string;

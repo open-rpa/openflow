@@ -18,12 +18,11 @@ import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
 
 import * as WebSocket from "ws";
-import * as config from "./proto/config"
 import { protowrap } from "./proto/protowrap"
 import { client } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
-const { info, warn, err } = config
+import { info, warn, err, SendFileHighWaterMark, defaultsocketport, defaultgrpcport } from "./proto/config"
 
 var _hostname = "";
 
@@ -265,10 +264,10 @@ export class WebServer {
             await protowrap.init();
             var servers = [];
 
-            servers.push(protowrap.serve("pipe", this.onClientConnected, 8080, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("socket", this.onClientConnected, 8080, WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("pipe", this.onClientConnected, defaultsocketport, WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("socket", this.onClientConnected, defaultsocketport, WebServer.wss, WebServer.app, WebServer.server));
             servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("grpc", this.onClientConnected, Config.port, WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("grpc", this.onClientConnected, defaultgrpcport, WebServer.wss, WebServer.app, WebServer.server));
             servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, WebServer.wss, WebServer.app, WebServer.server));
             return WebServer.server;
         } catch (error) {
@@ -323,13 +322,13 @@ export class WebServer {
                 var filename = msg.filename;
                 let name = path.basename(filename);
                 name = "upload.png";
-                const result = await protowrap.ReceiveFileContent(client, reply.rid, name, config.SendFileHighWaterMark);
+                const result = await protowrap.ReceiveFileContent(client, reply.rid, name, SendFileHighWaterMark);
                 reply.data = protowrap.pack("upload", result);
                 // @ts-ignore
                 info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
             } else if (command == "download") {
                 var filename = msg.filename;
-                await protowrap.sendFileContent(client, reply.rid, filename, config.SendFileHighWaterMark);
+                await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
                 msg.filename = path.basename(filename);
                 reply.data = protowrap.pack(command, msg);
             } else if (command == "clientconsole") {

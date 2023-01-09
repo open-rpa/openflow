@@ -15,6 +15,9 @@ export const doDumpMessageHexLines = 50
 export const doDumpMessageHexBytesPerLine = 16 * 2;
 export const DoDumpToConsole = false;
 export const doDumpToFile = false;
+export const defaultsocketport = 8080;
+export const defaultwebport = 8080;
+export const defaultgrpcport = 50051; // 50051;
 
 // using ./message-parser
 // with ChecksumCheckFiles = false
@@ -78,8 +81,11 @@ export function warn(message) {
 }
 export function err(error) {
   if(!error) return;
+  if (error && error.stack && doDumpStack) {
+    console.log(`[${colrole()}][${col("ERR", color.FgRed)}] ${error.stack}`);
+    return
+  }
   console.log(`[${colrole()}][${col("ERR", color.FgRed)}] ${error.message ? error.message : error}`);
-  if (error && error.stack && doDumpStack) console.log(error.stack)
 }
 export function dumpmessage(direction, message) {
   if (!doDumpMesssages) return;
