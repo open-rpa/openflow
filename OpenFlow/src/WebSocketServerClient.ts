@@ -710,5 +710,6 @@ export class ClientWatch {
     public id: string;
     public streamid: string;
     public aggregates: object[];
+    public paths: string[];
     public collectionname: string;
 }

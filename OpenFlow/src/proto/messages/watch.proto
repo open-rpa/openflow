@@ -2,7 +2,7 @@ package openiap;
 syntax = "proto3";
 message watch { 
   string collectionname = 1;
-  string aggregates = 2;
+  repeated string paths = 2;
 }
 message watchreply { 
   string id = 1;

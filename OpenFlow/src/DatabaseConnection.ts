@@ -447,9 +447,11 @@ export class DatabaseConnection extends events.EventEmitter {
                                         });
                                         if (ismatch) notify = true;
                                     } else {
-                                        if (Array.isArray(stream.aggregates)) {
-                                            for (let p = 0; p < stream.aggregates.length; p++) {
-                                                let path = stream.aggregates[p];
+                                        var paths = stream.paths;
+                                        if(paths == null || paths.length == 0) paths = stream.aggregates as any; // Backward compatibility
+                                        if (Array.isArray(paths)) {
+                                            for (let p = 0; p < paths.length; p++) {
+                                                let path = paths[p];
                                                 if (!NoderedUtil.IsNullEmpty(path)) {
                                                     try {
                                                         const result = JSONPath({ path, json: { a: item } });
@@ -460,9 +462,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                                 }
                                             }
                                         } else {
-                                            if (!NoderedUtil.IsNullEmpty(stream.aggregates)) {
+                                            if (!NoderedUtil.IsNullEmpty(paths)) {
                                                 try {
-                                                    let path = stream.aggregates;
+                                                    let path = paths;
                                                     const result = JSONPath({ path, json: { a: item } });
                                                     if (result && result.length > 0) notify = true;
                                                 } catch (error) {

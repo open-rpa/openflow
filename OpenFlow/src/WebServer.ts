@@ -264,11 +264,11 @@ export class WebServer {
             await protowrap.init();
             var servers = [];
 
-            servers.push(protowrap.serve("pipe", this.onClientConnected, defaultsocketport, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("socket", this.onClientConnected, defaultsocketport, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("grpc", this.onClientConnected, defaultgrpcport, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("pipe", this.onClientConnected, defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("socket", this.onClientConnected, defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, "/ws/v2", WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("grpc", this.onClientConnected, defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server));
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -360,8 +360,16 @@ export class WebServer {
                 if(reply.command == "errorreply") reply.command = "error";
                 var res = JSON.parse(result.data);
                 delete res.password;
-                if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
-                if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
+                if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
+                    if(res.results == null && res.result != null) {
+                        res.results = res.result;
+                        delete res.result;
+                    }
+                }
+                // if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
+                // if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
+                if(res.result) res.result = JSON.stringify(res.result);
+                if(res.results) res.results = JSON.stringify(res.results);
                 reply.data = protowrap.pack(reply.command, res);
                 // throw new Error("Unknown command " + command);
             }

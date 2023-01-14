@@ -26,7 +26,7 @@ export class client {
   public queues: any[] = []; // amqpqueue[]
   public exchanges: any[] = []; // amqpexchange[]
   public watches: changestream[] = [];
-  public port: number = 0;
+  public url: string;
   public ws: WebSocket;
   public stream: net.Socket;
   public grpc: any;
@@ -95,8 +95,8 @@ export class client {
   SendWatch(watch: any, next: any, span: any) {
     try {
         info("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name);
-        var paylad = {"command": "watchevent",
-          "data": protowrap.pack("watchevent", {"id": watch.id, "result": JSON.stringify(next)})}
+        var paylad = {"command": "watch",
+          "data": protowrap.pack("watch", {"id": watch.id, "result": JSON.stringify(next)})}
         
         protowrap.sendMesssag(this, paylad, null, true);
     } catch (error) {

@@ -81,7 +81,7 @@ message customcommand {
   string data = 4;
 }
 message customcommandreply   {
-  bytes result = 1;
+  string result = 1;
 }
 message signin {
   string username = 1;

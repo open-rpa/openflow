@@ -4,7 +4,7 @@ message listcollections {
   bool includehist = 1;
 }
 message listcollectionsreply {
-  bytes result = 1;
+  string results = 1;
 }
 message query {
   string query = 1;
@@ -16,7 +16,7 @@ message query {
   string queryas = 7;
 }
 message queryreply {
-  bytes result = 8;
+  string results = 8;
 }
 message aggregate {
   string collectionname = 1;
@@ -25,7 +25,7 @@ message aggregate {
   string hint = 4;
 }
 message aggregatereply {
-  bytes result = 1;
+  string results = 1;
 }
 message count {
   string collectionname = 1;
@@ -42,7 +42,7 @@ message insertone {
   bool j = 4;
 }
 message insertonereply {
-  bytes result = 1;
+  string result = 1;
 }
 message insertmany {
   string collectionname = 1;
@@ -52,7 +52,7 @@ message insertmany {
   bool skipresults = 5;
 }
 message insertmanyreply {
-  bytes results = 1;
+  string results = 1;
 }
 message insertorupdateone {
   string collectionname = 1;
@@ -62,7 +62,7 @@ message insertorupdateone {
   bool j = 5;
 }
 message insertorupdateonereply {
-  bytes result = 1;
+  string result = 1;
 }
 message insertorupdatemany {
   string collectionname = 1;
@@ -73,7 +73,7 @@ message insertorupdatemany {
   bool skipresults = 6;
 }
 message insertorupdatemanyreply {
-  bytes results = 1;
+  string results = 1;
 }
 message deleteone {
   string collectionname = 1;

@@ -351,7 +351,7 @@ export class protowrap {
       }
     })
   }
-  static sendMesssag(client:client, payload: any, id: string, dumpmsg:boolean) {
+  static sendMesssag(client:client, payload: any, id: string, dumpmsg:boolean): number {
     var errMsg = this.Envelope.verify(payload);
     if (errMsg) throw new Error(errMsg);
     payload.seq = client.seq;
@@ -385,9 +385,7 @@ export class protowrap {
     }
     if (client.protocol == "rest") {
       if (config.role() == "client") {
-        var url = "http://localhost:" + client.port + "/v2/";
-        if(client.port == 443) url = "https://localhost:" + client.port + "/v2/";
-        this.post(client.jwt, client.agent, url, JSON.stringify(payload)).then((data:any) => {
+        this.post(client.jwt, client.agent, client.url, JSON.stringify(payload)).then((data:any) => {
           var payload = JSON.parse(data);
           if (payload && payload.data && payload.data.type && payload.data.type.toLowerCase() == "buffer") {
             payload.data = Buffer.from(payload.data.data);
@@ -463,25 +461,34 @@ export class protowrap {
     {
     }
   }
-  static connect(host:string, protocol:clientType, port:number) {
+  static connect(apiurl) {
     config.setrole("client");
     const result:client = new client();
-    result.port = port; result.protocol = protocol;
+    const url = new URL(apiurl);
+    result.protocol = "ws";
+    result.url = apiurl;
+    if(url.protocol == "http:" || url.protocol == "https:") {
+      result.protocol = "rest";
+    } else if(url.protocol == "grpc:" ) {
+      result.protocol = "grpc";
+    } else if(url.protocol == "socket:") {
+      result.protocol = "socket";
+    } else if(url.protocol == "pipe:") {
+      result.protocol = "socket";
+    }    
     result.connected = false; result.connecting = true; result.signedin = false;
     result.Initialize(null, null, null, null).catch((e) => { err(e); });
   
     // { protocol, port, connected: false, connecting: true, agent: null, id: "", host, onMessage, onClientConnected, onClientDisconnected, cleanup: false,
     //   SendStreamCall: null, ReceiveStreamCall: null, app: null, ws: null, client: {}, stream: null, counter: 0};
     result.id = Math.random().toString(36).substring(2, 11);
-    if (protocol == "rest") {
+    if (url.protocol == "http:" || url.protocol == "https:") {
       // @ts-ignore
       result.agent = new http.Agent({
         keepAlive: true,
         maxSockets: 1
       });
-      var url = "http://" + host + ":" + port + "/v2/";
-      if(port == 443) url = "https://" + host + ":" + port + "/v2/";
-      this.post(result.jwt, result.agent, url, JSON.stringify({ "command": "noop" })).then((data: any) => {
+      this.post(result.jwt, result.agent, apiurl, JSON.stringify({ "command": "noop" })).then((data: any) => {
         result.connected = true;
         result.connecting = false;
         result.onConnected(result);
@@ -494,9 +501,15 @@ export class protowrap {
         this.ClientCleanup(result, result.onDisconnected, e);
       });
       return result;
-    } else if (protocol == "grpc") {
-      // @ts-ignore
-      result.grpc = new this.openiap_proto.grpcService(host + ":" + port, grpc.credentials.createInsecure());
+    } else if (url.protocol == "grpc:") {
+      if(url.host.indexOf(":") == -1 && url.port) {
+        // @ts-ignore
+        result.grpc = new this.openiap_proto.grpcService(url.host + ":" + url.port, grpc.credentials.createInsecure());
+      } else {
+        // @ts-ignore
+        result.grpc = new this.openiap_proto.grpcService(url.host, grpc.credentials.createInsecure());
+      }
+
       result.grpc.RPC({ "command": "hello" }, (error, response) => {
         if (error) {
           this.ClientCleanup(result, result.onDisconnected, error);
@@ -535,12 +548,12 @@ export class protowrap {
         });
         // @ts-ignore
         result.ReceiveStreamCall.on("status", (status) => {
-          info(protocol + " client " + status.code + " " + status.details);
+          info(url.protocol + " client " + status.code + " " + status.details);
         });
         result.onConnected(result);
       });
       return result;
-    } else if (protocol == "pipe" || protocol == "socket") {
+    } else if (url.protocol == "pipe:" || url.protocol == "socket:") {
       const netconnection = () => {
         result.connecting = false;
         result.connected = true;
@@ -559,12 +572,18 @@ export class protowrap {
           }
         });
       };
-      var PIPE_NAME = "testpipe";
-      var PIPE_PATH = "\\\\" + host + "\\pipe\\" + PIPE_NAME;
-      PIPE_PATH = "/tmp/CoreFxPipe_testpipe";
-      if (protocol == "socket") {
-        PIPE_PATH = host + ":" + port;
-        result.stream = net.createConnection(port,host, netconnection);
+      var PIPE_PATH = "\\\\" + url.host + "\\pipe\\" + url.pathname.substring(1);
+      // is running on linux
+      if(process.platform == "linux") {
+        PIPE_PATH = "/tmp/CoreFxPipe_" + url.pathname.substring(1);
+      }      
+      if (url.protocol == "socket:") {
+        PIPE_PATH = url.host + ":" + url.port;
+        if(url.port && url.host) {
+          result.stream = net.createConnection(url.port as any,url.host, netconnection);
+        } if(url.port || url.host) {
+          result.stream = net.createConnection(url.port || url.host, netconnection);
+        }
       } else {
         result.stream = net.createConnection(PIPE_PATH, netconnection);
       }
@@ -582,9 +601,7 @@ export class protowrap {
         this.ClientCleanup(result, result.onDisconnected, undefined);
       });
       return result;
-    } else if (protocol == "ws") {
-      var url = "ws://localhost:" + port + "/ws/v2";
-      if(port == 443) url = "wss://localhost:" + port + "/ws/v2";;
+    } else if (url.protocol == "ws:" || url.protocol == "wss:") {
       result.ws = new WebSocket(url,{rejectUnauthorized:false});
       result.ws.on("open", () => {
         result.connecting = false;
@@ -625,10 +642,10 @@ export class protowrap {
       );
       return result;
     } else {
-      throw new Error("protocol not supported " + protocol);
+      throw new Error("protocol not supported " + url.protocol);
     }
   }
-  static serve(protocol: clientType, onClientConnected, port, wss, app, http) {
+  static serve(protocol: clientType, onClientConnected, port, path, wss, app, http) {
     config.setrole("server");
     var result = { protocol, port, id: "", connected: false, connecting: false, client: null, ws: null, pending: {}, app, http, wss };
     result.id = Math.random().toString(36).substring(2, 11);
@@ -639,7 +656,7 @@ export class protowrap {
         app.use(express.json())
         listen = true;
       }
-      app.post("/v2/", async (req, res, next) => {
+      app.post(path, async (req, res, next) => {
         const id = Math.random().toString(36).substring(2, 11);
         var clientresult: client = new client();
         clientresult.id = id; clientresult.protocol = protocol;
@@ -701,7 +718,7 @@ export class protowrap {
       result.wss.on("connection", async (ws, req) => {
         const url = require("url");
         const location = url.parse(req.url, true);
-        if(location.pathname != "/ws/v2") return;
+        if(location.pathname != path) return;
   
         const id = Math.random().toString(36).substring(2, 11);
         var clientresult: client = new client();
@@ -827,9 +844,11 @@ export class protowrap {
       });
       return result;
     } else if (protocol == "pipe" || protocol == "socket") {
-      var PIPE_NAME = "testpipe";
-      var PIPE_PATH = "\\\\.\\pipe\\" + PIPE_NAME;
-      PIPE_PATH = "/tmp/CoreFxPipe_testpipe"
+      var PIPE_PATH = "\\\\.\\pipe\\" + path;
+      // if not runnong on windows
+      if(process.platform != "win32") {
+        PIPE_PATH = "/tmp/CoreFxPipe_" + path;
+      }
       if (protocol == "socket") {
         PIPE_PATH = port || 80;
         result.port = PIPE_PATH;
