@@ -697,7 +697,10 @@ export class WebSocketServerClient {
             q.result = next;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson(), (err) => {
-                if (err) Logger.instanse.warn(err, subspan, { collection: watch.collectionname });
+                if (err) {
+                    var message: string = (err.message ? err.message : err as any);
+                    Logger.instanse.warn(message, subspan, { collection: watch.collectionname });
+                }
             });
         } catch (error) {
             console.error(error);
