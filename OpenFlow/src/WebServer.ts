@@ -272,6 +272,8 @@ export class WebServer {
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
+            // WebServer.server.close();
+            process.exit(404);
             return null;
         } finally {
             Logger.otel.endSpan(span);
