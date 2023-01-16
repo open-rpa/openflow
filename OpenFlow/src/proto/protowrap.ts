@@ -42,11 +42,11 @@ export class protowrap {
     this.protoRoot = await protobuf.load(this.PROTO_PATH);
     this.Envelope = this.protoRoot.lookupType("openiap.envelope");
   }
-  static RPC(client: client, payload) {
+  static RPC(client: client, payload:any) {
     const [id, promise] = this._RPC(client, payload);
     return promise;
   }
-  static _RPC(client:client, payload): [string, Promise<any>] {
+  static _RPC(client:client, payload:any): [string, Promise<any>] {
     const id = Math.random().toString(36).substring(2, 11);
     // const id = client.seq.toString();
     const promise = new Promise<any>((resolve, reject) => {
@@ -432,11 +432,11 @@ export class protowrap {
     client.cleanup = true;
     try {
       var keys = Object.keys(client.replies);
-      if (!error) error = new Error("Client " + client.id + "disconnected");
+      // if (!error) error = new Error("Client " + client.id + "disconnected");
       for (let i = 0; i < keys.length; i++) {
         var key = keys[i];
         var reply = client.replies[key];
-        reply.reject(error);
+        reply.reject(new Error("Client " + client.id + "disconnected"));
       }
       var keys = Object.keys(client.streams);
       // Errors should be handled by the stream itself using callback
@@ -461,7 +461,7 @@ export class protowrap {
     {
     }
   }
-  static connect(apiurl) {
+  static connect(apiurl:string) {
     config.setrole("client");
     const result:client = new client();
     const url = new URL(apiurl);
@@ -602,7 +602,7 @@ export class protowrap {
       });
       return result;
     } else if (url.protocol == "ws:" || url.protocol == "wss:") {
-      result.ws = new WebSocket(url,{rejectUnauthorized:false});
+      result.ws = new WebSocket(apiurl,{rejectUnauthorized:false});
       result.ws.on("open", () => {
         result.connecting = false;
         result.connected = true;
@@ -930,11 +930,11 @@ export class protowrap {
     const checksum = hash.digest("hex");
     return checksum;
   }
-  static pack(command, message) {
+  static pack(command:string, message: any) {
     const protomsg = this.protoRoot.lookupType("openiap." + command);
     return protomsg.encode(message).finish()
   }
-  static unpack(message) {
+  static unpack(message: any) {
     const { command, data } = message;
     const rid = message.id;
     let msg = data;

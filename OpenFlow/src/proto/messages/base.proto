@@ -1,8 +1,6 @@
-package openiap;
 syntax = "proto3";
+package openiap;
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/any.proto";
-import "google/protobuf/struct.proto";
 import "querys.proto";
 import "watch.proto";
 service grpcService {
@@ -87,12 +85,11 @@ message signin {
   string username = 1;
   string password = 2;
   string jwt = 3;
-  user user = 4;
-  bool ping = 5;
+  bool ping = 4;
 }
 message signinreply {
-  string jwt = 3;
-  user user = 4;
+  string jwt = 1;
+  user user = 2;
 }
 message refreshtoken {
   string username = 1;
