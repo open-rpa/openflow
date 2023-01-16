@@ -84,9 +84,9 @@ export class messageParser extends Transform {
         } if(size < 0) {
           return callback(new Error("Invalid size " + size));
         }
-        // Decode the message using the Envelope.decode method
+        // Decode the message 
         const start = this.readPointer + 4;
-        const end = start + size + 4;
+        const end = start + size;
         const messagebuffer = Buffer.allocUnsafe(size);
         this.buffer.copy(messagebuffer, 0, start, end);
 
@@ -111,10 +111,13 @@ export class messageParser extends Transform {
             return callback(new Error("Checksum mismatch got " + message.hash + " but expected " + hash));
           }
         }
+        if(this.seq > message.seq) {
+          return callback(new Error("sequence " + message.seq + " is lower than last received sequence number " + (this.seq -1)));
+        }
         this.messages.push(message);
         // this.push(message);
       } while (true);
-      this.messages.sort((a, b) => a.seq - b.seq);
+      this.messages.sort((a: any, b: any) => a.seq - b.seq);
       while(this.messages.length > 0 && this.messages[0].seq == this.seq) {
         const message = this.messages.shift();
         this.push(message);
