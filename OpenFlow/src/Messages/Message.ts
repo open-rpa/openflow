@@ -1030,19 +1030,11 @@ export class Message {
             msg = DropCollectionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
-        } catch (error) {
-            await handleError(null, error, span);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async Query(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Query", parent);
@@ -1060,19 +1052,12 @@ export class Message {
                 if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
             }
             delete msg.query;
-        } catch (error) {
-            await handleError(null, error, span);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
+        
     }
     private async Count(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Count", parent);
@@ -1089,19 +1074,11 @@ export class Message {
                 msg.result = await Config.db.count({ query, collectionname, jwt, queryas }, span);
             }
             delete msg.query;
-        } catch (error) {
-            await handleError(null, error, span);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async GetDocumentVersion(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.GetDocumentVersion", parent);
@@ -1116,19 +1093,11 @@ export class Message {
                 msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg.id, version: msg.version, jwt: msg.jwt }, span);
                 if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
             }
-        } catch (error) {
-            await handleError(null, error, span);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
 
     private async Aggregate(parent: Span): Promise<void> {
@@ -1141,12 +1110,6 @@ export class Message {
             msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
             if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
             delete msg.aggregates;
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(null, error, span);
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
@@ -1314,19 +1277,11 @@ export class Message {
             if (msg.skipresults) msg.results = [];
             delete msg.items;
             if (this.clientagent == "openrpa") Config.db.parseResults(msg.items, this.clientagent, this.clientversion);
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(null, error, span);
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async DeleteOne(parent: Span): Promise<void> {
         this.Reply();
@@ -1347,20 +1302,13 @@ export class Message {
                 }
 
             }
-            await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(null, error, span);
-        }
-        try {
+            // @ts-ignore
+            msg.affectedrows = await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
             delete msg.id;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async DeleteMany(parent: Span): Promise<void> {
         this.Reply();
@@ -1371,20 +1319,12 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, null, msg.recursive, msg.jwt, span);
             delete msg.ids;
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(null, error, span);
-        }
-        try {
             delete msg.query;
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async MapReduce(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
@@ -1397,17 +1337,9 @@ export class Message {
             delete msg.map;
             delete msg.reduce;
             delete msg.finalize;
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error, null);
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, null);
+        } finally {
         }
         // cli?.Send(this);
     }
@@ -1866,19 +1798,11 @@ export class Message {
             const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.DeleteNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async DeleteNoderedPod(parent: Span): Promise<void> {
         this.Reply();
@@ -1890,19 +1814,11 @@ export class Message {
             const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.DeleteNoderedPod(this.jwt, _tuser, msg._id, instancename, msg.instancename, span);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async RestartNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
@@ -1917,19 +1833,11 @@ export class Message {
             }
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             await Logger.nodereddriver.RestartNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async GetKubeNodeLabels(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
@@ -1939,20 +1847,11 @@ export class Message {
             if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
             msg = GetKubeNodeLabelsMessage.assign(this.data);
             msg.result = await Logger.nodereddriver.NodeLabels(span);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
-        // cli?.Send(this);
     }
     private async GetNoderedInstance(parent: Span): Promise<void> {
         this.Reply();
@@ -1964,19 +1863,11 @@ export class Message {
             const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             msg.results = await Logger.nodereddriver.GetNoderedInstance(this.jwt, _tuser, msg._id, instancename, span);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
     }
     private async GetNoderedInstanceLog(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
@@ -1988,19 +1879,11 @@ export class Message {
             const _tuser = this.tuser;
             const instancename = await this.GetInstanceName(msg._id, _tuser._id, _tuser.username, this.jwt, span);
             msg.result = await Logger.nodereddriver.GetNoderedInstanceLog(this.jwt, _tuser, msg._id, instancename, msg.instancename, span);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
         // cli?.Send(this);
     }
     private async StartNoderedInstance(cli: WebSocketServerClient, parent: Span): Promise<void> {
@@ -2110,37 +1993,25 @@ export class Message {
     public async SaveFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: SaveFileMessage
-        try {
-            msg = SaveFileMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && cli) { msg.jwt = cli.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
-            if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
+        msg = SaveFileMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (NoderedUtil.IsNullEmpty(msg.jwt) && cli) { msg.jwt = cli.jwt; }
+        if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
+        if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
 
-            msg.id = await this._addFile(msg.file, msg.filename, msg.mimeType, msg.metadata, msg.compressed, msg.jwt);
+        msg.id = await this._addFile(msg.file, msg.filename, msg.mimeType, msg.metadata, msg.compressed, msg.jwt);
+        msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
+        if (NoderedUtil.IsNullUndefinded(msg.result)) {
+            await this.sleep(1000);
             msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
-            if (NoderedUtil.IsNullUndefinded(msg.result)) {
-                await this.sleep(1000);
-                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
-            }
-            if (NoderedUtil.IsNullUndefinded(msg.result)) {
-                await this.sleep(1000);
-                msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
-            }
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error, null);
         }
-        try {
-            delete msg.file;
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, null);
+        if (NoderedUtil.IsNullUndefinded(msg.result)) {
+            await this.sleep(1000);
+            msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
         }
-        // cli?.Send(this);
+        delete msg.file;
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
     private async _GetFile(id: string, compressed: boolean): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
@@ -2197,20 +2068,11 @@ export class Message {
                 throw new Error("id or filename is mandatory");
             }
             msg.file = await this._GetFile(msg.id, msg.compress);
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error, span);
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
-        // cli?.Send(this);
     }
     private async filescount(files: FindCursor<GridFSFile>): Promise<number> {
         return new Promise<number>(async (resolve, reject) => {
@@ -2231,58 +2093,46 @@ export class Message {
     private async UpdateFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: UpdateFileMessage
-        try {
-            msg = UpdateFileMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+        msg = UpdateFileMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
-            const bucket = new GridFSBucket(Config.db.db);
-            const q: Filter<GridFSFile> = {};
-            q._id = safeObjectID(msg.id);
-            const files = bucket.find(q);
-            const count = await this.filescount(files);
-            if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
-            const file = await this.filesnext(files);
-            msg.metadata._createdby = file.metadata._createdby;
-            msg.metadata._createdbyid = file.metadata._createdbyid;
-            msg.metadata._created = file.metadata._created;
-            msg.metadata.name = file.metadata.name;
-            (msg.metadata as any).filename = file.metadata.filename;
-            (msg.metadata as any).path = file.metadata.path;
+        const bucket = new GridFSBucket(Config.db.db);
+        const q: Filter<GridFSFile> = {};
+        q._id = safeObjectID(msg.id);
+        const files = bucket.find(q);
+        const count = await this.filescount(files);
+        if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
+        const file = await this.filesnext(files);
+        msg.metadata._createdby = file.metadata._createdby;
+        msg.metadata._createdbyid = file.metadata._createdbyid;
+        msg.metadata._created = file.metadata._created;
+        msg.metadata.name = file.metadata.name;
+        (msg.metadata as any).filename = file.metadata.filename;
+        (msg.metadata as any).path = file.metadata.path;
 
-            const user: TokenUser = this.tuser;
-            msg.metadata._modifiedby = user.name;
-            msg.metadata._modifiedbyid = user._id;
-            msg.metadata._modified = new Date(new Date().toISOString());;
+        const user: TokenUser = this.tuser;
+        msg.metadata._modifiedby = user.name;
+        msg.metadata._modifiedbyid = user._id;
+        msg.metadata._modified = new Date(new Date().toISOString());;
 
-            msg.metadata = Base.assign(msg.metadata);
+        msg.metadata = Base.assign(msg.metadata);
 
-            const hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
-            if ((hasUser === null || hasUser === undefined)) {
-                Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
-            }
-            Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
-
-            msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
-            const fsc = Config.db.db.collection("fs.files");
-            DatabaseConnection.traversejsonencode(msg.metadata);
-            const res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
-            delete msg.metadata;
-
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error, null);
+        const hasUser: any = msg.metadata._acl.find(e => e._id === user._id);
+        if ((hasUser === null || hasUser === undefined)) {
+            Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, null);
-        }
-        // cli?.Send(this);
+        Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+        if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
+
+        msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
+        const fsc = Config.db.db.collection("fs.files");
+        DatabaseConnection.traversejsonencode(msg.metadata);
+        const res = await fsc.updateOne(q, { $set: { metadata: msg.metadata } });
+        delete msg.metadata;
+
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
     async CreateWorkflowInstance(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
@@ -2345,19 +2195,10 @@ export class Message {
                 const message = { _id: res2._id, __jwt: msg.jwt, __user: tuser };
                 amqpwrapper.Instance().sendWithReplyTo("", msg.queue, msg.resultqueue, message, Config.amqp_default_expiration, msg.correlationId, "", span);
             }
-        } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-            await handleError(cli, error, span);
-        }
-        try {
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, span);
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        Logger.otel.endSpan(span);
-        // cli?.Send(this);
     }
 
     isObject(obj) {

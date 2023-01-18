@@ -95,8 +95,8 @@ export class client {
   SendWatch(watch: any, next: any, span: any) {
     try {
         info("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name);
-        var paylad = {"command": "watch",
-          "data": protowrap.pack("watch", {"id": watch.id, "result": JSON.stringify(next)})}
+        var paylad = {"command": "watchevent",
+          "data": protowrap.pack("watchevent", {"id": watch.id, "operation": next.operationType, "document": JSON.stringify(next.fullDocument)})}
         
         protowrap.sendMesssag(this, paylad, null, true);
     } catch (error) {

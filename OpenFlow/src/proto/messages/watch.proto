@@ -1,5 +1,5 @@
-package openiap;
 syntax = "proto3";
+package openiap;
 message watch { 
   string collectionname = 1;
   repeated string paths = 2;
@@ -9,7 +9,8 @@ message watchreply {
 }
 message watchevent {
   string id = 1;
-  string result = 2;
+  string operation = 2;
+  string document = 3;
 }
 message unwatch { 
   string id = 1;

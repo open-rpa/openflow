@@ -356,10 +356,17 @@ export class WebServer {
                     }
                 })(process.stdout.write);
             } else {
+                if(message.command == "updatedocument") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    msg.item = msg.document; // new style to new 
+                    delete msg.document;
+                    message.command = "updatemany" // new command to new
+                }
                 var _msg = Message.fromjson({ ...message, data: msg });
                 var result = await _msg.Process(client as any);
                 reply.command = result.command + "reply"
                 if(reply.command == "errorreply") reply.command = "error";
+                if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
                 var res = JSON.parse(result.data);
                 delete res.password;
                 if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {

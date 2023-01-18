@@ -2591,6 +2591,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.UpdateMany", parent);
         try {
             if (q === null || q === undefined) { throw new Error("UpdateManyMessage cannot be null"); }
+            // @ts-ignore
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
             await this.connect();
             const user: TokenUser = await Crypt.verityToken(q.jwt);
@@ -2604,6 +2605,9 @@ export class DatabaseConnection extends events.EventEmitter {
             let json: string = q.item as any;
             if (typeof json !== 'string') {
                 json = JSON.stringify(json);
+            }
+            if(typeof q.query === 'string') {
+                q.query = JSON.parse(q.query);
             }
             q.item = JSON.parse(json, (key, value) => {
                 if (typeof value === 'string' && value.match(isoDatePattern)) {
@@ -2908,7 +2912,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteOne(id: string | any, collectionname: string, recursive: boolean, jwt: string, parent: Span): Promise<void> {
+    async DeleteOne(id: string | any, collectionname: string, recursive: boolean, jwt: string, parent: Span): Promise<number> {
         if (id === null || id === undefined || id === "") { throw new Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteOne", parent);
         try {
@@ -2940,7 +2944,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const ot_end = Logger.otel.startTimer();
                     await this._DeleteFile(id);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, DatabaseConnection.otel_label(collectionname, user, "delete"));
-                    return;
+                    return 1;
                 } else {
                     throw new Error("item not found, or Access Denied");
                 }
@@ -3072,6 +3076,7 @@ export class DatabaseConnection extends events.EventEmitter {
         } finally {
             Logger.otel.endSpan(span);
         }
+        return 1;
     }
 
     /**

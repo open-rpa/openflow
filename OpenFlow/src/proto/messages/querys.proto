@@ -1,10 +1,15 @@
-package openiap;
 syntax = "proto3";
+package openiap;
 message listcollections {
   bool includehist = 1;
 }
 message listcollectionsreply {
   string results = 1;
+}
+message dropcollection {
+  string collectionname = 1;
+}
+message dropcollectionreply {
 }
 message query {
   string query = 1;
@@ -16,7 +21,16 @@ message query {
   string queryas = 7;
 }
 message queryreply {
-  string results = 8;
+  string results = 1;
+}
+message getdocumentversion {
+  string collectionname = 1;
+  string id = 2;
+  int32 version = 3;
+  bool decrypt = 4;
+}
+message getdocumentversionreply {
+  string result = 1;
 }
 message aggregate {
   string collectionname = 1;
@@ -53,6 +67,32 @@ message insertmany {
 }
 message insertmanyreply {
   string results = 1;
+}
+message updateone {
+  string collectionname = 1;
+  string item = 2;
+  int32 w = 3;
+  bool j = 4;
+}
+message updateonereply {
+  string result = 1;
+}
+message updatedocument {
+  string collectionname = 1;
+  string query = 2;
+  string document = 3;
+  int32 w = 4;
+  bool j = 5;
+}
+message updateresult {
+  bool acknowledged = 1;
+  int32 matchedCount = 2;
+  int32 modifiedCount = 3;
+  int32 upsertedCount = 4;
+  string upsertedId = 5;
+}
+message updatedocumentreply {
+  updateresult opresult = 1;
 }
 message insertorupdateone {
   string collectionname = 1;
