@@ -496,7 +496,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                             }
                                             msg.data = JSON.stringify(q);
                                             client._socketObject.send(msg.tojson(), (err) => {
-                                                if (err) Logger.instanse.warn(err, subspan, { collection: collectionname });
+                                                if (err) Logger.instanse.warn(err as any, subspan, { collection: collectionname });
                                             });
                                         } catch (error) {
 

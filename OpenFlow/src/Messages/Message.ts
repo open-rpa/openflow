@@ -1647,6 +1647,7 @@ export class Message {
                 let tuser: TokenUser = null;
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    if(msg.validate_only) { this.command = "validatereply"; }
                     span?.addEvent("using jwt, verify token");
                     type = "jwtsignin";
                     try {
@@ -1774,8 +1775,10 @@ export class Message {
                         tuser.username = msg.username;
                     }
                 }
-                if (cli) cli.clientagent = msg.clientagent as any;
-                if (cli) cli.clientversion = msg.clientversion;
+                if(msg.validate_only !== true) {
+                    if (cli) cli.clientagent = msg.clientagent as any;
+                    if (cli) cli.clientversion = msg.clientversion;
+                    }
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
