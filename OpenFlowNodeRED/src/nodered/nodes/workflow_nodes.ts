@@ -229,11 +229,18 @@ export class workflow_in_node {
 
                 let who = WebSocketClient.instance.user;
                 const me = WebSocketClient.instance.user;
+
+                const testjwt = WebSocketClient.instance.jwt;
+
                 this.node.status({ fill: "blue", shape: "dot", text: "Renew token " });
                 if (!NoderedUtil.IsNullEmpty(jwt)) {
                     const signin = await NoderedUtil.RenewToken({ jwt, longtoken: true });
                     who = signin.user;
                     data.jwt = signin.jwt;
+                    console.debug(testjwt);
+                    const testjwt2 = WebSocketClient.instance.jwt;
+                    console.debug(testjwt2);
+                    console.debug(signin.jwt);
                 }
                 // delete data.jwt;                
                 const item: Base = ({ _type: "instance", "queue": this.localqueue, "name": this.workflow.name, payload: data, workflow: this.workflow._id, targetid: who._id }) as any;

@@ -36,6 +36,9 @@ message send {
 message download {
   string filename = 1;
 }
+message downloadreply {
+  string filename = 1;
+}
 message upload {
   string filename = 1;
   int32 bytes = 2;
@@ -43,6 +46,9 @@ message upload {
   float mb = 4;
   int32 elapsedTime = 5;
   float mbps = 6;
+}
+message uploadreply {
+  string filename = 1;
 }
 message console { }
 message clientconsole { }
