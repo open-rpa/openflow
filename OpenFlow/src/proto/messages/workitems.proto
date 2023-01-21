@@ -1,0 +1,116 @@
+syntax = "proto3";
+package openiap;
+import "google/protobuf/timestamp.proto";
+import "ace.proto";
+message workitem {
+    string name = 1;
+    string payload = 2;
+    int32 priority = 3;
+    google.protobuf.Timestamp nextrun = 4;
+    repeated workitemfile files = 5;
+}
+message workitemfile {
+    string filename = 1;
+    bool compressed = 2;
+    bytes file = 3;
+}
+message pushworkitem { 
+    string wiq = 1;
+    string wiqid = 2;
+    string name = 3;
+    string payload = 4;
+    google.protobuf.Timestamp nextrun = 5;
+    string success_wiqid = 6;
+    string failed_wiqid = 7;
+    string success_wiq = 8;
+    string failed_wiq = 9;
+    int32 priority = 10;
+    repeated workitemfile files = 11;
+}
+message pushworkitemreply { }
+message pushworkitems { 
+    string wiq = 1;
+    string wiqid = 2;
+    google.protobuf.Timestamp nextrun = 3;
+    string success_wiqid = 4;
+    string failed_wiqid = 5;
+    string success_wiq = 6;
+    string failed_wiq = 7;
+    int32 priority = 8;
+    repeated workitemfile items = 9;
+}
+message pushworkitemsreply { }
+message updateworkitem { 
+    string _id = 1;
+    string wiq = 2;
+    string wiqid = 3;
+    string name = 4;
+    string payload = 5;
+    string state = 6;
+    bool ignoremaxretries = 7;
+    google.protobuf.Timestamp nextrun = 8;
+    string errormessage = 9;
+    string errorsource = 10;
+    string errortype = 11;
+    repeated workitemfile files = 12;
+    string success_wiqid = 13;
+    string failed_wiqid = 14;
+    string success_wiq = 15;
+    string failed_wiq = 16;
+    int32 priority = 17;
+}
+message updateworkitemreply { }
+message popworkitem { 
+    string wiq = 1;
+    string wiqid = 2;
+}
+message popworkitemreply { 
+    string result = 1;
+}
+message deleteworkitem { 
+    string _id = 1;
+}
+message deleteworkitemreply { 
+}
+message workitemqueue {
+    string workflowid = 1;
+    string robotqueue = 2;
+    string amqpqueue = 3;
+    string projectid = 4;
+    string usersrole = 5;
+    int32 maxretries = 6;
+    int32 retrydelay = 7;
+    int32 initialdelay = 8;
+    string success_wiqid = 9;
+    string failed_wiqid = 10;
+    string success_wiq = 11;
+    string failed_wiq = 12;
+    string _id = 13;
+    repeated ace _acl = 14;
+    string name = 15;
+    string _createdbyid = 16;
+    string _createdby = 17;
+    google.protobuf.Timestamp _created = 18;
+    string _modifiedbyid = 19;
+    string _modifiedby = 20;
+    google.protobuf.Timestamp _modified = 21;
+    int32 _version = 22;
+}
+message addworkitemqueue { 
+    string name = 1;
+    string robotqueue = 2;
+    string amqpqueue = 3;
+    string projectid = 4;
+    bool skiprole = 5;
+    int32 maxretries = 6;
+    int32 initialdelay = 7;
+    int32 retrydelay = 8;
+    string success_wiqid = 9;
+    string failed_wiqid = 10;
+    string success_wiq = 11;
+    string failed_wiq = 12;
+    repeated ace _acl = 13;
+}
+message addworkitemqueuereply { 
+    workitemqueue result = 1;
+}

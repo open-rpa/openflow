@@ -1,12 +1,9 @@
 syntax = "proto3";
 package openiap;
 import "google/protobuf/timestamp.proto";
-import "querys.proto";
-import "watch.proto";
+import "google/protobuf/any.proto";
 service grpcService {
-  rpc RPC (envelope) returns (envelope) {}
-  rpc ReceiveStream (envelope) returns (stream envelope) {}
-  rpc SendStream (stream envelope) returns (envelope) {}
+  rpc SetupStream (stream envelope) returns (stream envelope) {} 
 }
 message envelope {
   string command = 1;
@@ -17,7 +14,8 @@ message envelope {
   string rid = 6;
   string traceid = 7;
   string spanid = 8;
-  bytes data = 9;
+  google.protobuf.Any data = 9;
+  // bytes data = 9;
 }
 message noop {}
 message ping {}
@@ -34,21 +32,26 @@ message send {
   int32 count = 1;
 }
 message download {
-  string filename = 1;
+  string id = 1;
+  string filename = 2;
 }
 message downloadreply {
-  string filename = 1;
+  string id = 1;
+  string filename = 2;
+  string mimetype = 3;
 }
 message upload {
   string filename = 1;
-  int32 bytes = 2;
-  int32 chunks = 3;
-  float mb = 4;
-  int32 elapsedTime = 5;
-  float mbps = 6;
+  string mimetype = 2;
 }
 message uploadreply {
-  string filename = 1;
+  string id = 1;
+  string filename = 2;
+  int32 bytes = 3;
+  int32 chunks = 4;
+  float mb = 5;
+  int32 elapsedTime = 6;
+  float mbps = 7;
 }
 message console { }
 message clientconsole { }

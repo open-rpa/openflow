@@ -345,7 +345,7 @@ export class WebSocketServerClient {
         }
     }
     public async RegisterExchange(user: TokenUser | User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
-        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
+        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.RegisterExchange", parent);
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let exchange = exchangename;

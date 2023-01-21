@@ -1,0 +1,45 @@
+syntax = "proto3";
+package openiap;
+message registerqueue {
+    string queuename = 1;
+}
+message registerqueuereply { 
+    string queuename = 1;
+}
+message registerexchange {
+    string exchangename = 1;
+    string algorithm = 2;
+    string routingkey = 3;
+    bool addqueue = 4;
+}
+message registerexchangereply { 
+    string queuename = 1;
+}
+message queuemessage {
+    string queuename = 1;
+    string correlationId = 2;
+    string replyto = 3;
+    string routingkey = 4;
+    string exchangename = 5;
+    string data = 6;
+}
+message queuemessagereply {
+    string queuename = 1;
+    string correlationId = 2;
+    string replyto = 3;
+    string routingkey = 4;
+    string exchangename = 5;
+    string data = 6;
+}
+message queueevent {
+    string queuename = 1;
+    string correlationId = 2;
+    string replyto = 3;
+    string routingkey = 4;
+    string exchangename = 5;
+    string data = 6;
+}
+message unregisterqueue { 
+    string queuename = 1;
+}
+message unregisterqueuereply { }

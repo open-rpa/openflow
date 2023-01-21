@@ -4,8 +4,31 @@ import * as  grpc from "@grpc/grpc-js";
 import * as  WebSocket from "ws";
 import { protowrap } from "./protowrap"
 import { err, warn, info, DoPing } from "./config";
+import { amqpexchange, amqpqueue, amqpwrapper, exchangealgorithm, QueueMessageOptions } from "../amqpwrapper";
+import { Logger } from "../Logger";
+import { Span } from "@opentelemetry/api";
+import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
+import { Config } from "../Config";
+import { RegisterExchangeResponse } from "../WebSocketServerClient";
+const Semaphore = (n) => ({
+  n,
+  async down() {
+      while (this.n <= 0) await this.wait();
+      this.n--;
+  },
+  up() {
+      this.n++;
+  },
+  async wait() {
+      if (this.n <= 0) return await new Promise((res, req) => {
+          setImmediate(async () => res(await this.wait()))
+      });
+      return;
+  },
+});
+const semaphore = Semaphore(1);
 export type clientType = "socket" | "pipe" | "ws" | "grpc" | "rest";
-export type clientAgent = "node" | "browser" | "nodered" | "openrpa";
+export type clientAgent = "node" | "browser" | "nodered" | "openrpa" | "powershell";
 export class client {
   public id: string = "";
   public seq: number = 0;
@@ -35,6 +58,13 @@ export class client {
   public ReceiveStreamCall: grpc.ClientDuplexStream<any, any>;
   public replies: any;
   public streams: any;
+
+  public _queues: amqpqueue[] = [];
+  public _queuescounter: number = 0;
+  public _queuescurrent: number = 0;
+  public _queuescounterstr: string = "0";
+  public _queuescurrentstr: string = "0";
+  public _exchanges: amqpexchange[] = [];
 
   async Initialize(ws: WebSocket, stream: net.Socket, call, req: express.Request): Promise<boolean> {
     try {
@@ -71,9 +101,6 @@ export class client {
       this.lastheartbeatsec = (this.lastheartbeat.getTime() / 1000).toString();
       }
   }
-  queuecount() {
-    return this.queues.length;
-  }
   async Watch(aggregates: object[], collectionname: string, jwt: string): Promise<string> {
     if (typeof aggregates === "string") {
       try {
@@ -103,9 +130,243 @@ export class client {
         console.error(error);
     } finally {
     }
+  }
+  public queuecount(): number {
+    if (this._queues == null) return 0;
+    return this._queues.length;
 }
+  public async CreateConsumer(queuename: string, parent: Span): Promise<string> {
+    const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
+    try {
+        let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
+        let qname = queuename;
+        if (NoderedUtil.IsNullEmpty(qname)) {
+            if (this.agent == "nodered") {
+                qname = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else if (this.agent == "browser") {
+                qname = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else if (this.agent == "openrpa") {
+                qname = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else if (this.agent == "powershell") {
+                qname = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else {
+                qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            }
+        }
+        await this.CloseConsumer(this.user, qname, span);
+        let queue: amqpqueue = null;
+        try {
+            const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
+            AssertQueueOptions.exclusive = exclusive;
+            if (NoderedUtil.IsNullEmpty(queuename)) {
+                AssertQueueOptions.autoDelete = true;
+            }
+            var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
+            if (exists.length > 0) {
+                Logger.instanse.warn(qname + " already exists, removing before re-creating", span);
+                for (let i = 0; i < exists.length; i++) {
+                    await amqpwrapper.Instance().RemoveQueueConsumer(this.user, exists[i], span);
+                }
+            }
+            queue = await amqpwrapper.Instance().AddQueueConsumer(this.user, qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                // const _data = msg;
+                let span: Span = null;
+                var _data = msg;
+                try {
+                    var o = msg;
+                    if (typeof o === 'string') o = JSON.parse(o);
+                    span = Logger.otel.startSpan("OpenFlow Queue Process Message", o.traceId, o.spanId);
+                    Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
+                    _data = await this.Queue(msg, qname, options, span);;
+                    ack();
+                    // const result = await this.Queue(msg, qname, options);
+                    // done(result);
+                    Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
+                } catch (error) {
+                    setTimeout(() => {
+                        ack(false);
+                        Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error), span)
+                    }, Config.amqp_requeue_time);
+                } finally {
+                    Logger.otel.endSpan(span);
+                    try {
+                        done(_data);
+                    } catch (error) {
+                    }
+                }
+            }, span);
+            if (queue) {
+                await semaphore.down();
+                qname = queue.queue;
+                this._queuescounter++;
+                this._queuescurrent++;
+                this._queuescounterstr = this._queuescounter.toString();
+                this._queuescurrentstr = this._queuescurrent.toString();
+                this._queues.push(queue);
+                console.log(this.id + " has " + this._queues.length + " queues")
+            }
+        } finally {
+            if (queue) semaphore.up();
+        }
+        if (queue != null) {
+            return queue.queue;
+        }
+        return null;
+    } finally {
+        Logger.otel.endSpan(span);
+    }
+  }
+  public async RegisterExchange(user: TokenUser | User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
+    const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.RegisterExchange", parent);
+    try {
+        let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
+        let exchange = exchangename;
+        if (NoderedUtil.IsNullEmpty(exchange)) {
+            if (this.agent == "nodered") {
+                exchange = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else if (this.agent == "browser") {
+                exchange = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else if (this.agent == "openrpa") {
+                exchange = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else if (this.agent == "powershell") {
+                exchange = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            } else {
+                exchange = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+            }
+        }
+        let exchangequeue: amqpexchange = null;
+        try {
+            const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
+            AssertExchangeOptions.exclusive = exclusive;
+            exchangequeue = await amqpwrapper.Instance().AddExchangeConsumer(user, exchange, algorithm, routingkey, AssertExchangeOptions, this.jwt, addqueue, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
+                let span: Span
+                const _data = msg;
+                try {
+                    span = Logger.otel.startSpan("WebSocketServerClient.RegisterExchange", msg.traceId, msg.spanId);
+                    const result = await this.Queue(msg, exchange, options, span);
+                    done(result);
+                    ack();
+                } catch (error) {
+                    setTimeout(() => {
+                        ack(false);
+                        Logger.instanse.error(exchange + " failed message queue message, nack and re queue message: ", span, Logger.parsecli(this as any));
+                        Logger.instanse.error(error, span, Logger.parsecli(this as any));
+                    }, Config.amqp_requeue_time);
+                } finally {
+                    span?.end()
+                }
+            }, span);
+            if (exchangequeue) {
+                await semaphore.down();
+                if (exchangequeue.queue) exchange = exchangequeue.queue.queue;
+                this._exchanges.push(exchangequeue);
+                if (exchangequeue.queue) {
+                    this._queues.push(exchangequeue.queue);
+                    this._queuescounter++;
+                    this._queuescurrent++;
+                }
+                this._queuescounterstr = this._queuescounter.toString();
+                this._queuescurrentstr = this._queuescurrent.toString();
+            }
+        } catch (error) {
+            Logger.instanse.error(error, span, Logger.parsecli(this as any));
+        }
+        if (exchangequeue) semaphore.up();
+        if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
+        return null;
+    } finally {
+        Logger.otel.endSpan(span);
+    }
+  }
+  public async CloseConsumer(user: TokenUser | User, queuename: string, parent: Span): Promise<void> {
+    const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
+    await semaphore.down();
+    try {
+        for (let i = this._queues.length - 1; i >= 0; i--) {
+            const q = this._queues[i];
+            if (q && (q.queue == queuename || q.queuename == queuename)) {
+                try {
+                    amqpwrapper.Instance().RemoveQueueConsumer(user, this._queues[i], span).catch((err) => {
+                        Logger.instanse.error(err, span, Logger.parsecli(this as any));
+                    });
+                    this._queues.splice(i, 1);
+                    this._queuescurrent--;
+                    this._queuescurrentstr = this._queuescurrent.toString();
+                } catch (error) {
+                    Logger.instanse.error(error, span, Logger.parsecli(this as any));
+                }
+            }
+        }
+        for (let i = this._exchanges.length - 1; i >= 0; i--) {
+            const e = this._exchanges[i];
+            if (e && (e.queue != null && e.queue.queue == queuename || e.queue.queuename == queuename)) {
+                try {
+                    amqpwrapper.Instance().RemoveQueueConsumer(user, this._exchanges[i].queue, span).catch((err) => {
+                        Logger.instanse.error(err, span, Logger.parsecli(this as any));
+                    });
+                    this._exchanges.splice(i, 1);
+                } catch (error) {
+                    Logger.instanse.error(error, span, Logger.parsecli(this as any));
+                }
+            }
+        }
+    } finally {
+        semaphore.up();
+        Logger.otel.endSpan(span);
+        console.log(this.id + " has " + this._queues.length + " queues")
+    }
+  }
+  public async CloseConsumers(parent: Span): Promise<void> {
+    await semaphore.down();
+    for (let i = this._queues.length - 1; i >= 0; i--) {
+        try {
+            // await this.CloseConsumer(this._queues[i]);
+            await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._queues[i], parent);
+            this._queues.splice(i, 1);
+            this._queuescurrent--;
+            this._queuescurrentstr = this._queuescurrent.toString();
+        } catch (error) {
+            Logger.instanse.error(error, parent, Logger.parsecli(this as any));
+        }
+    }
+    for (let i = this._exchanges.length - 1; i >= 0; i--) {
+        const e = this._exchanges[i];
+        if (e && e.queue != null) {
+            try {
+                await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._exchanges[i].queue, parent);
+                this._exchanges.splice(i, 1);
+            } catch (error) {
+                Logger.instanse.error(error, parent, Logger.parsecli(this as any));
+            }
+        }
+    }
+    semaphore.up();
+  }
+  async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<any[]> {
 
+    try {
+      var q: any= {};
+      q.data = data;
+      if(typeof data !== "string") q.data = JSON.stringify(data);
+      if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = NoderedUtil.GetUniqueIdentifier(); }
+      q.replyto = options.replyTo;
+      q.correlationId = options.correlationId; q.queuename = queuename;
+      q.consumerTag = options.consumerTag;
+      q.routingkey = options.routingKey;
+      q.exchangename = options.exchangename;
+  
+      var paylad = {"command": "queueevent",
+      "data": protowrap.pack("queueevent", q)}
+      var result = await protowrap.RPC(this, paylad);
+      return result.data;
+    } catch (error) {
+      err(error);      
+    }
+  }
   Close() {
+    if (this.queuecount() > 0) {
+      this.CloseConsumers(undefined);
+    }
     if (this.ws != null) this.ws.close();
     if (this.stream != null) this.stream.destroy();
     if (this.call != null) this.call.cancel();

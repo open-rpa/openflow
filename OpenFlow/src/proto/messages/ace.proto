@@ -1,0 +1,7 @@
+syntax = "proto3";
+package openiap;
+message ace {
+    string _id = 1;
+    bool deny = 2;
+    int32 rights = 3;
+}

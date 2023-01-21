@@ -22,15 +22,20 @@ import { client, clientType } from "./client";
 
 export class protowrap {
   static defaultprotocol: clientType = "pipe" // pipe, socket, ws, grpc, rest
-  static PROTO_PATH: string;
   static packageDefinition: protoLoader.PackageDefinition;
   static openiap_proto: grpc.GrpcObject | grpc.ServiceClientConstructor | grpc.ProtobufTypeDefinition;
   static Envelope: any; // = new protobuf.Type("envelope");
   static protoRoot: any;
   static async init() {
-    this.PROTO_PATH = path.join(__dirname, "messages/base.proto")
+    var paths = [];
+    paths.push(path.join(__dirname, "messages/base.proto"));
+    paths.push(path.join(__dirname, "messages/ace.proto"));
+    paths.push(path.join(__dirname, "messages/querys.proto"));
+    paths.push(path.join(__dirname, "messages/queues.proto"));
+    paths.push(path.join(__dirname, "messages/watch.proto"));
+    paths.push(path.join(__dirname, "messages/workitems.proto"));
     this.packageDefinition = await protoLoader.load(
-      this.PROTO_PATH,
+      paths,
       {
         keepCase: true,
         longs: String,
@@ -39,7 +44,7 @@ export class protowrap {
         oneofs: true
       });
     this.openiap_proto = grpc.loadPackageDefinition(this.packageDefinition).openiap;
-    this.protoRoot = await protobuf.load(this.PROTO_PATH);
+    this.protoRoot = await protobuf.load(paths);
     this.Envelope = this.protoRoot.lookupType("openiap.envelope");
   }
   static RPC(client: client, payload:any) {
@@ -931,8 +936,10 @@ export class protowrap {
     return checksum;
   }
   static pack(command:string, message: any) {
+    // const protomsg = this.protoRoot.lookupType("openiap." + command);
+    // return protomsg.encode(message).finish()
     const protomsg = this.protoRoot.lookupType("openiap." + command);
-    return protomsg.encode(message).finish()
+    return {"type_url": "openiap." + command, "value": protomsg.encode(message).finish() }
   }
   static unpack(message: any) {
     const { command, data } = message;
@@ -944,7 +951,11 @@ export class protowrap {
         msg = JSON.parse(data);
       } else if ( data != null) {
         try {
-          msg = protomsg.decode(data)
+          if(data.type_url != null) {
+            msg = protomsg.decode(data.value)
+          } else {
+            msg = protomsg.decode(data)
+          }
         } catch (error) {
           msg = data.toString();
           if(msg.startsWith("{")) msg = JSON.parse(msg);

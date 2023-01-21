@@ -1,3 +1,4 @@
+import * as  stream from "stream";
 import * as os from "os";
 import * as path from "path";
 import * as http from "http";
@@ -10,7 +11,7 @@ import * as flash from "flash";
 import { SamlProvider } from "./SamlProvider";
 import { LoginProvider } from "./LoginProvider";
 import { Config } from "./Config";
-import { InsertOrUpdateOneMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, TokenUser, WellknownIds } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -23,9 +24,10 @@ import { client } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
 import { info, warn, err, SendFileHighWaterMark, defaultsocketport, defaultgrpcport } from "./proto/config"
+import { GridFSBucket, ObjectId } from "mongodb";
 
 var _hostname = "";
-
+const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
     if (req.originalUrl.indexOf('/oidc') > -1) return next();
     try {
@@ -290,6 +292,60 @@ export class WebServer {
 
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
     }
+    public static async ReceiveFileContent(client: client, rid:string, msg: any) {
+        return new Promise<string>((resolve, reject) => {
+            const bucket = new GridFSBucket(Config.db.db);
+            var metadata = new Base();
+            metadata.name = msg.filename;
+            metadata._acl = [];
+            metadata._createdby = "root";
+            metadata._createdbyid = WellknownIds.root;
+            metadata._modifiedby = "root";
+            metadata._modifiedbyid = WellknownIds.root;
+            if(client.user)
+            {
+                Base.addRight(metadata, client.user._id , client.user.name, [Rights.full_control]);
+                metadata._createdby = client.user.name;
+                metadata._createdbyid = client.user._id;
+                metadata._modifiedby = client.user.name;
+                metadata._modifiedbyid = client.user._id;
+            }
+            metadata._created = new Date(new Date().toISOString());
+            metadata._modified = metadata._created;
+    
+            Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+    
+            const rs = new stream.Readable;
+            rs._read = () => { };
+            const s = protowrap.SetStream(client, rs, rid)
+            let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
+            let id = uploadStream.id
+            uploadStream.on('finish', ()=> {
+                resolve(id.toString());
+            })
+            uploadStream.on('error', (err)=> {
+                reject(err);
+            });
+            rs.pipe(uploadStream);
+        });
+    }
+    static sendFileContent(client:client, rid, id):Promise<void> {
+        return new Promise<void>(async (resolve, reject) => {
+            const bucket = new GridFSBucket(Config.db.db);
+            let downloadStream = bucket.openDownloadStream(safeObjectID(id));
+            protowrap.sendMesssag(client, { rid, command: "beginstream", data: protowrap.pack("beginstream", {}) }, null, true);
+            downloadStream.on('data', (chunk) => {
+                protowrap.sendMesssag(client, { rid, command: "stream", data: protowrap.pack("stream", {data: chunk}) }, null, true);
+            });
+            downloadStream.on('end', ()=> {
+                protowrap.sendMesssag(client, { rid, command: "endstream", data: undefined }, null, true);
+                resolve();
+            });
+            downloadStream.on('error', (err) => {
+                reject(err);
+            });
+        });
+      }
     public static async onMessage(client: client, message: any) {
         let command, msg, reply;
         try {
@@ -321,18 +377,27 @@ export class WebServer {
                 reply.data = protowrap.pack("getelement", { xpath: "test1" })
 
             } else if (command == "upload") {
-                var filename = msg.filename;
-                let name = path.basename(filename);
-                name = "upload.png";
-                const result = await protowrap.ReceiveFileContent(client, reply.rid, name, SendFileHighWaterMark);
-                reply.data = protowrap.pack("upload", result);
-                // @ts-ignore
-                info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
+                var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
+                reply.command = "uploadreply"
+                reply.data = protowrap.pack("uploadreply", { id })
+
+
+                // var filename = msg.filename;
+                // let name = path.basename(filename);
+                // name = "upload.png";
+                // const result = await protowrap.ReceiveFileContent(client, reply.rid, name, SendFileHighWaterMark);
+                // reply.data = protowrap.pack("upload", result);
+                // // @ts-ignore
+                // info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
             } else if (command == "download") {
-                var filename = msg.filename;
-                await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
-                msg.filename = path.basename(filename);
-                reply.data = protowrap.pack(command, msg);
+                if(msg.id && msg.id != "") {
+                    await WebServer.sendFileContent(client, reply.rid, msg.id)
+                } else {
+                    var filename = msg.filename;
+                    await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
+                    msg.filename = path.basename(filename);
+                    reply.data = protowrap.pack(command, msg);
+                }
             } else if (command == "clientconsole") {
                 var Readable = require('stream').Readable;
                 var rs = new Readable;
@@ -362,11 +427,16 @@ export class WebServer {
                     delete msg.document;
                     message.command = "updatemany" // new command to new
                 }
+                if(message.command == "unregisterqueue") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    message.command = "closequeue" // new command to new
+                }
                 var _msg = Message.fromjson({ ...message, data: msg });
                 var result = await _msg.Process(client as any);
                 reply.command = result.command + "reply"
                 if(reply.command == "errorreply") reply.command = "error";
                 if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
+                if(reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
                 var res = JSON.parse(result.data);
                 delete res.password;
                 if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
@@ -379,6 +449,7 @@ export class WebServer {
                 // if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
                 if(res.result) res.result = JSON.stringify(res.result);
                 if(res.results) res.results = JSON.stringify(res.results);
+                if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 reply.data = protowrap.pack(reply.command, res);
                 // throw new Error("Unknown command " + command);
             }
@@ -399,6 +470,7 @@ export class WebServer {
     public static async onConnected(client: client) {
     }
     public static async onDisconnected(client: client, error: any) {
+        client.Close();
         var index = WebSocketServer._clients.indexOf(client as any);
         if (index > -1) {
             WebSocketServer._clients.splice(index, 1);
