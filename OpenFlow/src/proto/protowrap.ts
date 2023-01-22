@@ -34,6 +34,7 @@ export class protowrap {
     paths.push(path.join(__dirname, "messages/queues.proto"));
     paths.push(path.join(__dirname, "messages/watch.proto"));
     paths.push(path.join(__dirname, "messages/workitems.proto"));
+
     this.packageDefinition = await protoLoader.load(
       paths,
       {
@@ -379,10 +380,8 @@ export class protowrap {
     }
   
     if (client.protocol == "grpc") {
-      if (config.role() == "client" && client.SendStreamCall) {
-          client.SendStreamCall.write(payload);
-      } else if (config.role() == "server" && client.ReceiveStreamCall) {
-          client.ReceiveStreamCall.write(payload);
+      if (client.grpcStream) {
+          client.grpcStream.write(payload);
       } else {
         throw new Error("client is not a grpc client");
       }
@@ -515,48 +514,37 @@ export class protowrap {
         result.grpc = new this.openiap_proto.grpcService(url.host, grpc.credentials.createInsecure());
       }
 
-      result.grpc.RPC({ "command": "hello" }, (error, response) => {
-        if (error) {
-          this.ClientCleanup(result, result.onDisconnected, error);
-          return;
-        }
-        result.connecting = false;
-        result.connected = true;
-        result.ReceiveStreamCall = result.grpc.ReceiveStream({ "command": "hello", "rid": response.rid },
-        (error, response) => {
-          info("ReceiveStreamCall, end ?");
-        });
-        result.SendStreamCall = result.grpc.SendStream( (error, response) => {
-          info("SendStreamCall, end ?");
-        });
-        result.SendStreamCall.write({ "command": "hello", "rid": response.rid });
-        // @ts-ignore
-        result.ReceiveStreamCall.on("data", async (message) => {
-          try {
-            if (message != null) {
-              if (!this.IsPendingReply(result, message)) {
-                var _payload = await result.onMessage(result, message);
-                if (_payload && _payload.command != "noop") this.sendMesssag(result, _payload, null, true);
-              }  
-            }
-          } catch (error) {
-            err(error);
-          }
-        });
-        // @ts-ignore
-        result.ReceiveStreamCall.on("end", () => {
-          this.ClientCleanup(result, result.onDisconnected, undefined);
-        });
-        // @ts-ignore
-        result.ReceiveStreamCall.on("error", (e) => {
-          this.ClientCleanup(result, result.onDisconnected, e);
-        });
-        // @ts-ignore
-        result.ReceiveStreamCall.on("status", (status) => {
-          info(url.protocol + " client " + status.code + " " + status.details);
-        });
-        result.onConnected(result);
+      result.grpcStream = result.grpc.SetupStream((error, response) => {
+        info("ReceiveStreamCall, end ?");
       });
+      result.grpcStream.on("status", (status) => {
+        info(url.protocol + " client " + status.code + " " + status.details);
+      });
+      result.grpcStream.on("data", async (message) => {
+        try {
+          if (message != null) {
+            if (!this.IsPendingReply(result, message)) {
+              var _payload = await result.onMessage(result, message);
+              if (_payload && _payload.command != "noop") this.sendMesssag(result, _payload, null, true);
+            }
+          }
+        } catch (error) {
+          err(error);
+        }
+      });
+
+      result.grpcStream.on("end", () => {
+        this.ClientCleanup(result, result.onDisconnected, undefined);
+      });
+      // @ts-ignore
+      result.grpcStream.on("error", (e) => {
+        this.ClientCleanup(result, result.onDisconnected, e);
+      });
+      setTimeout(()=> {
+        result.connected = true;
+        result.connecting = false;
+        result.onConnected(result);
+      },100)
       return result;
     } else if (url.protocol == "pipe:" || url.protocol == "socket:") {
       const netconnection = () => {
@@ -762,61 +750,25 @@ export class protowrap {
       });
       return result;
     } else if (protocol == "grpc") {
-      var clients: any[] = [];
-  
-      const RPC = async (call, callback) => {
-        try {
-          const id = Math.random().toString(36).substring(2, 11);
-          var clientresult: client = new client();
-          clientresult.id = id; clientresult.protocol = protocol;
-          clientresult.connected = true; clientresult.connecting = false; clientresult.signedin = false;
-          await clientresult.Initialize(null, null, call, null);
-          onClientConnected(clientresult);
-          clients.push(clientresult);
-          var payload = call.request;
-          payload.rid = id;
-          payload.id = Math.random().toString(36).substring(2, 11);
-          callback(null, payload);
-
-          // var payload = call.request;
-          // if (payload.command == "hello") {
-          //   payload.rid = payload.id;
-          //   payload.id = Math.random().toString(36).substring(2, 11);
-          //   callback(null, payload);
-          // } else if (!this.IsPendingReply(clientresult, payload)) {
-          //   var paylad = await clientresult.onMessage(clientresult, payload)
-          //   if (payload && payload.command != "noop") callback(null, paylad);
-          // } else {
-          //   callback(new Error("WHAT???"), null);
-          // }
-        } catch (error) {
-          err(error);
-          callback(error, null);
-        }
-      }
-      const ReceiveStream = (call, e2, e3) => {
-        var payload = call.request;
-        var clientresult = clients.find(x => x.id == payload.rid);
-        if (clientresult) {
-          clientresult.ReceiveStreamCall = call;
-          call.on("end",  ()=>  {
-            clientresult.ReceiveStreamCall = null;
-          });
-        }
-      }
-      const SendStream =  (call, respond, e3) => {
-        var clientresult: client;
+      const SetupStream = async (call, respond, e3) => {
+        info("New streaming grpc client connected");
+        var clientresult: client = new client();
+        clientresult.id = Math.random().toString(36).substring(2, 11);
+        clientresult.protocol = protocol; clientresult.connected = true; 
+        clientresult.connecting = false; clientresult.signedin = false;
+        clientresult.grpcStream = call;
+        await clientresult.Initialize(null, null, call, null);
+        onClientConnected(clientresult);
+        const pingtimer = setInterval(()=> {
+          var c = call;
+          var that = this;
+          if(c.cancelled) {
+            clearInterval(pingtimer);
+            this.ClientCleanup(clientresult, clientresult.onDisconnected, undefined);
+          }
+        }, 1000);
         call.on("data", async (payload) => {
           try {
-            if(payload.command == "hello") {
-              if(clientresult == null) {
-                clientresult = clients.find(x => x.id == payload.rid);
-                if (!clientresult) return;
-                clientresult.SendStreamCall = call;
-              }
-              return;
-            }
-            if (!clientresult) return;
             if (!this.IsPendingReply(clientresult, payload)) {
               var _payload = await clientresult.onMessage(clientresult, payload)
               if (_payload && _payload.command != "noop") this.sendMesssag(clientresult, _payload, null, true);
@@ -825,23 +777,46 @@ export class protowrap {
             try {
               this.sendMesssag(clientresult, error, null, true);
             } catch (error) {
-              
+
             }
             err(error);
           }
         });
-        call.on("end",  () => {
-          this.ClientCleanup(clientresult, clientresult.onDisconnected, undefined);
+        call.on("end", () => {
+          var c = call;
+          var that = this;
+          console.log("end");
+          if(c.cancelled) {
+            clearInterval(pingtimer);
+            this.ClientCleanup(clientresult, clientresult.onDisconnected, undefined);
+          }
+          // 
         });
         call.on("error", (e) => {
           this.ClientCleanup(clientresult, clientresult.onDisconnected, e);
         });
+        call.on("status", (status) => {
+          info(protocol + " client " + status.code + " " + status.details);
+        });
+
         return call;
+      };
+      const Signin = async (call, callback) => {
+        try {
+          var payload = {"jwt": "JWTsecretTOKEN",
+          user: { name: call.request.username, username: call.request.username, _id: "1", email:"wefew", roles: [] }}
+          callback(null, payload);
+        } catch (error) {
+          err(error);
+          callback(error, null);
+        }
       }
+
       // @ts-ignore
       result.server = new grpc.Server();
       // @ts-ignore
-      result.server.addService(this.openiap_proto.grpcService.service, { RPC, ReceiveStream, SendStream });
+      // result.server.addService(this.openiap_proto.grpcService.service, { RPC, ReceiveStream, SendStream });
+      result.server.addService(this.openiap_proto.grpcService.service, { SetupStream, Signin });
       // @ts-ignore
       result.server.bindAsync("0.0.0.0:" + port, grpc.ServerCredentials.createInsecure(), () => {
         // @ts-ignore
@@ -936,8 +911,6 @@ export class protowrap {
     return checksum;
   }
   static pack(command:string, message: any) {
-    // const protomsg = this.protoRoot.lookupType("openiap." + command);
-    // return protomsg.encode(message).finish()
     const protomsg = this.protoRoot.lookupType("openiap." + command);
     return {"type_url": "openiap." + command, "value": protomsg.encode(message).finish() }
   }
@@ -956,6 +929,7 @@ export class protowrap {
           } else {
             msg = protomsg.decode(data)
           }
+          
         } catch (error) {
           msg = data.toString();
           if(msg.startsWith("{")) msg = JSON.parse(msg);

@@ -4,6 +4,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
 service grpcService {
   rpc SetupStream (stream envelope) returns (stream envelope) {} 
+  rpc Signin(signin) returns (signinreply);
 }
 message envelope {
   string command = 1;

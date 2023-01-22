@@ -54,8 +54,7 @@ export class client {
   public stream: net.Socket;
   public grpc: any;
   public call: any;
-  public SendStreamCall: grpc.ClientDuplexStream<any, any>;
-  public ReceiveStreamCall: grpc.ClientDuplexStream<any, any>;
+  public grpcStream: grpc.ClientDuplexStream<any, any>;
   public replies: any;
   public streams: any;
 
@@ -369,9 +368,15 @@ export class client {
     }
     if (this.ws != null) this.ws.close();
     if (this.stream != null) this.stream.destroy();
-    if (this.call != null) this.call.cancel();
-    if (this.SendStreamCall != null) this.SendStreamCall.cancel();
-    if (this.ReceiveStreamCall != null) this.ReceiveStreamCall.cancel();
+    if (this.call != null) {
+        // this.call.cancel();
+        // this.call.write(null)
+        this.call.push(null)
+    }
+    if (this.grpcStream != null) {
+        // this.grpcStream.cancel();
+        this.call.push(null)
+    }
     info("close " + this.id + " " + this.protocol + " " + this.remoteip + " " + this.agent);
     this.connected = false;
     this.connecting = false;
