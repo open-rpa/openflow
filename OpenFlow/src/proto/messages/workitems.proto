@@ -27,7 +27,9 @@ message pushworkitem {
     int32 priority = 10;
     repeated workitemfile files = 11;
 }
-message pushworkitemreply { }
+message pushworkitemreply { 
+    string result = 1;
+}
 message pushworkitems { 
     string wiq = 1;
     string wiqid = 2;
@@ -39,27 +41,29 @@ message pushworkitems {
     int32 priority = 8;
     repeated workitemfile items = 9;
 }
-message pushworkitemsreply { }
-message updateworkitem { 
-    string _id = 1;
-    string wiq = 2;
-    string wiqid = 3;
-    string name = 4;
-    string payload = 5;
-    string state = 6;
-    bool ignoremaxretries = 7;
-    google.protobuf.Timestamp nextrun = 8;
-    string errormessage = 9;
-    string errorsource = 10;
-    string errortype = 11;
-    repeated workitemfile files = 12;
-    string success_wiqid = 13;
-    string failed_wiqid = 14;
-    string success_wiq = 15;
-    string failed_wiq = 16;
-    int32 priority = 17;
+message pushworkitemsreply { 
+    string result = 1;
 }
-message updateworkitemreply { }
+message updateworkitem { 
+    string id = 1;
+    string name = 2;
+    string payload = 3;
+    string state = 4;
+    bool ignoremaxretries = 5;
+    google.protobuf.Timestamp nextrun = 6;
+    string errormessage = 7;
+    string errorsource = 8;
+    string errortype = 9;
+    repeated workitemfile files = 10;
+    string success_wiqid = 11;
+    string failed_wiqid = 12;
+    string success_wiq = 13;
+    string failed_wiq = 14;
+    int32 priority = 15;
+}
+message updateworkitemreply { 
+    string result = 1;
+}
 message popworkitem { 
     string wiq = 1;
     string wiqid = 2;

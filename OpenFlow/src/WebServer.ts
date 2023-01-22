@@ -431,12 +431,29 @@ export class WebServer {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
                     message.command = "closequeue" // new command to new
                 }
+                if(message.command == "pushworkitem") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    msg.payload = JSON.parse(msg.payload); // new style to new 
+                    message.command = "addworkitem" // new command to new
+                }
+                if(message.command == "updateworkitem") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    msg.payload = JSON.parse(msg.payload); // new style to new 
+                    if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
+                    delete msg.Id;                    
+                }
                 var _msg = Message.fromjson({ ...message, data: msg });
                 var result = await _msg.Process(client as any);
                 reply.command = result.command + "reply"
                 if(reply.command == "errorreply") reply.command = "error";
                 if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
                 if(reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
+                if(reply.command == "addworkitemreply") {
+                    reply.command = "pushworkitemreply";
+                }
+                if(reply.command == "updateworkitemreply") {
+                    var b = true;
+                }
                 var res = JSON.parse(result.data);
                 delete res.password;
                 if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {

@@ -4181,132 +4181,118 @@ export class Message {
 
 
     async AddWorkitem(parent: Span): Promise<void> {
-        let user: TokenUser = null;
         this.Reply();
         let msg: AddWorkitemMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            const user: TokenUser = this.tuser;
+        const rootjwt = Crypt.rootToken();
+        const jwt = this.jwt;
+        const user: TokenUser = this.tuser;
 
-            msg = AddWorkitemMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+        msg = AddWorkitemMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
-            var wiq: WorkitemQueue = null;
-            if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
-
-
-            var wi: Workitem = new Workitem(); wi._type = "workitem";
-            wi._id = new ObjectId().toHexString();
-            wi._acl = wiq._acl;
-            wi.wiq = wiq.name;
-            wi.wiqid = wiq._id;
-            wi.name = msg.name ? msg.name : "New work item";
-            wi.payload = msg.payload ? msg.payload : {};
-            if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-            wi.priority = msg.priority;
-            wi.nextrun = msg.nextrun;
-            if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
-            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
-            wi.failed_wiq = msg.failed_wiq;
-            wi.failed_wiqid = msg.failed_wiqid;
-            wi.success_wiq = msg.success_wiq;
-            wi.success_wiqid = msg.success_wiqid;
-
-            wi.state = "new"
-            wi.retries = 0;
-            wi.files = [];
-            wi.lastrun = null;
-            if (!wi.nextrun) {
-                wi.nextrun = new Date(new Date().toISOString());
-                wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
-            }
+        var wiq: WorkitemQueue = null;
+        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
+        }
+        if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
+        }
+        if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
 
-            if (msg.files) {
-                for (var i = 0; i < msg.files.length; i++) {
-                    var file = msg.files[i];
-                    try {
-                        if (NoderedUtil.IsNullUndefinded(file.file)) continue;
-                        const readable = new Readable();
-                        readable._read = () => { }; // _read is required but you can noop it
-                        if (file.file && (!file.compressed)) {
-                            const buf: Buffer = Buffer.from(file.file, 'base64');
-                            readable.push(buf);
-                            readable.push(null);
-                        } else {
-                            // const zlib = require('zlib');
-                            let result: Buffer;
-                            try {
-                                var data = Buffer.from(file.file, 'base64')
-                                result = pako.inflate(data);
-                            } catch (error) {
-                                Logger.instanse.error(msg.error, parent);
-                            }
-                            readable.push(result);
-                            readable.push(null);
+        var wi: Workitem = new Workitem(); wi._type = "workitem";
+        wi._id = new ObjectId().toHexString();
+        wi._acl = wiq._acl;
+        wi.wiq = wiq.name;
+        wi.wiqid = wiq._id;
+        wi.name = msg.name ? msg.name : "New work item";
+        wi.payload = msg.payload ? msg.payload : {};
+        if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+        wi.priority = msg.priority;
+        wi.nextrun = msg.nextrun;
+        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
+        if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+        wi.failed_wiq = msg.failed_wiq;
+        wi.failed_wiqid = msg.failed_wiqid;
+        wi.success_wiq = msg.success_wiq;
+        wi.success_wiqid = msg.success_wiqid;
+
+        wi.state = "new"
+        wi.retries = 0;
+        wi.files = [];
+        wi.lastrun = null;
+        if (!wi.nextrun) {
+            wi.nextrun = new Date(new Date().toISOString());
+            wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
+        }
+
+
+        if (msg.files) {
+            for (var i = 0; i < msg.files.length; i++) {
+                var file = msg.files[i];
+                try {
+                    if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                    const readable = new Readable();
+                    readable._read = () => { }; // _read is required but you can noop it
+                    if (file.file && (!file.compressed)) {
+                        const buf: Buffer = Buffer.from(file.file, 'base64');
+                        readable.push(buf);
+                        readable.push(null);
+                    } else {
+                        // const zlib = require('zlib');
+                        let result: Buffer;
+                        try {
+                            var data = Buffer.from(file.file, 'base64')
+                            result = pako.inflate(data);
+                        } catch (error) {
+                            Logger.instanse.error(msg.error, parent);
                         }
-                        const mimeType = mimetype.lookup(file.filename);
-                        const metadata = new Base();
-                        metadata._createdby = user.name;
-                        metadata._createdbyid = user._id;
-                        metadata._created = new Date(new Date().toISOString());
-                        metadata._modifiedby = user.name;
-                        metadata._modifiedbyid = user._id;
-                        metadata._modified = metadata._created;
-                        (metadata as any).wi = wi._id;
-                        (metadata as any).wiq = wiq.name;
-                        (metadata as any).wiqid = wiq._id;
-                        (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
-
-                        metadata._acl = wiq._acl;
-                        metadata.name = path.basename(file.filename);
-                        (metadata as any).filename = file.filename;
-                        (metadata as any).path = path.dirname(file.filename);
-                        if ((metadata as any).path == ".") (metadata as any).path = "";
-
-
-                        const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
-                        wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
-
-                    } catch (err) {
-                        Logger.instanse.error(msg.error, parent);
+                        readable.push(result);
+                        readable.push(null);
                     }
+                    const mimeType = mimetype.lookup(file.filename);
+                    const metadata = new Base();
+                    metadata._createdby = user.name;
+                    metadata._createdbyid = user._id;
+                    metadata._created = new Date(new Date().toISOString());
+                    metadata._modifiedby = user.name;
+                    metadata._modifiedbyid = user._id;
+                    metadata._modified = metadata._created;
+                    (metadata as any).wi = wi._id;
+                    (metadata as any).wiq = wiq.name;
+                    (metadata as any).wiqid = wiq._id;
+                    (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
+
+                    metadata._acl = wiq._acl;
+                    metadata.name = path.basename(file.filename);
+                    (metadata as any).filename = file.filename;
+                    (metadata as any).path = path.dirname(file.filename);
+                    if ((metadata as any).path == ".") (metadata as any).path = "";
+
+
+                    const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
+                    wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
+
+                } catch (err) {
+                    Logger.instanse.error(msg.error, parent);
                 }
             }
-            delete msg.files;
+        }
+        delete msg.files;
 
-            wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
-            msg.result = wi;
-            const end: number = new Date().getTime();
-            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
-            const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
-            if (seconds > 5 && nextrun_seconds >= 0) {
-                Config.db.queuemonitoringlastrun = new Date();
-                // Config.db.queuemonitoring()
-            }
-        } catch (error) {
-            await handleError(null, error, null);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-            }
+        wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+        msg.result = wi;
+        const end: number = new Date().getTime();
+        const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+        const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+        if (seconds > 5 && nextrun_seconds >= 0) {
+            Config.db.queuemonitoringlastrun = new Date();
+            // Config.db.queuemonitoring()
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, null);
-        }
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
     async DuplicateWorkitem(originalwi: Workitem, wiq: string, wiqid: string, jwt: string, parent: Span): Promise<void> {
         var wi: Workitem = null;

@@ -234,6 +234,7 @@ export class protowrap {
       if (rid == null || rid == "") return false;
       if (client.replies[rid] && command != "beginstream" && command != "stream" && command != "endstream") {
         const { resolve, reject, dt } = client.replies[rid];
+        delete client.replies[rid];
         if (resolve) {
           try {
             if (command == "error") {
@@ -247,8 +248,7 @@ export class protowrap {
             err(error);
             return reject(error);
           }
-        }
-        delete client.replies[rid];
+        }        
       } else if (client.streams[rid]) {
         const { command } = payload;
         if (command == "error") {
@@ -785,7 +785,6 @@ export class protowrap {
         call.on("end", () => {
           var c = call;
           var that = this;
-          console.log("end");
           if(c.cancelled) {
             clearInterval(pingtimer);
             this.ClientCleanup(clientresult, clientresult.onDisconnected, undefined);
