@@ -22,6 +22,7 @@ message queuemessage {
     string routingkey = 4;
     string exchangename = 5;
     string data = 6;
+    bool striptoken = 7;
 }
 message queuemessagereply {
     string queuename = 1;
