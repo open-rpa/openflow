@@ -68,6 +68,7 @@ export class dbConfig extends Base {
 
     public ensure_indexes: boolean;
     public text_index_name_fields: string[];
+    public metadata_collections: string[];    
 
     public auto_create_users: boolean;
     public auto_create_user_from_jwt: boolean;
@@ -171,6 +172,7 @@ export class dbConfig extends Base {
 
         Config.ensure_indexes = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ensure_indexes) ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
         Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields.toString() : Config.getEnv("text_index_name_fields", "name,_names"))
+        Config.metadata_collections = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.metadata_collections) ? conf.metadata_collections.toString() : Config.getEnv("metadata_collections", ""))
         Config.auto_create_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_users) ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
 
         Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
@@ -278,6 +280,7 @@ export class Config {
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
         Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
         Config.text_index_name_fields = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
+        Config.metadata_collections = Config.parseArray(Config.getEnv("metadata_collections", ""));        
 
         Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
         Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
@@ -509,6 +512,7 @@ export class Config {
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
     public static text_index_name_fields: string[] = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
+    public static metadata_collections: string[] = Config.parseArray(Config.getEnv("metadata_collections", ""));    
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));

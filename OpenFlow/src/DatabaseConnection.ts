@@ -1945,19 +1945,46 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
                     continue;
                 }
-
-                let name = item.name;
-                if (NoderedUtil.IsNullEmpty(name)) name = item._name;
-                if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-                item._createdby = user.name;
-                item._createdbyid = user._id;
-                item._created = new Date(new Date().toISOString());
-                item._modifiedby = user.name;
-                item._modifiedbyid = user._id;
-                item._modified = item._created;
-                if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
-                    Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                    item = this.ensureResource(item, collectionname);
+                if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
+                    let name = item.name;
+                    if (NoderedUtil.IsNullEmpty(name)) name = item._name;
+                    if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
+                    item._createdby = user.name;
+                    item._createdbyid = user._id;
+                    item._created = new Date(new Date().toISOString());
+                    item._modifiedby = user.name;
+                    item._modifiedbyid = user._id;
+                    item._modified = item._created;
+                    if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                        Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                        item = this.ensureResource(item, collectionname);
+                    }
+                } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
+                    item._created = new Date(new Date().toISOString());
+    
+                    if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                        Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                        item = this.ensureResource(item, collectionname);
+                    }
+                } else {
+                    // @ts-ignore
+                    if (NoderedUtil.IsNullUndefinded(item.metadata)) item.metadata = {};
+                    span?.addEvent("ensureResource");
+                    // @ts-ignore
+                    item.metadata = this.ensureResource(item.metadata, collectionname);
+                    // @ts-ignore
+                    item.metadata._version = 0;
+                    // @ts-ignore
+                    item.metadata._createdby = user.name;
+                    // @ts-ignore
+                    item.metadata._createdbyid = user._id;                    
+                    // @ts-ignore
+                    if (!DatabaseConnection.hasAuthorization(user, item.metadata, Rights.create)) {
+                        // @ts-ignore
+                        Base.addRight(item.metadata, user._id, user.name, [Rights.full_control]);
+                        // @ts-ignore
+                        item.metadata = this.ensureResource(item.metadata, collectionname);
+                    }
                 }
                 // const hasUser: Ace = item._acl.find(e => e._id === user._id);
                 // if ((hasUser === null || hasUser === undefined)) {
@@ -4260,6 +4287,9 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     static usemetadata(collectionname: string) {
         if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+            return true;
+        }
+        if(Config.metadata_collections.indexOf(collectionname) > -1) {
             return true;
         }
         // if (this.istimeseries("audit")) {
