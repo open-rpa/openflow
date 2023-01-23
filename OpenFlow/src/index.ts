@@ -313,6 +313,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 }
             }, randomNum2 * 1000);
         }
+        await Config.db.ParseTimeseries(span);
         return true;
     } catch (error) {
         Logger.instanse.error(error, span);
