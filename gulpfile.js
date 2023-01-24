@@ -245,6 +245,12 @@ gulp.task("compose", shell.task([
     // docker run -it --rm --privileged tonistiigi/binfmt --install all
     // docker buildx use default
     // docker buildx build --platform linux/amd64 -t openiap/openflow:edge .
+    // second work around
+    // wget https://github.com/docker/buildx/releases/download/v0.4.1/buildx-v0.4.1.linux-amd64
+    // chmod a+x buildx-v0.4.1.linux-amd64
+    // mkdir -p ~/.docker/cli-plugins
+    // mv buildx-v0.4.1.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+
     `docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push .`,
     `docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push --file ./OpenFlowNodeRED/Dockerfile .`,
     // `echo "docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push ."`,

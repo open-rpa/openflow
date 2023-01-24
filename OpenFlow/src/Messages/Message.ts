@@ -1414,6 +1414,7 @@ export class Message {
                 let tuser: TokenUser = null;
                 let user: User = null;
                 if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                    if(msg.validate_only) { this.command = "validatereply"; }
                     span?.addEvent("using jwt, verify token");
                     type = "jwtsignin";
                     try {
@@ -1533,8 +1534,10 @@ export class Message {
                         tuser.username = msg.username;
                     }
                 }
-                if (cli) cli.clientagent = msg.clientagent as any;
-                if (cli) cli.clientversion = msg.clientversion;
+                if(msg.validate_only !== true) {
+                    if (cli) cli.clientagent = msg.clientagent as any;
+                    if (cli) cli.clientversion = msg.clientversion;
+                    }
                 if (user === null || user === undefined || tuser === null || tuser === undefined) {
                     if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
@@ -1752,7 +1755,7 @@ export class Message {
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
             const user: TokenUser = await Crypt.verityToken(jwt);
             var qs: any[] = [{ _id: _id }];
-            qs.push(Config.db.getbasequery(user, "_acl", [Rights.update]))
+            qs.push(Config.db.getbasequery(user, [Rights.update], "users"))
             const res = await Config.db.query<User>({ query: { "$and": qs }, top: 1, collectionname: "users", jwt }, span);
             if (res.length == 0) {
                 throw new Error("Unknown userid " + _id + " or permission denied");
