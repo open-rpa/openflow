@@ -380,8 +380,6 @@ export class WebServer {
                 var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
                 reply.command = "uploadreply"
                 reply.data = protowrap.pack("uploadreply", { id })
-
-
                 // var filename = msg.filename;
                 // let name = path.basename(filename);
                 // name = "upload.png";
@@ -393,33 +391,36 @@ export class WebServer {
                 if(msg.id && msg.id != "") {
                     await WebServer.sendFileContent(client, reply.rid, msg.id)
                 } else {
-                    var filename = msg.filename;
-                    await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
-                    msg.filename = path.basename(filename);
-                    reply.data = protowrap.pack(command, msg);
+                    throw new Error("Access denied")
+                    // var filename = msg.filename;
+                    // await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
+                    // msg.filename = path.basename(filename);
+                    // reply.data = protowrap.pack(command, msg);
                 }
             } else if (command == "clientconsole") {
-                var Readable = require('stream').Readable;
-                var rs = new Readable;
-                rs._read = function () { };
-                protowrap.SetStream(client, rs, reply.rid);
-                protowrap.sendMesssag(client, reply, null, true);
-                rs.pipe(process.stdout); // pipe the read stream to stdout
+                throw new Error("Access denied")
+                // var Readable = require('stream').Readable;
+                // var rs = new Readable;
+                // rs._read = function () { };
+                // protowrap.SetStream(client, rs, reply.rid);
+                // protowrap.sendMesssag(client, reply, null, true);
+                // rs.pipe(process.stdout); // pipe the read stream to stdout
             } else if (command == "console") {
-                var old = process.stdout.write;
-                const rid = reply.rid;
-                // @ts-ignore
-                process.stdout.write = (function (write) {
-                    return function (string, encoding, fd) {
-                        try {
-                            write.apply(process.stdout, arguments);
-                            protowrap.sendMesssag(client, { rid, command: "stream", data: protowrap.pack("stream", { data: Buffer.from(string) }) }, null, false);
-                        } catch (error) {
-                            process.stdout.write = old;
-                            err(error);
-                        }
-                    }
-                })(process.stdout.write);
+                throw new Error("Access denied")
+                // var old = process.stdout.write;
+                // const rid = reply.rid;
+                // // @ts-ignore
+                // process.stdout.write = (function (write) {
+                //     return function (string, encoding, fd) {
+                //         try {
+                //             write.apply(process.stdout, arguments);
+                //             protowrap.sendMesssag(client, { rid, command: "stream", data: protowrap.pack("stream", { data: Buffer.from(string) }) }, null, false);
+                //         } catch (error) {
+                //             process.stdout.write = old;
+                //             err(error);
+                //         }
+                //     }
+                // })(process.stdout.write);
             } else {
                 if(message.command == "updatedocument") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
@@ -433,12 +434,20 @@ export class WebServer {
                 }
                 if(message.command == "pushworkitem") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                    msg.payload = JSON.parse(msg.payload); // new style to new 
+                    if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
                     message.command = "addworkitem" // new command to new
                 }
+                // if(message.command == "updateworkitem") {
+                //     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                //     if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
+                //     if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
+                //     delete msg.Id;                    
+                // }
                 if(message.command == "updateworkitem") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                    msg.payload = JSON.parse(msg.payload); // new style to new 
+                    // if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
+                    if(msg.workitem) msg = Object.assign(msg.workitem, msg);
+                    delete msg.workitem;
                     if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
                     delete msg.Id;                    
                 }
@@ -450,9 +459,7 @@ export class WebServer {
                 if(reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
                 if(reply.command == "addworkitemreply") {
                     reply.command = "pushworkitemreply";
-                }
-                if(reply.command == "updateworkitemreply") {
-                    var b = true;
+                    reply.workitem = result.result;
                 }
                 var res = JSON.parse(result.data);
                 delete res.password;
@@ -462,9 +469,15 @@ export class WebServer {
                         delete res.result;
                     }
                 }
+                if(result.command == "addworkitem" || result.command == "pushworkitem" || result.command == "updateworkitem" || result.command == "popworkitem") {
+                    res.workitem = res.result;
+                }
                 // if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
                 // if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
                 if(res.result) res.result = JSON.stringify(res.result);
+                if(res.workitem && !NoderedUtil.IsNullUndefinded(res.workitem.payload) ) {
+                    res.workitem.payload = JSON.stringify(res.workitem.payload);
+                }
                 if(res.results) res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 reply.data = protowrap.pack(reply.command, res);

@@ -1404,7 +1404,6 @@ export class Message {
             let impostor: string = "";
             const UpdateDoc: any = { "$set": {} };
             let type: tokenType = "local";
-            try {
                 msg = SigninMessage.assign(this.data);
                 if (cli != null) {
                     if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
@@ -1697,11 +1696,6 @@ export class Message {
                         span?.addEvent("memoryCache.delete users" + tuser.impostor);
                     }
                 }
-            } catch (error) {
-                if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-                if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-                await handleError(cli, error, span);
-            }
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
                 var validated = true;
                 if (Config.validate_user_form != "") {
@@ -1729,7 +1723,6 @@ export class Message {
                     throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
-            try {
                 msg.websocket_package_size = Config.websocket_package_size;
                 msg.openflow_uniqueid = Config.openflow_uniqueid;
                 if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
@@ -1738,10 +1731,6 @@ export class Message {
                 if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
                 msg.enable_analytics = Config.enable_analytics;
                 this.data = JSON.stringify(msg);
-            } catch (error) {
-                this.data = "";
-                await handleError(cli, error, span);
-            }
             // hrend = process.hrtime(hrstart)
         } finally {
             span?.addEvent("Signin complete");
