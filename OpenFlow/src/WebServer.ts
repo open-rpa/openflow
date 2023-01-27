@@ -437,12 +437,14 @@ export class WebServer {
                     if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
                     message.command = "addworkitem" // new command to new
                 }
-                // if(message.command == "updateworkitem") {
+                if(message.command == "updateworkitem") {
+                    if(msg.workitem && typeof msg.workitem.payload == "string") msg.workitem.payload = JSON.parse(msg.workitem.payload); // new style to new 
+                    var b = true;
                 //     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
                 //     if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
                 //     if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
                 //     delete msg.Id;                    
-                // }
+                }
                 if(message.command == "updateworkitem") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
                     // if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
