@@ -38,7 +38,7 @@ gulp.task("copyfiles1", function () {
     const version2 = gulp.src('./VERSION').pipe(gulp.dest("OpenFlowNodeRED/dist"));
 
     const copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(publicdestination + '/OpenFlow/src/public'));
-    const copyproto = gulp.src('./OpenFlow/src/proto/**/*.*').pipe(gulp.dest('./dist/proto'));
+    const copyproto = gulp.src('./proto/**/*.*').pipe(gulp.dest('./dist/proto/proto'));
     return merge(openflow, nodered, version1, version2, copyspurce, copyproto);
 });
 gulp.task("setwatch", async function () {

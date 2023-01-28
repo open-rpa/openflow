@@ -2005,8 +2005,8 @@ export class Message {
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
-    private async _GetFile(id: string, compressed: boolean): Promise<string> {
-        return new Promise<string>(async (resolve, reject) => {
+    public async _GetFile(id: string, compressed: boolean): Promise<Buffer> {
+        return new Promise<Buffer>(async (resolve, reject) => {
             try {
                 const bucket = new GridFSBucket(Config.db.db);
                 let downloadStream = bucket.openDownloadStream(safeObjectID(id));
@@ -2020,11 +2020,11 @@ export class Message {
                 downloadStream.on('end', () => {
                     try {
                         const buffer = Buffer.concat(bufs);
-                        let result: string = "";
+                        let result: Buffer;
                         if (compressed) {
-                            result = Buffer.from(pako.deflate(buffer)).toString('base64');
+                            result = Buffer.from(pako.deflate(buffer));
                         } else {
-                            result = buffer.toString('base64');
+                            result = buffer;
                         }
                         resolve(result);
                     } catch (error) {
@@ -2059,7 +2059,7 @@ export class Message {
             } else {
                 throw new Error("id or filename is mandatory");
             }
-            msg.file = await this._GetFile(msg.id, msg.compress);
+            msg.file = (await this._GetFile(msg.id, msg.compress)).toString('base64');
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } finally {
@@ -4330,7 +4330,7 @@ export class Message {
         }
         for (var i = 0; i < wi.files.length; i++) {
             var _f = wi.files[i];
-            var file = await this._GetFile(_f._id, false);
+            var file:string = (await this._GetFile(_f._id, false)).toString('base64');
             const metadata = new Base();
             (metadata as any).wi = wi._id;
             (metadata as any).wiq = _wiq.name;
@@ -4757,9 +4757,29 @@ export class Message {
                     }
                 }
             } while (workitems.length > 0 && msg.result == null);
-
-
-
+            // @ts-ignore
+            // let includefiles = msg.includefiles;
+            // // @ts-ignore
+            // let compressed = msg.compressed || false;
+            // if(msg.result && includefiles == true) {
+            //     for(var i = 0; i < msg.result.files.length; i++) {
+            //         var file = msg.result.files[i];
+            //         var b: Buffer = await this._GetFile(file._id, compressed);
+            //         // @ts-ignore
+            //         b = new Uint8Array(b);
+            //         // b = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+            //         // @ts-ignore
+            //         file.compressed = compressed;
+            //         // @ts-ignore
+            //         file.file = b;
+            //         // @ts-ignore
+            //         msg.result.file = b;
+            //         // Slice (copy) its segment of the underlying ArrayBuffer
+            //         // @ts-ignore
+            //         // file.file = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+                    
+            //     }
+            // }
         } catch (error) {
             await handleError(null, error, parent);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }

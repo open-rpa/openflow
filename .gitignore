@@ -17,3 +17,4 @@ crash.log
 package-lock.json
 .cache-require-paths.json
 *.heapsnapshot
+/proto

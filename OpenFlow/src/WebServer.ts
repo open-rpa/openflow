@@ -365,7 +365,8 @@ export class WebServer {
             } else if (command == "ping") {
                 reply.command = "pong";
             } else if (command == "getelement") {
-                msg.xpath = "Did you say " + msg.xpath + " ?";
+                if(NoderedUtil.IsNullUndefinded(msg)) msg = {xpath: ""};
+                msg.xpath = "Did you say " + msg?.xpath + " ?";
                 reply.data = protowrap.pack(command, msg);
             } else if (command == "send") {
                 let len = msg.count;
@@ -473,6 +474,30 @@ export class WebServer {
                 }
                 if(result.command == "addworkitem" || result.command == "pushworkitem" || result.command == "updateworkitem" || result.command == "popworkitem") {
                     res.workitem = res.result;
+                    delete res.result;
+                }
+                if(result.command == "popworkitem") {
+                    let includefiles = msg.includefiles || false;
+                    // @ts-ignore
+                    let compressed = msg.compressed || false;
+                    if(res.workitem && includefiles == true) {
+                        for(var i = 0; i < res.workitem.files.length; i++) {
+                            var file = res.workitem.files[i];
+                            var buf: Buffer = await _msg._GetFile(file._id, compressed);
+                            // @ts-ignore
+                            // b = new Uint8Array(b);
+                            // b = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+                            // @ts-ignore
+                            file.compressed = compressed;
+                            // @ts-ignore
+                            file.file = buf;
+                            // @ts-ignore
+                            res.workitem.file = buf;
+                            // Slice (copy) its segment of the underlying ArrayBuffer
+                            // @ts-ignore
+                            // file.file = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);                            
+                        }
+                    }
                 }
                 // if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
                 // if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
@@ -483,6 +508,10 @@ export class WebServer {
                 if(res.results) res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 reply.data = protowrap.pack(reply.command, res);
+                if(reply.command == "popworkitemreply") {
+                    var [ test1, test2, test3 ] = protowrap.unpack(reply);
+                    var b2 = test2.workitem.files;
+                }
                 // throw new Error("Unknown command " + command);
             }
         } catch (error) {

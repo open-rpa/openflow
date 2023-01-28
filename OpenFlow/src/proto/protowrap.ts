@@ -18,6 +18,7 @@ import * as  WebSocket from "ws";
 import * as  crypto from "crypto";
 import { Throttler } from "./Throttler";
 import { client, clientType } from "./client";
+import { NoderedUtil } from "@openiap/openflow-api";
 // const PROTO_PATH = "awesome.proto"
 
 export class protowrap {
@@ -28,12 +29,12 @@ export class protowrap {
   static protoRoot: any;
   static async init() {
     var paths = [];
-    paths.push(path.join(__dirname, "messages/base.proto"));
-    paths.push(path.join(__dirname, "messages/ace.proto"));
-    paths.push(path.join(__dirname, "messages/querys.proto"));
-    paths.push(path.join(__dirname, "messages/queues.proto"));
-    paths.push(path.join(__dirname, "messages/watch.proto"));
-    paths.push(path.join(__dirname, "messages/workitems.proto"));
+    paths.push(path.join(__dirname, "proto/base.proto"));
+    paths.push(path.join(__dirname, "proto/ace.proto"));
+    paths.push(path.join(__dirname, "proto/querys.proto"));
+    paths.push(path.join(__dirname, "proto/queues.proto"));
+    paths.push(path.join(__dirname, "proto/watch.proto"));
+    paths.push(path.join(__dirname, "proto/workitems.proto"));
 
     this.packageDefinition = await protoLoader.load(
       paths,
@@ -228,6 +229,8 @@ export class protowrap {
   }
   static IsPendingReply(client: client, payload: any) {
     try {
+      if(NoderedUtil.IsNullEmpty(payload)) throw new Error("Payload is mandatory");
+      if(NoderedUtil.IsNullEmpty(payload.command)) throw new Error("payload command is mandatory");
       const [ command, msg, reply ] = this.unpack(payload);
       const rid = payload.rid;
       dumpmessage("RCV", payload);
@@ -931,7 +934,11 @@ export class protowrap {
           
         } catch (error) {
           msg = data.toString();
-          if(msg.startsWith("{")) msg = JSON.parse(msg);
+          if(msg.startsWith("{")) {
+            msg = JSON.parse(msg);
+          } else {
+            throw error;
+          }
         }    
       }
     }

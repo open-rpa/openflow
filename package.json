@@ -8,7 +8,8 @@
     "coverage": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'",
     "oldtest": "ts-mocha --paths -p OpenFlow/tsconfig.json OpenFlow/**/*.spec.ts",
     "rebuild": "docker-compose up registry -d && docker-compose build && docker-compose push --ignore-push-failures  && docker-compose up -d",
-    "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d"
+    "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d",
+    "updateproto": "npm uninstall @openiap/proto && npm --save-dev i openiap/proto && gulp copyfiles1"
   },
   "repository": {
     "type": "git",
@@ -89,6 +90,7 @@
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
+    "@openiap/proto": "github:openiap/proto",
     "@testdeck/mocha": "0.3.2",
     "@types/angular": "^1.8.4",
     "@types/angular-route": "^1.7.2",
