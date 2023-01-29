@@ -390,7 +390,16 @@ export class WebServer {
                 // info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
             } else if (command == "download") {
                 if(msg.id && msg.id != "") {
-                    await WebServer.sendFileContent(client, reply.rid, msg.id)
+                    reply.command = "downloadreply"
+
+                    const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
+                    if(rows.length > 0) {
+                        await WebServer.sendFileContent(client, reply.rid, msg.id)
+                        result = rows[0];
+                        reply.data = protowrap.pack("downloadreply", result);
+                    } else {
+                        throw new Error("Access denied")
+                    }
                 } else {
                     throw new Error("Access denied")
                     // var filename = msg.filename;
@@ -508,11 +517,6 @@ export class WebServer {
                 if(res.results) res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 reply.data = protowrap.pack(reply.command, res);
-                if(reply.command == "popworkitemreply") {
-                    var [ test1, test2, test3 ] = protowrap.unpack(reply);
-                    var b2 = test2.workitem.files;
-                }
-                // throw new Error("Unknown command " + command);
             }
         } catch (error) {
             reply.command = "error";
