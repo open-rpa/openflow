@@ -7653,6 +7653,7 @@ export class AgentCtrl extends entityCtrl<Base> {
         return Math.floor(Math.random() * (max - min + 1) + min)
     }
     images = [
+        {name:'openiap/nodeagent'},
         {name:'openiap/pyagent'},
         {name:'openiap/nodered'},
     ]
