@@ -703,7 +703,7 @@ export class noderedcontribopenflowstorage {
                 //     npmrc.content = fs.readFileSync(npmrcFile, "utf8");
                 //     await this._setnpmrc(npmrc);
             } else if (!NoderedUtil.IsNullEmpty(Config.HTTP_PROXY) || !NoderedUtil.IsNullEmpty(Config.HTTPS_PROXY)) {
-                // According to https://docs.npmjs.com/cli/v7/using-npm/config it should be picked up by envoriment variables, 
+                // According to https://docs.npmjs.com/cli/v7/using-npm/config it should be picked up by environment variables, 
                 // HTTP_PROXY, HTTPS_PROXY and NO_PROXY 
                 const npmrc = new noderednpmrc();
                 npmrc.content = "proxy=" + Config.HTTP_PROXY + "\n" + "https-proxy=" + Config.HTTPS_PROXY;

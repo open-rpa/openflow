@@ -671,7 +671,7 @@ export class MenuCtrl {
 
             // tour.addStep({
             //     title: 'Manage credentials',
-            //     text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
+            //     text: `For a more secure environment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
             //     attachTo: {
             //         element: '#menuadmincredentials'
             //     },
@@ -1091,7 +1091,7 @@ export class MenuCtrl {
 
             tour.addStep({
                 title: 'Credentials',
-                text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
+                text: `For a more secure environment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
@@ -7493,5 +7493,256 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
         }, function (err) {
             console.error('Async: Could not copy text: ', err);
         });
+    }
+}
+
+
+
+export class AgentsCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("AgentsCtrl");
+        this.basequery = {};
+        this.collection = "agents";
+        this.postloadData = this.processdata;
+        this.skipcustomerfilter = true;
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, slug: 1 };
+        if (this.userdata.data.AgentsCtrl) {
+            this.basequery = this.userdata.data.AgentsCtrl.basequery;
+            this.collection = this.userdata.data.AgentsCtrl.collection;
+            this.baseprojection = this.userdata.data.AgentsCtrl.baseprojection;
+            this.orderby = this.userdata.data.AgentsCtrl.orderby;
+            this.searchstring = this.userdata.data.AgentsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.AgentsCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.AgentsCtrl.skipcustomerfilter;
+        }
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    processdata() {
+        if (!this.userdata.data.AgentsCtrl) this.userdata.data.AgentsCtrl = {};
+        this.userdata.data.AgentsCtrl.basequery = this.basequery;
+        this.userdata.data.AgentsCtrl.collection = this.collection;
+        this.userdata.data.AgentsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.AgentsCtrl.orderby = this.orderby;
+        this.userdata.data.AgentsCtrl.searchstring = this.searchstring;
+        this.userdata.data.AgentsCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.AgentsCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DeleteAgent(model:Base): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            await NoderedUtil.CustomCommand({command:"deleteagent", id:model._id, name:model.name})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+            
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StopAgent(model:Base): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            await NoderedUtil.CustomCommand({command:"stopagent", id:model._id, name:model.name})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StartAgent(model:Base): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            await NoderedUtil.CustomCommand({command:"startagent", id:model._id, name:model.name})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+
+
+export class AgentCtrl extends entityCtrl<Base> {
+    instances: any[] = [];
+    instancelog: string = "";
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("AgentCtrl");
+        this.collection = "agents";
+        this.postloadData = this.processData;
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.model = new Role();
+                this.model.name = this.randomname();
+                // @ts-ignore
+                this.model.image = this.images[0].name;
+                // @ts-ignore
+                this.model.slug = this.model.name
+                // @ts-ignore
+                this.model.environment = {
+                    "gitrepo": "https://github.com/openiap/pyagenttest.git",
+                    "wiq":"q2"
+                }
+                this.loading = false;
+            }
+        });
+    }
+    async processData(): Promise<void> {
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    random(min, max) {
+        return Math.floor(Math.random() * (max - min + 1) + min)
+    }
+    images = [
+        {name:'openiap/pyagent'},
+        {name:'openiap/nodered'},
+    ]
+    Adjectives = [
+        'aged', 'ancient', 'autumn', 'billowing', 'bitter', 'black', 'blue', 'bold',
+        'broad', 'broken', 'calm', 'cold', 'cool', 'crimson', 'curly', 'damp',
+        'dark', 'dawn', 'delicate', 'divine', 'dry', 'empty', 'falling', 'fancy',
+        'flat', 'floral', 'fragrant', 'frosty', 'gentle', 'green', 'hidden', 'holy',
+        'icy', 'jolly', 'late', 'lingering', 'little', 'lively', 'long', 'lucky',
+        'misty', 'morning', 'muddy', 'mute', 'nameless', 'noisy', 'odd', 'old',
+        'orange', 'patient', 'plain', 'polished', 'proud', 'purple', 'quiet', 'rapid',
+        'raspy', 'red', 'restless', 'rough', 'round', 'royal', 'shiny', 'shrill',
+        'shy', 'silent', 'small', 'snowy', 'soft', 'solitary', 'sparkling', 'spring',
+        'square', 'steep', 'still', 'summer', 'super', 'sweet', 'throbbing', 'tight',
+        'tiny', 'twilight', 'wandering', 'weathered', 'white', 'wild', 'winter', 'wispy',
+        'withered', 'yellow', 'young'
+      ]
+      
+      Nouns = [
+        'art', 'band', 'bar', 'base', 'bird', 'block', 'boat', 'bonus',
+        'bread', 'breeze', 'brook', 'bush', 'butterfly', 'cake', 'cell', 'cherry',
+        'cloud', 'credit', 'darkness', 'dawn', 'dew', 'disk', 'dream', 'dust',
+        'feather', 'field', 'fire', 'firefly', 'flower', 'fog', 'forest', 'frog',
+        'frost', 'glade', 'glitter', 'grass', 'hall', 'hat', 'haze', 'heart',
+        'hill', 'king', 'lab', 'lake', 'leaf', 'limit', 'math', 'meadow',
+        'mode', 'moon', 'morning', 'mountain', 'mouse', 'mud', 'night', 'paper',
+        'pine', 'poetry', 'pond', 'queen', 'rain', 'recipe', 'resonance', 'rice',
+        'river', 'salad', 'scene', 'sea', 'shadow', 'shape', 'silence', 'sky',
+        'smoke', 'snow', 'snowflake', 'sound', 'star', 'sun', 'sun', 'sunset',
+        'surf', 'term', 'thunder', 'tooth', 'tree', 'truth', 'union', 'unit',
+        'violet', 'voice', 'water', 'waterfall', 'wave', 'wildflower', 'wind', 'wood'
+    ]
+    tokenChars = '0123456789abcdef'
+    randomname() {
+        let token = ''
+        for (let i = 0; i < 4; i++) {
+            token += this.tokenChars[this.random(0, this.tokenChars.length - 1)]
+        }        
+        return this.Adjectives[this.random(0, this.Adjectives.length - 1)] + "-" +
+        this.Nouns[this.random(0, this.Nouns.length -1 )] + "-" + token;
+    }
+    async DeleteAgent(): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"deleteagent", id:this.model._id, name:this.model.name})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+            
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DeleteAgentPod(podname:string): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"deleteagentpod", id:this.model._id, name:podname})
+            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+            
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StopAgent(): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"stopagent", id:this.model._id, name:this.model.name})
+            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StartAgent(): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.name})
+            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async GetInstanceLog(podname:string): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
+            console.log(this.instancelog)
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async submit(): Promise<void> {
+        try {
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+            } else {
+                this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+            }
+            this.$location.path("/Agents");
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }

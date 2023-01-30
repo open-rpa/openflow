@@ -5075,12 +5075,10 @@ export class Message {
         }
     }
     async CustomCommand(parent: Span): Promise<void> {
-        let user: TokenUser = null;
         this.Reply();
         let msg: CustomCommandMessage;
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
-        user = this.tuser;
 
         msg = CustomCommandMessage.assign(this.data);
         switch (msg.command) {
@@ -5140,6 +5138,36 @@ export class Message {
                         .catch(err => Logger.instanse.error(err, parent));
                 }
                 break;
+            case "startagent":
+                var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                var hasbilling = false;
+                var agentjwt = Crypt.createToken(this.tuser, Config.personalnoderedtoken_expires_in);
+                var apiurl = "grpc://api:50051"
+                if(Config.domain == "pc.openiap.io") apiurl = "grpc://grpc.demo.openiap.io:443"
+                await Logger.nodereddriver.EnsureInstance(agent.image, agent.tz, hasbilling, agentjwt, apiurl, agent.slug, 3000, agent.environment , parent);
+                break;
+            case "stopagent":
+                var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                await Logger.nodereddriver.RemoveInstance(agent.slug, parent);
+                break;
+            case "deleteagentpod":
+                var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                await Logger.nodereddriver.RemoveInstancePod(agent.slug, msg.name, parent);
+                break;
+            case "getagentlog":
+                var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                msg.result = await Logger.nodereddriver.GetInstanceLog(agent.slug, msg.name, parent);
+                break;
+            case "getagentpods":
+                var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                msg.result = await Logger.nodereddriver.GetInstancePods(agent.slug, parent);
+                break;
+                
             default:
                 msg.error = "Unknown custom command";
         }

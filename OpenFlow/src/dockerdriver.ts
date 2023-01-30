@@ -125,6 +125,11 @@ export class dockerdriver implements i_nodered_driver {
             if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
                 Labels["traefik.http.routers." + name + ".tls.certresolver"] = Config.nodered_docker_certresolver;
             }
+            let openiapagent = nodered_image;
+            if(openiapagent.indexOf(":")> - 1) openiapagent = openiapagent.substring(0, openiapagent.indexOf(":"))
+            if(openiapagent.indexOf("/")> - 1) openiapagent = openiapagent.substring(openiapagent.lastIndexOf("/") + 1)
+            Labels["openiapagent"] = openiapagent;
+
             // HostConfig.PortBindings = { "5859/tcp": [{ HostPort: '5859' }] }
 
             let api_ws_url = Config.basewsurl();
@@ -391,4 +396,263 @@ export class dockerdriver implements i_nodered_driver {
         return null;
     }
 
+
+
+    public async EnsureInstance(image: string, tz:string, hasbilling: boolean, jwt: string, apiurl: string, slug: string, port: number, environment: any, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
+        Logger.instanse.debug("[" + slug + "] EnsureInstance", span);
+
+        const docker: Dockerode = new Docker();
+        const myhostname = require('os').hostname();
+        let me = null;
+        let list = await docker.listContainers({ all: 1 });
+        let instance: any = null;
+        for (let item of list) {
+            var Created = new Date(item.Created * 1000);
+            (item as any).metadata = { creationTimestamp: Created, name: item.Labels["com.docker.compose.service"] };
+            (item as any).status = { phase: item.State }
+            if (item.Names[0] == "/" + slug) {
+                instance = item;
+            }
+            if (item.Names[0] == "/" + myhostname || item.Id.startsWith(myhostname)) {
+                me = item;
+            }
+            if (me == null && item.Labels["com.docker.compose.project"] == Config.namespace) {
+                me = item;
+            }
+        }
+
+        if (NoderedUtil.IsNullUndefinded(instance)) {
+
+            let domain_schema = Config.nodered_domain_schema;
+            if (NoderedUtil.IsNullEmpty(domain_schema)) {
+                domain_schema = "$nodered_id$." + Config.domain;
+            }
+            domain_schema = domain_schema.split("$nodered_id$").join("$slug$")
+            const hostname = domain_schema.replace("$slug$", slug);
+
+            let tzvolume: string = null;
+            if (!NoderedUtil.IsNullEmpty(tz)) {
+                tzvolume = "/usr/share/zoneinfo/" + tz
+            }
+            const Labels = {
+                "billed": hasbilling.toString(),
+            };
+            let NetworkingConfig: Dockerode.EndpointsConfig = undefined;
+            let HostConfig: Dockerode.HostConfig = undefined;
+            HostConfig = {};
+            if (me != null) {
+                if (Config.nodered_docker_use_project) {
+                    if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
+                    if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
+                    if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
+                    if (me.Labels["com.docker.compose.project.working_dir"]) Labels["com.docker.compose.project.working_dir"] = me.Labels["com.docker.compose.project.working_dir"];
+                    if (me.Labels["com.docker.compose.service"]) Labels["com.docker.compose.service"] = me.Labels["com.docker.compose.service"];
+                    if (me.Labels["com.docker.compose.version"]) Labels["com.docker.compose.version"] = me.Labels["com.docker.compose.version"];
+                }
+                if (me.NetworkSettings && me.NetworkSettings.Networks) {
+                    const keys = Object.keys(me.NetworkSettings.Networks);
+                    HostConfig.NetworkMode = keys[0];
+                }
+            }
+            let openiapagent = image;
+            if(openiapagent.indexOf(":")> - 1) openiapagent = openiapagent.substring(0, openiapagent.indexOf(":"))
+            if(openiapagent.indexOf("/")> - 1) openiapagent = openiapagent.substring(openiapagent.lastIndexOf("/") + 1)
+            Labels["openiapagent"] = openiapagent;
+            Labels["traefik.enable"] = "true";
+            Labels["traefik.http.routers." + slug + ".entrypoints"] = Config.nodered_docker_entrypoints;
+            Labels["traefik.http.routers." + slug + ".rule"] = "Host(`" + hostname + "`)";
+            Labels["traefik.http.services." + slug + ".loadbalancer.server.port"] = port.toString()
+            if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
+                Labels["traefik.http.routers." + slug + ".tls.certresolver"] = Config.nodered_docker_certresolver;
+            }
+            const Env = [
+                "nodered_id=" + slug,
+                "jwt=" + jwt,
+                "apiurl=" + apiurl,
+                "domain=" + hostname,
+                "protocol=" + Config.protocol,
+                "port=" + port.toString(),
+                "NODE_ENV=" + Config.NODE_ENV,
+                "HTTP_PROXY=" + Config.HTTP_PROXY,
+                "HTTPS_PROXY=" + Config.HTTPS_PROXY,
+                "NO_PROXY=" + Config.NO_PROXY,
+                "otel_expose_metric=" + "false",
+                "enable_analytics=" + Config.enable_analytics.toString(),
+                "otel_trace_url=" + Config.otel_trace_url,
+                "otel_metric_url=" + Config.otel_metric_url,
+                "otel_trace_interval=" + Config.otel_trace_interval.toString(),
+                "otel_metric_interval=" + Config.otel_metric_interval.toString(),
+                "TZ=" + tz
+            ]
+            if(environment != null) {
+                var keys = Object.keys(environment);
+                for(var i = 0; i < keys.length; i++) {
+                    var exists = Env.find(x => x.startsWith(keys[i] + "="));
+                    if(exists == null) {
+                        Env.push(keys[i] + "=" + environment[keys[i]]);
+                    }                    
+                }
+            }
+
+            if (tzvolume != null) {
+                HostConfig.Binds = ["/etc/localtime", tzvolume]
+            }
+            await this._pullImage(docker, image, span);
+            instance = await docker.createContainer({
+                Image: image, name: slug, Labels, Env, NetworkingConfig, HostConfig
+            })
+            await instance.start();
+        } else {
+            const container = docker.getContainer(instance.Id);
+            if (instance.State != "running") {
+                container.start();
+            }
+
+        }
+    }
+    public async RemoveInstance(slug: string, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.RemoveInstance", parent);
+        try {
+            Logger.instanse.debug("[" + slug + "] RemoveInstance", span);
+
+            span?.addEvent("init Docker()");
+            const docker: Dockerode = new Docker();
+            span?.addEvent("listContainers()");
+            var list = await docker.listContainers({ all: 1 });
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                if (item.Names[0] == "/" + slug) {
+                    span?.addEvent("getContainer(" + item.Id + ")");
+                    const container = docker.getContainer(item.Id);
+                    if (item.State == "running") await container.stop();
+                    span?.addEvent("remove()");
+                    await container.remove();
+                }
+            }
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async GetInstanceLog(slug: string, podname: string, parent: Span): Promise<string> {
+        const span: Span = Logger.otel.startSubSpan("message.GetInstanceLog", parent);
+        try {
+            var result: string = null;
+            const docker: Dockerode = new Docker();
+            let me = null;
+            let list = await docker.listContainers({ all: 1 });
+            let instance: Dockerode.ContainerInfo = null;
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                var Created = new Date(item.Created * 1000);
+                (item as any).metadata = { creationTimestamp: Created, name: item.Labels["com.docker.compose.service"] };
+                (item as any).status = { phase: item.State }
+                if (item.Names[0] == "/" + podname) {
+                    instance = item;
+                }
+            }
+            if (instance != null) {
+                var logOpts = {
+                    stdout: 1,
+                    stderr: 1,
+                    tail: 50,
+                    follow: 0
+                };
+                const container = docker.getContainer(instance.Id);
+                var s = await container.logs((logOpts as any) as Dockerode.ContainerLogsOptions);
+                result = s.toString();
+            }
+            if (result == null) result = "";
+            return result;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async GetInstancePods(slug: string, parent: Span): Promise<any[]> {
+        const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
+        const rootjwt = Crypt.rootToken()
+        const rootuser = TokenUser.From(Crypt.rootUser());
+        try {
+            const noderedresource: any = await Config.db.GetOne({ "collectionname": "config", "query": { "name": "Nodered Instance", "_type": "resource" } }, span);
+            let runtime: number = noderedresource?.defaultmetadata?.runtime_hours;
+            if (NoderedUtil.IsNullUndefinded(runtime)) {
+                // If nodered resource does not exists, dont turn off nodereds
+                runtime = 0;
+                // If nodered resource does exists, but have no default, use 24 hours
+                if (!NoderedUtil.IsNullUndefinded(noderedresource)) runtime = 24;
+            }
+
+            span?.addEvent("init Docker()");
+            const docker = new Docker();
+            span?.addEvent("listContainers()");
+            var list = await docker.listContainers({ all: 1 });
+            var result = [];
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                var Created = new Date(item.Created * 1000);
+                item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
+                item.status = { phase: item.State }
+                const image = item.Image;
+                const openiapagent = item.Labels["openiapagent"];
+                const billed = item.Labels["billed"];
+                let deleted: boolean = false;
+                if (!NoderedUtil.IsNullEmpty(openiapagent)) {
+                    if (!NoderedUtil.IsNullUndefinded(noderedresource) && runtime > 0) {
+                        const date = new Date();
+                        const a: number = (date as any) - (Created as any);
+                        const diffhours = a / (1000 * 60 * 60);
+                        if (billed != "true" && diffhours > runtime) {
+                            Logger.instanse.warn("[" + slug + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours", span);
+                            await this.RemoveInstance(item.metadata.name, span);
+                            deleted = true;
+                        }
+                    }
+                    if (item.Names[0] == "/" + slug && deleted == false) {
+                        span?.addEvent("getContainer(" + item.Id + ")");
+                        const container = docker.getContainer(item.Id);
+                        span?.addEvent("stats()");
+                        var stats = await container.stats({ stream: false });
+                        let cpu_usage: 0;
+                        let memory: 0;
+                        let memorylimit: 0;
+                        if (stats && stats.cpu_stats && stats.cpu_stats.cpu_usage && stats.cpu_stats.cpu_usage.usage_in_usermode) cpu_usage = stats.cpu_stats.cpu_usage.usage_in_usermode;
+                        if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
+                        if (stats && stats.memory_stats && stats.memory_stats.limit) memorylimit = stats.memory_stats.limit;
+                        item.metrics = {
+                            cpu: parseFloat((cpu_usage / 1024 / 1024).toString()).toFixed(2) + "n",
+                            memory: parseFloat((memory / 1024 / 1024).toString()).toFixed(2) + "Mi",
+                            memorylimit: parseFloat((memorylimit / 1024 / 1024).toString()).toFixed(2) + "Mi"
+                        };
+                        result.push(item);
+                    }
+                }
+            }
+            return result;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async RemoveInstancePod(slug: string, podname: string, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.RemoveInstancePod", parent);
+        try {
+            Logger.instanse.debug("[" + slug + "] RemoveInstancePod", span);
+
+            span?.addEvent("init Docker()");
+            const docker: Dockerode = new Docker();
+            span?.addEvent("listContainers()");
+            var list = await docker.listContainers({ all: 1 });
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                if (item.Names[0] == "/" + podname) {
+                    span?.addEvent("getContainer(" + item.Id + ")");
+                    const container = docker.getContainer(item.Id);
+                    if (item.State == "running") await container.stop();
+                    span?.addEvent("remove()");
+                    await container.remove();
+                }
+            }
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
 }

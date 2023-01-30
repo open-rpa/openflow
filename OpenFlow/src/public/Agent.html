@@ -1,0 +1,117 @@
+<div class="row">
+  <div class="col-sm-20">
+      <h1 class="pagetitle" translate lib="web">agent</h1>
+  </div>
+</div>
+
+<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+
+<div ng-repeat="instance in ctrl.instances"
+ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'alert-danger': instance.status.phase == 'Failed'}">
+<div class="row">
+  <label class="col-sm-1 control-label"><span translate lib="web">name</span>: </label>
+  <div class="col">
+    <span >{{ instance.metadata.name }}</span>
+  </div>
+  <label class="col-sm-1 control-label"><span translate lib="web">cpu</span>: </label>
+  <div class="col-sm-1">
+    <span >{{ instance.metrics.cpu + "/" +
+      instance.spec.containers[0].resources.limits.cpu }}</span>
+  </div>
+  <label class="col-sm-1 control-label"><span translate lib="web">mem</span>: </label>
+  <div class="col-sm-1">
+    <span>{{ instance.metrics.memory + "/" +
+      instance.spec.containers[0].resources.limits.memory }}</span>
+  </div>
+  <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
+  <div class="col-sm-1">
+    <span>{{ (this.instance.metadata.deletionTimestamp != null ? " deleting" :
+      instance.status.phase) }}</span>
+  </div>
+  <label class="col-sm-1 control-label"><span translate lib="web">created</span>: </label>
+  <div class="col-sm-1">
+    <span>
+      <timesince ng-model="instance.metadata.creationTimestamp" />
+    </span>
+  </div>
+</div>
+<div class="row">
+  <label class="col-sm-1 control-label"><span translate lib="web">image</span>: </label>
+  <div class="col">
+    <span>{{ instance.Image || instance.spec.containers[0].image }}</span>
+  </div>
+  <div class="col" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
+     || instance.status.phase == 'running' || instance.status.phase == 'exited'">
+    <button type="button" class="btn btn-sm "
+      ng-disabled="ctrl.loading==true"
+      ng-show="instance.status.phase == 'Running' || instance.status.phase == 'running' || instance.status.phase == 'exited'"
+      ng-click="ctrl.GetInstanceLog(instance.metadata.name)">Logs</button>
+    <button type="button" class="btn btn-sm btn-danger" ng-click="ctrl.DeleteAgentPod(instance.metadata.name)"
+      ng-disabled="ctrl.loading==true"
+      ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
+       || instance.status.phase == 'running' || instance.status.phase == 'exited'">Delete</button>
+  </div>
+</div>
+<div class="row" ng-show="instance.status.phase == 'Failed'">
+  <span>{{ instance.status.message }}</span>
+</div>
+</div>
+<section ng-show="ctrl.instancelog!=''">
+  <div class="form-group">
+    <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
+    <div class="col-sm-9">
+      <pre>{{ ctrl.instancelog }}</pre>
+    </div>
+  </div>
+</section>
+
+<section ng-show="ctrl.model._id != '' && ctrl.model._id!=null">
+  <button type="button" class="btn" ng-click="ctrl.StartAgent()" ng-disabled="ctrl.loading==true"><em
+  class="fas fa-play"></em></button>
+  <button type="button" class="btn"  ng-click="ctrl.StopAgent()" ng-disabled="ctrl.loading==true"><em
+  class="fas fa-stop"></em></button>
+</section>
+<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
+  <div class="form-group">
+    <label for="name" class="col-sm-2 control-label" translate lib="web">name</label>
+    <div class="col-sm-4">
+        <input ng-model="ctrl.model.name" class="form-control input-md" ng-disabled="ctrl.loading==true" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="slug" class="col-sm-2 control-label" translate lib="web">slug</label>
+    <div class="col-sm-4">
+        <span >{{ctrl.model.slug}} </span>
+        <button type="button" ng-click="ctrl.model.slug=ctrl.randomname()" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">Regenerate</button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="provider" class="col-sm-2 control-label" translate lib="web">image</label>
+    <div class="col-sm-4">
+      <select id="images" ng-model="ctrl.model.image" ng-disabled="ctrl.loading==true"
+        ng-options="item.name as item.name for item in ctrl.images">
+      </select>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="environment" class="col-sm-2 control-label" translate lib="web">environment</label>
+    <div class="col-sm-4">
+      <textarea json-text class='form-control' rows='1' data-min-rows='1' ng-model="ctrl.model.environment"></textarea>
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="webserver" class="col-sm-2 control-label" translate lib="web">webserver</label>
+    <div class="col-sm-4">
+      <input ng-model="ctrl.model.webserver" type="checkbox" ng-class="form-control" />
+    </div>
+  </div>
+  <div class="form-group">
+      <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
+              lib="web">Save</button>
+      </div>
+  </div>
+
+
+</form>

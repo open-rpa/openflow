@@ -4,7 +4,7 @@ OpenFlow was designed to run on [kubernetes](https://kubernetes.io). You can sti
 
 We use helm to deploy different deployments to kubernetes, so first install [helm](https://github.com/helm/helm/releases) simply drop this some where and add it to the path, so you can reference it from cmd/powershell. Also, make sure you have [kubectl](https://kubernetes.io/docs/tasks/tools/) installed and configured to access your kubernetes cluster.
 
-OpenFlow depends on [traefik](https://doc.traefik.io/traefik/v1.7/user-guide/kubernetes/) as ingress controller. It's beyond the scope of this guide on how to install this in non-clouded envoriments, but if you are using GKE, aWS, Azure, Alibaba or some of the other cloud providers that has out of the box external loadbalencers, you can simpy deploy trafik with the service with type: LoadBalancer, and from here on everything "just works".
+OpenFlow depends on [traefik](https://doc.traefik.io/traefik/v1.7/user-guide/kubernetes/) as ingress controller. It's beyond the scope of this guide on how to install this in non-clouded environments, but if you are using GKE, aWS, Azure, Alibaba or some of the other cloud providers that has out of the box external loadbalencers, you can simpy deploy trafik with the service with type: LoadBalancer, and from here on everything "just works".
 
 You can find an example on how to deploy traefik using help on [this page](https://github.com/open-rpa/helm-charts/tree/main/traefik-example)
 

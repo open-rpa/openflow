@@ -234,7 +234,7 @@ function printusage() {
         console.log("   --start - Will start the service with the given name");
         console.log("   --stop - Will stop the service with the given name");
         console.log("   name - Service and instance name");
-        console.log("Will look for an envoriment file called name.env and copy that to the");
+        console.log("Will look for an environment file called name.env and copy that to the");
         console.log("source directory");
         return;
     }
@@ -245,7 +245,7 @@ function printusage() {
     console.log("   --start - Will start the service with the given name");
     console.log("   --stop - Will stop the service with the given name");
     console.log("   name - Service and instance name");
-    console.log("Will look for an envoriment file called name.env and copy that to the");
+    console.log("Will look for an environment file called name.env and copy that to the");
     console.log("source directory");
 }
 
