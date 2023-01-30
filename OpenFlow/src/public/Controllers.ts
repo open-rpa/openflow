@@ -7512,7 +7512,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("AgentsCtrl");
-        this.basequery = {};
+        this.basequery = {_type: "agent"};
         this.collection = "agents";
         this.postloadData = this.processdata;
         this.skipcustomerfilter = true;
@@ -7531,7 +7531,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         });
     }
     async getStatus(model) {
-        var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id, name:model.name})
+        var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id, name:model.slug})
         for(var x = 0; x < instances.length; x++) {
             var instance =  instances[x]
             // @ts-ignore
@@ -7567,12 +7567,13 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             await this.getStatus(model);
         }
     }
-    async DeleteAgent(model:Base): Promise<void> {
+    async DeleteAgent(model:any): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
-            await NoderedUtil.CustomCommand({command:"deleteagent", id:model._id, name:model.name})
-            await this.getStatus(model);
+            await NoderedUtil.CustomCommand({command:"deleteagent", id:model._id})
+            this.loading = false;
+            this.loadData()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
             
@@ -7580,11 +7581,11 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async StopAgent(model:Base): Promise<void> {
+    async StopAgent(model:any): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
-            await NoderedUtil.CustomCommand({command:"stopagent", id:model._id, name:model.name})
+            await NoderedUtil.CustomCommand({command:"stopagent", id:model._id, name:model.slug})
             await this.getStatus(model);
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -7592,11 +7593,11 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async StartAgent(model:Base): Promise<void> {
+    async StartAgent(model:any): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
-            await NoderedUtil.CustomCommand({command:"startagent", id:model._id, name:model.name})
+            await NoderedUtil.CustomCommand({command:"startagent", id:model._id, name:model.slug})
             await this.getStatus(model);
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -7607,7 +7608,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
 }
 
 
-export class AgentCtrl extends entityCtrl<Base> {
+export class AgentCtrl extends entityCtrl<any> {
     instances: any[] = [];
     instancelog: string = "";
     constructor(
@@ -7629,6 +7630,7 @@ export class AgentCtrl extends entityCtrl<Base> {
                 await this.loadData();
             } else {
                 this.model = new Role();
+                this.model._type = "agent";
                 this.model.name = this.randomname();
                 // @ts-ignore
                 this.model.image = this.images[0].name;
@@ -7647,7 +7649,7 @@ export class AgentCtrl extends entityCtrl<Base> {
     async processData(): Promise<void> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+        this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     random(min, max) {
@@ -7701,7 +7703,7 @@ export class AgentCtrl extends entityCtrl<Base> {
             this.loading = true;
             this.errormessage = "";
             this.instancelog = "";
-            await NoderedUtil.CustomCommand({command:"deleteagent", id:this.model._id, name:this.model.name})
+            await NoderedUtil.CustomCommand({command:"deleteagent", id:this.model._id, name:this.model.slug})
         } catch (error) {
             this.errormessage = error.message ? error.message : error
             
@@ -7715,7 +7717,7 @@ export class AgentCtrl extends entityCtrl<Base> {
             this.errormessage = "";
             this.instancelog = "";
             await NoderedUtil.CustomCommand({command:"deleteagentpod", id:this.model._id, name:podname})
-            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
         } catch (error) {
             this.errormessage = error.message ? error.message : error
             
@@ -7728,8 +7730,8 @@ export class AgentCtrl extends entityCtrl<Base> {
             this.loading = true;
             this.errormessage = "";
             this.instancelog = "";
-            await NoderedUtil.CustomCommand({command:"stopagent", id:this.model._id, name:this.model.name})
-            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+            await NoderedUtil.CustomCommand({command:"stopagent", id:this.model._id, name:this.model.slug})
+            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }
@@ -7741,8 +7743,8 @@ export class AgentCtrl extends entityCtrl<Base> {
             this.loading = true;
             this.errormessage = "";
             this.instancelog = "";
-            await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.name})
-            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.name})
+            await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }
@@ -7755,7 +7757,6 @@ export class AgentCtrl extends entityCtrl<Base> {
             this.errormessage = "";
             this.instancelog = "";
             this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
-            console.log(this.instancelog)
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }
@@ -7768,6 +7769,7 @@ export class AgentCtrl extends entityCtrl<Base> {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
             } else {
                 this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+                await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             }
             this.$location.path("/Agents");
         } catch (error) {

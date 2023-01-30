@@ -5167,7 +5167,11 @@ export class Message {
                 if(agent == null) throw new Error("Access denied");
                 msg.result = await Logger.nodereddriver.GetInstancePods(agent.slug, parent);
                 break;
-                
+            case "deleteagent":
+                var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                await Logger.nodereddriver.RemoveInstance(agent.slug, parent);
+                Config.db.DeleteOne(agent._id, "agents", false, jwt, parent);
             default:
                 msg.error = "Unknown custom command";
         }
