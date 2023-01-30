@@ -7530,7 +7530,24 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             this.loadData();
         });
     }
-    processdata() {
+    async getStatus(model) {
+        var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id, name:model.name})
+        for(var x = 0; x < instances.length; x++) {
+            var instance =  instances[x]
+            // @ts-ignore
+            if(model.status != "running") {
+                // @ts-ignore
+                model.status = instance.status.phase;
+                // @ts-ignore
+                if(instance.metadata.deletionTimestamp) model.status = "deleting"
+            }
+        }
+        if(instances.length == 0) {
+            model.status = "stopped"
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async processdata() {
         if (!this.userdata.data.AgentsCtrl) this.userdata.data.AgentsCtrl = {};
         this.userdata.data.AgentsCtrl.basequery = this.basequery;
         this.userdata.data.AgentsCtrl.collection = this.collection;
@@ -7539,13 +7556,23 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.AgentsCtrl.searchstring = this.searchstring;
         this.userdata.data.AgentsCtrl.basequeryas = this.basequeryas;
         this.userdata.data.AgentsCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        for(var i = 0; i < this.models.length; i++) {
+            var model = this.models[i];
+            // @ts-ignore
+            model.status = "...";
+        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        for(var i = 0; i < this.models.length; i++) {
+            var model = this.models[i];
+            await this.getStatus(model);
+        }
     }
     async DeleteAgent(model:Base): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
             await NoderedUtil.CustomCommand({command:"deleteagent", id:model._id, name:model.name})
+            await this.getStatus(model);
         } catch (error) {
             this.errormessage = error.message ? error.message : error
             
@@ -7558,6 +7585,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             this.loading = true;
             this.errormessage = "";
             await NoderedUtil.CustomCommand({command:"stopagent", id:model._id, name:model.name})
+            await this.getStatus(model);
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }
@@ -7569,6 +7597,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             this.loading = true;
             this.errormessage = "";
             await NoderedUtil.CustomCommand({command:"startagent", id:model._id, name:model.name})
+            await this.getStatus(model);
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }

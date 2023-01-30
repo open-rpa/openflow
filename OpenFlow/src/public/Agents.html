@@ -15,6 +15,7 @@
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><strong translate lib="web">name</strong></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('image')"><strong translate lib="web">image</strong></th>
+      <th scope="col"><strong translate lib="web">status</strong></th>
       <th></th>
     </tr>
   </thead>
@@ -22,11 +23,12 @@
     <tr ng-repeat="model in ctrl.models">
       <td><a ng-href="#/Agent/{{model._id}}">{{model.name}}</a></td>
       <td>{{model.image}}</td>
+      <td>{{model.status}}</td>
       <td>
-        <a class="btn" href ng-click="ctrl.StartAgent(model)" ng-disabled="ctrl.loading==true"><em
-          class="fas fa-play"></em></a>
-          <a class="btn" href ng-click="ctrl.StopAgent(model)" ng-disabled="ctrl.loading==true"><em
-            class="fas fa-stop"></em></a>  
+        <button ng-click="ctrl.StartAgent(model)" class="btn"  ng-disabled="ctrl.loading==true || (model.status == 'running') || model.status == '...'"><em
+          class="fas fa-play"></em></button>
+          <button ng-click="ctrl.StopAgent(model)" class="btn" ng-disabled="ctrl.loading==true || (model.status != 'running') || model.status == '...'"><em
+            class="fas fa-stop"></em></button>
         <a ng-href="#/Agent/{{model._id}}" class="btn"><em class="fas fa-edit"></em></a>
         <a class="btn" href ng-click="ctrl.DeleteAgent(model)" ng-disabled="ctrl.loading==true"><em
           class="fas fa-trash"></em></a>
