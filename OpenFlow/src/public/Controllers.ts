@@ -7636,7 +7636,8 @@ export class AgentCtrl extends entityCtrl<Base> {
                 this.model.slug = this.model.name
                 // @ts-ignore
                 this.model.environment = {
-                    "gitrepo": "https://github.com/openiap/pyagenttest.git",
+                    "gitrepo": "https://github.com/openiap/nodeagenttest.git",
+                    "pygitrepo": "https://github.com/openiap/pyagenttest.git",
                     "wiq":"q2"
                 }
                 this.loading = false;
