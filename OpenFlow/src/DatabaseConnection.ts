@@ -285,7 +285,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (payload != null) {
                             Logger.instanse.debug("Send workitem payload '" + payload.name + "' to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null, { workflowid: wiq.workflowid, wi: payload._id, name: payload.name });
                             try {
-                                await client.Queue(JSON.stringify(sendthis), queueid, {} as any, null)
+                                client.Queue(JSON.stringify(sendthis), queueid, {} as any, null).catch(e=> {
+                                    Logger.instanse.error(e, null);
+                                });
                             } catch (error) {
                             }
                         } else {
