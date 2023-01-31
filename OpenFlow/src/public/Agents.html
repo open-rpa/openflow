@@ -25,9 +25,9 @@
       <td>{{model.image}}</td>
       <td>{{model.status}}</td>
       <td>
-        <button ng-click="ctrl.StartAgent(model)" class="btn"  ng-disabled="ctrl.loading==true || (model.status == 'running') || model.status == '...'"><em
+        <button ng-click="ctrl.StartAgent(model)" class="btn"  ng-disabled="ctrl.loading==true || (model.status == 'running' || model.status == 'Running') || model.status == '...'"><em
           class="fas fa-play"></em></button>
-          <button ng-click="ctrl.StopAgent(model)" class="btn" ng-disabled="ctrl.loading==true || (model.status != 'running') || model.status == '...'"><em
+          <button ng-click="ctrl.StopAgent(model)" class="btn" ng-disabled="ctrl.loading==true || (model.status != 'running' && model.status != 'Running') || model.status == '...'"><em
             class="fas fa-stop"></em></button>
         <a ng-href="#/Agent/{{model._id}}" class="btn"><em class="fas fa-edit"></em></a>
         <a class="btn" href ng-click="ctrl.DeleteAgent(model)" ng-disabled="ctrl.loading==true"><em
