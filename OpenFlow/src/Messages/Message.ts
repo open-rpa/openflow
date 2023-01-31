@@ -5172,6 +5172,7 @@ export class Message {
                 if(agent == null) throw new Error("Access denied");
                 await Logger.nodereddriver.RemoveInstance(agent.slug, parent);
                 Config.db.DeleteOne(agent._id, "agents", false, jwt, parent);
+                break;
             default:
                 msg.error = "Unknown custom command";
         }
