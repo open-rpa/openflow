@@ -7646,11 +7646,25 @@ export class AgentCtrl extends entityCtrl<any> {
             }
         });
     }
+    refreshtimer: any;
     async processData(): Promise<void> {
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        this.loadInstances()
+    }
+    async loadInstances() {
+        if (!this.refreshtimer) {
+            this.loading = true;
+            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.refreshtimer = setTimeout(() => {
+                this.refreshtimer = null;
+                var path = this.$location.path();
+                if (path == null && path == undefined) { console.debug("getagent, path is null"); return false; }
+                if (!path.toLowerCase().startsWith("/agent")) { console.debug("getagent, path is no longer /Agent"); return false; }
+                console.log("reload");
+                this.loadInstances();
+            }, 2000);
+        }
     }
     random(min, max) {
         return Math.floor(Math.random() * (max - min + 1) + min)
@@ -7767,11 +7781,13 @@ export class AgentCtrl extends entityCtrl<any> {
         try {
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+                await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             } else {
                 this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             }
-            this.$location.path("/Agents");
+            // this.$location.path("/Agents");
+            this.loadData();
         } catch (error) {
             console.error(error);
             this.errormessage = error.message ? error.message : error;

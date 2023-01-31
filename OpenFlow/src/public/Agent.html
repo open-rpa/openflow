@@ -26,7 +26,7 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
   </div>
   <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
   <div class="col-sm-1">
-    <span>{{ (this.instance.metadata.deletionTimestamp != null ? " deleting" :
+    <span>{{ ( instance.metadata.deletionTimestamp != null ? " deleting" :
       instance.status.phase) }}</span>
   </div>
   <label class="col-sm-1 control-label"><span translate lib="web">created</span>: </label>
@@ -53,7 +53,7 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
        || instance.status.phase == 'running' || instance.status.phase == 'exited'">Delete</button>
   </div>
 </div>
-<div class="row" ng-show="instance.status.phase == 'Failed'">
+<div class="row" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Exited'">
   <span>{{ instance.status.message }}</span>
 </div>
 </div>
@@ -104,6 +104,12 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
     <label for="webserver" class="col-sm-2 control-label" translate lib="web">webserver</label>
     <div class="col-sm-4">
       <input ng-model="ctrl.model.webserver" type="checkbox" ng-class="form-control" />
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="sleep" class="col-sm-2 control-label" translate lib="web">sleep</label>
+    <div class="col-sm-4">
+      <input ng-model="ctrl.model.sleep" type="checkbox" ng-class="form-control" />
     </div>
   </div>
   <div class="form-group">
