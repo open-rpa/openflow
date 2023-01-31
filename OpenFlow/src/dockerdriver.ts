@@ -1,4 +1,4 @@
-import { NoderedUser, NoderedUtil, ResourceUsage, TokenUser } from "@openiap/openflow-api";
+import { Base, NoderedUser, NoderedUtil, ResourceUsage, TokenUser } from "@openiap/openflow-api";
 import { i_nodered_driver } from "./commoninterfaces";
 import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/api";
@@ -396,11 +396,14 @@ export class dockerdriver implements i_nodered_driver {
         return null;
     }
 
-
-
-    public async EnsureInstance(image: string, tz:string, hasbilling: boolean, jwt: string, apiurl: string, slug: string, port: number, environment: any, parent: Span): Promise<void> {
+    public async EnsureInstance(agent: any, jwt:string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
-        Logger.instanse.debug("[" + slug + "] EnsureInstance", span);
+        Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
+
+        var apiurl = "grpc://api:50051"
+        if(Config.domain == "pc.openiap.io") apiurl = "grpc://grpc.demo.openiap.io:443"
+        let hasbilling = false;
+
 
         const docker: Dockerode = new Docker();
         const myhostname = require('os').hostname();
@@ -411,7 +414,7 @@ export class dockerdriver implements i_nodered_driver {
             var Created = new Date(item.Created * 1000);
             (item as any).metadata = { creationTimestamp: Created, name: item.Labels["com.docker.compose.service"] };
             (item as any).status = { phase: item.State }
-            if (item.Names[0] == "/" + slug) {
+            if (item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) {
                 instance = item;
             }
             if (item.Names[0] == "/" + myhostname || item.Id.startsWith(myhostname)) {
@@ -429,14 +432,15 @@ export class dockerdriver implements i_nodered_driver {
                 domain_schema = "$nodered_id$." + Config.domain;
             }
             domain_schema = domain_schema.split("$nodered_id$").join("$slug$")
-            const hostname = domain_schema.replace("$slug$", slug);
+            const hostname = domain_schema.replace("$slug$", agent.slug);
 
             let tzvolume: string = null;
-            if (!NoderedUtil.IsNullEmpty(tz)) {
-                tzvolume = "/usr/share/zoneinfo/" + tz
+            if (!NoderedUtil.IsNullEmpty(agent.tz)) {
+                tzvolume = "/usr/share/zoneinfo/" + agent.tz
             }
             const Labels = {
                 "billed": hasbilling.toString(),
+                "agentid": agent._id
             };
             let NetworkingConfig: Dockerode.EndpointsConfig = undefined;
             let HostConfig: Dockerode.HostConfig = undefined;
@@ -455,24 +459,26 @@ export class dockerdriver implements i_nodered_driver {
                     HostConfig.NetworkMode = keys[0];
                 }
             }
-            let openiapagent = image;
+            let openiapagent = agent.image;
             if(openiapagent.indexOf(":")> - 1) openiapagent = openiapagent.substring(0, openiapagent.indexOf(":"))
             if(openiapagent.indexOf("/")> - 1) openiapagent = openiapagent.substring(openiapagent.lastIndexOf("/") + 1)
             Labels["openiapagent"] = openiapagent;
-            Labels["traefik.enable"] = "true";
-            Labels["traefik.http.routers." + slug + ".entrypoints"] = Config.nodered_docker_entrypoints;
-            Labels["traefik.http.routers." + slug + ".rule"] = "Host(`" + hostname + "`)";
-            Labels["traefik.http.services." + slug + ".loadbalancer.server.port"] = port.toString()
-            if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
-                Labels["traefik.http.routers." + slug + ".tls.certresolver"] = Config.nodered_docker_certresolver;
+            Labels["agentid"] = agent.agentid;
+            if(agent.webserver) {
+                Labels["traefik.enable"] = "true";
+                Labels["traefik.http.routers." + agent.slug + ".entrypoints"] = Config.nodered_docker_entrypoints;
+                Labels["traefik.http.routers." + agent.slug + ".rule"] = "Host(`" + hostname + "`)";
+                Labels["traefik.http.services." + agent.slug + ".loadbalancer.server.port"] = Config.port.toString()
+                if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
+                    Labels["traefik.http.routers." + agent.slug + ".tls.certresolver"] = Config.nodered_docker_certresolver;
+                }
             }
             const Env = [
-                "nodered_id=" + slug,
                 "jwt=" + jwt,
                 "apiurl=" + apiurl,
                 "domain=" + hostname,
                 "protocol=" + Config.protocol,
-                "port=" + port.toString(),
+                "port=" + Config.port.toString(),
                 "NODE_ENV=" + Config.NODE_ENV,
                 "HTTP_PROXY=" + Config.HTTP_PROXY,
                 "HTTPS_PROXY=" + Config.HTTPS_PROXY,
@@ -483,14 +489,15 @@ export class dockerdriver implements i_nodered_driver {
                 "otel_metric_url=" + Config.otel_metric_url,
                 "otel_trace_interval=" + Config.otel_trace_interval.toString(),
                 "otel_metric_interval=" + Config.otel_metric_interval.toString(),
-                "TZ=" + tz
+                "log_with_colors=false",
+                "TZ=" + agent.tz
             ]
-            if(environment != null) {
-                var keys = Object.keys(environment);
+            if(agent.environment != null) {
+                var keys = Object.keys(agent.environment);
                 for(var i = 0; i < keys.length; i++) {
                     var exists = Env.find(x => x.startsWith(keys[i] + "="));
                     if(exists == null) {
-                        Env.push(keys[i] + "=" + environment[keys[i]]);
+                        Env.push(keys[i] + "=" + agent.environment[keys[i]]);
                     }                    
                 }
             }
@@ -498,9 +505,13 @@ export class dockerdriver implements i_nodered_driver {
             if (tzvolume != null) {
                 HostConfig.Binds = ["/etc/localtime", tzvolume]
             }
-            await this._pullImage(docker, image, span);
+            let Cmd:any = undefined;
+            if(agent.sleep == true) {
+                Cmd = ["/bin/sh", "-c", "while true; do echo sleep 10; sleep 10;done"]
+            }
+            await this._pullImage(docker, agent.image, span);
             instance = await docker.createContainer({
-                Image: image, name: slug, Labels, Env, NetworkingConfig, HostConfig
+                Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
             })
             await instance.start();
         } else {
@@ -511,10 +522,10 @@ export class dockerdriver implements i_nodered_driver {
 
         }
     }
-    public async RemoveInstance(slug: string, parent: Span): Promise<void> {
+    public async RemoveInstance(agent: any, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstance", parent);
         try {
-            Logger.instanse.debug("[" + slug + "] RemoveInstance", span);
+            Logger.instanse.debug("[" + agent.slug + "] RemoveInstance", span);
 
             span?.addEvent("init Docker()");
             const docker: Dockerode = new Docker();
@@ -522,7 +533,7 @@ export class dockerdriver implements i_nodered_driver {
             var list = await docker.listContainers({ all: 1 });
             for (let i = 0; i < list.length; i++) {
                 const item = list[i];
-                if (item.Names[0] == "/" + slug) {
+                if (item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
                     if (item.State == "running") await container.stop();
@@ -534,7 +545,7 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async GetInstanceLog(slug: string, podname: string, parent: Span): Promise<string> {
+    public async GetInstanceLog(agent: any, podname: string, parent: Span): Promise<string> {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceLog", parent);
         try {
             var result: string = null;
@@ -547,7 +558,7 @@ export class dockerdriver implements i_nodered_driver {
                 var Created = new Date(item.Created * 1000);
                 (item as any).metadata = { creationTimestamp: Created, name: item.Labels["com.docker.compose.service"] };
                 (item as any).status = { phase: item.State }
-                if (item.Names[0] == "/" + podname) {
+                if (item.Names[0] == "/" + podname || item.Labels["agentid"] == agent._id) {
                     instance = item;
                 }
             }
@@ -568,7 +579,7 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async GetInstancePods(slug: string, parent: Span): Promise<any[]> {
+    public async GetInstancePods(agent: any, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         const rootjwt = Crypt.rootToken()
         const rootuser = TokenUser.From(Crypt.rootUser());
@@ -602,12 +613,12 @@ export class dockerdriver implements i_nodered_driver {
                         const a: number = (date as any) - (Created as any);
                         const diffhours = a / (1000 * 60 * 60);
                         if (billed != "true" && diffhours > runtime) {
-                            Logger.instanse.warn("[" + slug + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours", span);
+                            Logger.instanse.warn("[" + agent.slug + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours", span);
                             await this.RemoveInstance(item.metadata.name, span);
                             deleted = true;
                         }
                     }
-                    if (item.Names[0] == "/" + slug && deleted == false) {
+                    if ((item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) && deleted == false) {
                         span?.addEvent("getContainer(" + item.Id + ")");
                         const container = docker.getContainer(item.Id);
                         span?.addEvent("stats()");
@@ -632,10 +643,10 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async RemoveInstancePod(slug: string, podname: string, parent: Span): Promise<void> {
+    public async RemoveInstancePod(agent: any, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstancePod", parent);
         try {
-            Logger.instanse.debug("[" + slug + "] RemoveInstancePod", span);
+            Logger.instanse.debug("[" + agent.slug + "] RemoveInstancePod", span);
 
             span?.addEvent("init Docker()");
             const docker: Dockerode = new Docker();
@@ -643,7 +654,7 @@ export class dockerdriver implements i_nodered_driver {
             var list = await docker.listContainers({ all: 1 });
             for (let i = 0; i < list.length; i++) {
                 const item = list[i];
-                if (item.Names[0] == "/" + podname) {
+                if (item.Names[0] == "/" + podname || item.Labels["agentid"] == agent._id) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
                     if (item.State == "running") await container.stop();

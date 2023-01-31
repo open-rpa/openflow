@@ -7543,7 +7543,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             }
         }
         if(instances.length == 0) {
-            model.status = "stopped"
+            model.status = "missing"
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -7573,7 +7573,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             this.errormessage = "";
             await NoderedUtil.CustomCommand({command:"deleteagent", id:model._id})
             this.loading = false;
-            this.loadData()
+            setTimeout(this.loadData.bind(this), 500)
         } catch (error) {
             this.errormessage = error.message ? error.message : error
             
@@ -7636,12 +7636,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.model.image = this.images[0].name;
                 // @ts-ignore
                 this.model.slug = this.model.name
-                // @ts-ignore
-                this.model.environment = {
-                    "gitrepo": "https://github.com/openiap/nodeagenttest.git",
-                    "pygitrepo": "https://github.com/openiap/pyagenttest.git",
-                    "wiq":"q2"
-                }
+                this.ImageUpdated()
                 this.loading = false;
             }
         });
@@ -7649,6 +7644,26 @@ export class AgentCtrl extends entityCtrl<any> {
     refreshtimer: any;
     async processData(): Promise<void> {
         this.loadInstances()
+    }
+    ImageUpdated() {
+        if(this.model.image == "openiap/nodeagent") {
+            this.model.environment = {
+                "wiq":"nodeagent", "queue":"nodeagent",
+                "gitrepo": "https://github.com/openiap/nodeagenttest.git"
+                
+            }
+        }
+        if(this.model.image == "openiap/pyagent") {
+            this.model.environment = {
+                "wiq":"pyagent", "queue":"pyagent",
+                "gitrepo": "https://github.com/openiap/pyagenttest.git"                
+            }
+        }
+        if(this.model.image == "openiap/nodered") {
+            this.model.environment = {
+                "nodered_id": WebSocketClient.instance.user.username
+            }
+        }
     }
     async loadInstances() {
         if (!this.refreshtimer) {
@@ -7779,6 +7794,8 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     async submit(): Promise<void> {
         try {
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
@@ -7786,7 +7803,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             }
-            // this.$location.path("/Agents");
+            this.loading = true;
             this.loadData();
         } catch (error) {
             console.error(error);

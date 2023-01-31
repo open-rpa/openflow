@@ -39,6 +39,8 @@
     "type": "Type",
     "config": "Konfig",
     "nodered": "NodeRed",
+    "agent": "Agent",
+    "agents": "Agenter",
     "openrpa": "OpenRPA",
     "audit": "Log",
     "empty": "Tøm",

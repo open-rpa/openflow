@@ -25,6 +25,8 @@
       <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
         ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
         <span translate lib="web">nodered</span></a>
+      <a href="#/Agents" class="sidebar-link" id="menuagents" ng-class="{active: menuctrl.PathIs(['/Agent'])}">
+        <span translate lib="web">agents</span></a>
 
       <a href="#/Workitems" class="sidebar-link" id="menuworkitems"
         ng-class="{active: menuctrl.PathIs(['/Workitems', '/Workitem', '/Workitem/'])}"
@@ -84,6 +86,7 @@
           ng-class="{active: menuctrl.PathIs(['/Clients', '/Nodered/'])}"
           ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
             translate lib="web">clients</span></a>
+        
 
         <a class="sidebar-link" href="#/Credentials" id="menuadmincredentials"
           ng-class="{active: menuctrl.PathIs(['/Credentials', '/Credential', '/Credential/'])}"><span translate
@@ -214,6 +217,8 @@
             <a href="#/Nodered" class="dropdown-item"
               ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
               <span translate lib="web">nodered</span></a>
+            <a href="#/Agents" class="dropdown-item">
+              <span translate lib="web">agents</span></a>
             <div class="dropdown-divider"></div>
             <div class="dropdown-content" id="signoutbutton2">
               <a href="/Signout" class="btn btn-primary"><span translate lib="web">logout</span></a>
