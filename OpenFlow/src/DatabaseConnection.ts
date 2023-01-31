@@ -1842,7 +1842,8 @@ export class DatabaseConnection extends events.EventEmitter {
             let hadWorkitemQueue = false;
             let wiqids = [];
             for (let i = 0; i < items.length; i++) {
-                let item = this.ensureResource(items[i], collectionname);
+                let item = items[i];
+                // let item = this.ensureResource(items[i], collectionname);
                 DatabaseConnection.traversejsonencode(item);
 
                 if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
@@ -1852,6 +1853,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(name)) name = item._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
+                    item._version = 0;
                     item._createdby = user.name;
                     item._createdbyid = user._id;
                     item._created = new Date(new Date().toISOString());
@@ -1931,7 +1933,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
-                item._version = 0;
+                
                 if (item._id != null) {
                     const basehist = await this.query<any>({ query: { id: item._id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken() }, span);
                     if (basehist.length > 0) {
@@ -1961,10 +1963,20 @@ export class DatabaseConnection extends events.EventEmitter {
                     item._id = new ObjectId().toHexString();
                 }
                 span?.addEvent("CleanACL");
-                item = await this.CleanACL(item, user, collectionname, span);
-                if (item._type === "role" && collectionname === "users") {
-                    item = await this.Cleanmembers(item as any, null, span);
+                if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
+                    item = await this.CleanACL(item, user, collectionname, span);
+                    if (item._type === "role" && collectionname === "users") {
+                        item = await this.Cleanmembers(item as any, null, span);
+                    }
+                } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
+                } else {
+                    let metadata = DatabaseConnection.metadataname(collectionname);
+                    item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
+                    if (item._type === "role" && collectionname === "users") {
+                        item[metadata] = await this.Cleanmembers(item[metadata] as any, null, span);
+                    }
                 }
+                
 
                 if (collectionname === "users" && item._type === "user") {
                     const u: TokenUser = (item as any);
