@@ -7688,7 +7688,6 @@ export class AgentCtrl extends entityCtrl<any> {
                 var path = this.$location.path();
                 if (path == null && path == undefined) { console.debug("getagent, path is null"); return false; }
                 if (!path.toLowerCase().startsWith("/agent")) { console.debug("getagent, path is no longer /Agent"); return false; }
-                console.log("reload");
                 this.loadInstances();
             }, 2000);
         }
@@ -7700,7 +7699,7 @@ export class AgentCtrl extends entityCtrl<any> {
         {name:'openiap/nodeagent'},
         {name:'openiap/nodechromiumagent'},
         {name:'openiap/pyagent'},
-        {name:'openiap/pychromiumagent:latest'},
+        {name:'openiap/pychromiumagent'},
         {name:'openiap/nodered'},
     ]
     Adjectives = [
@@ -7815,11 +7814,14 @@ export class AgentCtrl extends entityCtrl<any> {
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             } else {
                 this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+                console.log("insertone", this.model)
                 this.id = this.model._id
                 this.basequery = { _id: this.id };
+                console.log("startagent", this.model.slug)
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+                console.log("load data")
             }
-            this.loading = true;
+            this.loading = false;
             this.loadData();
         } catch (error) {
             console.error(error);
