@@ -7653,12 +7653,24 @@ export class AgentCtrl extends entityCtrl<any> {
                 
             }
         }
+        if(this.model.image == "openiap/nodechromiumagent") {
+            this.model.environment = {
+                "gitrepo": "https://github.com/openiap/nodepuppeteertest .git"
+            }
+        }
         if(this.model.image == "openiap/pyagent") {
             this.model.environment = {
                 "wiq":"pyagent", "queue":"pyagent",
-                "gitrepo": "https://github.com/openiap/pyagenttest.git"                
+                "gitrepo": "https://github.com/openiap/pyagenttest.git"
             }
         }
+        if(this.model.image == "openiap/pychromiumagent") {
+            this.model.environment = {
+                "gitrepo": "https://github.com/openiap/robotframeworktest.git",
+                "gitrepo2": "https://github.com/openiap/taguitest .git"
+            }
+        }
+
         if(this.model.image == "openiap/nodered") {
             this.model.environment = {
                 "nodered_id": WebSocketClient.instance.user.username
@@ -7686,7 +7698,9 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     images = [
         {name:'openiap/nodeagent'},
+        {name:'openiap/nodechromiumagent'},
         {name:'openiap/pyagent'},
+        {name:'openiap/pychromiumagent:latest'},
         {name:'openiap/nodered'},
     ]
     Adjectives = [
