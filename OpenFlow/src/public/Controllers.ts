@@ -7649,8 +7649,9 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.model.image == "openiap/nodeagent") {
             this.model.environment = {
                 "wiq":"nodeagent", "queue":"nodeagent",
-                "gitrepo": "https://github.com/openiap/nodeagenttest.git"
-                
+                "gitrepo": "https://github.com/openiap/nodeagenttest.git",
+                "gitreop2": "https://github.com/openiap/nodered.git",
+                "nodered_id": WebSocketClient.instance.user.username                
             }
         }
         if(this.model.image == "openiap/nodechromiumagent") {
@@ -7668,12 +7669,6 @@ export class AgentCtrl extends entityCtrl<any> {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/robotframeworktest.git",
                 "gitrepo2": "https://github.com/openiap/taguitest.git"
-            }
-        }
-
-        if(this.model.image == "openiap/nodered") {
-            this.model.environment = {
-                "nodered_id": WebSocketClient.instance.user.username
             }
         }
     }
@@ -7699,8 +7694,7 @@ export class AgentCtrl extends entityCtrl<any> {
         {name:'openiap/nodeagent'},
         {name:'openiap/nodechromiumagent'},
         {name:'openiap/pyagent'},
-        {name:'openiap/pychromiumagent'},
-        {name:'openiap/nodered'},
+        {name:'openiap/pychromiumagent'}
     ]
     Adjectives = [
         'aged', 'ancient', 'autumn', 'billowing', 'bitter', 'black', 'blue', 'bold',
