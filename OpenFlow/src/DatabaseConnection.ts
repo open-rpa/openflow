@@ -2102,6 +2102,7 @@ export class DatabaseConnection extends events.EventEmitter {
             let itemReplace: boolean = true;
             if (q === null || q === undefined) { throw new Error("UpdateOneMessage cannot be null"); }
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
+            if(typeof q.item === "string") q.item = JSON.parse(q.item);
             await this.connect(span);
             const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
