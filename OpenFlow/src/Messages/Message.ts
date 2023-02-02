@@ -954,7 +954,7 @@ export class Message {
         }
         this.Reply("error");
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
-        Logger.instanse.error("UnknownCommand", null);
+        Logger.instanse.error(`UnknownCommand ${this.command}`, null);
     }
     private static collectionCache: any = {};
     private static collectionCachetime: Date = new Date();

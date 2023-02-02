@@ -465,6 +465,9 @@ export class WebServer {
                 }
                 var _msg = Message.fromjson({ ...message, data: msg });
                 var result = await _msg.Process(client as any);
+                if(message.rid != null && message.rid != "" && result.command == "error") {
+                    return null;
+                }
                 reply.command = result.command + "reply"
                 if(reply.command == "errorreply") reply.command = "error";
                 if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
@@ -473,7 +476,8 @@ export class WebServer {
                     reply.command = "pushworkitemreply";
                     reply.workitem = result.result;
                 }
-                var res = JSON.parse(result.data);
+                var res = result.data;
+                if(typeof res == "string") var res = JSON.parse(res);
                 delete res.password;
                 if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
                     if(res.results == null && res.result != null) {
