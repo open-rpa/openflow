@@ -7815,6 +7815,8 @@ export class AgentCtrl extends entityCtrl<any> {
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             } else {
                 this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+                this.id = this.model._id
+                this.basequery = { _id: this.id };
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             }
             this.loading = true;
