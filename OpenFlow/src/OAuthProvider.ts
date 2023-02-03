@@ -134,12 +134,33 @@ export class OAuthProvider {
                 cli.redirect_uris = cli.redirectUris;
                 // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
                 if (NoderedUtil.IsNullEmpty(cli.token_endpoint_auth_method)) cli.token_endpoint_auth_method = "none";
+                if (NoderedUtil.IsNullEmpty(cli.clientSecret)) {
+                    cli.token_endpoint_auth_method = "none";
+                    delete cli.client_secret;
+                }
                 // response_types can only contain 'code id_token', 'code', 'id_token', or 'none' 
                 // id_token token
                 if (NoderedUtil.IsNullEmpty(cli.response_types)) cli.response_types = ['code', 'id_token', 'code id_token'];
                 // https://github.com/panva/node-oidc-provider/blob/64edda69a84e556531f45ac814788c8c92ab6212/test/claim_types/claim_types.test.js
                 if (cli.grant_types == null) cli.grant_types = ['implicit', 'authorization_code'];
             });
+            var agent = instance.clients.find(x => x.client_id == "agent");
+            if(agent == null) {
+                instance.clients.push({
+                        grants: ['password', 'refresh_token', 'authorization_code'],
+                        defaultrole : "Viewer",
+                        rolemappings : { "admins": "Admin" },
+                        clientId: "agent",client_id: "agent", 
+                        token_endpoint_auth_method: "none",
+                        response_types: ['code', 'id_token', 'code id_token'],
+                        grant_types: ['implicit', 'authorization_code'],
+                        post_logout_redirect_uris: [],
+                        redirect_uris: [],
+                        openflowsignout: true
+                    }
+                )
+            }
+
             const provider = new Provider(Config.baseurl() + "oidc", {
                 clients: instance.clients,
                 adapter: MongoAdapter,
