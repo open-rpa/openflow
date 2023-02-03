@@ -7516,7 +7516,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.collection = "agents";
         this.postloadData = this.processdata;
         this.skipcustomerfilter = true;
-        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, slug: 1 };
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, webserver:1, slug: 1 };
         if (this.userdata.data.AgentsCtrl) {
             this.basequery = this.userdata.data.AgentsCtrl.basequery;
             this.collection = this.userdata.data.AgentsCtrl.collection;
@@ -7566,6 +7566,9 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             var model = this.models[i];
             await this.getStatus(model);
         }
+    }
+    weburl(model) {
+        return "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", model.slug)
     }
     async DeleteAgent(model:any): Promise<void> {
         try {
