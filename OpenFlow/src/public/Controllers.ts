@@ -7650,9 +7650,14 @@ export class AgentCtrl extends entityCtrl<any> {
             this.model.environment = {
                 "wiq":"nodeagent", "queue":"nodeagent",
                 "gitrepo": "https://github.com/openiap/nodeagenttest.git",
-                "gitrepo2": "https://github.com/openiap/nodered.git",
+                "gitrepo2": "https://github.com/openiap/nodered.git"
+            }
+        }
+        if(this.model.image == "openiap/noderedagent") {
+            this.model.environment = {
                 "nodered_id": WebSocketClient.instance.user.username,
             }
+            this.model.webserver = true;
         }
         if(this.model.image == "openiap/nodechromiumagent") {
             this.model.environment = {
@@ -7693,6 +7698,7 @@ export class AgentCtrl extends entityCtrl<any> {
     images = [
         {name:'openiap/nodeagent'},
         {name:'openiap/nodechromiumagent'},
+        {name:'openiap/noderedagent'},        
         {name:'openiap/pyagent'},
         {name:'openiap/pychromiumagent'}
     ]
