@@ -7651,8 +7651,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 "wiq":"nodeagent", "queue":"nodeagent",
                 "gitrepo": "https://github.com/openiap/nodeagenttest.git",
                 "gitrepo2": "https://github.com/openiap/nodered.git",
-                "oidc_client_id":"application",
-                "oidc_client_secret": ""
+                "nodered_id": WebSocketClient.instance.user.username,
             }
         }
         if(this.model.image == "openiap/nodechromiumagent") {
