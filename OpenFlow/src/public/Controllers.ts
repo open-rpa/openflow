@@ -6237,7 +6237,7 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
 
             await this.newRestriction("Create workitemqueue in mq", "mq", ["$.[?(@ && @._type == 'workitemqueue')]"], false);
             await this.newRestriction("Create workitem in workitems", "workitems", ["$.[?(@ && @._type == 'workitem')]"], false);
-
+            await this.newRestriction("Create agent in agents", "agents", ["$.[?(@ && @._type == 'agent')]"], false);
 
             await this.newRestriction("Create queues", "mq", ["$.[?(@ && @._type == 'queue')]"], false);
             await this.newRestriction("Create exchanges", "mq", ["$.[?(@ && @._type == 'exchange')]"], false);
@@ -7854,16 +7854,19 @@ export class AgentCtrl extends entityCtrl<any> {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
             } else {
-                this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
-                console.log("insertone", this.model)
-                this.id = this.model._id
-                this.basequery = { _id: this.id };
-                console.log("startagent", this.model.slug)
-                await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
-                console.log("load data")
+                var tmp = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+                if(this.model) {
+                    this.model = tmp;
+                    console.log("insertone", this.model)
+                    this.id = this.model._id
+                    this.basequery = { _id: this.id };
+                    console.log("startagent", this.model.slug)
+                    await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+                    console.log("load data")
+                }
             }
             this.loading = false;
-            this.loadData();
+            if(this.model) { this.loadData(); }
         } catch (error) {
             console.error(error);
             this.errormessage = error.message ? error.message : error;
