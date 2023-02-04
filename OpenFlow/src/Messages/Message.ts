@@ -5141,6 +5141,10 @@ export class Message {
             case "startagent":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
+
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                }
                 var agentjwt = ""
                 if(!NoderedUtil.IsNullEmpty(agent.runas)) {
                     var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
@@ -5157,16 +5161,25 @@ export class Message {
             case "stopagent":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                }
                 await Logger.nodereddriver.RemoveInstance(agent, parent);
                 break;
             case "deleteagentpod":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                }
                 await Logger.nodereddriver.RemoveInstancePod(agent, msg.name, parent);
                 break;
             case "getagentlog":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                }
                 msg.result = await Logger.nodereddriver.GetInstanceLog(agent, msg.name, parent);
                 break;
             case "getagentpods":
@@ -5179,6 +5192,9 @@ export class Message {
             case "deleteagent":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                }
                 await Logger.nodereddriver.RemoveInstance(agent, parent);
                 Config.db.DeleteOne(agent._id, "agents", false, jwt, parent);
                 break;
