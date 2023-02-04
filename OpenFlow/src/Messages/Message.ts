@@ -1104,18 +1104,13 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.Aggregate", parent);
         this.Reply();
         let msg: AggregateMessage
-        try {
-            msg = AggregateMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
-            if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
-            delete msg.aggregates;
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-        }
+        msg = AggregateMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
+        if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
+        delete msg.aggregates;
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
         Logger.otel.endSpan(span);
     }
     private async UnWatch(cli: WebSocketServerClient): Promise<void> {
@@ -1346,51 +1341,47 @@ export class Message {
     public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string, parent: Span): Promise<TokenUser> {
         const span: Span = Logger.otel.startSubSpan("message.DoSignin", parent);
         let tuser: TokenUser;
-        try {
-            let type: tokenType = "jwtsignin";
-            if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
-                type = "samltoken";
-                cli.user = await LoginProvider.validateToken(rawAssertion, span);
-                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
-                tuser = TokenUser.From(cli.user);
-            } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-                tuser = await Crypt.verityToken(cli.jwt);
-                const impostor: string = tuser.impostor;
-                cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
-                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
-                tuser = TokenUser.From(cli.user);
-                tuser.impostor = impostor;
+        let type: tokenType = "jwtsignin";
+        if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
+            type = "samltoken";
+            cli.user = await LoginProvider.validateToken(rawAssertion, span);
+            if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+            tuser = TokenUser.From(cli.user);
+        } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
+            tuser = await Crypt.verityToken(cli.jwt);
+            const impostor: string = tuser.impostor;
+            cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
+            if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+            tuser = TokenUser.From(cli.user);
+            tuser.impostor = impostor;
+        }
+        span?.setAttribute("type", type);
+        span?.setAttribute("clientid", cli.id);
+        if (!NoderedUtil.IsNullUndefinded(cli.user)) {
+            var validated = true;
+            if (Config.validate_user_form != "") {
+                if (!cli.user.formvalidated) validated = false;
             }
-            span?.setAttribute("type", type);
-            span?.setAttribute("clientid", cli.id);
-            if (!NoderedUtil.IsNullUndefinded(cli.user)) {
-                var validated = true;
-                if (Config.validate_user_form != "") {
-                    if (!cli.user.formvalidated) validated = false;
-                }
-                if (Config.validate_emails) {
-                    if (!cli.user.emailvalidated) validated = false;
-                }
-                if (!validated) {
-                    if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
-                        Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, Logger.parsecli(cli));
-                        await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                        tuser = null;
-                    }
+            if (Config.validate_emails) {
+                if (!cli.user.emailvalidated) validated = false;
+            }
+            if (!validated) {
+                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                    Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, Logger.parsecli(cli));
+                    await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+                    tuser = null;
                 }
             }
-            if (tuser != null && cli.user != null && cli.user.disabled) {
-                Logger.instanse.error(new Error(tuser.username + " failed logging in, user is disabled"), span, Logger.parsecli(cli));
-                await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
-                tuser = null;
-                if (Config.client_disconnect_signin_error) cli.Close(span);
-            } else if (cli.user?.dblocked == true) {
-                Logger.instanse.warn(tuser.username + " successfully signed in, but user is locked", span);
-            } else if (tuser != null) {
-                Logger.instanse.debug(tuser.username + " successfully signed in", span);
-            }
-        } catch (error) {
-            await handleError(cli, error, span);
+        }
+        if (tuser != null && cli.user != null && cli.user.disabled) {
+            Logger.instanse.error(new Error(tuser.username + " failed logging in, user is disabled"), span, Logger.parsecli(cli));
+            await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
+            tuser = null;
+            if (Config.client_disconnect_signin_error) cli.Close(span);
+        } else if (cli.user?.dblocked == true) {
+            Logger.instanse.warn(tuser.username + " successfully signed in, but user is locked", span);
+        } else if (tuser != null) {
+            Logger.instanse.debug(tuser.username + " successfully signed in", span);
         }
         return tuser;
     }
@@ -2314,28 +2305,23 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             await this._StripeCancelPlan(msg.resourceusageid, msg.quantity, msg.jwt, span);
-
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
         } catch (error) {
-            await handleError(cli, error, span);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                    error = new Error(msg.error)
                 }
             }
+            throw error
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, span);
-        }
-        Logger.otel.endSpan(span);
         // cli?.Send(this);
     }
-
     async GetNextInvoice(cli: WebSocketServerClient, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("message.GetNextInvoice", parent);
         this.Reply();
@@ -2496,6 +2482,8 @@ export class Message {
                     }
                 } while (test.has_more);
             }
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
         } catch (error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
@@ -2505,17 +2493,10 @@ export class Message {
                     error = new Error(msg.error)
                 }
             }
-            await handleError(null, error, span);
+            throw error
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, span);
-        }
-        Logger.otel.endSpan(span);
-        // cli?.Send(this);
     }
     async StripeAddPlan(cli: WebSocketServerClient, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("message.StripeAddPlan", parent);
@@ -2529,26 +2510,21 @@ export class Message {
             const [customer, checkout] = await this._StripeAddPlan(msg.customerid, msg.userid, msg.resourceid, msg.stripeprice,
                 msg.quantity, false, msg.jwt, span);
             msg.checkout = checkout;
-
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
         } catch (error) {
-            await handleError(null, error, span);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                    error = new Error(msg.error)
                 }
             }
+            throw error
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, span);
-        }
-        Logger.otel.endSpan(span);
-        // cli?.Send(this);
     }
 
     async _StripeAddPlan(customerid: string, userid: string, resourceid: string, stripeprice: string, quantity: number, skipSession: boolean, jwt: string, parent: Span) {
@@ -2978,24 +2954,19 @@ export class Message {
                 if (msg.object == "invoices_upcoming" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
             }
             msg.payload = await this.Stripe(msg.method, msg.object, msg.id, msg.payload, msg.customerid);
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
         } catch (error) {
-            await handleError(cli, error, null);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                    error = new Error(msg.error)
                 }
             }
+            throw error
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, null);
-        }
-        // cli?.Send(this);
     }
     // https://dominik.sumer.dev/blog/stripe-checkout-eu-vat
     async EnsureCustomer(cli: WebSocketServerClient, parent: Span) {
@@ -3281,26 +3252,21 @@ export class Message {
                 cli.user.roles.push(new Rolemember(customeradmins.name, customeradmins._id));
                 await this.ReloadUserToken(cli, span);
             }
-
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
         } catch (error) {
-            await handleError(cli, error, span);
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                    error = new Error(msg.error)
                 }
             }
+            throw error
+        } finally {
+            Logger.otel.endSpan(span);
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(cli, error, span);
-        }
-        Logger.otel.endSpan(span);
-        // cli?.Send(this);
     }
     formatBytes(bytes, decimals = 2) {
         if (bytes === 0) return '0 Bytes';
@@ -3354,19 +3320,11 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.skipcalculatesize)) msg.skipcalculatesize = false;
             if (NoderedUtil.IsNullEmpty(msg.skipupdateusersize)) msg.skipupdateusersize = false;
             await this._Housekeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-            if (msg !== null && msg !== undefined) msg.error = error.message ? error.message : error;
-        }
-        try {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, span);
-        }
-        Logger.otel.endSpan(span);
+        } finally {
+            Logger.otel.endSpan(span);
+        }        
     }
     public async _Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
         if (Message.lastHouseKeeping == null) {
@@ -4137,37 +4095,24 @@ export class Message {
         let user: TokenUser = null;
         this.Reply();
         let msg: SelectCustomerMessage;
-        try {
-            msg = SelectCustomerMessage.assign(this.data);
-            if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
-                var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
-                if (customer == null) msg.customerid = null;
-            } else {
-                // do we really need to force this ? 
-                // var customers = await Config.db.query<Customer>({ query: {"_type" : "customer"}, collectionname:"users", jwt: this.jwt, top:2}, parent)
-                // if(customers.length == 1) msg.customerid = user.customerid;
-            }
-            user = this.tuser;
-            if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
+        msg = SelectCustomerMessage.assign(this.data);
+        if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
+            var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
+            if (customer == null) msg.customerid = null;
+        } else {
+            // do we really need to force this ? 
+            // var customers = await Config.db.query<Customer>({ query: {"_type" : "customer"}, collectionname:"users", jwt: this.jwt, top:2}, parent)
+            // if(customers.length == 1) msg.customerid = user.customerid;
+        }
+        user = this.tuser;
+        if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
 
-            const UpdateDoc: any = { "$set": {} };
-            UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
-            await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
-            user.selectedcustomerid = msg.customerid;
-        } catch (error) {
-            await handleError(null, error, null);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-            }
-        }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, null);
-        }
+        const UpdateDoc: any = { "$set": {} };
+        UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
+        await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
+        user.selectedcustomerid = msg.customerid;
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
         return user;
     }
 
@@ -4345,255 +4290,72 @@ export class Message {
         wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
     }
     async AddWorkitems(parent: Span): Promise<void> {
-        let user: TokenUser = null;
         this.Reply();
         let msg: AddWorkitemsMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            const user: TokenUser = this.tuser;
-            let isRelevant: boolean = false;
+        const rootjwt = Crypt.rootToken();
+        const jwt = this.jwt;
+        const user: TokenUser = this.tuser;
+        let isRelevant: boolean = false;
 
-            let end: number = new Date().getTime();
+        let end: number = new Date().getTime();
 
-            msg = AddWorkitemsMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+        msg = AddWorkitemsMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
-            var wiq: WorkitemQueue = null;
-            if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
-
-            var additems = [];
-
-            // isRelevant = (msg.items.length > 0);
-            for (let i = 0; i < msg.items.length; i++) {
-                let item = msg.items[i];
-                let wi: Workitem = new Workitem(); wi._type = "workitem";
-                wi._id = new ObjectId().toHexString();
-                wi._acl = wiq._acl;
-                wi.wiq = wiq.name;
-                wi.wiqid = wiq._id;
-                wi.name = item.name ? item.name : "New work item";
-                wi.payload = item.payload ? item.payload : {};
-                if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-                wi.priority = item.priority;
-                if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
-                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
-                wi.nextrun = item.nextrun;
-                wi.state = "new"
-                wi.retries = 0;
-                wi.files = [];
-                if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
-                if (!NoderedUtil.IsNullEmpty(msg.failed_wiq)) wi.failed_wiq = msg.failed_wiq;
-                if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid)) wi.failed_wiqid = msg.failed_wiqid;
-                if (!NoderedUtil.IsNullEmpty(msg.success_wiq)) wi.success_wiq = msg.success_wiq;
-                if (!NoderedUtil.IsNullEmpty(msg.success_wiqid)) wi.success_wiqid = msg.success_wiqid;
-
-                wi.lastrun = null;
-                if (!wi.nextrun) {
-                    wi.nextrun = new Date(new Date().toISOString());
-                    wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
-                } else {
-                    wi.nextrun = new Date(wi.nextrun);
-                }
-
-                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
-                if (nextrun_seconds >= 0) isRelevant = true;
-
-
-                if (item.files) {
-                    for (let i = 0; i < item.files.length; i++) {
-                        let file = item.files[i];
-                        try {
-                            if (NoderedUtil.IsNullUndefinded(file.file)) continue;
-                            const readable = new Readable();
-                            readable._read = () => { }; // _read is required but you can noop it
-                            if (file.file && (!file.compressed)) {
-                                const buf: Buffer = Buffer.from(file.file, 'base64');
-                                readable.push(buf);
-                                readable.push(null);
-                            } else {
-                                // const zlib = require('zlib');
-                                let result: Buffer;
-                                try {
-                                    var data = Buffer.from(file.file, 'base64')
-                                    result = pako.inflate(data);
-                                } catch (error) {
-                                    Logger.instanse.error(msg.error, parent);
-                                }
-                                readable.push(result);
-                                readable.push(null);
-                            }
-                            const mimeType = mimetype.lookup(file.filename);
-                            const metadata = new Base();
-                            metadata._createdby = user.name;
-                            metadata._createdbyid = user._id;
-                            metadata._created = new Date(new Date().toISOString());
-                            metadata._modifiedby = user.name;
-                            metadata._modifiedbyid = user._id;
-                            metadata._modified = metadata._created;
-                            (metadata as any).wi = wi._id;
-                            (metadata as any).wiq = wiq.name;
-                            (metadata as any).wiqid = wiq._id;
-                            (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
-
-                            metadata._acl = wiq._acl;
-                            metadata.name = path.basename(file.filename);
-                            (metadata as any).filename = file.filename;
-                            (metadata as any).path = path.dirname(file.filename);
-                            if ((metadata as any).path == ".") (metadata as any).path = "";
-
-
-                            const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
-                            wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
-
-                        } catch (err) {
-                            Logger.instanse.error(msg.error, parent);
-                        }
-                    }
-                }
-                delete item.files;
-                // wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
-                additems.push(wi);
-            }
-            await Config.db.InsertMany(additems, "workitems", 1, true, jwt, parent);
-
-            delete msg.items;
-            msg.items = [];
-
-
-            end = new Date().getTime();
-            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
-            if (seconds > 5 && isRelevant) {
-                Config.db.queuemonitoringlastrun = new Date();
-                // Config.db.queuemonitoring()
-            }
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-            }
+        var wiq: WorkitemQueue = null;
+        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
+        if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
         }
-    }
+        if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
+        var additems = [];
 
-
-
-
-    async UpdateWorkitem(parent: Span): Promise<void> {
-        let user: TokenUser = null;
-        this.Reply();
-        let msg: UpdateWorkitemMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            const user: TokenUser = this.tuser;
-
-            let retry: boolean = false;
-
-            msg = UpdateWorkitemMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
-
-            var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
-            if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
-            var wi: Workitem = wis[0];
-
-            var wiq: WorkitemQueue = null;
-            if (!NoderedUtil.IsNullEmpty(wi.wiqid)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wi.wiqid }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null && !NoderedUtil.IsNullEmpty(wi.wiq)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { name: wi.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null) throw new Error("Work item queue not found " + wi.wiq + " (" + wi.wiqid + ") not found.");
-
-
-            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wi.failed_wiq = msg.failed_wiq;
-            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wi.failed_wiqid = msg.failed_wiqid;
-            if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wi.success_wiq = msg.success_wiq;
-            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wi.success_wiqid = msg.success_wiqid;
-
+        // isRelevant = (msg.items.length > 0);
+        for (let i = 0; i < msg.items.length; i++) {
+            let item = msg.items[i];
+            let wi: Workitem = new Workitem(); wi._type = "workitem";
+            wi._id = new ObjectId().toHexString();
             wi._acl = wiq._acl;
             wi.wiq = wiq.name;
             wi.wiqid = wiq._id;
-            if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
-            if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
+            wi.name = item.name ? item.name : "New work item";
+            wi.payload = item.payload ? item.payload : {};
             if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
-            if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) {
-                wi.errormessage = msg.errormessage;
-                if (!NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = msg.errortype;
-                if (NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = "application";
-            }
-            if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
+            wi.priority = item.priority;
             if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+            wi.nextrun = item.nextrun;
+            wi.state = "new"
+            wi.retries = 0;
+            wi.files = [];
+            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq)) wi.failed_wiq = msg.failed_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid)) wi.failed_wiqid = msg.failed_wiqid;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiq)) wi.success_wiq = msg.success_wiq;
+            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid)) wi.success_wiqid = msg.success_wiqid;
 
-            var oldstate = wi.state;
-            if (!NoderedUtil.IsNullEmpty(msg.state)) {
-                msg.state = msg.state.toLowerCase() as any;
-                // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
-                //     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, abandoned, processing or retry");
-                // }
-                if (msg.state == "new" && wi.state == "new") {
-                } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
-                    throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
-                }
-                if (msg.errortype == "business" && msg.state == "retry" && msg.ignoremaxretries != true) msg.state = "failed";
-                // if (msg.errortype == "business" && msg.ignoremaxretries == false) msg.state = "failed";
-                if (msg.state == "retry") {
-                    if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
-                    if ((wi.retries + 1) < wiq.maxretries || msg.ignoremaxretries) {
-                        wi.retries += 1;
-                        retry = true;
-                        wi.state = "new";
-                        wi.userid = null;
-                        wi.username = null;
-                        wi.nextrun = new Date(new Date().toISOString());
-                        wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
-                        if (!NoderedUtil.IsNullEmpty(msg.nextrun)) {
-                            wi.nextrun = new Date(msg.nextrun);
-                        }
-                    } else {
-                        wi.state = "failed";
-                    }
-                } else {
-                    wi.state = msg.state
-                }
-                if (oldstate != "processing" && msg.state == "processing") {
-                    wi.lastrun = new Date(new Date().toISOString());
-                }
+            wi.lastrun = null;
+            if (!wi.nextrun) {
+                wi.nextrun = new Date(new Date().toISOString());
+                wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
+            } else {
+                wi.nextrun = new Date(wi.nextrun);
             }
-            if (msg.files) {
-                for (var i = 0; i < msg.files.length; i++) {
-                    var file = msg.files[i];
-                    if (NoderedUtil.IsNullUndefinded(file.file)) continue;
-                    var exists = wi.files.filter(x => x.name == file.filename);
-                    if (exists.length > 0) {
-                        try {
-                            await Config.db.DeleteOne(exists[0]._id, "fs.files", false, jwt, parent);
-                        } catch (error) {
-                            Logger.instanse.error(msg.error, parent);
-                        }
-                        wi.files = wi.files.filter(x => x.name != file.filename);
-                    }
+
+            const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+            if (nextrun_seconds >= 0) isRelevant = true;
+
+
+            if (item.files) {
+                for (let i = 0; i < item.files.length; i++) {
+                    let file = item.files[i];
                     try {
+                        if (NoderedUtil.IsNullUndefinded(file.file)) continue;
                         const readable = new Readable();
                         readable._read = () => { }; // _read is required but you can noop it
                         if (file.file && (!file.compressed)) {
@@ -4601,6 +4363,7 @@ export class Message {
                             readable.push(buf);
                             readable.push(null);
                         } else {
+                            // const zlib = require('zlib');
                             let result: Buffer;
                             try {
                                 var data = Buffer.from(file.file, 'base64')
@@ -4630,6 +4393,7 @@ export class Message {
                         (metadata as any).path = path.dirname(file.filename);
                         if ((metadata as any).path == ".") (metadata as any).path = "";
 
+
                         const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
                         wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
@@ -4638,441 +4402,511 @@ export class Message {
                     }
                 }
             }
-            delete msg.files;
+            delete item.files;
+            // wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
+            additems.push(wi);
+        }
+        await Config.db.InsertMany(additems, "workitems", 1, true, jwt, parent);
 
-            if (wi.state != "new") {
-                delete wi.nextrun;
-            }
+        delete msg.items;
+        msg.items = [];
 
-            if (retry) {
-                const end: number = new Date().getTime();
-                const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
-                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
-                if (seconds > 5 && nextrun_seconds >= 0) {
-                    Config.db.queuemonitoringlastrun = new Date();
-                    // Config.db.queuemonitoring()
-                }
+
+        end = new Date().getTime();
+        const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+        if (seconds > 5 && isRelevant) {
+            Config.db.queuemonitoringlastrun = new Date();
+            // Config.db.queuemonitoring()
+        }
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
+    }
+
+
+
+
+
+    async UpdateWorkitem(parent: Span): Promise<void> {
+        this.Reply();
+        let msg: UpdateWorkitemMessage;
+        const rootjwt = Crypt.rootToken();
+        const jwt = this.jwt;
+        const user: TokenUser = this.tuser;
+
+        let retry: boolean = false;
+
+        msg = UpdateWorkitemMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
+
+        var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
+        if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
+        var wi: Workitem = wis[0];
+
+        var wiq: WorkitemQueue = null;
+        if (!NoderedUtil.IsNullEmpty(wi.wiqid)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wi.wiqid }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
+        }
+        if (wiq == null && !NoderedUtil.IsNullEmpty(wi.wiq)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: wi.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
+        }
+        if (wiq == null) throw new Error("Work item queue not found " + wi.wiq + " (" + wi.wiqid + ") not found.");
+
+
+        if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wi.failed_wiq = msg.failed_wiq;
+        if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wi.failed_wiqid = msg.failed_wiqid;
+        if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wi.success_wiq = msg.success_wiq;
+        if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wi.success_wiqid = msg.success_wiqid;
+
+        wi._acl = wiq._acl;
+        wi.wiq = wiq.name;
+        wi.wiqid = wiq._id;
+        if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
+        if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
+        if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+        if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) {
+            wi.errormessage = msg.errormessage;
+            if (!NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = msg.errortype;
+            if (NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = "application";
+        }
+        if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
+        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
+        if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+
+        var oldstate = wi.state;
+        if (!NoderedUtil.IsNullEmpty(msg.state)) {
+            msg.state = msg.state.toLowerCase() as any;
+            // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
+            //     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, abandoned, processing or retry");
+            // }
+            if (msg.state == "new" && wi.state == "new") {
+            } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
+                throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
             }
-            wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
-            msg.result = wi;
-            if (oldstate != wi.state && (wi.state == "successful" || wi.state == "failed")) {
-                var success_wiq = wi.success_wiq || wiq.success_wiq;
-                var success_wiqid = wi.success_wiqid || wiq.success_wiqid;
-                if (!NoderedUtil.IsNullEmpty(wi.success_wiq)) success_wiqid = wi.success_wiqid;
-                if (!NoderedUtil.IsNullEmpty(wi.success_wiqid)) success_wiq = wi.success_wiq;
-                var failed_wiq = wi.failed_wiq || wiq.failed_wiq;
-                var failed_wiqid = wi.failed_wiqid || wiq.failed_wiqid;
-                if (!NoderedUtil.IsNullEmpty(wi.failed_wiq)) failed_wiqid = wi.failed_wiqid;
-                if (!NoderedUtil.IsNullEmpty(wi.failed_wiqid)) failed_wiq = wi.failed_wiq;
-                if (wi.state == "successful" && (!NoderedUtil.IsNullEmpty(success_wiq) || !NoderedUtil.IsNullEmpty(success_wiqid))) {
-                    await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
+            if (msg.errortype == "business" && msg.state == "retry" && msg.ignoremaxretries != true) msg.state = "failed";
+            // if (msg.errortype == "business" && msg.ignoremaxretries == false) msg.state = "failed";
+            if (msg.state == "retry") {
+                if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
+                if ((wi.retries + 1) < wiq.maxretries || msg.ignoremaxretries) {
+                    wi.retries += 1;
+                    retry = true;
+                    wi.state = "new";
+                    wi.userid = null;
+                    wi.username = null;
+                    wi.nextrun = new Date(new Date().toISOString());
+                    wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
+                    if (!NoderedUtil.IsNullEmpty(msg.nextrun)) {
+                        wi.nextrun = new Date(msg.nextrun);
+                    }
+                } else {
+                    wi.state = "failed";
                 }
-                if (wi.state == "failed" && (!NoderedUtil.IsNullEmpty(failed_wiq) || !NoderedUtil.IsNullEmpty(failed_wiqid))) {
-                    await this.DuplicateWorkitem(wi, failed_wiq, failed_wiqid, this.jwt, parent);
-                }
+            } else {
+                wi.state = msg.state
             }
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
+            if (oldstate != "processing" && msg.state == "processing") {
+                wi.lastrun = new Date(new Date().toISOString());
             }
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
+        if (msg.files) {
+            for (var i = 0; i < msg.files.length; i++) {
+                var file = msg.files[i];
+                if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                var exists = wi.files.filter(x => x.name == file.filename);
+                if (exists.length > 0) {
+                    try {
+                        await Config.db.DeleteOne(exists[0]._id, "fs.files", false, jwt, parent);
+                    } catch (error) {
+                        Logger.instanse.error(msg.error, parent);
+                    }
+                    wi.files = wi.files.filter(x => x.name != file.filename);
+                }
+                try {
+                    const readable = new Readable();
+                    readable._read = () => { }; // _read is required but you can noop it
+                    if (file.file && (!file.compressed)) {
+                        const buf: Buffer = Buffer.from(file.file, 'base64');
+                        readable.push(buf);
+                        readable.push(null);
+                    } else {
+                        let result: Buffer;
+                        try {
+                            var data = Buffer.from(file.file, 'base64')
+                            result = pako.inflate(data);
+                        } catch (error) {
+                            Logger.instanse.error(msg.error, parent);
+                        }
+                        readable.push(result);
+                        readable.push(null);
+                    }
+                    const mimeType = mimetype.lookup(file.filename);
+                    const metadata = new Base();
+                    metadata._createdby = user.name;
+                    metadata._createdbyid = user._id;
+                    metadata._created = new Date(new Date().toISOString());
+                    metadata._modifiedby = user.name;
+                    metadata._modifiedbyid = user._id;
+                    metadata._modified = metadata._created;
+                    (metadata as any).wi = wi._id;
+                    (metadata as any).wiq = wiq.name;
+                    (metadata as any).wiqid = wiq._id;
+                    (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
+
+                    metadata._acl = wiq._acl;
+                    metadata.name = path.basename(file.filename);
+                    (metadata as any).filename = file.filename;
+                    (metadata as any).path = path.dirname(file.filename);
+                    if ((metadata as any).path == ".") (metadata as any).path = "";
+
+                    const fileid = await this._SaveFile(readable, file.filename, mimeType, metadata);
+                    wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
+
+                } catch (err) {
+                    Logger.instanse.error(msg.error, parent);
+                }
+            }
         }
+        delete msg.files;
+
+        if (wi.state != "new") {
+            delete wi.nextrun;
+        }
+
+        if (retry) {
+            const end: number = new Date().getTime();
+            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+            const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+            if (seconds > 5 && nextrun_seconds >= 0) {
+                Config.db.queuemonitoringlastrun = new Date();
+                // Config.db.queuemonitoring()
+            }
+        }
+        wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
+        msg.result = wi;
+        if (oldstate != wi.state && (wi.state == "successful" || wi.state == "failed")) {
+            var success_wiq = wi.success_wiq || wiq.success_wiq;
+            var success_wiqid = wi.success_wiqid || wiq.success_wiqid;
+            if (!NoderedUtil.IsNullEmpty(wi.success_wiq)) success_wiqid = wi.success_wiqid;
+            if (!NoderedUtil.IsNullEmpty(wi.success_wiqid)) success_wiq = wi.success_wiq;
+            var failed_wiq = wi.failed_wiq || wiq.failed_wiq;
+            var failed_wiqid = wi.failed_wiqid || wiq.failed_wiqid;
+            if (!NoderedUtil.IsNullEmpty(wi.failed_wiq)) failed_wiqid = wi.failed_wiqid;
+            if (!NoderedUtil.IsNullEmpty(wi.failed_wiqid)) failed_wiq = wi.failed_wiq;
+            if (wi.state == "successful" && (!NoderedUtil.IsNullEmpty(success_wiq) || !NoderedUtil.IsNullEmpty(success_wiqid))) {
+                await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
+            }
+            if (wi.state == "failed" && (!NoderedUtil.IsNullEmpty(failed_wiq) || !NoderedUtil.IsNullEmpty(failed_wiqid))) {
+                await this.DuplicateWorkitem(wi, failed_wiq, failed_wiqid, this.jwt, parent);
+            }
+        }
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
 
 
 
 
     async PopWorkitem(parent: Span): Promise<void> {
-        let user: TokenUser = null;
         this.Reply();
         let msg: PopWorkitemMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            const user: TokenUser = this.tuser;
+        const rootjwt = Crypt.rootToken();
+        const jwt = this.jwt;
+        const user: TokenUser = this.tuser;
 
-            msg = PopWorkitemMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+        msg = PopWorkitemMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
-            var wiq: Base = null;
-            if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
-                var queues = await Config.db.query({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
-                var queues = await Config.db.query({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
+        var wiq: Base = null;
+        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+            var queues = await Config.db.query({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
+        }
+        if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+            var queues = await Config.db.query({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
+        }
+        if (wiq == null) throw new Error("Work item queue not found " + msg.wiq + " (" + msg.wiqid + ") not found.");
 
-            let workitems: Workitem[] = null;
-            do {
-                workitems = await Config.db.query<Workitem>({
-                    query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
-                    orderby: { "priority": 1 },
-                    collectionname: "workitems", jwt, top: 1
-                }, parent);
-                if (workitems.length > 0) {
-                    const UpdateDoc: any = { "$set": {}, "$unset": {} };
-                    let _wi = workitems[0];
-                    _wi.lastrun = new Date(new Date().toISOString());
+        let workitems: Workitem[] = null;
+        do {
+            workitems = await Config.db.query<Workitem>({
+                query: { wiqid: wiq._id, "_type": "workitem", state: "new", "nextrun": { "$lte": new Date(new Date().toISOString()) } },
+                orderby: { "priority": 1 },
+                collectionname: "workitems", jwt, top: 1
+            }, parent);
+            if (workitems.length > 0) {
+                const UpdateDoc: any = { "$set": {}, "$unset": {} };
+                let _wi = workitems[0];
+                _wi.lastrun = new Date(new Date().toISOString());
 
-                    if (NoderedUtil.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
-                    if (typeof workitems[0].payload !== 'object') UpdateDoc["$set"]["payload"] = { "value": workitems[0].payload };
-                    UpdateDoc["$set"]["state"] = "processing";
-                    UpdateDoc["$set"]["userid"] = user._id;
-                    UpdateDoc["$set"]["username"] = user.name;
-                    UpdateDoc["$set"]["lastrun"] = _wi.lastrun;
-                    UpdateDoc["$unset"]["nextrun"] = "";
-                    if (NoderedUtil.IsNullEmpty(workitems[0].priority)) UpdateDoc["$set"]["priority"] = 2;
+                if (NoderedUtil.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
+                if (typeof workitems[0].payload !== 'object') UpdateDoc["$set"]["payload"] = { "value": workitems[0].payload };
+                UpdateDoc["$set"]["state"] = "processing";
+                UpdateDoc["$set"]["userid"] = user._id;
+                UpdateDoc["$set"]["username"] = user.name;
+                UpdateDoc["$set"]["lastrun"] = _wi.lastrun;
+                UpdateDoc["$unset"]["nextrun"] = "";
+                if (NoderedUtil.IsNullEmpty(workitems[0].priority)) UpdateDoc["$set"]["priority"] = 2;
 
-                    var result: any = null;
-                    try {
-                        result = await Config.db._UpdateOne({
-                            "_id": workitems[0]._id,
-                            "state": workitems[0].state,
-                            "userid": workitems[0].userid,
-                            "username": workitems[0].username,
-                        }, UpdateDoc, "workitems", 1, true, Crypt.rootToken(), null)
+                var result: any = null;
+                try {
+                    result = await Config.db._UpdateOne({
+                        "_id": workitems[0]._id,
+                        "state": workitems[0].state,
+                        "userid": workitems[0].userid,
+                        "username": workitems[0].username,
+                    }, UpdateDoc, "workitems", 1, true, Crypt.rootToken(), null)
 
-                        if (NoderedUtil.IsNullEmpty(_wi.retries)) _wi.retries = 0;
-                        if (typeof _wi.payload !== 'object') _wi.payload = { "value": _wi.payload };
-                        _wi.state = "processing";
-                        _wi.userid = user._id;
-                        _wi.username = user.name;
-                        _wi.nextrun = null;
-                        if (NoderedUtil.IsNullEmpty(_wi.priority)) _wi.priority = 2;
+                    if (NoderedUtil.IsNullEmpty(_wi.retries)) _wi.retries = 0;
+                    if (typeof _wi.payload !== 'object') _wi.payload = { "value": _wi.payload };
+                    _wi.state = "processing";
+                    _wi.userid = user._id;
+                    _wi.username = user.name;
+                    _wi.nextrun = null;
+                    if (NoderedUtil.IsNullEmpty(_wi.priority)) _wi.priority = 2;
 
-                        msg.result = _wi;
-                    } catch (error) {
-                        Logger.instanse.warn((error.message ? error.message : error), parent);
-                    }
+                    msg.result = _wi;
+                } catch (error) {
+                    Logger.instanse.warn((error.message ? error.message : error), parent);
                 }
-            } while (workitems.length > 0 && msg.result == null);
-            // @ts-ignore
-            // let includefiles = msg.includefiles;
-            // // @ts-ignore
-            // let compressed = msg.compressed || false;
-            // if(msg.result && includefiles == true) {
-            //     for(var i = 0; i < msg.result.files.length; i++) {
-            //         var file = msg.result.files[i];
-            //         var b: Buffer = await this._GetFile(file._id, compressed);
-            //         // @ts-ignore
-            //         b = new Uint8Array(b);
-            //         // b = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
-            //         // @ts-ignore
-            //         file.compressed = compressed;
-            //         // @ts-ignore
-            //         file.file = b;
-            //         // @ts-ignore
-            //         msg.result.file = b;
-            //         // Slice (copy) its segment of the underlying ArrayBuffer
-            //         // @ts-ignore
-            //         // file.file = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
-                    
-            //     }
-            // }
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
             }
-        }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
-        }
+        } while (workitems.length > 0 && msg.result == null);
+        // @ts-ignore
+        // let includefiles = msg.includefiles;
+        // // @ts-ignore
+        // let compressed = msg.compressed || false;
+        // if(msg.result && includefiles == true) {
+        //     for(var i = 0; i < msg.result.files.length; i++) {
+        //         var file = msg.result.files[i];
+        //         var b: Buffer = await this._GetFile(file._id, compressed);
+        //         // @ts-ignore
+        //         b = new Uint8Array(b);
+        //         // b = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+        //         // @ts-ignore
+        //         file.compressed = compressed;
+        //         // @ts-ignore
+        //         file.file = b;
+        //         // @ts-ignore
+        //         msg.result.file = b;
+        //         // Slice (copy) its segment of the underlying ArrayBuffer
+        //         // @ts-ignore
+        //         // file.file = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+                
+        //     }
+        // }
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
 
     async DeleteWorkitem(parent: Span): Promise<void> {
-        let user: TokenUser = null;
         this.Reply();
         let msg: DeleteWorkitemMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            const user: TokenUser = this.tuser;
+        const rootjwt = Crypt.rootToken();
+        const jwt = this.jwt;
+        const user: TokenUser = this.tuser;
 
-            msg = DeleteWorkitemMessage.assign(this.data);
+        msg = DeleteWorkitemMessage.assign(this.data);
 
-            if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
+        if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
 
-            var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
-            if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
-            var wi: Workitem = wis[0];
+        var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
+        if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
+        var wi: Workitem = wis[0];
 
-            if (!DatabaseConnection.hasAuthorization(user, wi, Rights.delete)) {
-                throw new Error("Unknown work item or access denied");
-            }
-
-            var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt }, parent);
-            for (var i = 0; i < files.length; i++) {
-                await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
-            }
-            var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt }, parent);
-            for (var i = 0; i < files.length; i++) {
-                await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
-            }
-
-            await Config.db.DeleteOne(wi._id, "workitems", false, jwt, parent);
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-            }
+        if (!DatabaseConnection.hasAuthorization(user, wi, Rights.delete)) {
+            throw new Error("Unknown work item or access denied");
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
+
+        var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt }, parent);
+        for (var i = 0; i < files.length; i++) {
+            await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
         }
+        var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt }, parent);
+        for (var i = 0; i < files.length; i++) {
+            await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
+        }
+
+        await Config.db.DeleteOne(wi._id, "workitems", false, jwt, parent);
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
 
     async AddWorkitemQueue(cli: WebSocketServerClient, parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
         let msg: AddWorkitemQueueMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            msg = AddWorkitemQueueMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
-            if (NoderedUtil.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
-            if (NoderedUtil.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
-            if (NoderedUtil.IsNullEmpty(msg.initialdelay)) throw new Error("initialdelay is mandatory")
+        const rootjwt = Crypt.rootToken();
+        const jwt = this.jwt;
+        msg = AddWorkitemQueueMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
+        if (NoderedUtil.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
+        if (NoderedUtil.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
+        if (NoderedUtil.IsNullEmpty(msg.initialdelay)) throw new Error("initialdelay is mandatory")
 
-            var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt: rootjwt }, parent);
-            if (queues.length > 0) {
-                throw new Error("Work item queue with name " + msg.name + " already exists");
-            }
-            user = this.tuser;
-
-            var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
-            const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
-            if (!msg.skiprole) {
-                const wiqusers: Role = await Logger.DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
-                Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
-                Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
-                // Base.removeRight(wiqusers, user._id, [Rights.delete]);
-                wiqusers.AddMember(user as any);
-                wiqusers.AddMember(workitem_queue_admins);
-                await Logger.DBHelper.Save(wiqusers, rootjwt, parent);
-                Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
-                wiq.usersrole = wiqusers._id;
-            } else {
-                Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
-            }
-
-            if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
-            wiq.name = msg.name;
-            wiq.workflowid = msg.workflowid;
-            wiq.robotqueue = msg.robotqueue;
-            wiq.projectid = msg.projectid;
-            wiq.amqpqueue = msg.amqpqueue;
-            wiq.maxretries = msg.maxretries;
-            wiq.retrydelay = msg.retrydelay;
-            wiq.initialdelay = msg.initialdelay;
-            wiq.failed_wiq = msg.failed_wiq;
-            wiq.failed_wiqid = msg.failed_wiqid;
-            wiq.success_wiq = msg.success_wiq;
-            wiq.success_wiqid = msg.success_wiqid;
-
-            msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
-
-            if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-            }
+        var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt: rootjwt }, parent);
+        if (queues.length > 0) {
+            throw new Error("Work item queue with name " + msg.name + " already exists");
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
+        user = this.tuser;
+
+        var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
+        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
+        if (!msg.skiprole) {
+            const wiqusers: Role = await Logger.DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
+            Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
+            // Base.removeRight(wiqusers, user._id, [Rights.delete]);
+            wiqusers.AddMember(user as any);
+            wiqusers.AddMember(workitem_queue_admins);
+            await Logger.DBHelper.Save(wiqusers, rootjwt, parent);
+            Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+            wiq.usersrole = wiqusers._id;
+        } else {
+            Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
         }
+
+        if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+        wiq.name = msg.name;
+        wiq.workflowid = msg.workflowid;
+        wiq.robotqueue = msg.robotqueue;
+        wiq.projectid = msg.projectid;
+        wiq.amqpqueue = msg.amqpqueue;
+        wiq.maxretries = msg.maxretries;
+        wiq.retrydelay = msg.retrydelay;
+        wiq.initialdelay = msg.initialdelay;
+        wiq.failed_wiq = msg.failed_wiq;
+        wiq.failed_wiqid = msg.failed_wiqid;
+        wiq.success_wiq = msg.success_wiq;
+        wiq.success_wiqid = msg.success_wiqid;
+
+        msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
+
+        if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
     async GetWorkitemQueue(parent: Span): Promise<void> {
-        let user: TokenUser = null;
         this.Reply();
         let msg: GetWorkitemQueueMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            msg = GetWorkitemQueueMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+        const rootjwt = Crypt.rootToken();
+        const jwt = this.jwt;
+        msg = GetWorkitemQueueMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
-            var wiq: WorkitemQueue = null;
-            if (!NoderedUtil.IsNullEmpty(msg._id)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            } else {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
-                if (queues.length > 0) wiq = queues[0];
-            }
-            msg.result = wiq;
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-            }
+        var wiq: WorkitemQueue = null;
+        if (!NoderedUtil.IsNullEmpty(msg._id)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
+        } else {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length > 0) wiq = queues[0];
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
-        }
+        msg.result = wiq;
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
 
     async UpdateWorkitemQueue(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
         let msg: UpdateWorkitemQueueMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            msg = UpdateWorkitemQueueMessage.assign(this.data);
+        const jwt = this.jwt;
+        msg = UpdateWorkitemQueueMessage.assign(this.data);
 
-            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+        if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
-            var wiq = new WorkitemQueue();
-            if (!NoderedUtil.IsNullEmpty(msg._id)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
-                if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
-                wiq = queues[0];
-            } else {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
-                if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
-                wiq = queues[0];
-            }
-            user = this.tuser;
-
-            if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
-            wiq.name = msg.name;
-            wiq.workflowid = msg.workflowid;
-            wiq.robotqueue = msg.robotqueue;
-            wiq.projectid = msg.projectid;
-            wiq.amqpqueue = msg.amqpqueue;
-            if (!NoderedUtil.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
-            if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
-            if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
-            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
-            if (msg.failed_wiq === null) { delete wiq.failed_wiq; delete wiq.failed_wiqid; }
-            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
-            if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
-            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
-            if (msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
-
-            if (msg._acl) wiq._acl = msg._acl;
-
-            msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
-
-            if (msg.purge) {
-                await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
-                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
-                if (items.length > 0) {
-                }
-                items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
-                if (items.length > 0) {
-                    throw new Error("Failed purging workitemqueue " + wiq.name);
-                }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
-            }
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-            }
+        var wiq = new WorkitemQueue();
+        if (!NoderedUtil.IsNullEmpty(msg._id)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+            if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
+            wiq = queues[0];
+        } else {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
+            wiq = queues[0];
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
+        user = this.tuser;
+
+        if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+        wiq.name = msg.name;
+        wiq.workflowid = msg.workflowid;
+        wiq.robotqueue = msg.robotqueue;
+        wiq.projectid = msg.projectid;
+        wiq.amqpqueue = msg.amqpqueue;
+        if (!NoderedUtil.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
+        if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
+        if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
+        if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
+        if (msg.failed_wiq === null) { delete wiq.failed_wiq; delete wiq.failed_wiqid; }
+        if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
+        if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
+        if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
+        if (msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
+
+        if (msg._acl) wiq._acl = msg._acl;
+
+        msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
+
+        if (msg.purge) {
+            await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
+            await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
+            var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+            if (items.length > 0) {
+            }
+            items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+            if (items.length > 0) {
+                throw new Error("Failed purging workitemqueue " + wiq.name);
+            }
+            await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
         }
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
     async DeleteWorkitemQueue(parent: Span): Promise<void> {
         let user: TokenUser = null;
         this.Reply();
         let msg: DeleteWorkitemQueueMessage;
-        try {
-            const rootjwt = Crypt.rootToken();
-            const jwt = this.jwt;
-            msg = DeleteWorkitemQueueMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+        const jwt = this.jwt;
+        msg = DeleteWorkitemQueueMessage.assign(this.data);
+        if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
-            var wiq = new WorkitemQueue();
-            if (!NoderedUtil.IsNullEmpty(msg._id)) {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
-                if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
-                wiq = queues[0];
-            } else {
-                var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
-                if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
-                wiq = queues[0];
-            }
-            user = this.tuser;
+        var wiq = new WorkitemQueue();
+        if (!NoderedUtil.IsNullEmpty(msg._id)) {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
+            if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
+            wiq = queues[0];
+        } else {
+            var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (queues.length == 0) throw new Error("Work item queue with name " + msg.name + " not found.");
+            wiq = queues[0];
+        }
+        user = this.tuser;
 
-            if (msg.purge) {
-                await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
-                await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
-                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
-                if (items.length > 0) {
-                    items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
-                }
-                if (items.length > 0) {
-                    throw new Error("Failed purging workitemqueue " + wiq.name);
-                }
-                await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
-            } else {
-                var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
-                if (items.length > 0) {
-                    throw new Error("Work item queue " + wiq.name + " is not empty, enable purge to delete");
-                }
+        if (msg.purge) {
+            await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
+            await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
+            var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+            if (items.length > 0) {
+                items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
             }
-
-            await Config.db.DeleteOne(wiq._id, "mq", false, jwt, parent);
-            if (wiq.usersrole) {
-                await Config.db.DeleteOne(wiq.usersrole, "users", false, jwt, parent);
+            if (items.length > 0) {
+                throw new Error("Failed purging workitemqueue " + wiq.name);
             }
-        } catch (error) {
-            await handleError(null, error, parent);
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
+            await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
+        } else {
+            var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+            if (items.length > 0) {
+                throw new Error("Work item queue " + wiq.name + " is not empty, enable purge to delete");
             }
         }
-        try {
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } catch (error) {
-            this.data = "";
-            await handleError(null, error, parent);
+
+        await Config.db.DeleteOne(wiq._id, "mq", false, jwt, parent);
+        if (wiq.usersrole) {
+            await Config.db.DeleteOne(wiq.usersrole, "users", false, jwt, parent);
         }
+        delete msg.jwt;
+        this.data = JSON.stringify(msg);
     }
     async CustomCommand(parent: Span): Promise<void> {
         this.Reply();
