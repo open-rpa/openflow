@@ -606,7 +606,6 @@ export class dockerdriver implements i_nodered_driver {
             span?.addEvent("init Docker()");
             const docker = new Docker();
             span?.addEvent("listContainers()");
-            console.log("listContainers")
             var list = await docker.listContainers({ all: 1 });
             var result = [];
             for (let i = 0; i < list.length; i++) {
@@ -631,11 +630,9 @@ export class dockerdriver implements i_nodered_driver {
                     }
                     if ((item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) && deleted == false) {
                         if(getstats) {
-                            console.log("getContainer")
                             span?.addEvent("getContainer(" + item.Id + ")");
                             const container = docker.getContainer(item.Id);
                             span?.addEvent("stats()");
-                            console.log("getContainer stats")
                             var stats = await container.stats({ stream: false });
                             let cpu_usage: 0;
                             let memory: 0;
@@ -653,7 +650,6 @@ export class dockerdriver implements i_nodered_driver {
                     }
                 }
             }
-            console.log("return " + result.length + " results")
             return result;
         } finally {
             Logger.otel.endSpan(span);
