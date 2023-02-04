@@ -99,17 +99,33 @@
             </span>
         </div>
     </div>
-
+    <style>
+        .wiimg  {
+            /* width:100%; */
+            max-width:200px;
+        }
+        .wiimg:hover  {
+            all: unset;
+        }
+    </style>
     <div ng-show="ctrl.model._id != ''">
         <div class="row">
             <label class="col-sm-2 control-label" translate lib="web">files</label>
         </div>
         <div class="row" ng-repeat="file in ctrl.model.files">
             <div class="col-sm-4">
-                {{ file.name }}
-                <a ng-href="/download/{{file._id}}" class="table-btn">
-                    <em class="fas fa-file-download"></em>
-                </a>
+                
+                <div ng-show="file.filename.endsWith('.png')">
+                    <a ng-href="/download/{{file._id}}">
+                        <img src="/download/{{file._id}}" class="wiimg" alt="{{ file.name }}"/>
+                    </a>
+                </div>
+                <div ng-show="!file.filename.endsWith('.png')">
+                    {{ file.name }}
+                    <a ng-href="/download/{{file._id}}" class="table-btn" >
+                        <em class="fas fa-file-download"></em>
+                    </a>
+                </div>
             </div>
         </div>
         <div class="row form-group">
