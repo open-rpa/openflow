@@ -6,6 +6,9 @@
   </div>
   <div class=" col-md-6 text-right">
     <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+    <a class="btn" href ng-click="ctrl.loadData()" title="Reload current data">
+      <span translate lib="web">reload</span>
+    </a>
     <a href="#/Agent" class="btn btn-info" translate lib="web">addagent</a>
   </div>
 </div>
