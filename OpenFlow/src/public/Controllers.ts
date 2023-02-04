@@ -7730,7 +7730,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.refreshtimer = null;
                 var path = this.$location.path();
                 if (path == null && path == undefined) { console.debug("getagent, path is null"); return false; }
-                if (!path.toLowerCase().startsWith("/agent")) { console.debug("getagent, path is no longer /Agent"); return false; }
+                if (!path.toLowerCase().startsWith("/agent/")) { console.debug("getagent, path is no longer /Agent"); return false; }
                 this.loadInstances();
             }, 2000);
         }
