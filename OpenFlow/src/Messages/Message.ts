@@ -5141,7 +5141,17 @@ export class Message {
             case "startagent":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
-                var agentjwt = Crypt.createToken(this.tuser, Config.personalnoderedtoken_expires_in);
+                var agentjwt = ""
+                if(!NoderedUtil.IsNullEmpty(agent.runas)) {
+                    var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                    if(agentuser!= null){
+                        agentuser = TokenUser.From(agentuser);
+                        agentjwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);
+                    }
+                }
+                if(NoderedUtil.IsNullEmpty(agent.runas)) {
+                    agentjwt = Crypt.createToken(this.tuser, Config.personalnoderedtoken_expires_in);
+                }
                 await Logger.nodereddriver.EnsureInstance(agent, agentjwt, parent);
                 break;
             case "stopagent":

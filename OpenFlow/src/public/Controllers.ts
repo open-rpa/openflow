@@ -2825,7 +2825,11 @@ export class RoleCtrl extends entityCtrl<Role> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -4215,7 +4219,11 @@ export class EntityCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -5172,7 +5180,11 @@ export class CredentialCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -6476,7 +6488,11 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -7938,7 +7954,12 @@ export class AgentCtrl extends entityCtrl<any> {
             collectionname: "users",
             query: {
                 _type: "user",
-                name: new RegExp([this.searchtext].join(""), "i")
+                "$or" : [
+                    {name: new RegExp([this.searchtext].join(""), "i")},
+                    {email: new RegExp([this.searchtext].join(""), "i")},
+                    {username: new RegExp([this.searchtext].join(""), "i")}
+                ]
+                
             }
             , orderby: { _type: -1, name: 1 }, top: 5
         }));
@@ -7952,6 +7973,18 @@ export class AgentCtrl extends entityCtrl<any> {
         //     }
         //     , null, { _type: -1, name: 1 }, 8, 0, null);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    fillTextbox(searchtext) {
+        this.searchFilteredList.forEach((item: any) => {
+            if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                this.searchtext = item.name;
+                this.searchSelectedItem = item;
+                this.model.runasname = this.searchSelectedItem.name
+                this.model.runas = this.searchSelectedItem._id
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        });
     }
 
 }
