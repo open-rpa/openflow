@@ -1566,6 +1566,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
+            if (collectionname === "agents") {
+                // @ts-ignore
+                if(!NoderedUtil.IsNullEmpty(item.runas) && item.runas != user._id) {
+                    if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                        throw new Error("Access denied");
+                    }
+                }
+            }
             if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
                 let user2: User = item as any;
                 if (item._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
@@ -1895,6 +1903,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 item = this.encryptentity(item) as T;
                 var user2: User = item as any;
 
+                if (collectionname === "agents") {
+                    // @ts-ignore
+                    if(!NoderedUtil.IsNullEmpty(item.runas) && item.runas != user._id) {
+                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                            throw new Error("Access denied");
+                        }
+                    }
+                }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
                     user2.passwordhash = await Crypt.hash((item as any).newpassword);
                     delete (item as any).newpassword;
@@ -2137,6 +2153,15 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
 
+                if (q.collectionname === "agents") {
+                    // @ts-ignore
+                    if(original.runas != q.item.runas && q.item.runas != user._id) {
+                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                            throw new Error("Access denied");
+                        }
+                    }
+                }
+    
                 if (q.collectionname === "users" && !NoderedUtil.IsNullEmpty(q.item._type) && !NoderedUtil.IsNullEmpty(q.item.name)) {
                     if ((q.item._type === "user" || q.item._type === "role") &&
                         (this.WellknownNamesArray.indexOf(q.item.name) > -1 || this.WellknownNamesArray.indexOf((q.item as any).username) > -1)) {
@@ -2356,6 +2381,11 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 itemReplace = false;
                 if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
+                    if(q.collectionname === "agents" &&  q.item["$set"].hasOwnProperty("runas")) {
+                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                            throw new Error("Access denied");
+                        }
+                    }
                     if (q.item["$set"].hasOwnProperty("_skiphistory")) {
                         delete q.item["$set"]._skiphistory;
                         if (!Config.allow_skiphistory) this.SaveUpdateDiff(q, user, span);
@@ -2632,6 +2662,13 @@ export class DatabaseConnection extends events.EventEmitter {
             (q.item["$set"])._modifiedby = user.name;
             (q.item["$set"])._modifiedbyid = user._id;
             (q.item["$set"])._modified = new Date(new Date().toISOString());
+
+            if(q.collectionname === "agents" &&  q.item["$set"].hasOwnProperty("runas")) {
+                if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                    throw new Error("Access denied");
+                }
+            }
+
 
             if (q.collectionname == "users") {
                 ['$inc', '$mul', '$set', '$unset'].forEach(t => {
