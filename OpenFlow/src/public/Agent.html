@@ -126,18 +126,26 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
       <input type="checkbox" id="if-5-sleep" value="{{ctrl.model.sleep}}" ng-model="ctrl.model.sleep" ng-disabled="ctrl.loading==true">
       <label for="if-5-sleep" translate lib="web" ng-disabled="ctrl.loading==true">sleep</label>
     </div>
-    <div class="custom-checkbox">
+    <div class="custom">
       <div class="form-group ">
-        <label for="add" class="col-sm-2 control-label" translate lib="web">add</label>
+        <label for="add" class="col-sm-2 control-label" 
+        ng-show="(ctrl.model.runas!='' && ctrl.model.runas!=null) || menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
+        translate lib="web">runas</label>
         <div class="col-sm-6 input-group">
           <input type="text" name="user" id="user" ng-model="ctrl.searchtext" ng-keyup="ctrl.setkey($event)"
             autocomplete="off" class="form-control" ng-model-options="{ debounce: 500 }" ng-change="ctrl.handlefilter()"
+            ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
             ng-keypress="ctrl.restrictInput($event)" />
           <!-- <select ng-model='ctrl.addthis' class="form-control"
                       ng-options='item._id as (item.name + " " + item.username) for item in ctrl.users'></select> -->
           <button type="button"
-            ng-click="ctrl.model.runas=='';ctrl.model.runasname==''" class="btn" translate
-            lib="web">clear</button> RunAs: <a ng-href="#/User/{{ ctrl.model.runas }}">{{ ctrl.model.runasname }}</a> 
+            ng-click="ctrl.model.runas=='';ctrl.model.runasname==''" class="btn" translate            
+            ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
+            lib="web">clear</button>
+            <span ng-show="ctrl.model.runas != '' && ctrl.model.runas != null">
+              &ensp;Running as <a ng-href="#/User/{{ ctrl.model.runas }}">{{ ctrl.model.runasname }}</a> 
+            </span>
+             
         </div>
       </div>
       <div>

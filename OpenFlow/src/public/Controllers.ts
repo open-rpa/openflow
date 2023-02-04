@@ -202,7 +202,9 @@ export class MenuCtrl {
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) return false;
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) return false;
         if (role == "customer admins" && !NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user.customerid)) {
-            return true;
+            if(this.customer == null) return false;
+            const hits = WebSocketClient.instance.user.roles.filter(member => member._id == this.customer.admins);
+            if(hits.length == 1) return true;
         }
         const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
         return (hits.length == 1)
