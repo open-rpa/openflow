@@ -2750,6 +2750,7 @@ export class RoleCtrl extends entityCtrl<Role> {
     }
 
 
+
     restrictInput(e) {
         if (e.keyCode == 13) {
             e.preventDefault();
@@ -2794,6 +2795,10 @@ export class RoleCtrl extends entityCtrl<Role> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -4175,6 +4180,10 @@ export class EntityCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -5129,6 +5138,10 @@ export class CredentialCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -6428,6 +6441,10 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -7646,6 +7663,7 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     refreshtimer: any;
     async processData(): Promise<void> {
+        this.searchtext = this.model.runasname
         this.loadInstances()
     }
     ImageUpdated() {
@@ -7836,4 +7854,104 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+
+
+    searchFilteredList: Role[] = [];
+    searchSelectedItem: Role = null;
+    searchtext: string = "";
+    e: any = null;
+
+    restrictInput(e) {
+        if (e.keyCode == 13) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    setkey(e) {
+        this.e = e;
+        this.handlekeys();
+    }
+    handlekeys() {
+        if (this.searchFilteredList.length > 0) {
+            let idx: number = -1;
+            for (let i = 0; i < this.searchFilteredList.length; i++) {
+                if (this.searchSelectedItem != null) {
+                    if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                        idx = i;
+                    }
+                }
+            }
+            if (this.e.keyCode == 38) { // up
+                if (idx <= 0) {
+                    idx = 0;
+                } else { idx--; }
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            }
+            else if (this.e.keyCode == 40) { // down
+                if (idx >= this.searchFilteredList.length) {
+                    idx = this.searchFilteredList.length - 1;
+                } else { idx++; }
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            } else if (this.e.keyCode == 13) { // enter
+                if (idx >= 0) {
+                    this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    if (this.searchSelectedItem != null) {
+                        this.model.runasname = this.searchSelectedItem.name
+                        this.model.runas = this.searchSelectedItem._id
+                    }
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+                return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = this.model.runasname;
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        } else {
+            if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                // this.AddMember(this.searchSelectedItem);
+                this.model.runasname = this.searchSelectedItem.name
+                this.model.runas = this.searchSelectedItem._id
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        }
+    }
+    async handlefilter(e) {
+        this.e = e;
+        const ids: string[] = this.model.members.map(item => item._id);
+        
+        this.searchFilteredList = await NoderedUtil.Query({
+            collectionname: "users",
+            query: {
+                _type: "user",
+                name: this.searchtext
+            }
+            , orderby: { _type: -1, name: 1 }, top: 2
+        });
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query({
+            collectionname: "users",
+            query: {
+                _type: "user",
+                name: new RegExp([this.searchtext].join(""), "i")
+            }
+            , orderby: { _type: -1, name: 1 }, top: 5
+        }));
+        // this.searchFilteredList = await NoderedUtil.Query("users",
+        //     {
+        //         $and: [
+        //             { $or: [{ _type: "user" }, { _type: "role" }] },
+        //             { name: new RegExp([this.searchtext].join(""), "i") },
+        //             { _id: { $nin: ids } }
+        //         ]
+        //     }
+        //     , null, { _type: -1, name: 1 }, 8, 0, null);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
 }

@@ -1,3 +1,19 @@
+<style type="text/css">
+  .list-group-item:hover {
+      color: #337ab7;
+      text-shadow: 0 0 1em #337ab7;
+      cursor: pointer;
+  }
+
+  .listgroupitemselected {
+      border: 6px;
+      border-color: black;
+      background-color: #337ab7;
+      color: white;
+      cursor: pointer;
+  }
+</style>
+
 <div class="row">
   <div class="col-sm-20">
       <h1 class="pagetitle" translate lib="web">agent {{ctrl.model.name}}</h1> 
@@ -109,6 +125,34 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
       <input type="checkbox" id="if-5-sleep" value="{{ctrl.model.sleep}}" ng-model="ctrl.model.sleep" ng-disabled="ctrl.loading==true">
       <label for="if-5-sleep" translate lib="web" ng-disabled="ctrl.loading==true">sleep</label>
     </div>
+    <div class="custom-checkbox">
+      <div class="form-group ">
+        <label for="add" class="col-sm-2 control-label" translate lib="web">add</label>
+        <div class="col-sm-6 input-group">
+          <input type="text" name="user" id="user" ng-model="ctrl.searchtext" ng-keyup="ctrl.setkey($event)"
+            autocomplete="off" class="form-control" ng-model-options="{ debounce: 500 }" ng-change="ctrl.handlefilter()"
+            ng-keypress="ctrl.restrictInput($event)" />
+          <!-- <select ng-model='ctrl.addthis' class="form-control"
+                      ng-options='item._id as (item.name + " " + item.username) for item in ctrl.users'></select> -->
+          <button type="button"
+            ng-click="ctrl.model.runas=='';ctrl.model.runasname==''" class="btn" translate
+            lib="web">clear</button> RunAs: <a ng-href="#/User/{{ ctrl.model.runas }}">{{ ctrl.model.runasname }}</a> 
+        </div>
+      </div>
+      <div>
+        <div class="col-sm-2"></div>
+        <div class="col-sm-6">
+          <ul class="list-group">
+            <li class="list-group-item" ng-repeat="item in ctrl.searchFilteredList" ng-click="ctrl.fillTextbox(item.name)"
+              ng-class="{listgroupitemselected: ctrl.searchSelectedItem._id==item._id}">
+              ({{item._type}}) {{item.name}} <span ng-show="item.name != item.username">{{" " +
+                item.username}}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
   </div>
   <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
