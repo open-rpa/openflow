@@ -99,6 +99,12 @@
             </span>
         </div>
     </div>
+    <div class="form-group" ng-show="ctrl.model.wiq && ctrl.model.wiq != ''">
+        <div class="col-sm-offset-2 col-sm-10">
+            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
+                lib="web">save</button>
+        </div>
+    </div>
     <style>
         .wiimg  {
             /* width:100%; */
@@ -132,13 +138,6 @@
             <label class="col-sm-2 control-label"></label>
         </div>
 
-    </div>
-
-    <div class="form-group" ng-show="ctrl.model.wiq && ctrl.model.wiq != ''">
-        <div class="col-sm-offset-2 col-sm-10">
-            <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate
-                lib="web">save</button>
-        </div>
     </div>
 
 
