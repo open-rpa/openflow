@@ -48,11 +48,6 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
     <span>{{ instance.metrics.memory + "/" +
       instance.spec.containers[0].resources.limits.memory }}</span>
   </div>
-  <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
-  <div class="col-sm-1">
-    <span>{{ ( instance.metadata.deletionTimestamp != null ? " deleting" :
-      instance.status.phase) }}</span>
-  </div>
   <label class="col-sm-1 control-label"><span translate lib="web">created</span>: </label>
   <div class="col-sm-1">
     <span>
@@ -61,6 +56,11 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
   </div>
 </div>
 <div class="row">
+  <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
+  <div class="col-sm-1">
+    <span>{{ ( instance.metadata.deletionTimestamp != null ? " deleting" :
+      instance.status.phase) }}</span>
+  </div>
   <label class="col-sm-1 control-label"><span translate lib="web">image</span>: </label>
   <div class="col">
     <span>{{ instance.Image || instance.spec.containers[0].image }}</span>
@@ -101,7 +101,8 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
         <button type="button" ng-click="ctrl.model.slug=ctrl.randomname();ctrl.model.name=ctrl.model.slug" ng-disabled="ctrl.loading==true" 
        ><em class="fas fa-refresh"></em></button>
       </label>
-      <span class="form-control">{{ctrl.model.slug}} </span>
+      <span class="form-control" ng-show="!menuctrl.hasrole('admins')">{{ctrl.model.slug}}</span>
+      <input ng-model="ctrl.model.slug" ng-show="menuctrl.hasrole('admins')" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
     </div>
     <div class="col-sm">
       <label for="name" class="required" translate lib="web">image</label>
