@@ -536,6 +536,9 @@ export class WebSocketServerClient {
                                 }
                                 this.Send(msg);
                             }) .catch((error) => {
+                                singleresult.command = "error";
+                                singleresult.data = JSON.stringify({"error": error.message});
+                                this.Send(singleresult);
                                 Logger.instanse.error(error, span, Logger.parsecli(this));
                             });
                         }
