@@ -7700,7 +7700,9 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         if(this.model.image == "openiap/nodechromiumagent") {
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/nodepuppeteertest.git"
+                "gitrepo": "https://github.com/openiap/nodepuppeteertest.git",
+                "wiq": "nodepuppeteertest",
+                "queue": "nodepuppeteertest"
             }
         }
         if(this.model.image == "openiap/pyagent") {
