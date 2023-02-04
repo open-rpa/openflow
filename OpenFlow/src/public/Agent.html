@@ -6,6 +6,14 @@
 
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<section ng-show="ctrl.model._id != '' && ctrl.model._id!=null">
+  <button type="button" class="btn" ng-click="ctrl.StartAgent()" ng-disabled="ctrl.loading==true"><em
+  class="fas fa-play"></em></button>
+  <button type="button" class="btn"  ng-click="ctrl.StopAgent()" ng-disabled="ctrl.loading==true"><em
+    class="fas fa-stop"></em></button>
+    <a ng-show="ctrl.model.webserver == true || ctrl.model.webserver == 'true'" target="_blank" ng-href="{{ctrl.weburl}}" class="btn">
+      <em class="fas fa-project-diagram"></em></a>
+</section>
 
 <div ng-repeat="instance in ctrl.instances"
 ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'alert-danger': instance.status.phase == 'Failed'}">
@@ -66,14 +74,6 @@ ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'ale
   </div>
 </section>
 
-<section ng-show="ctrl.model._id != '' && ctrl.model._id!=null">
-  <button type="button" class="btn" ng-click="ctrl.StartAgent()" ng-disabled="ctrl.loading==true"><em
-  class="fas fa-play"></em></button>
-  <button type="button" class="btn"  ng-click="ctrl.StopAgent()" ng-disabled="ctrl.loading==true"><em
-    class="fas fa-stop"></em></button>
-    <a ng-show="ctrl.model.webserver == true || ctrl.model.webserver == 'true'" target="_blank" ng-href="{{ctrl.weburl}}" class="btn">
-      <em class="fas fa-project-diagram"></em></a>
-</section>
 <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
   <div class="form-row row-eq-spacing-sm">
     <div class="col-sm">

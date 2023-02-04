@@ -5162,7 +5162,9 @@ export class Message {
             case "getagentpods":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
-                msg.result = await Logger.nodereddriver.GetInstancePods(agent, parent);
+                var getstats = false;
+                if(!NoderedUtil.IsNullEmpty(msg.name)) getstats = true;                
+                msg.result = await Logger.nodereddriver.GetInstancePods(agent, getstats, parent);
                 break;
             case "deleteagent":
                 var agent = await Config.db.GetOne<any>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);

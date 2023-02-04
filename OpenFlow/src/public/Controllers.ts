@@ -7531,7 +7531,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         });
     }
     async getStatus(model) {
-        var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id, name:model.slug})
+        var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
         for(var x = 0; x < instances.length; x++) {
             var instance =  instances[x]
             // @ts-ignore
@@ -7681,8 +7681,10 @@ export class AgentCtrl extends entityCtrl<any> {
         }
     }
     async loadInstances() {
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if (!this.refreshtimer) {
-            this.loading = true;
+            // this.loading = true;
             this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -7762,7 +7764,7 @@ export class AgentCtrl extends entityCtrl<any> {
             this.errormessage = "";
             this.instancelog = "";
             await NoderedUtil.CustomCommand({command:"deleteagentpod", id:this.model._id, name:podname})
-            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+            this.loadInstances()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
             
@@ -7776,7 +7778,7 @@ export class AgentCtrl extends entityCtrl<any> {
             this.errormessage = "";
             this.instancelog = "";
             await NoderedUtil.CustomCommand({command:"stopagent", id:this.model._id, name:this.model.slug})
-            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+            this.loadInstances()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }
@@ -7789,7 +7791,7 @@ export class AgentCtrl extends entityCtrl<any> {
             this.errormessage = "";
             this.instancelog = "";
             await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
-            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+            this.loadInstances()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }

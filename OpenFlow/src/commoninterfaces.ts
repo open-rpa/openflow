@@ -83,7 +83,7 @@ export interface i_nodered_driver {
     NodeLabels(parent: Span): Promise<any>;
 
     EnsureInstance(agent: any, jwt:string, parent: Span): Promise<void>;
-    GetInstancePods(agent: any, parent: Span): Promise<any[]>;
+    GetInstancePods(agent: any, getstats:boolean, parent: Span): Promise<any[]>;
     RemoveInstance(agent: any, parent: Span): Promise<void>;
     GetInstanceLog(agent: any, podname: string, parent: Span): Promise<string>;
     RemoveInstancePod(agent: any, podname: string, parent: Span): Promise<void>;

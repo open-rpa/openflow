@@ -300,34 +300,44 @@ export class dockerdriver implements i_nodered_driver {
             if (instance != null) {
                 span?.addEvent("getContainer(" + instance.Id + ")");
                 const container = docker.getContainer(instance.Id);
-                if (instance.State == "running") await container.stop();
+                if (instance.State == "running") await container.stop({t: 0});
                 await container.restart();
             }
         } finally {
             Logger.otel.endSpan(span);
         }
     }
-    _pullImage(docker: Dockerode, imagename: string, span: Span) {
-        return new Promise<void>((resolve, reject) => {
-            docker.pull(imagename, function (err, stream) {
-                if (err)
-                    return reject(err);
+    async _pullImage(docker: Dockerode, imagename: string, span: Span) {
+        var imageep = docker.getImage(imagename)
+        var image
+        try {
+            image = await imageep.inspect()
+        } catch (error) {
+        }
+        if(image == null) {
+            console.log("Pull image " + imagename)
+            await docker.pull(imagename)
+        }
+        // return new Promise<void>((resolve, reject) => {
+        //     docker.pull(imagename, function (err, stream) {
+        //         if (err)
+        //             return reject(err);
 
-                docker.modem.followProgress(stream, onFinished, onProgress);
+        //         docker.modem.followProgress(stream, onFinished, onProgress);
 
-                function onFinished(err2, output) {
-                    Logger.instanse.debug(output, span);
-                    if (err2) {
-                        Logger.instanse.error(err2, null);
-                        return reject(err2);
-                    }
-                    return resolve();
-                }
-                function onProgress(event) {
-                    Logger.instanse.debug(event, span);
-                }
-            });
-        })
+        //         function onFinished(err2, output) {
+        //             Logger.instanse.debug(output, span);
+        //             if (err2) {
+        //                 Logger.instanse.error(err2, null);
+        //                 return reject(err2);
+        //             }
+        //             return resolve();
+        //         }
+        //         function onProgress(event) {
+        //             Logger.instanse.debug(event, span);
+        //         }
+        //     });
+        // })
     }
     public async GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<string> {
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstanceLog", parent);
@@ -383,7 +393,7 @@ export class dockerdriver implements i_nodered_driver {
                 if (item.Names[0] == "/" + podname) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
-                    if (item.State == "running") await container.stop();
+                    if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
                 }
@@ -536,7 +546,7 @@ export class dockerdriver implements i_nodered_driver {
                 if (item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
-                    if (item.State == "running") await container.stop();
+                    if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
                 }
@@ -579,7 +589,7 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async GetInstancePods(agent: any, parent: Span): Promise<any[]> {
+    public async GetInstancePods(agent: any, getstats:boolean, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         const rootjwt = Crypt.rootToken()
         const rootuser = TokenUser.From(Crypt.rootUser());
@@ -596,6 +606,7 @@ export class dockerdriver implements i_nodered_driver {
             span?.addEvent("init Docker()");
             const docker = new Docker();
             span?.addEvent("listContainers()");
+            console.log("listContainers")
             var list = await docker.listContainers({ all: 1 });
             var result = [];
             for (let i = 0; i < list.length; i++) {
@@ -619,25 +630,30 @@ export class dockerdriver implements i_nodered_driver {
                         }
                     }
                     if ((item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) && deleted == false) {
-                        span?.addEvent("getContainer(" + item.Id + ")");
-                        const container = docker.getContainer(item.Id);
-                        span?.addEvent("stats()");
-                        var stats = await container.stats({ stream: false });
-                        let cpu_usage: 0;
-                        let memory: 0;
-                        let memorylimit: 0;
-                        if (stats && stats.cpu_stats && stats.cpu_stats.cpu_usage && stats.cpu_stats.cpu_usage.usage_in_usermode) cpu_usage = stats.cpu_stats.cpu_usage.usage_in_usermode;
-                        if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
-                        if (stats && stats.memory_stats && stats.memory_stats.limit) memorylimit = stats.memory_stats.limit;
-                        item.metrics = {
-                            cpu: parseFloat((cpu_usage / 1024 / 1024).toString()).toFixed(2) + "n",
-                            memory: parseFloat((memory / 1024 / 1024).toString()).toFixed(2) + "Mi",
-                            memorylimit: parseFloat((memorylimit / 1024 / 1024).toString()).toFixed(2) + "Mi"
-                        };
+                        if(getstats) {
+                            console.log("getContainer")
+                            span?.addEvent("getContainer(" + item.Id + ")");
+                            const container = docker.getContainer(item.Id);
+                            span?.addEvent("stats()");
+                            console.log("getContainer stats")
+                            var stats = await container.stats({ stream: false });
+                            let cpu_usage: 0;
+                            let memory: 0;
+                            let memorylimit: 0;
+                            if (stats && stats.cpu_stats && stats.cpu_stats.cpu_usage && stats.cpu_stats.cpu_usage.usage_in_usermode) cpu_usage = stats.cpu_stats.cpu_usage.usage_in_usermode;
+                            if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
+                            if (stats && stats.memory_stats && stats.memory_stats.limit) memorylimit = stats.memory_stats.limit;
+                            item.metrics = {
+                                cpu: parseFloat((cpu_usage / 1024 / 1024).toString()).toFixed(2) + "n",
+                                memory: parseFloat((memory / 1024 / 1024).toString()).toFixed(2) + "Mi",
+                                memorylimit: parseFloat((memorylimit / 1024 / 1024).toString()).toFixed(2) + "Mi"
+                            };
+                        }
                         result.push(item);
                     }
                 }
             }
+            console.log("return " + result.length + " results")
             return result;
         } finally {
             Logger.otel.endSpan(span);
@@ -657,7 +673,7 @@ export class dockerdriver implements i_nodered_driver {
                 if (item.Names[0] == "/" + podname || item.Labels["agentid"] == agent._id) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
-                    if (item.State == "running") await container.stop();
+                    if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
                 }
