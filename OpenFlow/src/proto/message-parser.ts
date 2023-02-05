@@ -105,12 +105,12 @@ export class messageParser extends Transform {
         if (config.role() == "client") {
           dumpdata(messagebuffer);
         }
-        if (config.ChecksumCheckPackages) {
-          const hash = (message.hash == '' ? '' : getChecksum(message.data));
-          if (hash != message.hash) {
-            return callback(new Error("Checksum mismatch got " + message.hash + " but expected " + hash));
-          }
-        }
+        // if (config.ChecksumCheckPackages) {
+        //   const hash = (message.hash == '' ? '' : getChecksum(message.data));
+        //   if (hash != message.hash) {
+        //     return callback(new Error("Checksum mismatch got " + message.hash + " but expected " + hash));
+        //   }
+        // }
         if(this.seq > message.seq) {
           return callback(new Error("sequence " + message.seq + " is lower than last received sequence number " + (this.seq -1)));
         }

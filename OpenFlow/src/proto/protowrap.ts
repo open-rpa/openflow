@@ -377,7 +377,7 @@ export class protowrap {
     if(client.seq != null) { client.seq++; }
     // messages.push(payload);
     // if (!payload.id || payload.id == "") payload.id = Math.random().toString(36).substring(2, 11);
-    if (payload.data && config.ChecksumCheckPackages) payload.hash = this.getChecksum(payload.data);
+    // if (payload.data && config.ChecksumCheckPackages) payload.hash = this.getChecksum(payload.data);
     if (dumpmsg) {
       dumpmessage("SND", payload);
     }

@@ -3,10 +3,10 @@ export const ThrottlerMS = 0;
 export const EndstreamDelay = 0;
 export const BeginstreamDelay = 0;
 export const ChecksumCheckFiles = true;
-export const ChecksumCheckPackages = false;
+// export const ChecksumCheckPackages = false;
 export const DoPing = false;
 export const doDumpStack = true;
-export const doDumpMesssages = true;
+export const doDumpMesssages = false;
 export const doDumpMesssagesSeq = true;
 export const doDumpMesssagesIds = true;
 export const doDumpTimestamp = false;
@@ -102,7 +102,25 @@ export function dumpmessage(direction, message) {
   var data = message.data;
   if (command == "stream") data = "... " + data.length + " bytes";
   if (data) {
-    data = data.toString();
+    // if(typeof data == "string" && data.startsWith("{")) data = JSON.stringify(data);
+    if(typeof data == "object"){
+      if(data.value) {
+        if(Buffer.isBuffer(data.value)){
+          data = data.value.toString();
+        } else {
+          data = JSON.stringify(data.value);
+        }
+      } else {
+        if(Buffer.isBuffer(data)) {
+          data = data.toString();
+        } else {
+          data = JSON.stringify(data);
+        }
+      }
+    } else {
+      data = data.toString();
+    }
+    
     // data = data.replace(/[^\x00-\x7F]/g, "");
     data = data.replace(/[^A-Za-z 0-9 \.,\?""!@#\$%\^&\*\(\)-_=\+;:<>\/\\\|\}\{\[\]`~]*/g, '')
   } else {
@@ -110,7 +128,8 @@ export function dumpmessage(direction, message) {
   }
   var columns = process.stdout.columns;
   var sub = 3;
-  if(!columns || columns < 50) columns = 50;
+  if(!columns) columns = 70; // vs-code ?
+  if(!columns || columns < 80) columns = 80;
   sub = `${ts()}[${role()}][${direction}]${seq(sequence, id, rid)}[${command}] `.length;
   if (data && data.length > columns) data = data.substr(0, columns - sub -3 ) + "...";
   if (direction == "SND") direction = col(direction, color.Dim + color.FgYellow);
