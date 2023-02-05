@@ -1870,8 +1870,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     item._modified = item._created;
                     if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
                         Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                        item = this.ensureResource(item, collectionname);
                     }
+                    item = this.ensureResource(item, collectionname);
                     // Logger.instanse.silly("Adding " + item._type + " " + name + " to database", span, { collection: collectionname, user: user.username });
                     // if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
                 } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
