@@ -7713,6 +7713,7 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         if(this.model.image == "openiap/pychromiumagent") {
             this.model.environment = {
+                "gitrepo3": "https://github.com/openiap/rcctest.git",
                 "gitrepo2": "https://github.com/openiap/robotframeworktest.git",
                 "gitrepo": "https://github.com/openiap/taguitest.git",
                 "wiq": "taguitest",
