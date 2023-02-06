@@ -528,6 +528,7 @@ export class WebSocketServerClient {
                         singleresult.priority = first.priority;
                         if (singleresult.command != "ping" && singleresult.command != "pong") {
                             singleresult.Process(this).then(msg=> {
+                                if(msg==null) return;
                                 if(msg.command == "error" && !msg.error && msg.data) {
                                     msg.data = JSON.parse(msg.data);
                                     msg.data.error = msg.data.message;
