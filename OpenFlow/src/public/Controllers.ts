@@ -7649,6 +7649,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
 export class AgentCtrl extends entityCtrl<any> {
     instances: any[] = [];
     instancelog: string = "";
+    products: any[] = [{"stripeprice": "", "name": "Free tier"}];
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7664,6 +7665,11 @@ export class AgentCtrl extends entityCtrl<any> {
         this.collection = "agents";
         this.postloadData = this.processData;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
+            if(products.length > 0) {
+                this.products = this.products.concat(products[0].products);
+            }
+            
             if (this.id !== null && this.id !== undefined) {
                 await this.loadData();
             } else {
@@ -7673,14 +7679,16 @@ export class AgentCtrl extends entityCtrl<any> {
                 // @ts-ignore
                 this.model.image = this.images[0].name;
                 // @ts-ignore
-                this.model.slug = this.model.name
+                this.model.slug = this.model.name; this.model.stripeprice = ""
                 this.ImageUpdated()
                 this.loading = false;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
     }
     refreshtimer: any;
     async processData(): Promise<void> {
+        if(this.model.stripeprice == null) this.model.stripeprice = "";
         this.searchtext = this.model.runasname
         this.loadInstances()
     }
