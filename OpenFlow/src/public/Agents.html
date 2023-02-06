@@ -17,6 +17,7 @@
   <thead class="thead-dark">
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><strong translate lib="web">name</strong></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('slug')"><strong translate lib="web">slug</strong></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('image')"><strong translate lib="web">image</strong></th>
       <th scope="col"><strong translate lib="web">status</strong></th>
       <th></th>
@@ -25,6 +26,7 @@
   <tbody>
     <tr ng-repeat="model in ctrl.models">
       <td><a ng-href="#/Agent/{{model._id}}">{{model.name}}</a></td>
+      <td>{{model.slug}}</td>
       <td>{{model.image}}</td>
       <td>{{model.status}}</td>
       <td>
