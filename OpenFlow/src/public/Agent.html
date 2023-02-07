@@ -1,186 +1,185 @@
 <style type="text/css">
   .list-group-item:hover {
-      color: #337ab7;
-      text-shadow: 0 0 1em #337ab7;
-      cursor: pointer;
+    color: #337ab7;
+    text-shadow: 0 0 1em #337ab7;
+    cursor: pointer;
   }
 
   .listgroupitemselected {
-      border: 6px;
-      border-color: black;
-      background-color: #337ab7;
-      color: white;
-      cursor: pointer;
+    border: 6px;
+    border-color: black;
+    background-color: #337ab7;
+    color: white;
+    cursor: pointer;
   }
 </style>
 
-<div class="row">
-  <div class="col-sm-20">
-      <h1 class="pagetitle" translate lib="web">agent {{ctrl.model.name}}</h1> 
-  </div>
-</div>
-
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
-<section ng-show="ctrl.model._id != '' && ctrl.model._id!=null">
-  <button type="button" class="btn" ng-click="ctrl.StartAgent()" ng-disabled="ctrl.loading==true"><em
-  class="fas fa-play"></em></button>
-  <button type="button" class="btn"  ng-click="ctrl.StopAgent()" ng-disabled="ctrl.loading==true"><em
-    class="fas fa-stop"></em></button>
-    <a ng-show="ctrl.model.webserver == true || ctrl.model.webserver == 'true'" target="_blank" ng-href="{{ctrl.weburl}}" class="btn">
+
+<div class="w-800 mw-full" ng-repeat="instance in ctrl.instances">
+  <div class="card p-0">
+    <div class="px-card py-10 border-bottom">
+      <h2 class="card-title font-size-18 m-0">
+        {{ instance.metadata.name }}
+      </h2>
+    </div>
+    <div class="content">
+
+      <div class="input-group row-eq-spacing-sm">
+        <div class="col-sm">
+          <label for="name" translate lib="web">status</label>
+          <span class="form-control">{{ ( instance.metadata.deletionTimestamp != null ? " deleting" :
+            instance.status.phase) }}</span>
+        </div>
+        <div class="col-sm">
+          <label for="name" translate lib="web">cpu</label>
+          <span class="form-control align-bottom">{{ instance.metrics.cpu + "/" +
+            instance.spec.containers[0].resources.limits.cpu }}</span>
+        </div>
+        <div class="col-sm">
+          <label for="name" translate lib="web">mem</label>
+          <span class="form-control align-bottom">{{ instance.metrics.memory + "/" +
+            instance.spec.containers[0].resources.limits.memory }}</span>
+        </div>
+        <div class="col-sm">
+          <label for="name" translate lib="web">created</label>
+          <span class="form-control">
+            <timesince ng-model="instance.metadata.creationTimestamp" />
+          </span>
+        </div>
+      </div>
+
+      <div class="input-group row-eq-spacing-sm">
+        <div class="col" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
+        || instance.status.phase == 'running' || instance.status.phase == 'exited'">
+  <button type="button" class="btn btn-sm " ng-disabled="ctrl.loading==true"
+    ng-show="instance.status.phase == 'Running' || instance.status.phase == 'running' || instance.status.phase == 'exited'"
+    ng-click="ctrl.GetInstanceLog(instance.metadata.name)">Logs</button>
+  <button type="button" class="btn btn-sm btn-danger" ng-click="ctrl.DeleteAgentPod(instance.metadata.name)"
+    ng-disabled="ctrl.loading==true" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
+          || instance.status.phase == 'running' || instance.status.phase == 'exited'">Delete</button>
+</div>
+
+      </div>
+
+    </div>
+
+    <div ng-show="ctrl.instancelog!=''" class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom"> <!-- py-10 = padding-top: 1rem (10px) and padding-bottom: 1rem (10px), bg-light-lm = background-color: var(--gray-color-light) only in light mode, bg-very-dark-dm = background-color: var(--dark-color-dark) only in dark mode, rounded-bottom = rounded corners on the bottom -->
+      <p class="font-size-12 m-0"> <!-- font-size-12 = font-size: 1.2rem (12px), m-0 = margin: 0 -->
+        <pre>{{ ctrl.instancelog }}</pre>
+      </p>
+    </div>
+  </div>
+</div>
+
+
+<div class="shadow card">
+  <div class="form-row input-group" ng-show="ctrl.model._id != '' && ctrl.model._id!=null">
+    <button type="button" class="btn" ng-click="ctrl.StartAgent()" ng-disabled="ctrl.loading==true"><em
+        class="fas fa-play"></em></button>
+    <button type="button" class="btn" ng-click="ctrl.StopAgent()" ng-disabled="ctrl.loading==true"><em
+        class="fas fa-stop"></em></button>
+    <a ng-show="ctrl.model.webserver == true || ctrl.model.webserver == 'true'" target="_blank" ng-href="{{ctrl.weburl}}"
+      class="btn">
       <em class="fas fa-project-diagram"></em></a>
-</section>
-
-<div ng-repeat="instance in ctrl.instances"
-ng-class="{alert: true, 'alert-primary': instance.status.phase != 'Failed', 'alert-danger': instance.status.phase == 'Failed'}">
-<div class="row">
-  <label class="col-sm-1 control-label"><span translate lib="web">name</span>: </label>
-  <div class="col">
-    <span >{{ instance.metadata.name }}</span>
   </div>
-  <label class="col-sm-1 control-label"><span translate lib="web">cpu</span>: </label>
-  <div class="col-sm-1">
-    <span >{{ instance.metrics.cpu + "/" +
-      instance.spec.containers[0].resources.limits.cpu }}</span>
-  </div>
-  <label class="col-sm-1 control-label"><span translate lib="web">mem</span>: </label>
-  <div class="col-sm-1">
-    <span>{{ instance.metrics.memory + "/" +
-      instance.spec.containers[0].resources.limits.memory }}</span>
-  </div>
-  <label class="col-sm-1 control-label"><span translate lib="web">created</span>: </label>
-  <div class="col-sm-1">
-    <span>
-      <timesince ng-model="instance.metadata.creationTimestamp" />
-    </span>
-  </div>
-</div>
-<div class="row">
-  <label class="col-sm-1 control-label"><span translate lib="web">status</span>: </label>
-  <div class="col-sm-1">
-    <span>{{ ( instance.metadata.deletionTimestamp != null ? " deleting" :
-      instance.status.phase) }}</span>
-  </div>
-  <label class="col-sm-1 control-label"><span translate lib="web">image</span>: </label>
-  <div class="col">
-    <span>{{ instance.Image || instance.spec.containers[0].image }}</span>
-  </div>
-  <div class="col" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
-     || instance.status.phase == 'running' || instance.status.phase == 'exited'">
-    <button type="button" class="btn btn-sm "
-      ng-disabled="ctrl.loading==true"
-      ng-show="instance.status.phase == 'Running' || instance.status.phase == 'running' || instance.status.phase == 'exited'"
-      ng-click="ctrl.GetInstanceLog(instance.metadata.name)">Logs</button>
-    <button type="button" class="btn btn-sm btn-danger" ng-click="ctrl.DeleteAgentPod(instance.metadata.name)"
-      ng-disabled="ctrl.loading==true"
-      ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
-       || instance.status.phase == 'running' || instance.status.phase == 'exited'">Delete</button>
-  </div>
-</div>
-<div class="row" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Exited'">
-  <span>{{ instance.status.message }}</span>
-</div>
-</div>
-<section ng-show="ctrl.instancelog!=''">
-  <div class="form-group">
-    <label class="col-sm-3 control-label"><span translate lib="web">console</span>: </label>
-    <div class="col-sm-9">
-      <pre>{{ ctrl.instancelog }}</pre>
-    </div>
-  </div>
-</section>
-
-<form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
-  <div class="form-row row-eq-spacing-sm">
-    <div class="col-sm">
-      <label for="name" class="required" translate lib="web">name</label>
-      <input ng-model="ctrl.model.name" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
-    </div>
-    <div class="col-sm">
-      <label for="last-name">slug 
-        <button type="button" ng-click="ctrl.model.slug=ctrl.randomname();ctrl.model.name=ctrl.model.slug" ng-disabled="ctrl.loading==true" 
-       ><em class="fas fa-refresh"></em></button>
-      </label>
-      <span class="form-control" ng-show="!menuctrl.hasrole('admins')">{{ctrl.model.slug}}</span>
-      <input ng-model="ctrl.model.slug" ng-show="menuctrl.hasrole('admins')" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
-    </div>
-    <div class="col-sm">
-      <label for="name" class="required" translate lib="web">image</label>
-      <select id="images" ng-model="ctrl.model.image" ng-disabled="ctrl.loading==true" class="form-control"
-        ng-options="item.name as item.name for item in ctrl.images" ng-change="ctrl.ImageUpdated()">
-      </select>
-    </div>
-    <div class="col-sm">
-      <label for="name" class="required" translate lib="web">plan</label>
-      <select id="resoource" ng-model="ctrl.model.stripeprice" ng-disabled="ctrl.loading==true" class="form-control"
-        ng-options="item.stripeprice as item.name for item in ctrl.products">
-      </select>
-    </div>
-  </div>
-  <div class="form-row row-eq-spacing-sm">
-    <div class="col-sm">
-      <label for="environment" translate lib="web">environment</label>
-      <div class="col-sm-8">
-        <textarea json-text class='form-control' rows='10' data-min-rows='10'
-          ng-model="ctrl.model.environment"></textarea>
+  <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
+    <div class="form-row row-eq-spacing-sm">
+      <div class="col-sm">
+        <label for="name" class="required" translate lib="web">name</label>
+        <input ng-model="ctrl.model.name" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
+      </div>
+      <div class="col-sm">
+        <label for="last-name">slug
+          <button type="button" ng-click="ctrl.model.slug=ctrl.randomname();ctrl.model.name=ctrl.model.slug"
+            ng-disabled="ctrl.loading==true"><em class="fas fa-refresh"></em></button>
+        </label>
+        <span class="form-control" ng-show="!menuctrl.hasrole('admins')">{{ctrl.model.slug}}</span>
+        <input ng-model="ctrl.model.slug" ng-show="menuctrl.hasrole('admins')" class="form-control"
+          ng-disabled="ctrl.loading==true" required="required" />
+      </div>
+      <div class="col-sm">
+        <label for="name" class="required" translate lib="web">image</label>
+        <select id="images" ng-model="ctrl.model.image" ng-disabled="ctrl.loading==true" class="form-control"
+          ng-options="item.name as item.name for item in ctrl.images" ng-change="ctrl.ImageUpdated()">
+        </select>
+      </div>
+      <div class="col-sm">
+        <label for="name" class="required" translate lib="web">plan</label>
+        <select id="resoource" ng-model="ctrl.model.stripeprice" ng-disabled="ctrl.loading==true" class="form-control"
+          ng-options="item.stripeprice as item.name for item in ctrl.products">
+        </select>
       </div>
     </div>
-  </div>
-  <div class="custom-control">
-    <div class="custom-checkbox" ng-show="ctrl.model.stripeprice != ''">
-      <input type="checkbox" id="if-5-checkbox" value="{{ctrl.model.autostart}}" ng-model="ctrl.model.autostart" ng-disabled="ctrl.loading==true">
-      <label for="if-5-checkbox" translate lib="web" ng-disabled="ctrl.loading==true">autostart</label>
+    <div class="form-row row-eq-spacing-sm">
+      <div class="col-sm">
+        <label for="environment" translate lib="web">environment</label>
+        <div class="col-sm-8">
+          <textarea json-text class='form-control' rows='10' data-min-rows='10'
+            ng-model="ctrl.model.environment"></textarea>
+        </div>
+      </div>
     </div>
-    <div class="custom-checkbox">
-      <input type="checkbox" id="if-5-checkbox" value="{{ctrl.model.webserver}}" ng-model="ctrl.model.webserver" ng-disabled="ctrl.loading==true">
-      <label for="if-5-checkbox" translate lib="web" ng-disabled="ctrl.loading==true">webserver</label>
-    </div>
-    <div class="custom-checkbox">
-      <input type="checkbox" id="if-5-sleep" value="{{ctrl.model.sleep}}" ng-model="ctrl.model.sleep" ng-disabled="ctrl.loading==true">
-      <label for="if-5-sleep" translate lib="web" ng-disabled="ctrl.loading==true">sleep</label>
-    </div>
-    <div class="custom">
-      <div class="form-group ">
-        <label for="add" class="col-sm-2 control-label" 
-        ng-show="(ctrl.model.runas!='' && ctrl.model.runas!=null) || menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
-        translate lib="web">runas</label>
-        <div class="col-sm-6 input-group">
-          <input type="text" name="user" id="user" ng-model="ctrl.searchtext" ng-keyup="ctrl.setkey($event)"
-            autocomplete="off" class="form-control" ng-model-options="{ debounce: 500 }" ng-change="ctrl.handlefilter()"
-            ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
-            ng-keypress="ctrl.restrictInput($event)" />
-          <!-- <select ng-model='ctrl.addthis' class="form-control"
-                      ng-options='item._id as (item.name + " " + item.username) for item in ctrl.users'></select> -->
-          <button type="button"
-            ng-click="ctrl.model.runas=='';ctrl.model.runasname==''" class="btn" translate            
-            ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
-            lib="web">clear</button>
+    <div class="custom-control">
+      <div class="custom-checkbox" ng-show="ctrl.model.stripeprice != ''">
+        <input type="checkbox" id="if-5-checkbox" value="{{ctrl.model.autostart}}" ng-model="ctrl.model.autostart"
+          ng-disabled="ctrl.loading==true">
+        <label for="if-5-checkbox" translate lib="web" ng-disabled="ctrl.loading==true">autostart</label>
+      </div>
+      <div class="custom-checkbox">
+        <input type="checkbox" id="if-5-checkbox" value="{{ctrl.model.webserver}}" ng-model="ctrl.model.webserver"
+          ng-disabled="ctrl.loading==true">
+        <label for="if-5-checkbox" translate lib="web" ng-disabled="ctrl.loading==true">webserver</label>
+      </div>
+      <div class="custom-checkbox">
+        <input type="checkbox" id="if-5-sleep" value="{{ctrl.model.sleep}}" ng-model="ctrl.model.sleep"
+          ng-disabled="ctrl.loading==true">
+        <label for="if-5-sleep" translate lib="web" ng-disabled="ctrl.loading==true">sleep</label>
+      </div>
+      <div class="custom">
+        <div class="form-group ">
+          <label for="add" class="col-sm-2 control-label"
+            ng-show="(ctrl.model.runas!='' && ctrl.model.runas!=null) || menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
+            translate lib="web">runas</label>
+          <div class="col-sm-6 input-group">
+            <input type="text" name="user" id="user" ng-model="ctrl.searchtext" ng-keyup="ctrl.setkey($event)"
+              autocomplete="off" class="form-control" ng-model-options="{ debounce: 500 }"
+              ng-change="ctrl.handlefilter()"
+              ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
+              ng-keypress="ctrl.restrictInput($event)" />
+            <!-- <select ng-model='ctrl.addthis' class="form-control"
+                        ng-options='item._id as (item.name + " " + item.username) for item in ctrl.users'></select> -->
+            <button type="button" ng-click="ctrl.model.runas=='';ctrl.model.runasname==''" class="btn" translate
+              ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')" lib="web">clear</button>
             <span ng-show="ctrl.model.runas != '' && ctrl.model.runas != null">
-              &ensp;Running as <a ng-href="#/User/{{ ctrl.model.runas }}">{{ ctrl.model.runasname }}</a> 
+              &ensp;Running as <a ng-href="#/User/{{ ctrl.model.runas }}">{{ ctrl.model.runasname }}</a>
             </span>
-             
+
+          </div>
+        </div>
+        <div>
+          <div class="col-sm-2"></div>
+          <div class="col-sm-6">
+            <ul class="list-group">
+              <li class="list-group-item" ng-repeat="item in ctrl.searchFilteredList"
+                ng-click="ctrl.fillTextbox(item.name)"
+                ng-class="{listgroupitemselected: ctrl.searchSelectedItem._id==item._id}">
+                ({{item._type}}) {{item.name}} <span ng-show="item.name != item.username">{{" " +
+                  item.username}}</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
-      <div>
-        <div class="col-sm-2"></div>
-        <div class="col-sm-6">
-          <ul class="list-group">
-            <li class="list-group-item" ng-repeat="item in ctrl.searchFilteredList" ng-click="ctrl.fillTextbox(item.name)"
-              ng-class="{listgroupitemselected: ctrl.searchSelectedItem._id==item._id}">
-              ({{item._type}}) {{item.name}} <span ng-show="item.name != item.username">{{" " +
-                item.username}}</span>
-            </li>
-          </ul>
-        </div>
+
+    </div>
+    <div class="form-group">
+      <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" ng-disabled="ctrl.loading==true" class="ml-auto btn btn-success" translate
+          lib="web">Save</button>
       </div>
     </div>
 
-  </div>
-  <div class="form-group">
-      <div class="col-sm-offset-2 col-sm-10">
-          <button type="submit" ng-disabled="ctrl.loading==true" class="ml-auto btn btn-success" translate
-              lib="web">Save</button>
-      </div>
-  </div>
-
-</form>
+  </form>
+</div>

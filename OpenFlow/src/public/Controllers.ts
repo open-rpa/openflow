@@ -7849,10 +7849,15 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     async GetInstanceLog(podname:string): Promise<void> {
         try {
-            this.loading = true;
-            this.errormessage = "";
-            this.instancelog = "";
-            this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
+            if(this.instancelog != "") {
+                this.errormessage = "";
+                this.instancelog = "";
+            } else {
+                this.loading = true;
+                this.errormessage = "";
+                this.instancelog = "";
+                this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
+            }
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }
