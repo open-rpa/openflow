@@ -273,7 +273,7 @@ export class WebServer {
     }
     static async get_crashme(req: any, res: any, next: any): Promise<void> {
         const remoteip = LoginProvider.remoteip(req);
-        if(remoteip == "127.0.0.1" || remoteip == "::ffff:127.0.0.1") {
+        if(remoteip != "127.0.0.1" && remoteip != "::ffff:127.0.0.1") {
             // Add security check at some point to only allow from localhost !!!
             res.statusCode = 500;
             return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip,"hostname": _hostname, dt: new Date() }));
@@ -294,7 +294,7 @@ export class WebServer {
         
     static async get_heapdump(req: any, res: any, next: any): Promise<void> {
         const remoteip = LoginProvider.remoteip(req);
-        if(remoteip == "127.0.0.1" || remoteip == "::ffff:127.0.0.1") {
+        if(remoteip != "127.0.0.1" && remoteip != "::ffff:127.0.0.1") {
             // Add security check at some point to only allow from localhost !!!
             res.statusCode = 500;
             return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip,"hostname": _hostname, dt: new Date() }));
