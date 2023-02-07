@@ -366,9 +366,12 @@ var signals = {
     'SIGTERM': 15
 };
 var housekeeping = null;
-function handle(signal, value) {
+async function handle(signal, value) {
     Logger.instanse.info(`process received a ${signal} signal with value ${value}`, null);
     try {
+        if(Config.heapdump_onstop) {
+            await Logger.otel.createheapdump(null);
+        }
         Config.db.shutdown();
         Logger.otel.shutdown();
         Logger.License.shutdown()
