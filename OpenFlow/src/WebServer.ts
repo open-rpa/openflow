@@ -115,6 +115,9 @@ export class WebServer {
 
             this.app.get("/livenessprobe", WebServer.get_livenessprobe.bind(this));
 
+            this.app.get("/heapdump", WebServer.get_heapdump.bind(this))
+            this.app.get("/crashme", WebServer.get_crashme.bind(this))
+
             this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = LoginProvider.remoteip(req);
@@ -267,6 +270,38 @@ export class WebServer {
             }
         });
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
+    }
+    static async get_crashme(req: any, res: any, next: any): Promise<void> {
+        const remoteip = LoginProvider.remoteip(req);
+        if(remoteip == "127.0.0.1" || remoteip == "::ffff:127.0.0.1") {
+            // Add security check at some point to only allow from localhost !!!
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip,"hostname": _hostname, dt: new Date() }));
+        }
+        let buffer = [];
+        const MB = (bytes) => Math.round(bytes/1024/1024) + 'MB'
+        const memoryUsage = () => {
+                const mem = process.memoryUsage();
+                return MB(mem.rss) + '\t' + MB(mem.heapTotal) + '\t' + MB(mem.external);
+        }
+        setInterval(()=>{
+            buffer.push(Buffer.alloc(1024 * 1024* 1024)); // Eat 1GB of RAM every second
+            console.log(buffer.length + '\t' + memoryUsage());
+        }, 10000);
+        res.end(JSON.stringify({ "success": "true", "message": "Ok here we go, crash incomming!!!!", "remoteip": remoteip, "hostname": _hostname, dt: new Date() }));
+        res.end();
+    }
+        
+    static async get_heapdump(req: any, res: any, next: any): Promise<void> {
+        const remoteip = LoginProvider.remoteip(req);
+        if(remoteip == "127.0.0.1" || remoteip == "::ffff:127.0.0.1") {
+            // Add security check at some point to only allow from localhost !!!
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip,"hostname": _hostname, dt: new Date() }));
+        }
+        await Logger.otel.createheapdump(null);
+        res.end(JSON.stringify({ "success": "true", "remoteip": remoteip, "hostname": _hostname, dt: new Date() }));
+        res.end();
     }
     static get_livenessprobe(req: any, res: any, next: any): void {
         let span = Logger.otel.startSpanExpress("get_livenessprobe", req)
