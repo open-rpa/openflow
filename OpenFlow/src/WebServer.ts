@@ -115,8 +115,8 @@ export class WebServer {
 
             this.app.get("/livenessprobe", WebServer.get_livenessprobe.bind(this));
 
-            this.app.get("/heapdump", WebServer.get_heapdump.bind(this))
-            this.app.get("/crashme", WebServer.get_crashme.bind(this))
+            // this.app.get("/heapdump", WebServer.get_heapdump.bind(this))
+            // this.app.get("/crashme", WebServer.get_crashme.bind(this))
 
             this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
                 if (await WebServer.isBlocked(req)) {
@@ -278,16 +278,21 @@ export class WebServer {
             res.statusCode = 500;
             return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip,"hostname": _hostname, dt: new Date() }));
         }
-        let buffer = [];
-        const MB = (bytes) => Math.round(bytes/1024/1024) + 'MB'
-        const memoryUsage = () => {
-                const mem = process.memoryUsage();
-                return MB(mem.rss) + '\t' + MB(mem.heapTotal) + '\t' + MB(mem.external);
+        let array = [];
+        while (true) {
+            array.push(new Array(10000000).join('x'));
+            await new Promise(resolve => { setTimeout(resolve, 1000) });
         }
-        setInterval(()=>{
-            buffer.push(Buffer.alloc(1024 * 1024* 1024)); // Eat 1GB of RAM every second
-            console.log(buffer.length + '\t' + memoryUsage());
-        }, 10000);
+        // let buffer = [];
+        // const MB = (bytes) => Math.round(bytes/1024/1024) + 'MB'
+        // const memoryUsage = () => {
+        //         const mem = process.memoryUsage();
+        //         return MB(mem.rss) + '\t' + MB(mem.heapTotal) + '\t' + MB(mem.external);
+        // }
+        // setInterval(()=>{
+        //     buffer.push(Buffer.alloc(1024 * 1024* 1024)); // Eat 1GB of RAM every second
+        //     console.log(buffer.length + '\t' + memoryUsage());
+        // }, 1000);
         res.end(JSON.stringify({ "success": "true", "message": "Ok here we go, crash incomming!!!!", "remoteip": remoteip, "hostname": _hostname, dt: new Date() }));
         res.end();
     }
