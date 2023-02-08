@@ -7682,6 +7682,9 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.model.slug = this.model.name; this.model.stripeprice = ""
                 this.ImageUpdated()
                 this.loading = false;
+                this.model.runas = user._id;
+                this.model.runasname = user.name;
+                this.searchtext = user.name;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
@@ -7692,7 +7695,29 @@ export class AgentCtrl extends entityCtrl<any> {
         this.searchtext = this.model.runasname
         this.loadInstances()
     }
+    sizewarningtitle: string = "";
+    sizewarning: string = "";
+    PlanUpdated() {
+        this.sizewarningtitle = ""
+        this.sizewarning = ""
+        var product = this.products.find(x => x.stripeprice == this.model.stripeprice)
+        if(product.stripeprice == "") product = null
+        if(this.model.image == "openiap/nodechromiumagent") {
+            if(product == null || product.metadata.resources.limits.memory == "256Mi") {
+                this.sizewarningtitle = "Not enough ram"
+                this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Plus plan or higher"
+            }
+        }
+        if(this.model.image == "openiap/pychromiumagent") {
+            if(product == null || product.metadata.resources.limits.memory == "256Mi") {
+                this.sizewarningtitle = "Not enough ram"
+                this.sizewarning = "This instance might not start, or will run slow if not assigned a payed Plus plan og higher"
+            }
+        }
+    }
     ImageUpdated() {
+        this.sizewarningtitle = ""
+        this.sizewarning = ""
         if(this.model.image == "openiap/nodeagent") {
             this.model.environment = {
                 "wiq":"nodeagent", "queue":"nodeagent",
@@ -7712,6 +7737,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 "wiq": "nodepuppeteertest",
                 "queue": "nodepuppeteertest"
             }
+            this.PlanUpdated()
         }
         if(this.model.image == "openiap/pyagent") {
             this.model.environment = {
@@ -7727,6 +7753,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 "wiq": "taguitest",
                 "queue": "taguitest"
             }
+            this.PlanUpdated()
         }
     }
     async loadInstances() {

@@ -53,21 +53,22 @@
       <div class="input-group row-eq-spacing-sm">
         <div class="col" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
         || instance.status.phase == 'running' || instance.status.phase == 'exited'">
-  <button type="button" class="btn btn-sm " ng-disabled="ctrl.loading==true"
-    ng-show="instance.status.phase == 'Running' || instance.status.phase == 'running' || instance.status.phase == 'exited'"
-    ng-click="ctrl.GetInstanceLog(instance.metadata.name)">Logs</button>
-  <button type="button" class="btn btn-sm btn-danger" ng-click="ctrl.DeleteAgentPod(instance.metadata.name)"
-    ng-disabled="ctrl.loading==true" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
+          <button type="button" class="btn btn-sm " ng-disabled="ctrl.loading==true"
+            ng-show="instance.status.phase == 'Running' || instance.status.phase == 'running' || instance.status.phase == 'exited'"
+            ng-click="ctrl.GetInstanceLog(instance.metadata.name)">Logs</button>
+          <button type="button" class="btn btn-sm btn-danger" ng-click="ctrl.DeleteAgentPod(instance.metadata.name)"
+            ng-disabled="ctrl.loading==true" ng-show="instance.status.phase == 'Failed' || instance.status.phase == 'Running'
           || instance.status.phase == 'running' || instance.status.phase == 'exited'">Delete</button>
-</div>
+        </div>
 
       </div>
 
     </div>
 
-    <div ng-show="ctrl.instancelog!=''" class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom"> <!-- py-10 = padding-top: 1rem (10px) and padding-bottom: 1rem (10px), bg-light-lm = background-color: var(--gray-color-light) only in light mode, bg-very-dark-dm = background-color: var(--dark-color-dark) only in dark mode, rounded-bottom = rounded corners on the bottom -->
+    <div ng-show="ctrl.instancelog!=''" class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom">
+      <!-- py-10 = padding-top: 1rem (10px) and padding-bottom: 1rem (10px), bg-light-lm = background-color: var(--gray-color-light) only in light mode, bg-very-dark-dm = background-color: var(--dark-color-dark) only in dark mode, rounded-bottom = rounded corners on the bottom -->
       <p class="font-size-12 m-0"> <!-- font-size-12 = font-size: 1.2rem (12px), m-0 = margin: 0 -->
-        <pre>{{ ctrl.instancelog }}</pre>
+      <pre>{{ ctrl.instancelog }}</pre>
       </p>
     </div>
   </div>
@@ -80,8 +81,8 @@
         class="fas fa-play"></em></button>
     <button type="button" class="btn" ng-click="ctrl.StopAgent()" ng-disabled="ctrl.loading==true"><em
         class="fas fa-stop"></em></button>
-    <a ng-show="ctrl.model.webserver == true || ctrl.model.webserver == 'true'" target="_blank" ng-href="{{ctrl.weburl}}"
-      class="btn">
+    <a ng-show="ctrl.model.webserver == true || ctrl.model.webserver == 'true'" target="_blank"
+      ng-href="{{ctrl.weburl}}" class="btn">
       <em class="fas fa-project-diagram"></em></a>
   </div>
   <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
@@ -108,20 +109,26 @@
       <div class="col-sm">
         <label for="name" class="required" translate lib="web">plan</label>
         <select id="resoource" ng-model="ctrl.model.stripeprice" ng-disabled="ctrl.loading==true" class="form-control"
-          ng-options="item.stripeprice as item.name for item in ctrl.products">
+          ng-options="item.stripeprice as item.name for item in ctrl.products"  ng-change="ctrl.PlanUpdated()">
         </select>
       </div>
     </div>
-    <div class="form-row row-eq-spacing-sm">
-      <div class="col-sm">
-        <label for="environment" translate lib="web">environment</label>
-        <div class="col-sm-8">
-          <textarea json-text class='form-control' rows='10' data-min-rows='10'
-            ng-model="ctrl.model.environment"></textarea>
-        </div>
-      </div>
+    <div class="alert alert-secondary" role="alert" ng-show="ctrl.sizewarning">
+      <h4 class="alert-heading">{{ctrl.sizewarningtitle}}</h4>
+      {{ctrl.sizewarning}}
     </div>
-    <div class="custom-control">
+
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">environment</span>
+      </div>
+      <textarea json-text class='form-control' rows='10' data-min-rows='10'
+        ng-model="ctrl.model.environment"></textarea>
+    </div>
+    <div class="input-group col-sm-8">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">options</span>
+      </div>
       <div class="custom-checkbox" ng-show="ctrl.model.stripeprice != ''">
         <input type="checkbox" id="if-5-autostart" value="{{ctrl.model.autostart}}" ng-model="ctrl.model.autostart"
           ng-disabled="ctrl.loading==true">
@@ -137,526 +144,518 @@
           ng-disabled="ctrl.loading==true">
         <label for="if-5-sleep" translate lib="web" ng-disabled="ctrl.loading==true">sleep</label>
       </div>
-      <div class="custom">
-        <div class="form-group ">
-          <label for="add" class="col-sm-2 control-label"
-            ng-show="(ctrl.model.runas!='' && ctrl.model.runas!=null) || menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
-            translate lib="web">runas</label>
-          <div class="col-sm-6 input-group">
-            <input type="text" name="user" id="user" ng-model="ctrl.searchtext" ng-keyup="ctrl.setkey($event)"
-              autocomplete="off" class="form-control" ng-model-options="{ debounce: 500 }"
-              ng-change="ctrl.handlefilter()"
-              ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')"
-              ng-keypress="ctrl.restrictInput($event)" />
-            <!-- <select ng-model='ctrl.addthis' class="form-control"
-                        ng-options='item._id as (item.name + " " + item.username) for item in ctrl.users'></select> -->
-            <button type="button" ng-click="ctrl.model.runas=='';ctrl.model.runasname==''" class="btn" translate
-              ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')" lib="web">clear</button>
-            <span ng-show="ctrl.model.runas != '' && ctrl.model.runas != null">
-              &ensp;Running as <a ng-href="#/User/{{ ctrl.model.runas }}">{{ ctrl.model.runasname }}</a>
-            </span>
+    </div>
 
-          </div>
-        </div>
-        <div>
-          <div class="col-sm-2"></div>
-          <div class="col-sm-6">
-            <ul class="list-group">
-              <li class="list-group-item" ng-repeat="item in ctrl.searchFilteredList"
-                ng-click="ctrl.fillTextbox(item.name)"
-                ng-class="{listgroupitemselected: ctrl.searchSelectedItem._id==item._id}">
-                ({{item._type}}) {{item.name}} <span ng-show="item.name != item.username">{{" " +
-                  item.username}}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
+
+
+    <div class="input-group col-sm-8">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">timezone</span>
       </div>
+      <select name="timezone" id="timezone" class="form-control" ng-model="ctrl.model.tz">
+        <option value="" label="UTC">UTC (default)</option>
+        <optgroup label="Europe">
+          <option value="Europe/Amsterdam" label="Amsterdam">Amsterdam</option>
+          <option value="Europe/Andorra" label="Andorra">Andorra</option>
+          <option value="Europe/Athens" label="Athens">Athens</option>
+          <option value="Europe/Belfast" label="Belfast">Belfast</option>
+          <option value="Europe/Belgrade" label="Belgrade">Belgrade</option>
+          <option value="Europe/Berlin" label="Berlin">Berlin</option>
+          <option value="Europe/Bratislava" label="Bratislava">Bratislava</option>
+          <option value="Europe/Brussels" label="Brussels">Brussels</option>
+          <option value="Europe/Bucharest" label="Bucharest">Bucharest</option>
+          <option value="Europe/Budapest" label="Budapest">Budapest</option>
+          <option value="Europe/Chisinau" label="Chisinau">Chisinau</option>
+          <option value="Europe/Copenhagen" label="Copenhagen">Copenhagen</option>
+          <option value="Europe/Dublin" label="Dublin">Dublin</option>
+          <option value="Europe/Gibraltar" label="Gibraltar">Gibraltar</option>
+          <option value="Europe/Guernsey" label="Guernsey">Guernsey</option>
+          <option value="Europe/Helsinki" label="Helsinki">Helsinki</option>
+          <option value="Europe/Isle_of_Man" label="Isle of Man">Isle of Man</option>
+          <option value="Europe/Istanbul" label="Istanbul">Istanbul</option>
+          <option value="Europe/Jersey" label="Jersey">Jersey</option>
+          <option value="Europe/Kaliningrad" label="Kaliningrad">Kaliningrad</option>
+          <option value="Europe/Kiev" label="Kiev">Kiev</option>
+          <option value="Europe/Lisbon" label="Lisbon">Lisbon</option>
+          <option value="Europe/Ljubljana" label="Ljubljana">Ljubljana</option>
+          <option value="Europe/London" label="London" selected="selected">London</option>
+          <option value="Europe/Luxembourg" label="Luxembourg">Luxembourg</option>
+          <option value="Europe/Madrid" label="Madrid">Madrid</option>
+          <option value="Europe/Malta" label="Malta">Malta</option>
+          <option value="Europe/Mariehamn" label="Mariehamn">Mariehamn</option>
+          <option value="Europe/Minsk" label="Minsk">Minsk</option>
+          <option value="Europe/Monaco" label="Monaco">Monaco</option>
+          <option value="Europe/Moscow" label="Moscow">Moscow</option>
+          <option value="Europe/Nicosia" label="Nicosia">Nicosia</option>
+          <option value="Europe/Oslo" label="Oslo">Oslo</option>
+          <option value="Europe/Paris" label="Paris">Paris</option>
+          <option value="Europe/Podgorica" label="Podgorica">Podgorica</option>
+          <option value="Europe/Prague" label="Prague">Prague</option>
+          <option value="Europe/Riga" label="Riga">Riga</option>
+          <option value="Europe/Rome" label="Rome">Rome</option>
+          <option value="Europe/Samara" label="Samara">Samara</option>
+          <option value="Europe/San_Marino" label="San Marino">San Marino</option>
+          <option value="Europe/Sarajevo" label="Sarajevo">Sarajevo</option>
+          <option value="Europe/Simferopol" label="Simferopol">Simferopol</option>
+          <option value="Europe/Skopje" label="Skopje">Skopje</option>
+          <option value="Europe/Sofia" label="Sofia">Sofia</option>
+          <option value="Europe/Stockholm" label="Stockholm">Stockholm</option>
+          <option value="Europe/Tallinn" label="Tallinn">Tallinn</option>
+          <option value="Europe/Tirane" label="Tirane">Tirane</option>
+          <option value="Europe/Tiraspol" label="Tiraspol">Tiraspol</option>
+          <option value="Europe/Uzhgorod" label="Uzhgorod">Uzhgorod</option>
+          <option value="Europe/Vaduz" label="Vaduz">Vaduz</option>
+          <option value="Europe/Vatican" label="Vatican">Vatican</option>
+          <option value="Europe/Vienna" label="Vienna">Vienna</option>
+          <option value="Europe/Vilnius" label="Vilnius">Vilnius</option>
+          <option value="Europe/Volgograd" label="Volgograd">Volgograd</option>
+          <option value="Europe/Warsaw" label="Warsaw">Warsaw</option>
+          <option value="Europe/Zagreb" label="Zagreb">Zagreb</option>
+          <option value="Europe/Zaporozhye" label="Zaporozhye">Zaporozhye</option>
+          <option value="Europe/Zurich" label="Zurich">Zurich</option>
+        </optgroup>
+        <optgroup label="Africa">
+          <option value="Africa/Abidjan" label="Abidjan">Abidjan</option>
+          <option value="Africa/Accra" label="Accra">Accra</option>
+          <option value="Africa/Addis_Ababa" label="Addis Ababa">Addis Ababa</option>
+          <option value="Africa/Algiers" label="Algiers">Algiers</option>
+          <option value="Africa/Asmara" label="Asmara">Asmara</option>
+          <option value="Africa/Asmera" label="Asmera">Asmera</option>
+          <option value="Africa/Bamako" label="Bamako">Bamako</option>
+          <option value="Africa/Bangui" label="Bangui">Bangui</option>
+          <option value="Africa/Banjul" label="Banjul">Banjul</option>
+          <option value="Africa/Bissau" label="Bissau">Bissau</option>
+          <option value="Africa/Blantyre" label="Blantyre">Blantyre</option>
+          <option value="Africa/Brazzaville" label="Brazzaville">Brazzaville</option>
+          <option value="Africa/Bujumbura" label="Bujumbura">Bujumbura</option>
+          <option value="Africa/Cairo" label="Cairo">Cairo</option>
+          <option value="Africa/Casablanca" label="Casablanca">Casablanca</option>
+          <option value="Africa/Ceuta" label="Ceuta">Ceuta</option>
+          <option value="Africa/Conakry" label="Conakry">Conakry</option>
+          <option value="Africa/Dakar" label="Dakar">Dakar</option>
+          <option value="Africa/Dar_es_Salaam" label="Dar es Salaam">Dar es Salaam</option>
+          <option value="Africa/Djibouti" label="Djibouti">Djibouti</option>
+          <option value="Africa/Douala" label="Douala">Douala</option>
+          <option value="Africa/El_Aaiun" label="El Aaiun">El Aaiun</option>
+          <option value="Africa/Freetown" label="Freetown">Freetown</option>
+          <option value="Africa/Gaborone" label="Gaborone">Gaborone</option>
+          <option value="Africa/Harare" label="Harare">Harare</option>
+          <option value="Africa/Johannesburg" label="Johannesburg">Johannesburg</option>
+          <option value="Africa/Kampala" label="Kampala">Kampala</option>
+          <option value="Africa/Khartoum" label="Khartoum">Khartoum</option>
+          <option value="Africa/Kigali" label="Kigali">Kigali</option>
+          <option value="Africa/Kinshasa" label="Kinshasa">Kinshasa</option>
+          <option value="Africa/Lagos" label="Lagos">Lagos</option>
+          <option value="Africa/Libreville" label="Libreville">Libreville</option>
+          <option value="Africa/Lome" label="Lome">Lome</option>
+          <option value="Africa/Luanda" label="Luanda">Luanda</option>
+          <option value="Africa/Lubumbashi" label="Lubumbashi">Lubumbashi</option>
+          <option value="Africa/Lusaka" label="Lusaka">Lusaka</option>
+          <option value="Africa/Malabo" label="Malabo">Malabo</option>
+          <option value="Africa/Maputo" label="Maputo">Maputo</option>
+          <option value="Africa/Maseru" label="Maseru">Maseru</option>
+          <option value="Africa/Mbabane" label="Mbabane">Mbabane</option>
+          <option value="Africa/Mogadishu" label="Mogadishu">Mogadishu</option>
+          <option value="Africa/Monrovia" label="Monrovia">Monrovia</option>
+          <option value="Africa/Nairobi" label="Nairobi">Nairobi</option>
+          <option value="Africa/Ndjamena" label="Ndjamena">Ndjamena</option>
+          <option value="Africa/Niamey" label="Niamey">Niamey</option>
+          <option value="Africa/Nouakchott" label="Nouakchott">Nouakchott</option>
+          <option value="Africa/Ouagadougou" label="Ouagadougou">Ouagadougou</option>
+          <option value="Africa/Porto-Novo" label="Porto-Novo">Porto-Novo</option>
+          <option value="Africa/Sao_Tome" label="Sao Tome">Sao Tome</option>
+          <option value="Africa/Timbuktu" label="Timbuktu">Timbuktu</option>
+          <option value="Africa/Tripoli" label="Tripoli">Tripoli</option>
+          <option value="Africa/Tunis" label="Tunis">Tunis</option>
+          <option value="Africa/Windhoek" label="Windhoek">Windhoek</option>
+        </optgroup>
+        <optgroup label="America">
+          <option value="America/Adak" label="Adak">Adak</option>
+          <option value="America/Anchorage" label="Anchorage">Anchorage</option>
+          <option value="America/Anguilla" label="Anguilla">Anguilla</option>
+          <option value="America/Antigua" label="Antigua">Antigua</option>
+          <option value="America/Araguaina" label="Araguaina">Araguaina</option>
+          <option value="America/Argentina/Buenos_Aires" label="Argentina (Buenos Aires)">Argentina (Buenos Aires)
+          </option>
+          <option value="America/Argentina/Catamarca" label="Argentina (Catamarca)">Argentina (Catamarca)</option>
+          <option value="America/Argentina/ComodRivadavia" label="Argentina (ComodRivadavia)">Argentina (ComodRivadavia)
+          </option>
+          <option value="America/Argentina/Cordoba" label="Argentina (Cordoba)">Argentina (Cordoba)</option>
+          <option value="America/Argentina/Jujuy" label="Argentina (Jujuy)">Argentina (Jujuy)</option>
+          <option value="America/Argentina/La_Rioja" label="Argentina (La Rioja)">Argentina (La Rioja)</option>
+          <option value="America/Argentina/Mendoza" label="Argentina (Mendoza)">Argentina (Mendoza)</option>
+          <option value="America/Argentina/Rio_Gallegos" label="Argentina (Rio Gallegos)">Argentina (Rio Gallegos)
+          </option>
+          <option value="America/Argentina/Salta" label="Argentina (Salta)">Argentina (Salta)</option>
+          <option value="America/Argentina/San_Juan" label="Argentina (San Juan)">Argentina (San Juan)</option>
+          <option value="America/Argentina/San_Luis" label="Argentina (San Luis)">Argentina (San Luis)</option>
+          <option value="America/Argentina/Tucuman" label="Argentina (Tucuman)">Argentina (Tucuman)</option>
+          <option value="America/Argentina/Ushuaia" label="Argentina (Ushuaia)">Argentina (Ushuaia)</option>
+          <option value="America/Aruba" label="Aruba">Aruba</option>
+          <option value="America/Asuncion" label="Asuncion">Asuncion</option>
+          <option value="America/Atikokan" label="Atikokan">Atikokan</option>
+          <option value="America/Atka" label="Atka">Atka</option>
+          <option value="America/Bahia" label="Bahia">Bahia</option>
+          <option value="America/Barbados" label="Barbados">Barbados</option>
+          <option value="America/Belem" label="Belem">Belem</option>
+          <option value="America/Belize" label="Belize">Belize</option>
+          <option value="America/Blanc-Sablon" label="Blanc-Sablon">Blanc-Sablon</option>
+          <option value="America/Boa_Vista" label="Boa Vista">Boa Vista</option>
+          <option value="America/Bogota" label="Bogota">Bogota</option>
+          <option value="America/Boise" label="Boise">Boise</option>
+          <option value="America/Buenos_Aires" label="Buenos Aires">Buenos Aires</option>
+          <option value="America/Cambridge_Bay" label="Cambridge Bay">Cambridge Bay</option>
+          <option value="America/Campo_Grande" label="Campo Grande">Campo Grande</option>
+          <option value="America/Cancun" label="Cancun">Cancun</option>
+          <option value="America/Caracas" label="Caracas">Caracas</option>
+          <option value="America/Catamarca" label="Catamarca">Catamarca</option>
+          <option value="America/Cayenne" label="Cayenne">Cayenne</option>
+          <option value="America/Cayman" label="Cayman">Cayman</option>
+          <option value="America/Chicago" label="Chicago">Chicago</option>
+          <option value="America/Chihuahua" label="Chihuahua">Chihuahua</option>
+          <option value="America/Coral_Harbour" label="Coral Harbour">Coral Harbour</option>
+          <option value="America/Cordoba" label="Cordoba">Cordoba</option>
+          <option value="America/Costa_Rica" label="Costa Rica">Costa Rica</option>
+          <option value="America/Cuiaba" label="Cuiaba">Cuiaba</option>
+          <option value="America/Curacao" label="Curacao">Curacao</option>
+          <option value="America/Danmarkshavn" label="Danmarkshavn">Danmarkshavn</option>
+          <option value="America/Dawson" label="Dawson">Dawson</option>
+          <option value="America/Dawson_Creek" label="Dawson Creek">Dawson Creek</option>
+          <option value="America/Denver" label="Denver">Denver</option>
+          <option value="America/Detroit" label="Detroit">Detroit</option>
+          <option value="America/Dominica" label="Dominica">Dominica</option>
+          <option value="America/Edmonton" label="Edmonton">Edmonton</option>
+          <option value="America/Eirunepe" label="Eirunepe">Eirunepe</option>
+          <option value="America/El_Salvador" label="El Salvador">El Salvador</option>
+          <option value="America/Ensenada" label="Ensenada">Ensenada</option>
+          <option value="America/Fort_Wayne" label="Fort Wayne">Fort Wayne</option>
+          <option value="America/Fortaleza" label="Fortaleza">Fortaleza</option>
+          <option value="America/Glace_Bay" label="Glace Bay">Glace Bay</option>
+          <option value="America/Godthab" label="Godthab">Godthab</option>
+          <option value="America/Goose_Bay" label="Goose Bay">Goose Bay</option>
+          <option value="America/Grand_Turk" label="Grand Turk">Grand Turk</option>
+          <option value="America/Grenada" label="Grenada">Grenada</option>
+          <option value="America/Guadeloupe" label="Guadeloupe">Guadeloupe</option>
+          <option value="America/Guatemala" label="Guatemala">Guatemala</option>
+          <option value="America/Guayaquil" label="Guayaquil">Guayaquil</option>
+          <option value="America/Guyana" label="Guyana">Guyana</option>
+          <option value="America/Halifax" label="Halifax">Halifax</option>
+          <option value="America/Havana" label="Havana">Havana</option>
+          <option value="America/Hermosillo" label="Hermosillo">Hermosillo</option>
+          <option value="America/Indiana/Indianapolis" label="Indiana (Indianapolis)">Indiana (Indianapolis)</option>
+          <option value="America/Indiana/Knox" label="Indiana (Knox)">Indiana (Knox)</option>
+          <option value="America/Indiana/Marengo" label="Indiana (Marengo)">Indiana (Marengo)</option>
+          <option value="America/Indiana/Petersburg" label="Indiana (Petersburg)">Indiana (Petersburg)</option>
+          <option value="America/Indiana/Tell_City" label="Indiana (Tell City)">Indiana (Tell City)</option>
+          <option value="America/Indiana/Vevay" label="Indiana (Vevay)">Indiana (Vevay)</option>
+          <option value="America/Indiana/Vincennes" label="Indiana (Vincennes)">Indiana (Vincennes)</option>
+          <option value="America/Indiana/Winamac" label="Indiana (Winamac)">Indiana (Winamac)</option>
+          <option value="America/Indianapolis" label="Indianapolis">Indianapolis</option>
+          <option value="America/Inuvik" label="Inuvik">Inuvik</option>
+          <option value="America/Iqaluit" label="Iqaluit">Iqaluit</option>
+          <option value="America/Jamaica" label="Jamaica">Jamaica</option>
+          <option value="America/Jujuy" label="Jujuy">Jujuy</option>
+          <option value="America/Juneau" label="Juneau">Juneau</option>
+          <option value="America/Kentucky/Louisville" label="Kentucky (Louisville)">Kentucky (Louisville)</option>
+          <option value="America/Kentucky/Monticello" label="Kentucky (Monticello)">Kentucky (Monticello)</option>
+          <option value="America/Knox_IN" label="Knox IN">Knox IN</option>
+          <option value="America/La_Paz" label="La Paz">La Paz</option>
+          <option value="America/Lima" label="Lima">Lima</option>
+          <option value="America/Los_Angeles" label="Los Angeles">Los Angeles</option>
+          <option value="America/Louisville" label="Louisville">Louisville</option>
+          <option value="America/Maceio" label="Maceio">Maceio</option>
+          <option value="America/Managua" label="Managua">Managua</option>
+          <option value="America/Manaus" label="Manaus">Manaus</option>
+          <option value="America/Marigot" label="Marigot">Marigot</option>
+          <option value="America/Martinique" label="Martinique">Martinique</option>
+          <option value="America/Mazatlan" label="Mazatlan">Mazatlan</option>
+          <option value="America/Mendoza" label="Mendoza">Mendoza</option>
+          <option value="America/Menominee" label="Menominee">Menominee</option>
+          <option value="America/Merida" label="Merida">Merida</option>
+          <option value="America/Mexico_City" label="Mexico City">Mexico City</option>
+          <option value="America/Miquelon" label="Miquelon">Miquelon</option>
+          <option value="America/Moncton" label="Moncton">Moncton</option>
+          <option value="America/Monterrey" label="Monterrey">Monterrey</option>
+          <option value="America/Montevideo" label="Montevideo">Montevideo</option>
+          <option value="America/Montreal" label="Montreal">Montreal</option>
+          <option value="America/Montserrat" label="Montserrat">Montserrat</option>
+          <option value="America/Nassau" label="Nassau">Nassau</option>
+          <option value="America/New_York" label="New York">New York</option>
+          <option value="America/Nipigon" label="Nipigon">Nipigon</option>
+          <option value="America/Nome" label="Nome">Nome</option>
+          <option value="America/Noronha" label="Noronha">Noronha</option>
+          <option value="America/North_Dakota/Center" label="North Dakota (Center)">North Dakota (Center)</option>
+          <option value="America/North_Dakota/New_Salem" label="North Dakota (New Salem)">North Dakota (New Salem)
+          </option>
+          <option value="America/Panama" label="Panama">Panama</option>
+          <option value="America/Pangnirtung" label="Pangnirtung">Pangnirtung</option>
+          <option value="America/Paramaribo" label="Paramaribo">Paramaribo</option>
+          <option value="America/Phoenix" label="Phoenix">Phoenix</option>
+          <option value="America/Port-au-Prince" label="Port-au-Prince">Port-au-Prince</option>
+          <option value="America/Port_of_Spain" label="Port of Spain">Port of Spain</option>
+          <option value="America/Porto_Acre" label="Porto Acre">Porto Acre</option>
+          <option value="America/Porto_Velho" label="Porto Velho">Porto Velho</option>
+          <option value="America/Puerto_Rico" label="Puerto Rico">Puerto Rico</option>
+          <option value="America/Rainy_River" label="Rainy River">Rainy River</option>
+          <option value="America/Rankin_Inlet" label="Rankin Inlet">Rankin Inlet</option>
+          <option value="America/Recife" label="Recife">Recife</option>
+          <option value="America/Regina" label="Regina">Regina</option>
+          <option value="America/Resolute" label="Resolute">Resolute</option>
+          <option value="America/Rio_Branco" label="Rio Branco">Rio Branco</option>
+          <option value="America/Rosario" label="Rosario">Rosario</option>
+          <option value="America/Santarem" label="Santarem">Santarem</option>
+          <option value="America/Santiago" label="Santiago">Santiago</option>
+          <option value="America/Santo_Domingo" label="Santo Domingo">Santo Domingo</option>
+          <option value="America/Sao_Paulo" label="Sao Paulo">Sao Paulo</option>
+          <option value="America/Scoresbysund" label="Scoresbysund">Scoresbysund</option>
+          <option value="America/Shiprock" label="Shiprock">Shiprock</option>
+          <option value="America/St_Barthelemy" label="St Barthelemy">St Barthelemy</option>
+          <option value="America/St_Johns" label="St Johns">St Johns</option>
+          <option value="America/St_Kitts" label="St Kitts">St Kitts</option>
+          <option value="America/St_Lucia" label="St Lucia">St Lucia</option>
+          <option value="America/St_Thomas" label="St Thomas">St Thomas</option>
+          <option value="America/St_Vincent" label="St Vincent">St Vincent</option>
+          <option value="America/Swift_Current" label="Swift Current">Swift Current</option>
+          <option value="America/Tegucigalpa" label="Tegucigalpa">Tegucigalpa</option>
+          <option value="America/Thule" label="Thule">Thule</option>
+          <option value="America/Thunder_Bay" label="Thunder Bay">Thunder Bay</option>
+          <option value="America/Tijuana" label="Tijuana">Tijuana</option>
+          <option value="America/Toronto" label="Toronto">Toronto</option>
+          <option value="America/Tortola" label="Tortola">Tortola</option>
+          <option value="America/Vancouver" label="Vancouver">Vancouver</option>
+          <option value="America/Virgin" label="Virgin">Virgin</option>
+          <option value="America/Whitehorse" label="Whitehorse">Whitehorse</option>
+          <option value="America/Winnipeg" label="Winnipeg">Winnipeg</option>
+          <option value="America/Yakutat" label="Yakutat">Yakutat</option>
+          <option value="America/Yellowknife" label="Yellowknife">Yellowknife</option>
+        </optgroup>
+        <optgroup label="Antarctica">
+          <option value="Antarctica/Casey" label="Casey">Casey</option>
+          <option value="Antarctica/Davis" label="Davis">Davis</option>
+          <option value="Antarctica/DumontDUrville" label="DumontDUrville">DumontDUrville</option>
+          <option value="Antarctica/Mawson" label="Mawson">Mawson</option>
+          <option value="Antarctica/McMurdo" label="McMurdo">McMurdo</option>
+          <option value="Antarctica/Palmer" label="Palmer">Palmer</option>
+          <option value="Antarctica/Rothera" label="Rothera">Rothera</option>
+          <option value="Antarctica/South_Pole" label="South Pole">South Pole</option>
+          <option value="Antarctica/Syowa" label="Syowa">Syowa</option>
+          <option value="Antarctica/Vostok" label="Vostok">Vostok</option>
+        </optgroup>
+        <optgroup label="Arctic">
+          <option value="Arctic/Longyearbyen" label="Longyearbyen">Longyearbyen</option>
+        </optgroup>
+        <optgroup label="Asia">
+          <option value="Asia/Aden" label="Aden">Aden</option>
+          <option value="Asia/Almaty" label="Almaty">Almaty</option>
+          <option value="Asia/Amman" label="Amman">Amman</option>
+          <option value="Asia/Anadyr" label="Anadyr">Anadyr</option>
+          <option value="Asia/Aqtau" label="Aqtau">Aqtau</option>
+          <option value="Asia/Aqtobe" label="Aqtobe">Aqtobe</option>
+          <option value="Asia/Ashgabat" label="Ashgabat">Ashgabat</option>
+          <option value="Asia/Ashkhabad" label="Ashkhabad">Ashkhabad</option>
+          <option value="Asia/Baghdad" label="Baghdad">Baghdad</option>
+          <option value="Asia/Bahrain" label="Bahrain">Bahrain</option>
+          <option value="Asia/Baku" label="Baku">Baku</option>
+          <option value="Asia/Bangkok" label="Bangkok">Bangkok</option>
+          <option value="Asia/Beirut" label="Beirut">Beirut</option>
+          <option value="Asia/Bishkek" label="Bishkek">Bishkek</option>
+          <option value="Asia/Brunei" label="Brunei">Brunei</option>
+          <option value="Asia/Calcutta" label="Calcutta">Calcutta</option>
+          <option value="Asia/Choibalsan" label="Choibalsan">Choibalsan</option>
+          <option value="Asia/Chongqing" label="Chongqing">Chongqing</option>
+          <option value="Asia/Chungking" label="Chungking">Chungking</option>
+          <option value="Asia/Colombo" label="Colombo">Colombo</option>
+          <option value="Asia/Dacca" label="Dacca">Dacca</option>
+          <option value="Asia/Damascus" label="Damascus">Damascus</option>
+          <option value="Asia/Dhaka" label="Dhaka">Dhaka</option>
+          <option value="Asia/Dili" label="Dili">Dili</option>
+          <option value="Asia/Dubai" label="Dubai">Dubai</option>
+          <option value="Asia/Dushanbe" label="Dushanbe">Dushanbe</option>
+          <option value="Asia/Gaza" label="Gaza">Gaza</option>
+          <option value="Asia/Harbin" label="Harbin">Harbin</option>
+          <option value="Asia/Ho_Chi_Minh" label="Ho Chi Minh">Ho Chi Minh</option>
+          <option value="Asia/Hong_Kong" label="Hong Kong">Hong Kong</option>
+          <option value="Asia/Hovd" label="Hovd">Hovd</option>
+          <option value="Asia/Irkutsk" label="Irkutsk">Irkutsk</option>
+          <option value="Asia/Istanbul" label="Istanbul">Istanbul</option>
+          <option value="Asia/Jakarta" label="Jakarta">Jakarta</option>
+          <option value="Asia/Jayapura" label="Jayapura">Jayapura</option>
+          <option value="Asia/Jerusalem" label="Jerusalem">Jerusalem</option>
+          <option value="Asia/Kabul" label="Kabul">Kabul</option>
+          <option value="Asia/Kamchatka" label="Kamchatka">Kamchatka</option>
+          <option value="Asia/Karachi" label="Karachi">Karachi</option>
+          <option value="Asia/Kashgar" label="Kashgar">Kashgar</option>
+          <option value="Asia/Kathmandu" label="Kathmandu">Kathmandu</option>
+          <option value="Asia/Katmandu" label="Katmandu">Katmandu</option>
+          <option value="Asia/Kolkata" label="Kolkata">Kolkata</option>
+          <option value="Asia/Krasnoyarsk" label="Krasnoyarsk">Krasnoyarsk</option>
+          <option value="Asia/Kuala_Lumpur" label="Kuala Lumpur">Kuala Lumpur</option>
+          <option value="Asia/Kuching" label="Kuching">Kuching</option>
+          <option value="Asia/Kuwait" label="Kuwait">Kuwait</option>
+          <option value="Asia/Macao" label="Macao">Macao</option>
+          <option value="Asia/Macau" label="Macau">Macau</option>
+          <option value="Asia/Magadan" label="Magadan">Magadan</option>
+          <option value="Asia/Makassar" label="Makassar">Makassar</option>
+          <option value="Asia/Manila" label="Manila">Manila</option>
+          <option value="Asia/Muscat" label="Muscat">Muscat</option>
+          <option value="Asia/Nicosia" label="Nicosia">Nicosia</option>
+          <option value="Asia/Novosibirsk" label="Novosibirsk">Novosibirsk</option>
+          <option value="Asia/Omsk" label="Omsk">Omsk</option>
+          <option value="Asia/Oral" label="Oral">Oral</option>
+          <option value="Asia/Phnom_Penh" label="Phnom Penh">Phnom Penh</option>
+          <option value="Asia/Pontianak" label="Pontianak">Pontianak</option>
+          <option value="Asia/Pyongyang" label="Pyongyang">Pyongyang</option>
+          <option value="Asia/Qatar" label="Qatar">Qatar</option>
+          <option value="Asia/Qyzylorda" label="Qyzylorda">Qyzylorda</option>
+          <option value="Asia/Rangoon" label="Rangoon">Rangoon</option>
+          <option value="Asia/Riyadh" label="Riyadh">Riyadh</option>
+          <option value="Asia/Saigon" label="Saigon">Saigon</option>
+          <option value="Asia/Sakhalin" label="Sakhalin">Sakhalin</option>
+          <option value="Asia/Samarkand" label="Samarkand">Samarkand</option>
+          <option value="Asia/Seoul" label="Seoul">Seoul</option>
+          <option value="Asia/Shanghai" label="Shanghai">Shanghai</option>
+          <option value="Asia/Singapore" label="Singapore">Singapore</option>
+          <option value="Asia/Taipei" label="Taipei">Taipei</option>
+          <option value="Asia/Tashkent" label="Tashkent">Tashkent</option>
+          <option value="Asia/Tbilisi" label="Tbilisi">Tbilisi</option>
+          <option value="Asia/Tehran" label="Tehran">Tehran</option>
+          <option value="Asia/Tel_Aviv" label="Tel Aviv">Tel Aviv</option>
+          <option value="Asia/Thimbu" label="Thimbu">Thimbu</option>
+          <option value="Asia/Thimphu" label="Thimphu">Thimphu</option>
+          <option value="Asia/Tokyo" label="Tokyo">Tokyo</option>
+          <option value="Asia/Ujung_Pandang" label="Ujung Pandang">Ujung Pandang</option>
+          <option value="Asia/Ulaanbaatar" label="Ulaanbaatar">Ulaanbaatar</option>
+          <option value="Asia/Ulan_Bator" label="Ulan Bator">Ulan Bator</option>
+          <option value="Asia/Urumqi" label="Urumqi">Urumqi</option>
+          <option value="Asia/Vientiane" label="Vientiane">Vientiane</option>
+          <option value="Asia/Vladivostok" label="Vladivostok">Vladivostok</option>
+          <option value="Asia/Yakutsk" label="Yakutsk">Yakutsk</option>
+          <option value="Asia/Yekaterinburg" label="Yekaterinburg">Yekaterinburg</option>
+          <option value="Asia/Yerevan" label="Yerevan">Yerevan</option>
+        </optgroup>
+        <optgroup label="Atlantic">
+          <option value="Atlantic/Azores" label="Azores">Azores</option>
+          <option value="Atlantic/Bermuda" label="Bermuda">Bermuda</option>
+          <option value="Atlantic/Canary" label="Canary">Canary</option>
+          <option value="Atlantic/Cape_Verde" label="Cape Verde">Cape Verde</option>
+          <option value="Atlantic/Faeroe" label="Faeroe">Faeroe</option>
+          <option value="Atlantic/Faroe" label="Faroe">Faroe</option>
+          <option value="Atlantic/Jan_Mayen" label="Jan Mayen">Jan Mayen</option>
+          <option value="Atlantic/Madeira" label="Madeira">Madeira</option>
+          <option value="Atlantic/Reykjavik" label="Reykjavik">Reykjavik</option>
+          <option value="Atlantic/South_Georgia" label="South Georgia">South Georgia</option>
+          <option value="Atlantic/St_Helena" label="St Helena">St Helena</option>
+          <option value="Atlantic/Stanley" label="Stanley">Stanley</option>
+        </optgroup>
+        <optgroup label="Australia">
+          <option value="Australia/ACT" label="ACT">ACT</option>
+          <option value="Australia/Adelaide" label="Adelaide">Adelaide</option>
+          <option value="Australia/Brisbane" label="Brisbane">Brisbane</option>
+          <option value="Australia/Broken_Hill" label="Broken Hill">Broken Hill</option>
+          <option value="Australia/Canberra" label="Canberra">Canberra</option>
+          <option value="Australia/Currie" label="Currie">Currie</option>
+          <option value="Australia/Darwin" label="Darwin">Darwin</option>
+          <option value="Australia/Eucla" label="Eucla">Eucla</option>
+          <option value="Australia/Hobart" label="Hobart">Hobart</option>
+          <option value="Australia/LHI" label="LHI">LHI</option>
+          <option value="Australia/Lindeman" label="Lindeman">Lindeman</option>
+          <option value="Australia/Lord_Howe" label="Lord Howe">Lord Howe</option>
+          <option value="Australia/Melbourne" label="Melbourne">Melbourne</option>
+          <option value="Australia/North" label="North">North</option>
+          <option value="Australia/NSW" label="NSW">NSW</option>
+          <option value="Australia/Perth" label="Perth">Perth</option>
+          <option value="Australia/Queensland" label="Queensland">Queensland</option>
+          <option value="Australia/South" label="South">South</option>
+          <option value="Australia/Sydney" label="Sydney">Sydney</option>
+          <option value="Australia/Tasmania" label="Tasmania">Tasmania</option>
+          <option value="Australia/Victoria" label="Victoria">Victoria</option>
+          <option value="Australia/West" label="West">West</option>
+          <option value="Australia/Yancowinna" label="Yancowinna">Yancowinna</option>
+        </optgroup>
+        <optgroup label="Indian">
+          <option value="Indian/Antananarivo" label="Antananarivo">Antananarivo</option>
+          <option value="Indian/Chagos" label="Chagos">Chagos</option>
+          <option value="Indian/Christmas" label="Christmas">Christmas</option>
+          <option value="Indian/Cocos" label="Cocos">Cocos</option>
+          <option value="Indian/Comoro" label="Comoro">Comoro</option>
+          <option value="Indian/Kerguelen" label="Kerguelen">Kerguelen</option>
+          <option value="Indian/Mahe" label="Mahe">Mahe</option>
+          <option value="Indian/Maldives" label="Maldives">Maldives</option>
+          <option value="Indian/Mauritius" label="Mauritius">Mauritius</option>
+          <option value="Indian/Mayotte" label="Mayotte">Mayotte</option>
+          <option value="Indian/Reunion" label="Reunion">Reunion</option>
+        </optgroup>
+        <optgroup label="Pacific">
+          <option value="Pacific/Apia" label="Apia">Apia</option>
+          <option value="Pacific/Auckland" label="Auckland">Auckland</option>
+          <option value="Pacific/Chatham" label="Chatham">Chatham</option>
+          <option value="Pacific/Easter" label="Easter">Easter</option>
+          <option value="Pacific/Efate" label="Efate">Efate</option>
+          <option value="Pacific/Enderbury" label="Enderbury">Enderbury</option>
+          <option value="Pacific/Fakaofo" label="Fakaofo">Fakaofo</option>
+          <option value="Pacific/Fiji" label="Fiji">Fiji</option>
+          <option value="Pacific/Funafuti" label="Funafuti">Funafuti</option>
+          <option value="Pacific/Galapagos" label="Galapagos">Galapagos</option>
+          <option value="Pacific/Gambier" label="Gambier">Gambier</option>
+          <option value="Pacific/Guadalcanal" label="Guadalcanal">Guadalcanal</option>
+          <option value="Pacific/Guam" label="Guam">Guam</option>
+          <option value="Pacific/Honolulu" label="Honolulu">Honolulu</option>
+          <option value="Pacific/Johnston" label="Johnston">Johnston</option>
+          <option value="Pacific/Kiritimati" label="Kiritimati">Kiritimati</option>
+          <option value="Pacific/Kosrae" label="Kosrae">Kosrae</option>
+          <option value="Pacific/Kwajalein" label="Kwajalein">Kwajalein</option>
+          <option value="Pacific/Majuro" label="Majuro">Majuro</option>
+          <option value="Pacific/Marquesas" label="Marquesas">Marquesas</option>
+          <option value="Pacific/Midway" label="Midway">Midway</option>
+          <option value="Pacific/Nauru" label="Nauru">Nauru</option>
+          <option value="Pacific/Niue" label="Niue">Niue</option>
+          <option value="Pacific/Norfolk" label="Norfolk">Norfolk</option>
+          <option value="Pacific/Noumea" label="Noumea">Noumea</option>
+          <option value="Pacific/Pago_Pago" label="Pago Pago">Pago Pago</option>
+          <option value="Pacific/Palau" label="Palau">Palau</option>
+          <option value="Pacific/Pitcairn" label="Pitcairn">Pitcairn</option>
+          <option value="Pacific/Ponape" label="Ponape">Ponape</option>
+          <option value="Pacific/Port_Moresby" label="Port Moresby">Port Moresby</option>
+          <option value="Pacific/Rarotonga" label="Rarotonga">Rarotonga</option>
+          <option value="Pacific/Saipan" label="Saipan">Saipan</option>
+          <option value="Pacific/Samoa" label="Samoa">Samoa</option>
+          <option value="Pacific/Tahiti" label="Tahiti">Tahiti</option>
+          <option value="Pacific/Tarawa" label="Tarawa">Tarawa</option>
+          <option value="Pacific/Tongatapu" label="Tongatapu">Tongatapu</option>
+          <option value="Pacific/Truk" label="Truk">Truk</option>
+          <option value="Pacific/Wake" label="Wake">Wake</option>
+          <option value="Pacific/Wallis" label="Wallis">Wallis</option>
+          <option value="Pacific/Yap" label="Yap">Yap</option>
+        </optgroup>
+      </select>
     </div>
-    <div class="form-row row-eq-spacing-sm">
-      <div class="col-sm">
-        <label for="environment" translate lib="web">timezone</label>
-        <div class="col-sm-8">
-          <select name="timezone" id="timezone" ng-model="ctrl.model.tz">
-            <option value="" label="UTC">UTC (default)</option>
-            <optgroup label="Europe">
-              <option value="Europe/Amsterdam" label="Amsterdam">Amsterdam</option>
-              <option value="Europe/Andorra" label="Andorra">Andorra</option>
-              <option value="Europe/Athens" label="Athens">Athens</option>
-              <option value="Europe/Belfast" label="Belfast">Belfast</option>
-              <option value="Europe/Belgrade" label="Belgrade">Belgrade</option>
-              <option value="Europe/Berlin" label="Berlin">Berlin</option>
-              <option value="Europe/Bratislava" label="Bratislava">Bratislava</option>
-              <option value="Europe/Brussels" label="Brussels">Brussels</option>
-              <option value="Europe/Bucharest" label="Bucharest">Bucharest</option>
-              <option value="Europe/Budapest" label="Budapest">Budapest</option>
-              <option value="Europe/Chisinau" label="Chisinau">Chisinau</option>
-              <option value="Europe/Copenhagen" label="Copenhagen">Copenhagen</option>
-              <option value="Europe/Dublin" label="Dublin">Dublin</option>
-              <option value="Europe/Gibraltar" label="Gibraltar">Gibraltar</option>
-              <option value="Europe/Guernsey" label="Guernsey">Guernsey</option>
-              <option value="Europe/Helsinki" label="Helsinki">Helsinki</option>
-              <option value="Europe/Isle_of_Man" label="Isle of Man">Isle of Man</option>
-              <option value="Europe/Istanbul" label="Istanbul">Istanbul</option>
-              <option value="Europe/Jersey" label="Jersey">Jersey</option>
-              <option value="Europe/Kaliningrad" label="Kaliningrad">Kaliningrad</option>
-              <option value="Europe/Kiev" label="Kiev">Kiev</option>
-              <option value="Europe/Lisbon" label="Lisbon">Lisbon</option>
-              <option value="Europe/Ljubljana" label="Ljubljana">Ljubljana</option>
-              <option value="Europe/London" label="London" selected="selected">London</option>
-              <option value="Europe/Luxembourg" label="Luxembourg">Luxembourg</option>
-              <option value="Europe/Madrid" label="Madrid">Madrid</option>
-              <option value="Europe/Malta" label="Malta">Malta</option>
-              <option value="Europe/Mariehamn" label="Mariehamn">Mariehamn</option>
-              <option value="Europe/Minsk" label="Minsk">Minsk</option>
-              <option value="Europe/Monaco" label="Monaco">Monaco</option>
-              <option value="Europe/Moscow" label="Moscow">Moscow</option>
-              <option value="Europe/Nicosia" label="Nicosia">Nicosia</option>
-              <option value="Europe/Oslo" label="Oslo">Oslo</option>
-              <option value="Europe/Paris" label="Paris">Paris</option>
-              <option value="Europe/Podgorica" label="Podgorica">Podgorica</option>
-              <option value="Europe/Prague" label="Prague">Prague</option>
-              <option value="Europe/Riga" label="Riga">Riga</option>
-              <option value="Europe/Rome" label="Rome">Rome</option>
-              <option value="Europe/Samara" label="Samara">Samara</option>
-              <option value="Europe/San_Marino" label="San Marino">San Marino</option>
-              <option value="Europe/Sarajevo" label="Sarajevo">Sarajevo</option>
-              <option value="Europe/Simferopol" label="Simferopol">Simferopol</option>
-              <option value="Europe/Skopje" label="Skopje">Skopje</option>
-              <option value="Europe/Sofia" label="Sofia">Sofia</option>
-              <option value="Europe/Stockholm" label="Stockholm">Stockholm</option>
-              <option value="Europe/Tallinn" label="Tallinn">Tallinn</option>
-              <option value="Europe/Tirane" label="Tirane">Tirane</option>
-              <option value="Europe/Tiraspol" label="Tiraspol">Tiraspol</option>
-              <option value="Europe/Uzhgorod" label="Uzhgorod">Uzhgorod</option>
-              <option value="Europe/Vaduz" label="Vaduz">Vaduz</option>
-              <option value="Europe/Vatican" label="Vatican">Vatican</option>
-              <option value="Europe/Vienna" label="Vienna">Vienna</option>
-              <option value="Europe/Vilnius" label="Vilnius">Vilnius</option>
-              <option value="Europe/Volgograd" label="Volgograd">Volgograd</option>
-              <option value="Europe/Warsaw" label="Warsaw">Warsaw</option>
-              <option value="Europe/Zagreb" label="Zagreb">Zagreb</option>
-              <option value="Europe/Zaporozhye" label="Zaporozhye">Zaporozhye</option>
-              <option value="Europe/Zurich" label="Zurich">Zurich</option>
-            </optgroup>
-            <optgroup label="Africa">
-              <option value="Africa/Abidjan" label="Abidjan">Abidjan</option>
-              <option value="Africa/Accra" label="Accra">Accra</option>
-              <option value="Africa/Addis_Ababa" label="Addis Ababa">Addis Ababa</option>
-              <option value="Africa/Algiers" label="Algiers">Algiers</option>
-              <option value="Africa/Asmara" label="Asmara">Asmara</option>
-              <option value="Africa/Asmera" label="Asmera">Asmera</option>
-              <option value="Africa/Bamako" label="Bamako">Bamako</option>
-              <option value="Africa/Bangui" label="Bangui">Bangui</option>
-              <option value="Africa/Banjul" label="Banjul">Banjul</option>
-              <option value="Africa/Bissau" label="Bissau">Bissau</option>
-              <option value="Africa/Blantyre" label="Blantyre">Blantyre</option>
-              <option value="Africa/Brazzaville" label="Brazzaville">Brazzaville</option>
-              <option value="Africa/Bujumbura" label="Bujumbura">Bujumbura</option>
-              <option value="Africa/Cairo" label="Cairo">Cairo</option>
-              <option value="Africa/Casablanca" label="Casablanca">Casablanca</option>
-              <option value="Africa/Ceuta" label="Ceuta">Ceuta</option>
-              <option value="Africa/Conakry" label="Conakry">Conakry</option>
-              <option value="Africa/Dakar" label="Dakar">Dakar</option>
-              <option value="Africa/Dar_es_Salaam" label="Dar es Salaam">Dar es Salaam</option>
-              <option value="Africa/Djibouti" label="Djibouti">Djibouti</option>
-              <option value="Africa/Douala" label="Douala">Douala</option>
-              <option value="Africa/El_Aaiun" label="El Aaiun">El Aaiun</option>
-              <option value="Africa/Freetown" label="Freetown">Freetown</option>
-              <option value="Africa/Gaborone" label="Gaborone">Gaborone</option>
-              <option value="Africa/Harare" label="Harare">Harare</option>
-              <option value="Africa/Johannesburg" label="Johannesburg">Johannesburg</option>
-              <option value="Africa/Kampala" label="Kampala">Kampala</option>
-              <option value="Africa/Khartoum" label="Khartoum">Khartoum</option>
-              <option value="Africa/Kigali" label="Kigali">Kigali</option>
-              <option value="Africa/Kinshasa" label="Kinshasa">Kinshasa</option>
-              <option value="Africa/Lagos" label="Lagos">Lagos</option>
-              <option value="Africa/Libreville" label="Libreville">Libreville</option>
-              <option value="Africa/Lome" label="Lome">Lome</option>
-              <option value="Africa/Luanda" label="Luanda">Luanda</option>
-              <option value="Africa/Lubumbashi" label="Lubumbashi">Lubumbashi</option>
-              <option value="Africa/Lusaka" label="Lusaka">Lusaka</option>
-              <option value="Africa/Malabo" label="Malabo">Malabo</option>
-              <option value="Africa/Maputo" label="Maputo">Maputo</option>
-              <option value="Africa/Maseru" label="Maseru">Maseru</option>
-              <option value="Africa/Mbabane" label="Mbabane">Mbabane</option>
-              <option value="Africa/Mogadishu" label="Mogadishu">Mogadishu</option>
-              <option value="Africa/Monrovia" label="Monrovia">Monrovia</option>
-              <option value="Africa/Nairobi" label="Nairobi">Nairobi</option>
-              <option value="Africa/Ndjamena" label="Ndjamena">Ndjamena</option>
-              <option value="Africa/Niamey" label="Niamey">Niamey</option>
-              <option value="Africa/Nouakchott" label="Nouakchott">Nouakchott</option>
-              <option value="Africa/Ouagadougou" label="Ouagadougou">Ouagadougou</option>
-              <option value="Africa/Porto-Novo" label="Porto-Novo">Porto-Novo</option>
-              <option value="Africa/Sao_Tome" label="Sao Tome">Sao Tome</option>
-              <option value="Africa/Timbuktu" label="Timbuktu">Timbuktu</option>
-              <option value="Africa/Tripoli" label="Tripoli">Tripoli</option>
-              <option value="Africa/Tunis" label="Tunis">Tunis</option>
-              <option value="Africa/Windhoek" label="Windhoek">Windhoek</option>
-            </optgroup>
-            <optgroup label="America">
-              <option value="America/Adak" label="Adak">Adak</option>
-              <option value="America/Anchorage" label="Anchorage">Anchorage</option>
-              <option value="America/Anguilla" label="Anguilla">Anguilla</option>
-              <option value="America/Antigua" label="Antigua">Antigua</option>
-              <option value="America/Araguaina" label="Araguaina">Araguaina</option>
-              <option value="America/Argentina/Buenos_Aires" label="Argentina (Buenos Aires)">Argentina (Buenos Aires)
-              </option>
-              <option value="America/Argentina/Catamarca" label="Argentina (Catamarca)">Argentina (Catamarca)</option>
-              <option value="America/Argentina/ComodRivadavia" label="Argentina (ComodRivadavia)">Argentina (ComodRivadavia)
-              </option>
-              <option value="America/Argentina/Cordoba" label="Argentina (Cordoba)">Argentina (Cordoba)</option>
-              <option value="America/Argentina/Jujuy" label="Argentina (Jujuy)">Argentina (Jujuy)</option>
-              <option value="America/Argentina/La_Rioja" label="Argentina (La Rioja)">Argentina (La Rioja)</option>
-              <option value="America/Argentina/Mendoza" label="Argentina (Mendoza)">Argentina (Mendoza)</option>
-              <option value="America/Argentina/Rio_Gallegos" label="Argentina (Rio Gallegos)">Argentina (Rio Gallegos)
-              </option>
-              <option value="America/Argentina/Salta" label="Argentina (Salta)">Argentina (Salta)</option>
-              <option value="America/Argentina/San_Juan" label="Argentina (San Juan)">Argentina (San Juan)</option>
-              <option value="America/Argentina/San_Luis" label="Argentina (San Luis)">Argentina (San Luis)</option>
-              <option value="America/Argentina/Tucuman" label="Argentina (Tucuman)">Argentina (Tucuman)</option>
-              <option value="America/Argentina/Ushuaia" label="Argentina (Ushuaia)">Argentina (Ushuaia)</option>
-              <option value="America/Aruba" label="Aruba">Aruba</option>
-              <option value="America/Asuncion" label="Asuncion">Asuncion</option>
-              <option value="America/Atikokan" label="Atikokan">Atikokan</option>
-              <option value="America/Atka" label="Atka">Atka</option>
-              <option value="America/Bahia" label="Bahia">Bahia</option>
-              <option value="America/Barbados" label="Barbados">Barbados</option>
-              <option value="America/Belem" label="Belem">Belem</option>
-              <option value="America/Belize" label="Belize">Belize</option>
-              <option value="America/Blanc-Sablon" label="Blanc-Sablon">Blanc-Sablon</option>
-              <option value="America/Boa_Vista" label="Boa Vista">Boa Vista</option>
-              <option value="America/Bogota" label="Bogota">Bogota</option>
-              <option value="America/Boise" label="Boise">Boise</option>
-              <option value="America/Buenos_Aires" label="Buenos Aires">Buenos Aires</option>
-              <option value="America/Cambridge_Bay" label="Cambridge Bay">Cambridge Bay</option>
-              <option value="America/Campo_Grande" label="Campo Grande">Campo Grande</option>
-              <option value="America/Cancun" label="Cancun">Cancun</option>
-              <option value="America/Caracas" label="Caracas">Caracas</option>
-              <option value="America/Catamarca" label="Catamarca">Catamarca</option>
-              <option value="America/Cayenne" label="Cayenne">Cayenne</option>
-              <option value="America/Cayman" label="Cayman">Cayman</option>
-              <option value="America/Chicago" label="Chicago">Chicago</option>
-              <option value="America/Chihuahua" label="Chihuahua">Chihuahua</option>
-              <option value="America/Coral_Harbour" label="Coral Harbour">Coral Harbour</option>
-              <option value="America/Cordoba" label="Cordoba">Cordoba</option>
-              <option value="America/Costa_Rica" label="Costa Rica">Costa Rica</option>
-              <option value="America/Cuiaba" label="Cuiaba">Cuiaba</option>
-              <option value="America/Curacao" label="Curacao">Curacao</option>
-              <option value="America/Danmarkshavn" label="Danmarkshavn">Danmarkshavn</option>
-              <option value="America/Dawson" label="Dawson">Dawson</option>
-              <option value="America/Dawson_Creek" label="Dawson Creek">Dawson Creek</option>
-              <option value="America/Denver" label="Denver">Denver</option>
-              <option value="America/Detroit" label="Detroit">Detroit</option>
-              <option value="America/Dominica" label="Dominica">Dominica</option>
-              <option value="America/Edmonton" label="Edmonton">Edmonton</option>
-              <option value="America/Eirunepe" label="Eirunepe">Eirunepe</option>
-              <option value="America/El_Salvador" label="El Salvador">El Salvador</option>
-              <option value="America/Ensenada" label="Ensenada">Ensenada</option>
-              <option value="America/Fort_Wayne" label="Fort Wayne">Fort Wayne</option>
-              <option value="America/Fortaleza" label="Fortaleza">Fortaleza</option>
-              <option value="America/Glace_Bay" label="Glace Bay">Glace Bay</option>
-              <option value="America/Godthab" label="Godthab">Godthab</option>
-              <option value="America/Goose_Bay" label="Goose Bay">Goose Bay</option>
-              <option value="America/Grand_Turk" label="Grand Turk">Grand Turk</option>
-              <option value="America/Grenada" label="Grenada">Grenada</option>
-              <option value="America/Guadeloupe" label="Guadeloupe">Guadeloupe</option>
-              <option value="America/Guatemala" label="Guatemala">Guatemala</option>
-              <option value="America/Guayaquil" label="Guayaquil">Guayaquil</option>
-              <option value="America/Guyana" label="Guyana">Guyana</option>
-              <option value="America/Halifax" label="Halifax">Halifax</option>
-              <option value="America/Havana" label="Havana">Havana</option>
-              <option value="America/Hermosillo" label="Hermosillo">Hermosillo</option>
-              <option value="America/Indiana/Indianapolis" label="Indiana (Indianapolis)">Indiana (Indianapolis)</option>
-              <option value="America/Indiana/Knox" label="Indiana (Knox)">Indiana (Knox)</option>
-              <option value="America/Indiana/Marengo" label="Indiana (Marengo)">Indiana (Marengo)</option>
-              <option value="America/Indiana/Petersburg" label="Indiana (Petersburg)">Indiana (Petersburg)</option>
-              <option value="America/Indiana/Tell_City" label="Indiana (Tell City)">Indiana (Tell City)</option>
-              <option value="America/Indiana/Vevay" label="Indiana (Vevay)">Indiana (Vevay)</option>
-              <option value="America/Indiana/Vincennes" label="Indiana (Vincennes)">Indiana (Vincennes)</option>
-              <option value="America/Indiana/Winamac" label="Indiana (Winamac)">Indiana (Winamac)</option>
-              <option value="America/Indianapolis" label="Indianapolis">Indianapolis</option>
-              <option value="America/Inuvik" label="Inuvik">Inuvik</option>
-              <option value="America/Iqaluit" label="Iqaluit">Iqaluit</option>
-              <option value="America/Jamaica" label="Jamaica">Jamaica</option>
-              <option value="America/Jujuy" label="Jujuy">Jujuy</option>
-              <option value="America/Juneau" label="Juneau">Juneau</option>
-              <option value="America/Kentucky/Louisville" label="Kentucky (Louisville)">Kentucky (Louisville)</option>
-              <option value="America/Kentucky/Monticello" label="Kentucky (Monticello)">Kentucky (Monticello)</option>
-              <option value="America/Knox_IN" label="Knox IN">Knox IN</option>
-              <option value="America/La_Paz" label="La Paz">La Paz</option>
-              <option value="America/Lima" label="Lima">Lima</option>
-              <option value="America/Los_Angeles" label="Los Angeles">Los Angeles</option>
-              <option value="America/Louisville" label="Louisville">Louisville</option>
-              <option value="America/Maceio" label="Maceio">Maceio</option>
-              <option value="America/Managua" label="Managua">Managua</option>
-              <option value="America/Manaus" label="Manaus">Manaus</option>
-              <option value="America/Marigot" label="Marigot">Marigot</option>
-              <option value="America/Martinique" label="Martinique">Martinique</option>
-              <option value="America/Mazatlan" label="Mazatlan">Mazatlan</option>
-              <option value="America/Mendoza" label="Mendoza">Mendoza</option>
-              <option value="America/Menominee" label="Menominee">Menominee</option>
-              <option value="America/Merida" label="Merida">Merida</option>
-              <option value="America/Mexico_City" label="Mexico City">Mexico City</option>
-              <option value="America/Miquelon" label="Miquelon">Miquelon</option>
-              <option value="America/Moncton" label="Moncton">Moncton</option>
-              <option value="America/Monterrey" label="Monterrey">Monterrey</option>
-              <option value="America/Montevideo" label="Montevideo">Montevideo</option>
-              <option value="America/Montreal" label="Montreal">Montreal</option>
-              <option value="America/Montserrat" label="Montserrat">Montserrat</option>
-              <option value="America/Nassau" label="Nassau">Nassau</option>
-              <option value="America/New_York" label="New York">New York</option>
-              <option value="America/Nipigon" label="Nipigon">Nipigon</option>
-              <option value="America/Nome" label="Nome">Nome</option>
-              <option value="America/Noronha" label="Noronha">Noronha</option>
-              <option value="America/North_Dakota/Center" label="North Dakota (Center)">North Dakota (Center)</option>
-              <option value="America/North_Dakota/New_Salem" label="North Dakota (New Salem)">North Dakota (New Salem)
-              </option>
-              <option value="America/Panama" label="Panama">Panama</option>
-              <option value="America/Pangnirtung" label="Pangnirtung">Pangnirtung</option>
-              <option value="America/Paramaribo" label="Paramaribo">Paramaribo</option>
-              <option value="America/Phoenix" label="Phoenix">Phoenix</option>
-              <option value="America/Port-au-Prince" label="Port-au-Prince">Port-au-Prince</option>
-              <option value="America/Port_of_Spain" label="Port of Spain">Port of Spain</option>
-              <option value="America/Porto_Acre" label="Porto Acre">Porto Acre</option>
-              <option value="America/Porto_Velho" label="Porto Velho">Porto Velho</option>
-              <option value="America/Puerto_Rico" label="Puerto Rico">Puerto Rico</option>
-              <option value="America/Rainy_River" label="Rainy River">Rainy River</option>
-              <option value="America/Rankin_Inlet" label="Rankin Inlet">Rankin Inlet</option>
-              <option value="America/Recife" label="Recife">Recife</option>
-              <option value="America/Regina" label="Regina">Regina</option>
-              <option value="America/Resolute" label="Resolute">Resolute</option>
-              <option value="America/Rio_Branco" label="Rio Branco">Rio Branco</option>
-              <option value="America/Rosario" label="Rosario">Rosario</option>
-              <option value="America/Santarem" label="Santarem">Santarem</option>
-              <option value="America/Santiago" label="Santiago">Santiago</option>
-              <option value="America/Santo_Domingo" label="Santo Domingo">Santo Domingo</option>
-              <option value="America/Sao_Paulo" label="Sao Paulo">Sao Paulo</option>
-              <option value="America/Scoresbysund" label="Scoresbysund">Scoresbysund</option>
-              <option value="America/Shiprock" label="Shiprock">Shiprock</option>
-              <option value="America/St_Barthelemy" label="St Barthelemy">St Barthelemy</option>
-              <option value="America/St_Johns" label="St Johns">St Johns</option>
-              <option value="America/St_Kitts" label="St Kitts">St Kitts</option>
-              <option value="America/St_Lucia" label="St Lucia">St Lucia</option>
-              <option value="America/St_Thomas" label="St Thomas">St Thomas</option>
-              <option value="America/St_Vincent" label="St Vincent">St Vincent</option>
-              <option value="America/Swift_Current" label="Swift Current">Swift Current</option>
-              <option value="America/Tegucigalpa" label="Tegucigalpa">Tegucigalpa</option>
-              <option value="America/Thule" label="Thule">Thule</option>
-              <option value="America/Thunder_Bay" label="Thunder Bay">Thunder Bay</option>
-              <option value="America/Tijuana" label="Tijuana">Tijuana</option>
-              <option value="America/Toronto" label="Toronto">Toronto</option>
-              <option value="America/Tortola" label="Tortola">Tortola</option>
-              <option value="America/Vancouver" label="Vancouver">Vancouver</option>
-              <option value="America/Virgin" label="Virgin">Virgin</option>
-              <option value="America/Whitehorse" label="Whitehorse">Whitehorse</option>
-              <option value="America/Winnipeg" label="Winnipeg">Winnipeg</option>
-              <option value="America/Yakutat" label="Yakutat">Yakutat</option>
-              <option value="America/Yellowknife" label="Yellowknife">Yellowknife</option>
-            </optgroup>
-            <optgroup label="Antarctica">
-              <option value="Antarctica/Casey" label="Casey">Casey</option>
-              <option value="Antarctica/Davis" label="Davis">Davis</option>
-              <option value="Antarctica/DumontDUrville" label="DumontDUrville">DumontDUrville</option>
-              <option value="Antarctica/Mawson" label="Mawson">Mawson</option>
-              <option value="Antarctica/McMurdo" label="McMurdo">McMurdo</option>
-              <option value="Antarctica/Palmer" label="Palmer">Palmer</option>
-              <option value="Antarctica/Rothera" label="Rothera">Rothera</option>
-              <option value="Antarctica/South_Pole" label="South Pole">South Pole</option>
-              <option value="Antarctica/Syowa" label="Syowa">Syowa</option>
-              <option value="Antarctica/Vostok" label="Vostok">Vostok</option>
-            </optgroup>
-            <optgroup label="Arctic">
-              <option value="Arctic/Longyearbyen" label="Longyearbyen">Longyearbyen</option>
-            </optgroup>
-            <optgroup label="Asia">
-              <option value="Asia/Aden" label="Aden">Aden</option>
-              <option value="Asia/Almaty" label="Almaty">Almaty</option>
-              <option value="Asia/Amman" label="Amman">Amman</option>
-              <option value="Asia/Anadyr" label="Anadyr">Anadyr</option>
-              <option value="Asia/Aqtau" label="Aqtau">Aqtau</option>
-              <option value="Asia/Aqtobe" label="Aqtobe">Aqtobe</option>
-              <option value="Asia/Ashgabat" label="Ashgabat">Ashgabat</option>
-              <option value="Asia/Ashkhabad" label="Ashkhabad">Ashkhabad</option>
-              <option value="Asia/Baghdad" label="Baghdad">Baghdad</option>
-              <option value="Asia/Bahrain" label="Bahrain">Bahrain</option>
-              <option value="Asia/Baku" label="Baku">Baku</option>
-              <option value="Asia/Bangkok" label="Bangkok">Bangkok</option>
-              <option value="Asia/Beirut" label="Beirut">Beirut</option>
-              <option value="Asia/Bishkek" label="Bishkek">Bishkek</option>
-              <option value="Asia/Brunei" label="Brunei">Brunei</option>
-              <option value="Asia/Calcutta" label="Calcutta">Calcutta</option>
-              <option value="Asia/Choibalsan" label="Choibalsan">Choibalsan</option>
-              <option value="Asia/Chongqing" label="Chongqing">Chongqing</option>
-              <option value="Asia/Chungking" label="Chungking">Chungking</option>
-              <option value="Asia/Colombo" label="Colombo">Colombo</option>
-              <option value="Asia/Dacca" label="Dacca">Dacca</option>
-              <option value="Asia/Damascus" label="Damascus">Damascus</option>
-              <option value="Asia/Dhaka" label="Dhaka">Dhaka</option>
-              <option value="Asia/Dili" label="Dili">Dili</option>
-              <option value="Asia/Dubai" label="Dubai">Dubai</option>
-              <option value="Asia/Dushanbe" label="Dushanbe">Dushanbe</option>
-              <option value="Asia/Gaza" label="Gaza">Gaza</option>
-              <option value="Asia/Harbin" label="Harbin">Harbin</option>
-              <option value="Asia/Ho_Chi_Minh" label="Ho Chi Minh">Ho Chi Minh</option>
-              <option value="Asia/Hong_Kong" label="Hong Kong">Hong Kong</option>
-              <option value="Asia/Hovd" label="Hovd">Hovd</option>
-              <option value="Asia/Irkutsk" label="Irkutsk">Irkutsk</option>
-              <option value="Asia/Istanbul" label="Istanbul">Istanbul</option>
-              <option value="Asia/Jakarta" label="Jakarta">Jakarta</option>
-              <option value="Asia/Jayapura" label="Jayapura">Jayapura</option>
-              <option value="Asia/Jerusalem" label="Jerusalem">Jerusalem</option>
-              <option value="Asia/Kabul" label="Kabul">Kabul</option>
-              <option value="Asia/Kamchatka" label="Kamchatka">Kamchatka</option>
-              <option value="Asia/Karachi" label="Karachi">Karachi</option>
-              <option value="Asia/Kashgar" label="Kashgar">Kashgar</option>
-              <option value="Asia/Kathmandu" label="Kathmandu">Kathmandu</option>
-              <option value="Asia/Katmandu" label="Katmandu">Katmandu</option>
-              <option value="Asia/Kolkata" label="Kolkata">Kolkata</option>
-              <option value="Asia/Krasnoyarsk" label="Krasnoyarsk">Krasnoyarsk</option>
-              <option value="Asia/Kuala_Lumpur" label="Kuala Lumpur">Kuala Lumpur</option>
-              <option value="Asia/Kuching" label="Kuching">Kuching</option>
-              <option value="Asia/Kuwait" label="Kuwait">Kuwait</option>
-              <option value="Asia/Macao" label="Macao">Macao</option>
-              <option value="Asia/Macau" label="Macau">Macau</option>
-              <option value="Asia/Magadan" label="Magadan">Magadan</option>
-              <option value="Asia/Makassar" label="Makassar">Makassar</option>
-              <option value="Asia/Manila" label="Manila">Manila</option>
-              <option value="Asia/Muscat" label="Muscat">Muscat</option>
-              <option value="Asia/Nicosia" label="Nicosia">Nicosia</option>
-              <option value="Asia/Novosibirsk" label="Novosibirsk">Novosibirsk</option>
-              <option value="Asia/Omsk" label="Omsk">Omsk</option>
-              <option value="Asia/Oral" label="Oral">Oral</option>
-              <option value="Asia/Phnom_Penh" label="Phnom Penh">Phnom Penh</option>
-              <option value="Asia/Pontianak" label="Pontianak">Pontianak</option>
-              <option value="Asia/Pyongyang" label="Pyongyang">Pyongyang</option>
-              <option value="Asia/Qatar" label="Qatar">Qatar</option>
-              <option value="Asia/Qyzylorda" label="Qyzylorda">Qyzylorda</option>
-              <option value="Asia/Rangoon" label="Rangoon">Rangoon</option>
-              <option value="Asia/Riyadh" label="Riyadh">Riyadh</option>
-              <option value="Asia/Saigon" label="Saigon">Saigon</option>
-              <option value="Asia/Sakhalin" label="Sakhalin">Sakhalin</option>
-              <option value="Asia/Samarkand" label="Samarkand">Samarkand</option>
-              <option value="Asia/Seoul" label="Seoul">Seoul</option>
-              <option value="Asia/Shanghai" label="Shanghai">Shanghai</option>
-              <option value="Asia/Singapore" label="Singapore">Singapore</option>
-              <option value="Asia/Taipei" label="Taipei">Taipei</option>
-              <option value="Asia/Tashkent" label="Tashkent">Tashkent</option>
-              <option value="Asia/Tbilisi" label="Tbilisi">Tbilisi</option>
-              <option value="Asia/Tehran" label="Tehran">Tehran</option>
-              <option value="Asia/Tel_Aviv" label="Tel Aviv">Tel Aviv</option>
-              <option value="Asia/Thimbu" label="Thimbu">Thimbu</option>
-              <option value="Asia/Thimphu" label="Thimphu">Thimphu</option>
-              <option value="Asia/Tokyo" label="Tokyo">Tokyo</option>
-              <option value="Asia/Ujung_Pandang" label="Ujung Pandang">Ujung Pandang</option>
-              <option value="Asia/Ulaanbaatar" label="Ulaanbaatar">Ulaanbaatar</option>
-              <option value="Asia/Ulan_Bator" label="Ulan Bator">Ulan Bator</option>
-              <option value="Asia/Urumqi" label="Urumqi">Urumqi</option>
-              <option value="Asia/Vientiane" label="Vientiane">Vientiane</option>
-              <option value="Asia/Vladivostok" label="Vladivostok">Vladivostok</option>
-              <option value="Asia/Yakutsk" label="Yakutsk">Yakutsk</option>
-              <option value="Asia/Yekaterinburg" label="Yekaterinburg">Yekaterinburg</option>
-              <option value="Asia/Yerevan" label="Yerevan">Yerevan</option>
-            </optgroup>
-            <optgroup label="Atlantic">
-              <option value="Atlantic/Azores" label="Azores">Azores</option>
-              <option value="Atlantic/Bermuda" label="Bermuda">Bermuda</option>
-              <option value="Atlantic/Canary" label="Canary">Canary</option>
-              <option value="Atlantic/Cape_Verde" label="Cape Verde">Cape Verde</option>
-              <option value="Atlantic/Faeroe" label="Faeroe">Faeroe</option>
-              <option value="Atlantic/Faroe" label="Faroe">Faroe</option>
-              <option value="Atlantic/Jan_Mayen" label="Jan Mayen">Jan Mayen</option>
-              <option value="Atlantic/Madeira" label="Madeira">Madeira</option>
-              <option value="Atlantic/Reykjavik" label="Reykjavik">Reykjavik</option>
-              <option value="Atlantic/South_Georgia" label="South Georgia">South Georgia</option>
-              <option value="Atlantic/St_Helena" label="St Helena">St Helena</option>
-              <option value="Atlantic/Stanley" label="Stanley">Stanley</option>
-            </optgroup>
-            <optgroup label="Australia">
-              <option value="Australia/ACT" label="ACT">ACT</option>
-              <option value="Australia/Adelaide" label="Adelaide">Adelaide</option>
-              <option value="Australia/Brisbane" label="Brisbane">Brisbane</option>
-              <option value="Australia/Broken_Hill" label="Broken Hill">Broken Hill</option>
-              <option value="Australia/Canberra" label="Canberra">Canberra</option>
-              <option value="Australia/Currie" label="Currie">Currie</option>
-              <option value="Australia/Darwin" label="Darwin">Darwin</option>
-              <option value="Australia/Eucla" label="Eucla">Eucla</option>
-              <option value="Australia/Hobart" label="Hobart">Hobart</option>
-              <option value="Australia/LHI" label="LHI">LHI</option>
-              <option value="Australia/Lindeman" label="Lindeman">Lindeman</option>
-              <option value="Australia/Lord_Howe" label="Lord Howe">Lord Howe</option>
-              <option value="Australia/Melbourne" label="Melbourne">Melbourne</option>
-              <option value="Australia/North" label="North">North</option>
-              <option value="Australia/NSW" label="NSW">NSW</option>
-              <option value="Australia/Perth" label="Perth">Perth</option>
-              <option value="Australia/Queensland" label="Queensland">Queensland</option>
-              <option value="Australia/South" label="South">South</option>
-              <option value="Australia/Sydney" label="Sydney">Sydney</option>
-              <option value="Australia/Tasmania" label="Tasmania">Tasmania</option>
-              <option value="Australia/Victoria" label="Victoria">Victoria</option>
-              <option value="Australia/West" label="West">West</option>
-              <option value="Australia/Yancowinna" label="Yancowinna">Yancowinna</option>
-            </optgroup>
-            <optgroup label="Indian">
-              <option value="Indian/Antananarivo" label="Antananarivo">Antananarivo</option>
-              <option value="Indian/Chagos" label="Chagos">Chagos</option>
-              <option value="Indian/Christmas" label="Christmas">Christmas</option>
-              <option value="Indian/Cocos" label="Cocos">Cocos</option>
-              <option value="Indian/Comoro" label="Comoro">Comoro</option>
-              <option value="Indian/Kerguelen" label="Kerguelen">Kerguelen</option>
-              <option value="Indian/Mahe" label="Mahe">Mahe</option>
-              <option value="Indian/Maldives" label="Maldives">Maldives</option>
-              <option value="Indian/Mauritius" label="Mauritius">Mauritius</option>
-              <option value="Indian/Mayotte" label="Mayotte">Mayotte</option>
-              <option value="Indian/Reunion" label="Reunion">Reunion</option>
-            </optgroup>
-            <optgroup label="Pacific">
-              <option value="Pacific/Apia" label="Apia">Apia</option>
-              <option value="Pacific/Auckland" label="Auckland">Auckland</option>
-              <option value="Pacific/Chatham" label="Chatham">Chatham</option>
-              <option value="Pacific/Easter" label="Easter">Easter</option>
-              <option value="Pacific/Efate" label="Efate">Efate</option>
-              <option value="Pacific/Enderbury" label="Enderbury">Enderbury</option>
-              <option value="Pacific/Fakaofo" label="Fakaofo">Fakaofo</option>
-              <option value="Pacific/Fiji" label="Fiji">Fiji</option>
-              <option value="Pacific/Funafuti" label="Funafuti">Funafuti</option>
-              <option value="Pacific/Galapagos" label="Galapagos">Galapagos</option>
-              <option value="Pacific/Gambier" label="Gambier">Gambier</option>
-              <option value="Pacific/Guadalcanal" label="Guadalcanal">Guadalcanal</option>
-              <option value="Pacific/Guam" label="Guam">Guam</option>
-              <option value="Pacific/Honolulu" label="Honolulu">Honolulu</option>
-              <option value="Pacific/Johnston" label="Johnston">Johnston</option>
-              <option value="Pacific/Kiritimati" label="Kiritimati">Kiritimati</option>
-              <option value="Pacific/Kosrae" label="Kosrae">Kosrae</option>
-              <option value="Pacific/Kwajalein" label="Kwajalein">Kwajalein</option>
-              <option value="Pacific/Majuro" label="Majuro">Majuro</option>
-              <option value="Pacific/Marquesas" label="Marquesas">Marquesas</option>
-              <option value="Pacific/Midway" label="Midway">Midway</option>
-              <option value="Pacific/Nauru" label="Nauru">Nauru</option>
-              <option value="Pacific/Niue" label="Niue">Niue</option>
-              <option value="Pacific/Norfolk" label="Norfolk">Norfolk</option>
-              <option value="Pacific/Noumea" label="Noumea">Noumea</option>
-              <option value="Pacific/Pago_Pago" label="Pago Pago">Pago Pago</option>
-              <option value="Pacific/Palau" label="Palau">Palau</option>
-              <option value="Pacific/Pitcairn" label="Pitcairn">Pitcairn</option>
-              <option value="Pacific/Ponape" label="Ponape">Ponape</option>
-              <option value="Pacific/Port_Moresby" label="Port Moresby">Port Moresby</option>
-              <option value="Pacific/Rarotonga" label="Rarotonga">Rarotonga</option>
-              <option value="Pacific/Saipan" label="Saipan">Saipan</option>
-              <option value="Pacific/Samoa" label="Samoa">Samoa</option>
-              <option value="Pacific/Tahiti" label="Tahiti">Tahiti</option>
-              <option value="Pacific/Tarawa" label="Tarawa">Tarawa</option>
-              <option value="Pacific/Tongatapu" label="Tongatapu">Tongatapu</option>
-              <option value="Pacific/Truk" label="Truk">Truk</option>
-              <option value="Pacific/Wake" label="Wake">Wake</option>
-              <option value="Pacific/Wallis" label="Wallis">Wallis</option>
-              <option value="Pacific/Yap" label="Yap">Yap</option>
-            </optgroup>
-          </select>
-    
-        </div>
+
+    <div class="input-group col-sm-8" ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">runas</span>
       </div>
+      <input type="text" name="runas" id="runas" ng-model="ctrl.searchtext" ng-keyup="ctrl.setkey($event)"
+        autocomplete="off" class="form-control" ng-model-options="{ debounce: 500 }" ng-change="ctrl.handlefilter()"
+        ng-keypress="ctrl.restrictInput($event)" />
+
+        <div class="input-group-append">
+          <a href ng-click="ctrl.searchtext =''; ctrl.model.runas='';ctrl.model.runasname=''" class="btn">clear</a>
+        </div>
+
     </div>
+    <div class="input-group col-sm-8">
+      <label class="col-sm-2 control-label"></label>
+    </div>
+    <div class="col-sm-6">
+      <ul class="list-group">
+        <li class="list-group-item" ng-repeat="item in ctrl.searchFilteredList" ng-click="ctrl.fillTextbox(item.name)"
+          ng-class="{listgroupitemselected: ctrl.searchSelectedItem._id==item._id}">
+          ({{item._type}}) {{item.name}} <span ng-show="item.name != item.username">{{" " +
+            item.username}}</span>
+        </li>
+      </ul>
+    </div>
+
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
         <button type="submit" ng-disabled="ctrl.loading==true" class="ml-auto btn btn-success" translate
