@@ -341,8 +341,7 @@ export class client {
     }
     semaphore.up();
   }
-  async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<any[]> {
-
+  async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<void> {
     try {
       var q: any= {};
       q.data = data;
@@ -356,8 +355,8 @@ export class client {
   
       var paylad = {"command": "queueevent",
       "data": protowrap.pack("queueevent", q)}
-      var result = await protowrap.RPC(this, paylad);
-      return result.data;
+      // var result = await protowrap.RPC(this, paylad);
+      protowrap._RPC(this, paylad);
     } catch (error) {
       err(error);      
     }
