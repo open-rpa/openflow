@@ -365,6 +365,8 @@ export class WebServer {
             client.lastheartbeatsec = (client.lastheartbeat.getTime() / 1000).toString();
             if (command == "noop" || command == "pong") {
                 reply.command = "noop";
+            } else if ( command == "queuemessagereply") {
+                reply.command = "noop";
             } else if (command == "ping") {
                 reply.command = "pong";
             } else if (command == "getelement") {
