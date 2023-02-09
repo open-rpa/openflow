@@ -937,7 +937,7 @@ export class protowrap {
           if(msg.startsWith("{")) {
             msg = JSON.parse(msg);
           } else {
-            throw error;
+            throw new Error("Failed decoding openiap." + command + " : " + error.message);
           }
         }    
       }
