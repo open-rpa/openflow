@@ -6,7 +6,7 @@ export const ChecksumCheckFiles = true;
 // export const ChecksumCheckPackages = false;
 export const DoPing = false;
 export const doDumpStack = true;
-export const doDumpMesssages = false;
+export const doDumpMesssages = (process.env.NODE_ENV != "production");
 export const doDumpMesssagesSeq = true;
 export const doDumpMesssagesIds = true;
 export const doDumpTimestamp = false;

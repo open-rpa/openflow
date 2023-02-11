@@ -357,6 +357,7 @@ export class WebServer {
             message.command = "error";
             if (typeof error == "string") error = new Error(error);
             message.data = message.data = protowrap.pack("error", error);
+            message.rid = message.id;
             return message;
         }
         try {

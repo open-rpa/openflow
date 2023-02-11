@@ -47,7 +47,8 @@ export class protowrap {
       });
     this.openiap_proto = grpc.loadPackageDefinition(this.packageDefinition).openiap;
     this.protoRoot = await protobuf.load(paths);
-    this.Envelope = this.protoRoot.lookupType("openiap.envelope");
+    this.Envelope = this.protoRoot.lookupType("openiap.Envelope");
+    var e = this.protoRoot.lookupType("openiap.ErrorResponse");
   }
   static RPC(client: client, payload:any) {
     const [id, promise] = this._RPC(client, payload);
@@ -511,10 +512,10 @@ export class protowrap {
     } else if (url.protocol == "grpc:") {
       if(url.host.indexOf(":") == -1 && url.port) {
         // @ts-ignore
-        result.grpc = new this.openiap_proto.grpcService(url.host + ":" + url.port, grpc.credentials.createInsecure());
+        result.grpc = new this.openiap_proto.FlowService(url.host + ":" + url.port, grpc.credentials.createInsecure());
       } else {
         // @ts-ignore
-        result.grpc = new this.openiap_proto.grpcService(url.host, grpc.credentials.createInsecure());
+        result.grpc = new this.openiap_proto.FlowService(url.host, grpc.credentials.createInsecure());
       }
 
       result.grpcStream = result.grpc.SetupStream((error, response) => {
@@ -817,8 +818,8 @@ export class protowrap {
       // @ts-ignore
       result.server = new grpc.Server();
       // @ts-ignore
-      // result.server.addService(this.openiap_proto.grpcService.service, { RPC, ReceiveStream, SendStream });
-      result.server.addService(this.openiap_proto.grpcService.service, { SetupStream, Signin });
+      // result.server.addService(this.openiap_proto.FlowService.service, { RPC, ReceiveStream, SendStream });
+      result.server.addService(this.openiap_proto.FlowService.service, { SetupStream, Signin });
       // @ts-ignore
       result.server.bindAsync("0.0.0.0:" + port, grpc.ServerCredentials.createInsecure(), () => {
         // @ts-ignore
@@ -906,22 +907,201 @@ export class protowrap {
       });
     });
   }
+  static snake_case_string(str) {
+    return str && str.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
+        .map(s => s.toLowerCase())
+        .join('_');
+      }
   static getChecksum(buffer) {
     const hash = crypto.createHash("sha256");
     hash.update(buffer);
     const checksum = hash.digest("hex");
     return checksum;
   }
+  static CommandToProto(command) {
+    switch (command) {
+      case "error":
+        return "openiap.ErrorResponse";
+      case "ace":
+        return "openiap.Ace";
+      case "grpcservice":
+        return "openiap.FlowService";
+      case "ping":
+        return "openiap.PingRequest";
+      case "pong":
+        return "openiap.PingResponse";
+      case "getelement":
+        return "openiap.GetElementRequest";
+      case "download":
+        return "openiap.DownloadRequest";
+      case "downloadreply":
+        return "openiap.DownloadResponse";
+      case "upload":
+        return "openiap.UploadRequest";
+      case "uploadreply":
+        return "openiap.UploadResponse";
+      case "beginstream":
+        return "openiap.BeginStream";
+      case "stream":
+        return "openiap.Stream";
+      case "endstream":
+        return "openiap.EndStream";
+      case "customcommand":
+        return "openiap.CustomCommandRequest";
+      case "customcommandreply":
+        return "openiap.CustomCommandResponse";
+      case "signin":
+        return "openiap.SigninRequest";
+      case "signinreply":
+        return "openiap.SigninResponse";
+      case "listcollections":
+        return "openiap.ListCollectionsRequest";
+      case "listcollectionsreply":
+        return "openiap.ListCollectionsResponse";
+      case "dropcollection":
+        return "openiap.DropCollectionRequest";
+      case "dropcollectionreply":
+        return "openiap.DropCollectionResponse";
+      case "query":
+        return "openiap.QueryRequest";
+      case "queryreply":
+        return "openiap.QueryResponse";
+      case "getdocumentversion":
+        return "openiap.GetDocumentVersionRequest";
+      case "getdocumentversionreply":
+        return "openiap.GetDocumentVersionResponse";
+      case "aggregate":
+        return "openiap.AggregateRequest";
+      case "aggregate":
+        return "openiap.AggregateResponse";
+      case "count":
+        return "openiap.CountRequest";
+      case "countreply":
+        return "openiap.CountResponse";
+      case "insertone":
+        return "openiap.InsertOneRequest";
+      case "insertonereply":
+        return "openiap.InsertOneResponse";
+      case "insertmany":
+        return "openiap.InsertManyRequest";
+      case "insertmanyreply":
+        return "openiap.InsertManyResponse";
+      case "updateone":
+        return "openiap.UpdateOneRequest";
+      case "updateonereply":
+        return "openiap.UpdateOneResponse";
+      case "updatedocument":
+        return "openiap.UpdateDocumentRequest";
+      case "updatedocumentreply":
+        return "openiap.UpdateDocumentResponse";
+      case "insertorupdateone":
+        return "openiap.InsertOrUpdateOneRequest";
+      case "insertorupdateonereply":
+        return "openiap.InsertOrUpdateOneResponse";
+      case "insertorupdatemany":
+        return "openiap.InsertOrUpdateManyRequest";
+      case "insertorupdatemanyreply":
+        return "openiap.InsertOrUpdateManyResponse";
+      case "deleteone":
+        return "openiap.DeleteOneRequest";
+      case "deleteonereply":
+        return "openiap.DeleteOneResponse";
+      case "deletemany":
+        return "openiap.DeleteManyRequest";
+      case "deletemanyreply":
+        return "openiap.DeleteManyResponse";
+      case "registerqueue":
+        return "openiap.RegisterQueueRequest";
+      case "registerqueuereply":
+        return "openiap.RegisterQueueResponse";
+      case "registerexchange":
+        return "openiap.RegisterExchangeRequest";
+      case "registerexchangereply":
+        return "openiap.RegisterExchangeResponse";
+      case "queuemessage":
+        return "openiap.QueueMessageRequest";
+      case "queuemessagereply":
+        return "openiap.QueueMessageResponse";
+      case "queueevent":
+        return "openiap.QueueEvent";
+      case "unregisterqueue":
+        return "openiap.UnRegisterQueueRequest";
+      case "unregisterqueuereply":
+        return "openiap.UnRegisterQueueResponse";
+      case "watch":
+        return "openiap.WatchRequest";
+      case "watchreply":
+        return "openiap.WatchResponse";
+      case "watchevent":
+        return "openiap.WatchEvent";
+      case "unwatch":
+        return "openiap.UnWatchRequest";
+      case "unwatchreply":
+        return "openiap.UnWatchResponse";
+      case "workitem":
+        return "openiap.Workitem";
+      case "workitemfile":
+        return "openiap.WorkitemFile";
+      case "pushworkitem":
+        return "openiap.PushWorkitemRequest";
+      case "pushworkitemreply":
+        return "openiap.PushWorkitemResponse";
+      case "updateworkitem":
+        return "openiap.UpdateWorkitemRequest";
+      case "updateworkitemreply":
+        return "openiap.UpdateWorkitemResponse";
+      case "popworkitem":
+        return "openiap.PopWorkitemRequest";
+      case "popworkitemreply":
+        return "openiap.PopWorkitemResponse";
+      case "deleteworkitem":
+        return "openiap.DeleteWorkitemRequest";
+      case "deleteworkitemreply":
+        return "openiap.DeleteWorkitemResponse";
+      case "workitemqueue":
+        return "openiap.WorkItemQueue";
+      case "addworkitemqueue":
+        return "openiap.AddWorkItemQueueRequest";
+      case "addworkitemqueuereply":
+        return "openiap.AddWorkItemQueueResponse";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      case "":
+        return "openiap.";
+      default:
+        return "openiap." + command;
+        break;
+    }
+  }
   static pack(command:string, message: any) {
-    const protomsg = this.protoRoot.lookupType("openiap." + command);
-    return {"type_url": "openiap." + command, "value": protomsg.encode(message).finish() }
+    let protomsg
+    try {
+      protomsg = this.protoRoot.lookupType(this.CommandToProto(command));
+    } catch (error) {
+      
+    }
+    return {"type_url": "type.googleapis.com/" + this.CommandToProto(command), "value": protomsg.encode(message).finish() }
   }
   static unpack(message: any) {
     const { command, data } = message;
     const rid = message.id;
     let msg = data;
     if(command != null) {
-      const protomsg = this.protoRoot.lookupType("openiap." + command);
+      const protomsg = this.protoRoot.lookupType(this.CommandToProto(command));
       if(typeof data == "string") {
         msg = JSON.parse(data);
       } else if ( data != null) {
