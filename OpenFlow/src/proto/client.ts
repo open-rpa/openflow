@@ -8,8 +8,10 @@ import { Span } from "@opentelemetry/api";
 import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
 import { Config } from "../Config";
 import { RegisterExchangeResponse } from "../WebSocketServerClient";
-import { client, DoPing, err, info, openiap, protowrap, QueueEvent, WatchEvent } from "@openiap/nodeapi";
+import { client, config, protowrap, QueueEvent, WatchEvent } from "@openiap/nodeapi";
+const { info, warn, err } = config;
 import { clientAgent } from "@openiap/nodeapi/lib/client";
+import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
 const Semaphore = (n) => ({
   n,
   async down() {
@@ -68,7 +70,7 @@ export class flowclient extends client {
     try {
       this.replies = {};
       this.streams = {};
-      this.doping = DoPing;
+      this.doping = config.DoPing;
       if (ws != null) this.ws = ws;
       if (stream != null) this.stream = stream;
       if (call != null) this.call = call;
@@ -123,9 +125,8 @@ export class flowclient extends client {
   SendWatch(watch: any, next: any, span: any) {
     try {
         info("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name);
-        var paylad = {"command": "watchevent",
-          "data": WatchEvent.encode(WatchEvent.create({"id": watch.id, "operation": next.operationType, "document": JSON.stringify(next.fullDocument)})).finish()}
-        
+        const data = Any.create({type_url: "type.googleapis.com/openiap.WatchEvent", value: WatchEvent.encode(WatchEvent.create({"id": watch.id, "operation": next.operationType, "document": JSON.stringify(next.fullDocument)})).finish() })
+        var paylad = {"command": "watchevent", "data": data}
         protowrap.sendMesssag(this, paylad, null, true);
     } catch (error) {
         console.error(error);
@@ -354,9 +355,10 @@ export class flowclient extends client {
       q.consumerTag = options.consumerTag;
       q.routingkey = options.routingKey;
       q.exchangename = options.exchangename;
-  
-      var paylad = {"command": "queueevent",
-      "data": QueueEvent.encode(QueueEvent.create(q)).finish()}
+    var t = QueueEvent.create(q);
+      const data2 = Any.create({type_url: "type.googleapis.com/openiap.QueueEvent", value: QueueEvent.encode(QueueEvent.create(q)).finish() })
+    var paylad = {"command": "queueevent",
+      "data": data2}
       // var result = await protowrap.RPC(this, paylad);
       protowrap._RPC(this, paylad);
     } catch (error) {

@@ -2123,8 +2123,15 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (q.query === null || q.query === undefined) {
-                if (!DatabaseConnection.hasAuthorization(user, (q.item as Base), Rights.update)) {
-                    throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                if (!DatabaseConnection.usemetadata(q.collectionname)) {
+                    if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) {
+                        throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                    }
+                } else {
+                    let metadata = DatabaseConnection.metadataname(q.collectionname);
+                    if (!DatabaseConnection.hasAuthorization(user, q.item[metadata], Rights.update)) {
+                        throw new Error("Access denied, no authorization to UpdateOne with current ACL");
+                    }
                 }
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
@@ -2291,8 +2298,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!DatabaseConnection.hasAuthorization(user, q.item[metadata], Rights.update)) {
                         throw new Error("Access denied, no authorization to UpdateOne file " + (q.item as any).filename + " to database");
                     }
-                    if (!DatabaseConnection.hasAuthorization(user, original[metadata], Rights.update)) {
-                        throw new Error("Access denied, no authorization to UpdateOne file " + (original as any).filename + " to database");
+                    if(!user.HasRoleId(WellknownIds.admins)) {
+                        if (!DatabaseConnection.hasAuthorization(user, original[metadata], Rights.update)) {
+                            throw new Error("Access denied, no authorization to UpdateOne file " + (original as any).filename + " to database");
+                        }
                     }
                     q.item[metadata] = Base.assign(q.item[metadata]);
                     q.item[metadata]._modifiedby = user.name;

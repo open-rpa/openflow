@@ -23,7 +23,9 @@ import { flowclient } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { protowrap, defaultsocketport, defaultgrpcport, info, err, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, QueueMessageResponse, ErrorResponse } from "@openiap/nodeapi";
+import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse } from "@openiap/nodeapi";
+const { info, warn, err } = config;
+import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
 
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -268,10 +270,10 @@ export class WebServer {
             await protowrap.init();
             var servers = [];
 
-            servers.push(protowrap.serve("pipe", this.onClientConnected, defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server, flowclient));
-            servers.push(protowrap.serve("socket", this.onClientConnected, defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
+            servers.push(protowrap.serve("pipe", this.onClientConnected, config.defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server, flowclient));
+            servers.push(protowrap.serve("socket", this.onClientConnected, config.defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
             servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, "/ws/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
-            servers.push(protowrap.serve("grpc", this.onClientConnected, defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
+            servers.push(protowrap.serve("grpc", this.onClientConnected, config.defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
             servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
             return WebServer.server;
         } catch (error) {
@@ -335,14 +337,16 @@ export class WebServer {
         return new Promise<void>(async (resolve, reject) => {
             const bucket = new GridFSBucket(Config.db.db);
             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-            
-            protowrap.sendMesssag(client, { rid, command: "beginstream", data: BeginStream.encode(BeginStream.create()).finish() }, null, true);
+            const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
+            protowrap.sendMesssag(client, { rid, command: "beginstream", data: data }, null, true);
             downloadStream.on('data', (chunk) => {
+                const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: Stream.encode(Stream.create({data: chunk})).finish() })
                 protowrap.sendMesssag(client, { rid, command: "stream", 
-                data: Stream.encode(Stream.create({data: chunk})).finish() }, null, true);
+                data: data }, null, true);
             });
             downloadStream.on('end', ()=> {
-                protowrap.sendMesssag(client, { rid, command: "endstream", data: EndStream.encode(EndStream.create()).finish() }, null, true);
+                const data = Any.create({type_url: "type.googleapis.com/openiap.EndStream", value: EndStream.encode(EndStream.create()).finish() })
+                protowrap.sendMesssag(client, { rid, command: "endstream", data: data }, null, true);
                 resolve();
             });
             downloadStream.on('error', (err) => {
@@ -355,9 +359,11 @@ export class WebServer {
         try {
             [command, msg, reply] = protowrap.unpack(message);
         } catch (error) {
+            err(error);
             message.command = "error";
             if (typeof error == "string") error = new Error(error);
-            message.data = ErrorResponse.encode(ErrorResponse.create(error)).finish()
+            const data = Any.create({type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
+            message.data = data
             message.rid = message.id;
             return message;
         }
@@ -379,16 +385,19 @@ export class WebServer {
                 let len = msg.count;
                 reply.command = "getelement"
                 for (var i = 1; i < len; i++) {
+                    const data = Any.create({type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test" + (i + 1) })).finish() })
                     var payload = { ...reply, 
-                        data: GetElementResponse.encode({ xpath: "test" + (i + 1) }).finish() };
+                        data: data };
                     protowrap.sendMesssag(client, payload, null, true);
                 }
-                reply.data = GetElementResponse.encode({ xpath: "test1" }).finish()
+                const data = Any.create({type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test1" })).finish() })
+                reply.data = data
 
             } else if (command == "upload") {
                 var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
                 reply.command = "uploadreply"
-                reply.data = UploadResponse.encode(UploadResponse.create({ id })).finish()
+                const data = Any.create({type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id })).finish() })
+                reply.data = data
                 // var filename = msg.filename;
                 // let name = path.basename(filename);
                 // name = "upload.png";
@@ -399,12 +408,17 @@ export class WebServer {
             } else if (command == "download") {
                 if(msg.id && msg.id != "") {
                     reply.command = "downloadreply"
-
                     const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
                     if(rows.length > 0) {
+                        result = rows[0];
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
                         result = rows[0];
-                        reply.data = DownloadResponse.encode(result).finish()
+                        reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadRequest",
+                            value: DownloadResponse.encode(DownloadResponse.create({
+                            filename: result.filename,
+                            mimetype: result.contentType,
+                            id: result._id.toString()})).finish()})
+
                     } else {
                         throw new Error("Access denied")
                     }
@@ -532,9 +546,11 @@ export class WebServer {
                 reply.data = protowrap.pack(reply.command, res);
             }
         } catch (error) {
+            err(error);
             reply.command = "error";
             if (typeof error == "string") error = new Error(error);
-            reply.data = ErrorResponse.encode(ErrorResponse.create(error)).finish()
+            const data = Any.create({type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
+            reply.data = data
         }
         return reply;
     }
