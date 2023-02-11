@@ -2,14 +2,14 @@ import express = require("express");
 import * as  net from "net";
 import * as  grpc from "@grpc/grpc-js";
 import * as  WebSocket from "ws";
-import { protowrap } from "./protowrap"
-import { err, warn, info, DoPing } from "./config";
 import { amqpexchange, amqpqueue, amqpwrapper, exchangealgorithm, QueueMessageOptions } from "../amqpwrapper";
 import { Logger } from "../Logger";
 import { Span } from "@opentelemetry/api";
 import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
 import { Config } from "../Config";
 import { RegisterExchangeResponse } from "../WebSocketServerClient";
+import { client, DoPing, err, info, openiap, protowrap, QueueEvent, WatchEvent } from "@openiap/nodeapi";
+import { clientAgent } from "@openiap/nodeapi/lib/client";
 const Semaphore = (n) => ({
   n,
   async down() {
@@ -28,8 +28,7 @@ const Semaphore = (n) => ({
 });
 const semaphore = Semaphore(1);
 export type clientType = "socket" | "pipe" | "ws" | "grpc" | "rest";
-export type clientAgent = "node" | "browser" | "nodered" | "openrpa" | "powershell";
-export class client {
+export class flowclient extends client {
   public id: string = "";
   public seq: number = 0;
   public remoteip: string = "unknown";
@@ -85,11 +84,13 @@ export class client {
     info("close " + this.id + " " + this.protocol + " " + this.remoteip + " " + this.agent);
   }
   async onMessage(client: client, message: any): Promise<any> {
-    const [command, msg, reply] = protowrap.unpack(message);
-    if (command == "ping") {
-      reply.command = "pong";
-    }
-    return reply;
+    // const [command, msg, reply] = protowrap.unpack(message);
+    // if (command == "ping") {
+    //   reply.command = "pong";
+    // }
+    // return reply;
+    message.command = "noop";
+    return message;
   }
   ping(span: any) {
     if(this.doping)  {
@@ -122,7 +123,7 @@ export class client {
     try {
         info("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name);
         var paylad = {"command": "watchevent",
-          "data": protowrap.pack("watchevent", {"id": watch.id, "operation": next.operationType, "document": JSON.stringify(next.fullDocument)})}
+          "data": WatchEvent.encode(WatchEvent.create({"id": watch.id, "operation": next.operationType, "document": JSON.stringify(next.fullDocument)})).finish()}
         
         protowrap.sendMesssag(this, paylad, null, true);
     } catch (error) {
@@ -354,7 +355,7 @@ export class client {
       q.exchangename = options.exchangename;
   
       var paylad = {"command": "queueevent",
-      "data": protowrap.pack("queueevent", q)}
+      "data": QueueEvent.encode(QueueEvent.create(q)).finish()}
       // var result = await protowrap.RPC(this, paylad);
       protowrap._RPC(this, paylad);
     } catch (error) {

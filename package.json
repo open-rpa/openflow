@@ -9,7 +9,8 @@
     "oldtest": "ts-mocha --paths -p OpenFlow/tsconfig.json OpenFlow/**/*.spec.ts",
     "rebuild": "docker-compose up registry -d && docker-compose build && docker-compose push --ignore-push-failures  && docker-compose up -d",
     "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d",
-    "updateproto": "npm uninstall @openiap/proto && npm --save-dev i openiap/proto && gulp copyfiles1"
+    "updateproto": "npm uninstall @openiap/proto && npm --save-dev i openiap/proto && gulp copyfiles1",
+    "updateapi": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi"
   },
   "repository": {
     "type": "git",
@@ -36,6 +37,7 @@
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "0.17.1",
     "@node-saml/passport-saml": "^4.0.1",
+    "@openiap/nodeapi": "github:openiap/nodeapi",
     "@openiap/openflow-api": "^2.1.9",
     "@opentelemetry/api-metrics": "^0.33.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.34.0",
@@ -90,7 +92,6 @@
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
-    "@openiap/proto": "github:openiap/proto",
     "@testdeck/mocha": "0.3.2",
     "@types/angular": "^1.8.4",
     "@types/angular-route": "^1.7.2",

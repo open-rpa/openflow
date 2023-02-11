@@ -19,12 +19,11 @@ import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
 
 import * as WebSocket from "ws";
-import { protowrap } from "./proto/protowrap"
-import { client } from "./proto/client";
+import { flowclient } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
-import { info, warn, err, SendFileHighWaterMark, defaultsocketport, defaultgrpcport } from "./proto/config"
 import { GridFSBucket, ObjectId } from "mongodb";
+import { protowrap, defaultsocketport, defaultgrpcport, info, err, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, QueueMessageResponse, ErrorResponse } from "@openiap/nodeapi";
 
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -269,11 +268,11 @@ export class WebServer {
             await protowrap.init();
             var servers = [];
 
-            servers.push(protowrap.serve("pipe", this.onClientConnected, defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("socket", this.onClientConnected, defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, "/ws/v2", WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("grpc", this.onClientConnected, defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server));
-            servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server));
+            servers.push(protowrap.serve("pipe", this.onClientConnected, defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server, flowclient));
+            servers.push(protowrap.serve("socket", this.onClientConnected, defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
+            servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, "/ws/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
+            servers.push(protowrap.serve("grpc", this.onClientConnected, defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
+            servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -295,7 +294,7 @@ export class WebServer {
 
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
     }
-    public static async ReceiveFileContent(client: client, rid:string, msg: any) {
+    public static async ReceiveFileContent(client: flowclient, rid:string, msg: any) {
         return new Promise<string>((resolve, reject) => {
             const bucket = new GridFSBucket(Config.db.db);
             var metadata = new Base();
@@ -332,16 +331,18 @@ export class WebServer {
             rs.pipe(uploadStream);
         });
     }
-    static sendFileContent(client:client, rid, id):Promise<void> {
+    static sendFileContent(client:flowclient, rid, id):Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
             const bucket = new GridFSBucket(Config.db.db);
             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-            protowrap.sendMesssag(client, { rid, command: "beginstream", data: protowrap.pack("beginstream", {}) }, null, true);
+            
+            protowrap.sendMesssag(client, { rid, command: "beginstream", data: BeginStream.encode(BeginStream.create()).finish() }, null, true);
             downloadStream.on('data', (chunk) => {
-                protowrap.sendMesssag(client, { rid, command: "stream", data: protowrap.pack("stream", {data: chunk}) }, null, true);
+                protowrap.sendMesssag(client, { rid, command: "stream", 
+                data: Stream.encode(Stream.create({data: chunk})).finish() }, null, true);
             });
             downloadStream.on('end', ()=> {
-                protowrap.sendMesssag(client, { rid, command: "endstream", data: undefined }, null, true);
+                protowrap.sendMesssag(client, { rid, command: "endstream", data: EndStream.encode(EndStream.create()).finish() }, null, true);
                 resolve();
             });
             downloadStream.on('error', (err) => {
@@ -349,14 +350,14 @@ export class WebServer {
             });
         });
       }
-    public static async onMessage(client: client, message: any) {
+    public static async onMessage(client: flowclient, message: any) {
         let command, msg, reply;
         try {
             [command, msg, reply] = protowrap.unpack(message);
         } catch (error) {
             message.command = "error";
             if (typeof error == "string") error = new Error(error);
-            message.data = message.data = protowrap.pack("error", error);
+            message.data = ErrorResponse.encode(ErrorResponse.create(error)).finish()
             message.rid = message.id;
             return message;
         }
@@ -373,20 +374,21 @@ export class WebServer {
             } else if (command == "getelement") {
                 if(NoderedUtil.IsNullUndefinded(msg)) msg = {xpath: ""};
                 msg.xpath = "Did you say " + msg?.xpath + " ?";
-                reply.data = protowrap.pack(command, msg);
+                reply.data = GetElementResponse.encode(GetElementResponse.create(msg)).finish()
             } else if (command == "send") {
                 let len = msg.count;
                 reply.command = "getelement"
                 for (var i = 1; i < len; i++) {
-                    var payload = { ...reply, data: protowrap.pack("getelement", { xpath: "test" + (i + 1) }) };
+                    var payload = { ...reply, 
+                        data: GetElementResponse.encode({ xpath: "test" + (i + 1) }).finish() };
                     protowrap.sendMesssag(client, payload, null, true);
                 }
-                reply.data = protowrap.pack("getelement", { xpath: "test1" })
+                reply.data = GetElementResponse.encode({ xpath: "test1" }).finish()
 
             } else if (command == "upload") {
                 var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
                 reply.command = "uploadreply"
-                reply.data = protowrap.pack("uploadreply", { id })
+                reply.data = UploadResponse.encode(UploadResponse.create({ id })).finish()
                 // var filename = msg.filename;
                 // let name = path.basename(filename);
                 // name = "upload.png";
@@ -402,7 +404,7 @@ export class WebServer {
                     if(rows.length > 0) {
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
                         result = rows[0];
-                        reply.data = protowrap.pack("downloadreply", result);
+                        reply.data = DownloadResponse.encode(result).finish()
                     } else {
                         throw new Error("Access denied")
                     }
@@ -526,12 +528,13 @@ export class WebServer {
                 }
                 if(res.results) res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
+                // reply.data = QueueMessageResponse.encode(QueueMessageResponse.create(res)).finish()
                 reply.data = protowrap.pack(reply.command, res);
             }
         } catch (error) {
             reply.command = "error";
             if (typeof error == "string") error = new Error(error);
-            reply.data = protowrap.pack("error", error);
+            reply.data = ErrorResponse.encode(ErrorResponse.create(error)).finish()
         }
         return reply;
     }
@@ -542,16 +545,16 @@ export class WebServer {
         WebSocketServer._clients.push(client);
         info("Client connected, client count " + WebSocketServer._clients.length);
     }
-    public static async onConnected(client: client) {
+    public static async onConnected(client: flowclient) {
     }
-    public static async onDisconnected(client: client, error: any) {
+    public static async onDisconnected(client: flowclient, error: any) {
         client.Close();
         var index = WebSocketServer._clients.indexOf(client as any);
         if (index > -1) {
             WebSocketServer._clients.splice(index, 1);
         }
         if (error) {
-            err("Disconnected client, client count " + WebSocketServer._clients.length + " " + (error.message || error));
+            err("Disconnected client, client count " + WebSocketServer._clients.length + " " + (error.message || error) as any);
         } else {
             info("Disconnected client, client count " + WebSocketServer._clients.length);
         }
