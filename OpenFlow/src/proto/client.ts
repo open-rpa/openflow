@@ -93,6 +93,7 @@ export class flowclient extends client {
     return message;
   }
   ping(span: any) {
+    if(this.connected == false) return;
     if(this.doping)  {
       protowrap.sendMesssag(this, {"command": "ping"}, null, true);
     } else {
