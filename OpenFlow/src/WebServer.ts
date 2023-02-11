@@ -492,6 +492,11 @@ export class WebServer {
                 if(message.rid != null && message.rid != "" && result.command == "error") {
                     return null;
                 }
+                if(message.command == "signin") {
+                    if(msg.ping != null) {
+                        client.doping = msg.ping;
+                    }
+                }
                 reply.command = result.command + "reply"
                 if(reply.command == "errorreply") reply.command = "error";
                 if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
