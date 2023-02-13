@@ -370,9 +370,6 @@ export class WebServer {
             return message;
         }
         try {
-            client.lastheartbeat = new Date();
-            client.lastheartbeatstr = client.lastheartbeat.toISOString();
-            client.lastheartbeatsec = (client.lastheartbeat.getTime() / 1000).toString();
             if (command == "noop" || command == "pong") {
                 reply.command = "noop";
             } else if ( command == "queuemessagereply") {
