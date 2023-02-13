@@ -223,7 +223,9 @@ export class WebSocketServer {
                                     l.user = tuser;
                                     const m: Message = new Message(); m.command = "refreshtoken";
                                     m.data = JSON.stringify(l);
-                                    cli?.Send(m);
+                                    if(cli && cli.Send) {
+                                        cli?.Send(m);
+                                    }
                                 } else {
                                     cli.Close(span);
                                 }
