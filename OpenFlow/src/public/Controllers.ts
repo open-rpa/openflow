@@ -7739,6 +7739,12 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             this.PlanUpdated()
         }
+        if(this.model.image == "openiap/dotnetagent") {
+            this.model.environment = {
+                "wiq":"dotnetagent", "queue":"dotnetagent",
+                "gitrepo": "https://github.com/openiap/dotnetagenttest.git"
+            }
+        }
         if(this.model.image == "openiap/pyagent") {
             this.model.environment = {
                 "wiq":"pyagent", "queue":"pyagent",
@@ -7779,7 +7785,8 @@ export class AgentCtrl extends entityCtrl<any> {
     images = [
         {name:'openiap/nodeagent'},
         {name:'openiap/nodechromiumagent'},
-        {name:'openiap/noderedagent'},        
+        {name:'openiap/noderedagent'},
+        {name:'openiap/dotnetagent'},
         {name:'openiap/pyagent'},
         {name:'openiap/pychromiumagent'}
     ]
