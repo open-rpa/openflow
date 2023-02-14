@@ -139,7 +139,7 @@
           ng-disabled="ctrl.loading==true">
         <label for="if-5-webserver" translate lib="web" ng-disabled="ctrl.loading==true">webserver</label>
       </div>
-      <div class="custom-checkbox">
+      <div class="custom-checkbox" ng-show="menuctrl.hasrole('admins')">
         <input type="checkbox" id="if-5-sleep" value="{{ctrl.model.sleep}}" ng-model="ctrl.model.sleep"
           ng-disabled="ctrl.loading==true">
         <label for="if-5-sleep" translate lib="web" ng-disabled="ctrl.loading==true">sleep</label>
