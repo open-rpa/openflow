@@ -469,16 +469,21 @@ export class WebServer {
                     message.command = "addworkitem" // new command to new
                 }
                 if(message.command == "updateworkitem") {
-                    if(msg.workitem && typeof msg.workitem.payload == "string") msg.workitem.payload = JSON.parse(msg.workitem.payload); // new style to new 
-                    var b = true;
-                //     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                //     if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
-                //     if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
-                //     delete msg.Id;                    
-                }
-                if(message.command == "updateworkitem") {
-                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    if(msg.workitem && typeof msg.workitem.payload == "string") msg.workitem.payload = JSON.parse(msg.workitem.payload); 
+                    // if(msg.workitem) {
+                    //     msg.workitem = JSON.parse(JSON.stringify(msg.workitem))
+                    // }
+                    // msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
                     // if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
+                    if(msg.workitem && msg.workitem.files && msg.workitem.files.length > 0) {
+                        if(msg.files && msg.files.length > 0) {
+                            msg.files.forEach(f => {
+                                msg.workitem.files.push(f)                                
+                            });
+                        }
+                    } else if (msg.workitem && msg.files) {
+                        msg.workitem.files && msg.files;
+                    }
                     if(msg.workitem) msg = Object.assign(msg.workitem, msg);
                     delete msg.workitem;
                     if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
