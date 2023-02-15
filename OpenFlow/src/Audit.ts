@@ -160,7 +160,7 @@ export class Audit {
                 log.imagename = image;
 
             }
-            if (!NoderedUtil.IsNullEmpty(instancename)) log.name = instancename;
+            if (!NoderedUtil.IsNullEmpty(instancename) && NoderedUtil.IsNullEmpty(log.name)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
             Logger.instanse.error(error, span);

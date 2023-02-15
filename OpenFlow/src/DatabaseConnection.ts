@@ -1,7 +1,7 @@
 import { MongoClient, ObjectId, Db, Binary, GridFSBucket, ChangeStream, MongoClientOptions, AggregateOptions, InsertOneOptions, InsertOneResult, UpdateOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config, dbConfig } from "./Config";
-import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions, CountOptions } from "@openiap/openflow-api";
+import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions, CountOptions, Resource, ResourceUsage } from "@openiap/openflow-api";
 import { OAuthProvider } from "./OAuthProvider";
 import { ObservableUpDownCounter, Histogram } from "@opentelemetry/api-metrics"
 import { Span } from "@opentelemetry/api";
@@ -4283,50 +4283,35 @@ export class DatabaseConnection extends events.EventEmitter {
             return { collection: collectionname };
         }
     }
+    public async GetResource(resourcename:string, parent: Span): Promise<Resource> {
+        let _resources: Resource[] = await Logger.DBHelper.GetResources(parent);
+        _resources = _resources.filter(x => x.name == resourcename);
+        if(_resources.length == 0) return null;
+        return _resources[0]
+    }
+    public async GetResourceUserUsage(resourcename:string, userid: string, parent: Span): Promise<ResourceUsage> {
+        let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByUserID(userid, parent);
+        assigned = assigned.filter(x => x.resource == resourcename);
+        if(assigned.length == 0) return null; // No found
+        if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
+        if (assigned[0].quantity == 0) return null; // No longer assigned
+        return assigned[0]
+    }
+    public async GetResourceCustomerUsage(resourcename:string, customerid: string, parent: Span): Promise<ResourceUsage> {
+        let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
+        assigned = assigned.filter(x => x.resource == resourcename);
+        if(assigned.length == 0) return null; // No found
+        if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
+        if (assigned[0].quantity == 0) return null; // No longer assigned
+        return assigned[0]
+    }
+    public async GetProductResourceCustomerUsage(resourcename:string, stripeprice: string,  customerid: string, parent: Span): Promise<ResourceUsage> {
+        let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
+        assigned = assigned.filter(x => x.resource == resourcename && x.product.stripeprice == stripeprice);
+        if(assigned.length == 0) return null; // No found
+        if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
+        if (assigned[0].quantity == 0) return null; // No longer assigned
+        return assigned[0]
+    }
 }
 
-export class EntityRestriction extends Base {
-    public collection: string;
-    public copyperm: boolean;
-    public paths: string[];
-    constructor(
-    ) {
-        super();
-        this._type = "restriction";
-    }
-    static assign<EntityRestriction>(o: any): EntityRestriction {
-        if (typeof o === 'string' || o instanceof String) {
-            return Object.assign(new EntityRestriction(), JSON.parse(o.toString()));
-        }
-        return Object.assign(new EntityRestriction(), o);
-    }
-    public IsMatch(object: object): boolean {
-        if (NoderedUtil.IsNullUndefinded(object)) {
-            return false;
-        }
-        for (let path of this.paths) {
-            if (!NoderedUtil.IsNullEmpty(path)) {
-                var json = { a: object };
-                Logger.instanse.verbose(path, null);
-                Logger.instanse.silly(JSON.stringify(json, null, 2), null);
-                try {
-                    const result = JSONPath({ path, json });
-                    if (result && result.length > 0) {
-                        Logger.instanse.verbose("true", null);
-                        return true;
-                    }
-                } catch (error) {
-                }
-            }
-        }
-        Logger.instanse.verbose("false", null);
-        return false;
-    }
-    public IsAuthorized(user: TokenUser | User): boolean {
-        return DatabaseConnection.hasAuthorization(user as TokenUser, this, Rights.create);
-    }
-    //     public IsAllowed(user: TokenUser | User, object: object, NoMatchValue: boolean) {
-    //         if (!this.IsMatch(object)) return NoMatchValue;
-    //         return this.IsAuthorized(user);
-    //     }
-}

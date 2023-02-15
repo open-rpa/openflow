@@ -10,7 +10,7 @@ import { LoginProvider, Provider } from "./LoginProvider";
 import * as cacheManager from "cache-manager";
 import { TokenRequest } from "./TokenRequest";
 import { amqpwrapper } from "./amqpwrapper";
-import { EntityRestriction } from "./DatabaseConnection";
+import { EntityRestriction } from "./EntityRestriction";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 var mongoStore = require('@skadefro/cache-manager-mongodb');
@@ -195,6 +195,22 @@ export class DBHelper {
             var key = ("resourceusage_" + userid).toString().toLowerCase();
             let items = await this.memoryCache.wrap(key, () => { return this.GetResourceUsageByUserIDWrap(userid, span) });
             Logger.instanse.silly("Return resources for user " + userid, span);
+            return items;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public GetResourceUsageByCustomerIDWrap(customerid: string, span: Span) {
+        Logger.instanse.debug("Add Customer resources to cache : " + customerid, span);
+        return Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", customerid }, collectionname: "config", jwt: Crypt.rootToken() }, span);
+    }
+    public async GetResourceUsageByCustomerID(customerid: string, parent: Span): Promise<ResourceUsage[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetResourceUsageByCustomerID", parent);
+        try {
+            var key = ("resourceusage_" + customerid).toString().toLowerCase();
+            let items = await this.memoryCache.wrap(key, () => { return this.GetResourceUsageByCustomerIDWrap(customerid, span) });
+            Logger.instanse.silly("Return resources for customer " + customerid, span);
             return items;
         } finally {
             Logger.otel.endSpan(span);

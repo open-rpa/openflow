@@ -5900,7 +5900,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     (prod as any).count = this.AssignCount(prod);
                     if ((prod as any).count > 0) {
                         (res as any).newproduct = prod;
-                    }
+                        (prod as any).usedby = this.UsedbyCount(prod);
+                    }                    
                     if (prod.customerassign == "metered" && res.name == 'Database Usage') {
 
                         let billabledbusage: number = this.model.dbusage - res.defaultmetadata.dbusage;
@@ -5998,6 +5999,17 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         let quantity: number = 0;
         assigned.forEach(x => {
             quantity += x.quantity;
+        });
+        return quantity;
+    }
+    UsedbyCount(Product: ResourceVariant) {
+        const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0 && x.siid != null);
+        let quantity: number = 0;
+        assigned.forEach(x => {
+            // @ts-ignore
+            if(assigned[0].usedby == null) return 0;
+            // @ts-ignore
+            quantity = quantity + assigned[0].usedby.length;
         });
         return quantity;
     }
@@ -7665,7 +7677,8 @@ export class AgentCtrl extends entityCtrl<any> {
         this.collection = "agents";
         this.postloadData = this.processData;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
+            // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
+            var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
             if(products.length > 0) {
                 this.products = this.products.concat(products[0].products);
             }
@@ -7836,7 +7849,6 @@ export class AgentCtrl extends entityCtrl<any> {
             await NoderedUtil.CustomCommand({command:"deleteagent", id:this.model._id, name:this.model.slug})
         } catch (error) {
             this.errormessage = error.message ? error.message : error
-            
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -7850,7 +7862,6 @@ export class AgentCtrl extends entityCtrl<any> {
             this.loadInstances()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
-            
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -7923,6 +7934,7 @@ export class AgentCtrl extends entityCtrl<any> {
             console.error(error);
             this.errormessage = error.message ? error.message : error;
         }
+        this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 

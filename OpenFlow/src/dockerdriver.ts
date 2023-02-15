@@ -1,5 +1,5 @@
 import { Base, NoderedUser, NoderedUtil, ResourceUsage, TokenUser } from "@openiap/openflow-api";
-import { i_nodered_driver } from "./commoninterfaces";
+import { iAgent, i_nodered_driver } from "./commoninterfaces";
 import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/api";
 import { Crypt } from "./Crypt";
@@ -82,15 +82,9 @@ export class dockerdriver implements i_nodered_driver {
             if (_nodered_image.length == 1) { nodered_image = _nodered_image[0].image; }
 
             let hasbilling: boolean = false;
-            // let assigned: ResourceUsage[] = await Config.db.db.collection("config")
-            //     .find({ "_type": "resourceusage", "userid": user._id, "resource": "Nodered Instance" }).toArray() as any;
-            let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByUserID(user._id, span);
-            assigned = assigned.filter(x => x.resource == "Nodered Instance");
-            if (assigned.length > 0) {
-                let usage: ResourceUsage = assigned[0];
-                if (usage.quantity > 0 && !NoderedUtil.IsNullEmpty(usage.siid)) {
-                    hasbilling = true;
-                }
+            let assigned = await Config.db.GetResourceUserUsage("Nodered Instance", user._id, span);
+            if (assigned != null) {
+                hasbilling = true;
             }
 
 
@@ -224,7 +218,7 @@ export class dockerdriver implements i_nodered_driver {
         const rootjwt = Crypt.rootToken()
         const rootuser = TokenUser.From(Crypt.rootUser());
         try {
-            const noderedresource: any = await Config.db.GetOne({ "collectionname": "config", "query": { "name": "Nodered Instance", "_type": "resource" } }, span);
+            const noderedresource: any = await Config.db.GetResource("Nodered Instance", span);
             let runtime: number = noderedresource?.defaultmetadata?.runtime_hours;
             if (NoderedUtil.IsNullUndefinded(runtime)) {
                 // If nodered resource does not exists, dont turn off nodereds
@@ -406,7 +400,7 @@ export class dockerdriver implements i_nodered_driver {
         return null;
     }
 
-    public async EnsureInstance(agent: any, jwt:string, parent: Span): Promise<void> {
+    public async EnsureInstance(tokenUser: TokenUser, jwt: string, agent: iAgent, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
         Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
 
@@ -414,6 +408,18 @@ export class dockerdriver implements i_nodered_driver {
         if(Config.domain == "pc.openiap.io") apiurl = "grpc://grpc.demo.openiap.io:443"
         let hasbilling = false;
 
+        var agentjwt = "";
+        if(NoderedUtil.IsNullEmpty(agent.runas)) {
+            agentjwt = Crypt.createToken(tokenUser, Config.personalnoderedtoken_expires_in);
+        } else {
+            var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+            if(agentuser!= null){
+                agentuser = TokenUser.From(agentuser);
+                agentjwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);
+            } else {
+                agentjwt = Crypt.createToken(tokenUser, Config.personalnoderedtoken_expires_in);
+            }
+        }
 
         const docker: Dockerode = new Docker();
         const myhostname = require('os').hostname();
@@ -484,7 +490,7 @@ export class dockerdriver implements i_nodered_driver {
                 }
             }
             const Env = [
-                "jwt=" + jwt,
+                "jwt=" + agentjwt,
                 "apiurl=" + apiurl,
                 "domain=" + hostname,
                 "protocol=" + Config.protocol,
@@ -532,7 +538,7 @@ export class dockerdriver implements i_nodered_driver {
 
         }
     }
-    public async RemoveInstance(agent: any, parent: Span): Promise<void> {
+    public async RemoveInstance(tokenUser: TokenUser, jwt: string, agent: iAgent, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstance", parent);
         try {
             Logger.instanse.debug("[" + agent.slug + "] RemoveInstance", span);
@@ -555,7 +561,7 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async GetInstanceLog(agent: any, podname: string, parent: Span): Promise<string> {
+    public async GetInstanceLog(tokenUser: TokenUser, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<string> {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceLog", parent);
         try {
             var result: string = null;
@@ -589,19 +595,51 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async GetInstancePods(agent: any, getstats:boolean, parent: Span): Promise<any[]> {
-        const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
+    public async InstanceCleanup(parent: Span): Promise<void> {
+        const noderedresource: any = await Config.db.GetResource("Nodered Instance", parent);
+        let runtime: number = noderedresource?.defaultmetadata?.runtime_hours;
+        if (NoderedUtil.IsNullUndefinded(runtime)) {
+            // If nodered resource does not exists, dont turn off nodereds
+            runtime = 0;
+            // If nodered resource does exists, but have no default, use 24 hours
+            if (!NoderedUtil.IsNullUndefinded(noderedresource)) runtime = 24;
+        }
+        parent?.addEvent("init Docker()");
+        const docker = new Docker();
+        parent?.addEvent("listContainers()");
+        var list = await docker.listContainers({ all: 1 });
         const rootjwt = Crypt.rootToken()
         const rootuser = TokenUser.From(Crypt.rootUser());
-        try {
-            const noderedresource: any = await Config.db.GetOne({ "collectionname": "config", "query": { "name": "Nodered Instance", "_type": "resource" } }, span);
-            let runtime: number = noderedresource?.defaultmetadata?.runtime_hours;
-            if (NoderedUtil.IsNullUndefinded(runtime)) {
-                // If nodered resource does not exists, dont turn off nodereds
-                runtime = 0;
-                // If nodered resource does exists, but have no default, use 24 hours
-                if (!NoderedUtil.IsNullUndefinded(noderedresource)) runtime = 24;
+        var result = [];
+        for (let i = 0; i < list.length; i++) {
+            const item = list[i];
+            var Created = new Date(item.Created * 1000);
+            item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
+            item.status = { phase: item.State }
+            const image = item.Image;
+            const openiapagent = item.Labels["openiapagent"];
+            const billed = item.Labels["billed"];
+            if (!NoderedUtil.IsNullEmpty(openiapagent)) {
+                if (!NoderedUtil.IsNullUndefinded(noderedresource) && runtime > 0) {
+                    const date = new Date();
+                    const a: number = (date as any) - (Created as any);
+                    const diffhours = a / (1000 * 60 * 60);
+                    if (billed != "true" && diffhours > runtime) {
+                        Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
+                        var agent = await Config.db.GetOne<iAgent>({ query: { slug: item.metadata.name }, collectionname: "agents", jwt: rootjwt }, parent);
+                        if(agent != null) {
+                            await this.RemoveInstance(rootuser, rootjwt, agent, parent);
+                        } else {
+                            Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name , parent, { user: item.metadata.name });
+                        }
+                    }
+                }
             }
+        }
+    }
+    public async GetInstancePods(tokenUser: TokenUser, jwt: string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]> {
+        const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
+        try {
 
             span?.addEvent("init Docker()");
             const docker = new Docker();
@@ -618,16 +656,6 @@ export class dockerdriver implements i_nodered_driver {
                 const billed = item.Labels["billed"];
                 let deleted: boolean = false;
                 if (!NoderedUtil.IsNullEmpty(openiapagent)) {
-                    if (!NoderedUtil.IsNullUndefinded(noderedresource) && runtime > 0) {
-                        const date = new Date();
-                        const a: number = (date as any) - (Created as any);
-                        const diffhours = a / (1000 * 60 * 60);
-                        if (billed != "true" && diffhours > runtime) {
-                            Logger.instanse.warn("[" + agent.slug + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours", span);
-                            await this.RemoveInstance(item.metadata.name, span);
-                            deleted = true;
-                        }
-                    }
                     if ((item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) && deleted == false) {
                         if(getstats) {
                             span?.addEvent("getContainer(" + item.Id + ")");
@@ -655,7 +683,7 @@ export class dockerdriver implements i_nodered_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async RemoveInstancePod(agent: any, podname: string, parent: Span): Promise<void> {
+    public async RemoveInstancePod(tokenUser: TokenUser, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstancePod", parent);
         try {
             Logger.instanse.debug("[" + agent.slug + "] RemoveInstancePod", span);
