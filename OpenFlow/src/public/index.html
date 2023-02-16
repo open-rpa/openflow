@@ -22,9 +22,9 @@
             ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch">
         </div>
       </div>
-      <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
+      <!-- <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
         ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
-        <span translate lib="web">nodered</span></a>
+        <span translate lib="web">nodered</span></a> -->
       <a href="#/Agents" class="sidebar-link" id="menuagents" ng-class="{active: menuctrl.PathIs(['/Agent'])}">
         <span translate lib="web">agents</span></a>
 
@@ -214,9 +214,9 @@
             <a href="#/Clients" class="dropdown-item" 
             ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"><span translate
                 lib="web">clients</span></a>
-            <a href="#/Nodered" class="dropdown-item"
+            <!-- <a href="#/Nodered" class="dropdown-item"
               ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
-              <span translate lib="web">nodered</span></a>
+              <span translate lib="web">nodered</span></a> -->
             <a href="#/Agents" class="dropdown-item">
               <span translate lib="web">agents</span></a>
             <div class="dropdown-divider"></div>
