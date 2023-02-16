@@ -7745,9 +7745,9 @@ export class AgentCtrl extends entityCtrl<any> {
         this.sizewarning = ""
         if(this.model.image == "openiap/nodeagent") {
             this.model.environment = {
-                "wiq":"nodeagent", "queue":"nodeagent",
                 "gitrepo": "https://github.com/openiap/nodeagenttest.git",
-                "gitrepo2": "https://github.com/openiap/nodered.git"
+                "gitrepo2": "https://github.com/openiap/nodered.git",
+                "wiq":"nodeagent"
             }
         }
         if(this.model.image == "openiap/noderedagent") {
@@ -7759,21 +7759,20 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.model.image == "openiap/nodechromiumagent") {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/nodepuppeteertest.git",
-                "wiq": "nodepuppeteertest",
-                "queue": "nodepuppeteertest"
+                "wiq": "nodepuppeteertest"
             }
             this.PlanUpdated()
         }
         if(this.model.image == "openiap/dotnetagent") {
             this.model.environment = {
-                "wiq":"dotnetagent", "queue":"dotnetagent",
-                "gitrepo": "https://github.com/openiap/dotnetagenttest.git"
+                "gitrepo": "https://github.com/openiap/dotnetagenttest.git",
+                "wiq":"dotnetagent"
             }
         }
         if(this.model.image == "openiap/pyagent") {
             this.model.environment = {
-                "wiq":"pyagent", "queue":"pyagent",
-                "gitrepo": "https://github.com/openiap/pyagenttest.git"
+                "gitrepo": "https://github.com/openiap/pyagenttest.git",
+                "wiq":"pyagent"
             }
         }
         if(this.model.image == "openiap/pychromiumagent") {
@@ -7781,8 +7780,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 "gitrepo3": "https://github.com/openiap/rcctest.git",
                 "gitrepo2": "https://github.com/openiap/robotframeworktest.git",
                 "gitrepo": "https://github.com/openiap/taguitest.git",
-                "wiq": "taguitest",
-                "queue": "taguitest"
+                "wiq": "taguitest"
             }
             this.PlanUpdated()
         }
