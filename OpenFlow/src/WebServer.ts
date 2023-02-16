@@ -468,6 +468,15 @@ export class WebServer {
                     if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
                     message.command = "addworkitem" // new command to new
                 }
+                if(message.command == "pushworkitems") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    if(msg.items != null ) {
+                        msg.items.forEach(wi => {
+                            if(typeof wi.payload == "string") wi.payload = JSON.parse(wi.payload); // new style to new 
+                        });
+                    }
+                    message.command = "addworkitems" // new command to new
+                }
                 if(message.command == "updateworkitem") {
                     if(msg.workitem && typeof msg.workitem.payload == "string") msg.workitem.payload = JSON.parse(msg.workitem.payload); 
                     // if(msg.workitem) {
@@ -510,6 +519,10 @@ export class WebServer {
                 if(reply.command == "addworkitemreply") {
                     reply.command = "pushworkitemreply";
                     reply.workitem = result.result;
+                }
+                if(reply.command == "addworkitemsreply") {
+                    reply.command = "pushworkitemsreply";
+                    reply.workitems = result.results;
                 }
                 var res = result.data;
                 if(typeof res == "string") var res = JSON.parse(res);
