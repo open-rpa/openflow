@@ -7736,7 +7736,7 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.model.image == "openiap/pychromiumagent") {
             if(product == null || product.metadata.resources.limits.memory == "256Mi") {
                 this.sizewarningtitle = "Not enough ram"
-                this.sizewarning = "This instance might not start, or will run slow if not assigned a payed Plus plan og higher"
+                this.sizewarning = "This instance might not start, or will run slow if not assigned a payed Plus plan or higher"
             }
         }
     }
