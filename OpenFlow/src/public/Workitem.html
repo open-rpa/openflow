@@ -121,12 +121,12 @@
         <div class="row" ng-repeat="file in ctrl.model.files">
             <div class="col-sm-4">
                 
-                <div ng-show="file.filename.endsWith('.png')">
+                <div ng-show="file.filename.endsWith('.png') || file.filename.endsWith('.gif') || file.filename.endsWith('.jpg')">
                     <a ng-href="/download/{{file._id}}">
                         <img src="/download/{{file._id}}" class="wiimg" alt="{{ file.name }}"/>
                     </a>
                 </div>
-                <div ng-show="!file.filename.endsWith('.png')">
+                <div ng-show="!file.filename.endsWith('.png') && !file.filename.endsWith('.gif') && !file.filename.endsWith('.jpg')">
                     {{ file.name }}
                     <a ng-href="/download/{{file._id}}" class="table-btn" >
                         <em class="fas fa-file-download"></em>
