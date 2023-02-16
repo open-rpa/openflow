@@ -4191,6 +4191,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_type_1_state_1__created_-1") === -1) {
                                     await this.createIndex(collection.name, "_type_1_state_1__created_-1", { "_type": 1, "state": 1, "_created": -1 }, null, span)
                                 }
+                                if (indexnames.indexOf("unique_slug_1") > -1) {
+                                    await this.deleteIndex(collection.name, "unique_slug_1", span);
+                                }
                                 break;
                             case "agents":
                                 if (indexnames.indexOf("unique_slug_1") === -1) {
