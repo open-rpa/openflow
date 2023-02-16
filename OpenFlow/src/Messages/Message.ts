@@ -3082,10 +3082,12 @@ export class Message {
                     // msg.customer.stripeid = msg.stripecustomer.id;
                     msg.customer.subscriptionid = null;
                     // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                    const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                    Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
-                    for (let usage of total_usage) {
-                        await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                    if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                        const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
+                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
+                        for (let usage of total_usage) {
+                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                        }
                     }
 
                 } else {
@@ -3126,12 +3128,14 @@ export class Message {
                             }
                         }
                     } else {
-                        msg.customer.subscriptionid = null;
-                        // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
-                        for (let usage of total_usage) {
-                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                        if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                            msg.customer.subscriptionid = null;
+                            // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
+                            const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
+                            Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
+                            for (let usage of total_usage) {
+                                await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                            }
                         }
                     }
                 }
@@ -3173,12 +3177,14 @@ export class Message {
                 //     msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
                 // }
             } else {
-                msg.customer.subscriptionid = null;
-                // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
-                for (let usage of total_usage) {
-                    await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                    msg.customer.subscriptionid = null;
+                    // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
+                    const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
+                    Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
+                    for (let usage of total_usage) {
+                        await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                    }
                 }
             }
 
