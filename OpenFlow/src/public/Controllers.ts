@@ -6907,7 +6907,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
             if (this.id !== null && this.id !== undefined) {
                 await this.loadData();
             } else {
-                this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } });
+                this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, orderby: "name", projection: { "name": 1 } });
                 this.workitemqueues.unshift({ "name": "" } as any)
                 this.model = new Workitem();
                 this.model.retries = 0;
@@ -7121,24 +7121,28 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         });
     }
     async loadselects() {
-        this.projects = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "project" }, projection: { "name": 1 } });
+        this.projects = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "project" }, projection: { "name": 1 }, orderby: "name" });
         this.projects.forEach((e: any) => { e.display = e.name });
         this.projects.unshift({ "_id": "", "name": "", "display": "(no project)" } as any);
         let queryas: string = null;
         if (this.model != null) queryas = this.model.robotqueue;
         console.log("queryas", queryas)
-        this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, top: 500, queryas });
+        this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, orderby: "name", top: 500, queryas });
         this.workflows.forEach((e: any) => { e.display = e.projectandname });
         this.workflows.unshift({ "_id": "", "name": "", "projectandname": "", "display": "(no workflow)" } as any);
-        this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, projection: { "name": 1 }, top: 500 });
+        this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, orderby: "name", projection: { "name": 1 }, top: 500 });
         this.users.forEach((e: any) => { e.display = e.name });
         this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
-        this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, projection: { "name": 1 }, top: 500 });
+        this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, orderby: "name", projection: { "name": 1 }, top: 500 });
         this.amqpqueues.forEach((e: any) => { e.display = e.name });
+        if(this.model) {
+            this.amqpqueues.unshift({ "_id": this.model._id, "name": this.model.name, "display": this.model.name } as any);
+        }
         this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
-        this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 }, top: 500 });
+        this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, orderby: "name", projection: { "name": 1 }, top: 500 });
         this.workitemqueues = this.workitemqueues.filter(x => x._id != this.id);
         this.workitemqueues.forEach((e: any) => { e.display = e.name });
+        // this.workitemqueues.forEach((e: any) => { this.amqpqueues.push(e) });
         this.workitemqueues.unshift({ "_id": "", "name": "", "display": "(no workitem queue)" } as any);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -7152,7 +7156,10 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         if (NoderedUtil.IsNullEmpty(this.model.failed_wiqid)) this.model.failed_wiqid = "";
         await this.loadselects();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        var total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+        var total = 0;
+        if(this.id != null && this.id != "") {
+            total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+        }
         // this.stats = total + " items";
         // if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if(total > 0) {
@@ -7195,6 +7202,9 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.success_wiqid = model.success_wiqid;
                     q.failed_wiq = model.failed_wiq;
                     q.failed_wiqid = model.failed_wiqid;
+                    if((q.robotqueue == null || q.robotqueue == "") && (q.amqpqueue == null || q.amqpqueue == "")) {
+                        q.amqpqueue =model.name;
+                    }
                     _msg.command = 'addworkitemqueue';
                     _msg.data = JSON.stringify(q);
                     const result: AddWorkitemQueueMessage = await WebSocketClient.instance.Send<AddWorkitemQueueMessage>(_msg, 1);

@@ -750,6 +750,24 @@ export class DBHelper {
         await this.DeleteKey("pushablequeues", watch, false, span);
         if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
+    public GetQueuesWrap(span: Span) {
+        Logger.instanse.debug("Add pushable queues", span);
+        return Config.db.query<WorkitemQueue>({
+            query: { _type: "workitemqueue"}
+            , top:1000, collectionname: "mq", jwt: Crypt.rootToken()
+        }, span);
+    }
+    public async GetQueues(parent: Span): Promise<WorkitemQueue[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetQueues", parent);
+        try {
+            if (!Config.cache_workitem_queues) return await this.GetQueuesWrap(span);
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetQueuesWrap(span) });
+            return items;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     public GetPushableQueuesWrap(span: Span) {
         Logger.instanse.debug("Add pushable queues", span);
         return Config.db.query<WorkitemQueue>({
