@@ -957,6 +957,13 @@ export class LoginProvider {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.get_Signout", req);
         try {
             req.logout();
+            res.cookie("_session.legacy.sig", "", { expires: new Date(0) });
+            res.cookie("_session.legacy", "", { expires: new Date(0) });
+            res.cookie("session", "", { expires: new Date(0) });
+            res.cookie("_session.sig", "", { expires: new Date(0) });
+            res.cookie("_interaction.sig", "", { expires: new Date(0) });
+            res.cookie("_interaction", "", { expires: new Date(0) });
+            res.cookie("_session", "", { expires: new Date(0) });
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                 Logger.instanse.debug("Redirect user to " + originalUrl, span);
