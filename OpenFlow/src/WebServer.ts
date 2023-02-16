@@ -481,7 +481,7 @@ export class WebServer {
                                 msg.workitem.files.push(f)                                
                             });
                         }
-                    } else if (msg.workitem && msg.files) {
+                    } else if (msg.workitem && msg.files && msg.files.length > 0) {
                         msg.workitem.files && msg.files;
                     }
                     if(msg.workitem) msg = Object.assign(msg.workitem, msg);
