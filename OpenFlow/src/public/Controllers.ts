@@ -7662,6 +7662,7 @@ export class AgentCtrl extends entityCtrl<any> {
     instances: any[] = [];
     instancelog: string = "";
     products: any[] = [{"stripeprice": "", "name": "Free tier"}];
+    images: any[] = [];
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7682,6 +7683,7 @@ export class AgentCtrl extends entityCtrl<any> {
             if(products.length > 0) {
                 this.products = this.products.concat(products[0].products);
             }
+            this.images = this.WebSocketClientService.agent_images;
             
             if (this.id !== null && this.id !== undefined) {
                 await this.loadData();
@@ -7795,14 +7797,6 @@ export class AgentCtrl extends entityCtrl<any> {
     random(min, max) {
         return Math.floor(Math.random() * (max - min + 1) + min)
     }
-    images = [
-        {name:'openiap/nodeagent'},
-        {name:'openiap/nodechromiumagent'},
-        {name:'openiap/noderedagent'},
-        {name:'openiap/dotnetagent'},
-        {name:'openiap/pyagent'},
-        {name:'openiap/pychromiumagent'}
-    ]
     Adjectives = [
         'aged', 'ancient', 'autumn', 'billowing', 'bitter', 'black', 'blue', 'bold',
         'broad', 'broken', 'calm', 'cold', 'cool', 'crimson', 'curly', 'damp',

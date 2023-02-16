@@ -103,7 +103,7 @@
       <div class="col-sm">
         <label for="name" class="required" translate lib="web">image</label>
         <select id="images" ng-model="ctrl.model.image" ng-disabled="ctrl.loading==true" class="form-control"
-          ng-options="item.name as item.name for item in ctrl.images" ng-change="ctrl.ImageUpdated()">
+          ng-options="item.image as item.name for item in menuctrl.WebSocketClientService.agent_images" ng-change="ctrl.ImageUpdated()">
         </select>
       </div>
       <div class="col-sm">

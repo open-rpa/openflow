@@ -404,6 +404,8 @@ export class Config {
         Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
+        Config.agent_images = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
         Config.api_ws_url = Config.getEnv("api_ws_url", "");
         Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
@@ -641,6 +643,8 @@ export class Config {
 
     // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
+    public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs with chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python with chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "");
     public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
