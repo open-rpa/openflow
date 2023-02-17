@@ -489,6 +489,7 @@ export class dockerdriver implements i_nodered_driver {
                     Labels["traefik.http.routers." + agent.slug + ".tls.certresolver"] = Config.nodered_docker_certresolver;
                 }
             }
+            const oidc_config: string = Config.agent_oidc_config || Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration"
             const Env = [
                 "jwt=" + agentjwt,
                 "apiurl=" + apiurl,
@@ -504,8 +505,13 @@ export class dockerdriver implements i_nodered_driver {
                 "otel_metric_url=" + Config.otel_metric_url,
                 "TZ=" + agent.tz,
                 "log_with_colors=false",
-                "oidc_config=" + Config.agent_oidc_config,
-                // "oidc_config=" + Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration",
+                "oidc_config=" + oidc_config,
+                "oidc_client_id=" + Config.agent_oidc_client_id,
+                "oidc_client_secret=" + Config.agent_oidc_client_secret,
+                "oidc_userinfo_endpoint=" + Config.agent_oidc_userinfo_endpoint,
+                "oidc_issuer=" + Config.agent_oidc_issuer,
+                "oidc_authorization_endpoint=" + Config.agent_oidc_authorization_endpoint,
+                "oidc_token_endpoint=" + Config.agent_oidc_token_endpoint,
             ]
             if(agent.environment != null) {
                 var keys = Object.keys(agent.environment);

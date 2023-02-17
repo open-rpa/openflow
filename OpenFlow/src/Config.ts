@@ -406,7 +406,14 @@ export class Config {
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
         Config.agent_images = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
 
-        Config.agent_oidc_config = Config.getEnv("agent_oidc_config", "http://api:3000/oidc/.well-known/openid-configuration");
+        Config.agent_oidc_config = Config.getEnv("agent_oidc_config", "");
+        Config.agent_oidc_client_id = Config.getEnv("agent_oidc_client_id", "");
+        Config.agent_oidc_client_secret = Config.getEnv("agent_oidc_client_secret", "");
+        Config.agent_oidc_userinfo_endpoint = Config.getEnv("agent_oidc_userinfo_endpoint", "");
+        Config.agent_oidc_issuer = Config.getEnv("agent_oidc_issuer", "");
+        Config.agent_oidc_authorization_endpoint = Config.getEnv("agent_oidc_authorization_endpoint", "");
+        Config.agent_oidc_token_endpoint = Config.getEnv("agent_oidc_token_endpoint", "");
+    
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
         Config.api_ws_url = Config.getEnv("api_ws_url", "");
         Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
@@ -646,7 +653,14 @@ export class Config {
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs with chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python with chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
 
-    public static agent_oidc_config: string = Config.getEnv("agent_oidc_config", "http://api:3000/oidc/.well-known/openid-configuration");
+    public static agent_oidc_config: string = Config.getEnv("agent_oidc_config", "");
+    public static agent_oidc_client_id: string = Config.getEnv("agent_oidc_client_id", "");
+    public static agent_oidc_client_secret: string = Config.getEnv("agent_oidc_client_secret", "");
+    public static agent_oidc_userinfo_endpoint: string = Config.getEnv("agent_oidc_userinfo_endpoint", "");
+    public static agent_oidc_issuer: string = Config.getEnv("agent_oidc_issuer", "");
+    public static agent_oidc_authorization_endpoint: string = Config.getEnv("agent_oidc_authorization_endpoint", "");
+    public static agent_oidc_token_endpoint: string = Config.getEnv("agent_oidc_token_endpoint", "");
+
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "");
     public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
