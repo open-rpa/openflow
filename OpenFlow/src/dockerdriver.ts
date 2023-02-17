@@ -490,7 +490,10 @@ export class dockerdriver implements i_nodered_driver {
                     Labels["traefik.http.routers." + agent.slug + ".tls.certresolver"] = Config.nodered_docker_certresolver;
                 }
             }
-            const oidc_config: string = Config.agent_oidc_config || Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration"
+            let oidc_config: string = Config.agent_oidc_config;
+            if(oidc_config == null || oidc_config == "") {
+                if(Config.domain != "localhost.openiap.io") oidc_config = Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration"
+            }
             const Env = [
                 "jwt=" + agentjwt,
                 "apiurl=" + apiurl,
