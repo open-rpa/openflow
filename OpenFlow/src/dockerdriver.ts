@@ -404,8 +404,9 @@ export class dockerdriver implements i_nodered_driver {
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
         Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
 
-        var apiurl = "grpc://api:50051"
-        if(Config.domain == "pc.openiap.io") apiurl = "grpc://grpc.demo.openiap.io:443"
+        var apiurl = Config.agent_apiurl || ""
+        var grpcapiurl = "grpc://api:50051"
+        var wsapiurl = "ws://api:3000/ws/v2"
         let hasbilling = false;
 
         var agentjwt = "";
@@ -493,6 +494,8 @@ export class dockerdriver implements i_nodered_driver {
             const Env = [
                 "jwt=" + agentjwt,
                 "apiurl=" + apiurl,
+                "grpcapiurl=" + grpcapiurl,
+                "wsapiurl=" + wsapiurl,
                 "domain=" + hostname,
                 "protocol=" + Config.protocol,
                 "port=" + Config.port.toString(),

@@ -406,6 +406,7 @@ export class Config {
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
         Config.agent_images = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
 
+        Config.agent_apiurl = Config.getEnv("agent_apiurl", "");
         Config.agent_oidc_config = Config.getEnv("agent_oidc_config", "");
         Config.agent_oidc_client_id = Config.getEnv("agent_oidc_client_id", "");
         Config.agent_oidc_client_secret = Config.getEnv("agent_oidc_client_secret", "");
@@ -653,6 +654,7 @@ export class Config {
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs with chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python with chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
 
+    public static agent_apiurl: string = Config.getEnv("agent_apiurl", "");
     public static agent_oidc_config: string = Config.getEnv("agent_oidc_config", "");
     public static agent_oidc_client_id: string = Config.getEnv("agent_oidc_client_id", "");
     public static agent_oidc_client_secret: string = Config.getEnv("agent_oidc_client_secret", "");
