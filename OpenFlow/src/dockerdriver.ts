@@ -504,7 +504,8 @@ export class dockerdriver implements i_nodered_driver {
                 "otel_metric_url=" + Config.otel_metric_url,
                 "TZ=" + agent.tz,
                 "log_with_colors=false",
-                "oidc_config=" + Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration",
+                "oidc_config=" + Config.agent_oidc_config,
+                // "oidc_config=" + Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration",
             ]
             if(agent.environment != null) {
                 var keys = Object.keys(agent.environment);
