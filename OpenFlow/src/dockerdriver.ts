@@ -499,14 +499,12 @@ export class dockerdriver implements i_nodered_driver {
                 "HTTP_PROXY=" + Config.HTTP_PROXY,
                 "HTTPS_PROXY=" + Config.HTTPS_PROXY,
                 "NO_PROXY=" + Config.NO_PROXY,
-                "otel_expose_metric=" + "false",
                 "enable_analytics=" + Config.enable_analytics.toString(),
                 "otel_trace_url=" + Config.otel_trace_url,
                 "otel_metric_url=" + Config.otel_metric_url,
-                "otel_trace_interval=" + Config.otel_trace_interval.toString(),
-                "otel_metric_interval=" + Config.otel_metric_interval.toString(),
+                "TZ=" + agent.tz,
                 "log_with_colors=false",
-                "TZ=" + agent.tz
+                "oidc_config=" + Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration",
             ]
             if(agent.environment != null) {
                 var keys = Object.keys(agent.environment);
