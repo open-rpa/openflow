@@ -7702,7 +7702,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.model._type = "agent";
                 this.model.name = this.randomname();
                 // @ts-ignore
-                this.model.image = this.images[0].name;
+                this.model.image = this.images[0].image;
                 // @ts-ignore
                 this.model.slug = this.model.name; this.model.stripeprice = ""
                 this.ImageUpdated()
