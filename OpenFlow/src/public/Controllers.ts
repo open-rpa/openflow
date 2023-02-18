@@ -7743,6 +7743,10 @@ export class AgentCtrl extends entityCtrl<any> {
     ImageUpdated() {
         this.sizewarningtitle = ""
         this.sizewarning = ""
+        if(this.model._id != null && this.model._id != "") {
+            this.PlanUpdated()
+            return;
+        }
         if(this.model.image == "openiap/nodeagent") {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/nodeagenttest.git",
