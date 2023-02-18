@@ -1,4 +1,4 @@
-import { Base, NoderedUser, NoderedUtil, ResourceUsage, TokenUser } from "@openiap/openflow-api";
+import { Base, NoderedUser, NoderedUtil, ResourceUsage, TokenUser, WellknownIds } from "@openiap/openflow-api";
 import { iAgent, i_nodered_driver } from "./commoninterfaces";
 import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/api";
@@ -7,6 +7,7 @@ import { Config } from "./Config";
 import * as url from "url";
 const Docker = require("dockerode");
 import Dockerode = require("dockerode");
+import { Audit } from "./Audit";
 export class dockerdriver implements i_nodered_driver {
     public async detect(): Promise<boolean> {
         try {
@@ -205,6 +206,7 @@ export class dockerdriver implements i_nodered_driver {
                 Image: nodered_image, name, Labels, Env, NetworkingConfig, HostConfig
             })
             await instance.start();
+            if (user._id != WellknownIds.root) await Audit.NoderedAction(tuser, true, name, "createdeployment", nodered_image, null, span);
         } else {
             const container = docker.getContainer(instance.Id);
             if (instance.State != "running") {
@@ -296,6 +298,7 @@ export class dockerdriver implements i_nodered_driver {
                 const container = docker.getContainer(instance.Id);
                 if (instance.State == "running") await container.stop({t: 0});
                 await container.restart();
+                await Audit.NoderedAction(tuser, true, name, "restartdeployment", "", name, parent);
             }
         } finally {
             Logger.otel.endSpan(span);
@@ -360,6 +363,7 @@ export class dockerdriver implements i_nodered_driver {
                 const container = docker.getContainer(instance.Id);
                 var s = await container.logs((logOpts as any) as Dockerode.ContainerLogsOptions);
                 result = s.toString();
+                await Audit.NoderedAction(user, true, name, "readpodlog", "", name, span);
             }
             if (result == null) result = "";
             return result;
@@ -390,6 +394,7 @@ export class dockerdriver implements i_nodered_driver {
                     if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
+                    await Audit.NoderedAction(user, true, name, "deletedeployment", "", null, span);
                 }
             }
         } finally {
@@ -541,10 +546,12 @@ export class dockerdriver implements i_nodered_driver {
                 Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
             })
             await instance.start();
+            Audit.NoderedAction(tokenUser, true, "Created agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
         } else {
             const container = docker.getContainer(instance.Id);
             if (instance.State != "running") {
                 container.start();
+                Audit.NoderedAction(tokenUser, true, "Updated agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
             }
 
         }
@@ -566,6 +573,7 @@ export class dockerdriver implements i_nodered_driver {
                     if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
+                    Audit.NoderedAction(tokenUser, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
                 }
             }
         } finally {
@@ -599,6 +607,7 @@ export class dockerdriver implements i_nodered_driver {
                 const container = docker.getContainer(instance.Id);
                 var s = await container.logs((logOpts as any) as Dockerode.ContainerLogsOptions);
                 result = s.toString();
+                Audit.NoderedAction(tokenUser, true, "Get agentlog " + agent.name, "getagentlog", agent.image, agent.slug, parent);
             }
             if (result == null) result = "";
             return result;
@@ -723,6 +732,7 @@ export class dockerdriver implements i_nodered_driver {
                     if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
+                    Audit.NoderedAction(tokenUser, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
                 }
             }
         } finally {

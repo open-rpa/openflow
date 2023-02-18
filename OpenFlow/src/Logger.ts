@@ -412,16 +412,16 @@ export class Logger {
 
         this.nodereddriver = null; // with npm -omit=optional we need to install npm i openid-client
 
-        // if (this.nodereddriver == null) {
-        //     try {
-        //         this.nodereddriver = new dockerdriver();
-        //         if (!(await this.nodereddriver.detect())) {
-        //             this.nodereddriver = null;
-        //         }
-        //     } catch (error) {
-        //         this.nodereddriver = null;
-        //     }
-        // }
+        if (this.nodereddriver == null) {
+            try {
+                this.nodereddriver = new dockerdriver();
+                if (!(await this.nodereddriver.detect())) {
+                    this.nodereddriver = null;
+                }
+            } catch (error) {
+                this.nodereddriver = null;
+            }
+        }
         if (this.nodereddriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
             let _driver: any = null;
             try {
