@@ -358,7 +358,12 @@ export class DBHelper {
     public FindQueueByNameWrap(name, jwt, span: Span) {
         if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
         Logger.instanse.debug("Add queue to cache : " + name, span);
-        return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
+        return Config.db.GetOne<User>({ query: {"$or": [
+            { name, "_type": "queue" },
+            { name: new RegExp(["^", name, "$"].join(""), "i"), "_type": "workitemqueue" },
+            { queue: name, "_type": "workitemqueue"}
+        ]} , collectionname: "mq", jwt }, span);
+        // return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
     }
     public async FindQueueByName(name: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
