@@ -419,9 +419,9 @@ export class Config {
         Config.api_ws_url = Config.getEnv("api_ws_url", "");
         Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
         Config.nodered_saml_entrypoint = Config.getEnv("nodered_saml_entrypoint", "");
-        Config.nodered_docker_entrypoints = Config.getEnv("nodered_docker_entrypoints", "web");
-        Config.nodered_docker_use_project = Config.parseBoolean(Config.getEnv("nodered_docker_use_project", "false"));
-        Config.nodered_docker_certresolver = Config.getEnv("nodered_docker_certresolver", "");
+        Config.agent_docker_entrypoints = Config.getEnv("agent_docker_entrypoints", "web");
+        Config.agent_docker_use_project = Config.parseBoolean(Config.getEnv("agent_docker_use_project", "false"));
+        Config.agent_docker_certresolver = Config.getEnv("agent_docker_certresolver", "");
         Config.namespace = Config.getEnv("namespace", ""); // also sent to website 
         Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", ""); // also sent to website
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
@@ -668,9 +668,9 @@ export class Config {
     public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
     public static nodered_saml_entrypoint: string = Config.getEnv("nodered_saml_entrypoint", "");
 
-    public static nodered_docker_entrypoints: string = Config.getEnv("nodered_docker_entrypoints", "web");
-    public static nodered_docker_use_project: boolean = Config.parseBoolean(Config.getEnv("nodered_docker_use_project", "false"));
-    public static nodered_docker_certresolver: string = Config.getEnv("nodered_docker_certresolver", "");
+    public static agent_docker_entrypoints: string = Config.getEnv("agent_docker_entrypoints", "web");
+    public static agent_docker_use_project: boolean = Config.parseBoolean(Config.getEnv("agent_docker_use_project", "false"));
+    public static agent_docker_certresolver: string = Config.getEnv("agent_docker_certresolver", "");
 
     public static namespace: string = Config.getEnv("namespace", ""); // also sent to website 
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website

@@ -99,7 +99,7 @@ export class dockerdriver implements i_nodered_driver {
             let HostConfig: Dockerode.HostConfig = undefined;
             HostConfig = {};
             if (me != null) {
-                if (Config.nodered_docker_use_project) {
+                if (Config.agent_docker_use_project) {
                     if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
                     if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
                     if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
@@ -114,11 +114,11 @@ export class dockerdriver implements i_nodered_driver {
             }
             // docker-compose -f docker-compose-traefik.yml -p demo up -d
             Labels["traefik.enable"] = "true";
-            Labels["traefik.http.routers." + name + ".entrypoints"] = Config.nodered_docker_entrypoints;
+            Labels["traefik.http.routers." + name + ".entrypoints"] = Config.agent_docker_entrypoints;
             Labels["traefik.http.routers." + name + ".rule"] = "Host(`" + hostname + "`)";
             Labels["traefik.http.services." + name + ".loadbalancer.server.port"] = Config.port.toString();
-            if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
-                Labels["traefik.http.routers." + name + ".tls.certresolver"] = Config.nodered_docker_certresolver;
+            if (!NoderedUtil.IsNullEmpty(Config.agent_docker_certresolver)) {
+                Labels["traefik.http.routers." + name + ".tls.certresolver"] = Config.agent_docker_certresolver;
             }
             let openiapagent = nodered_image;
             if(openiapagent.indexOf(":")> - 1) openiapagent = openiapagent.substring(0, openiapagent.indexOf(":"))
@@ -468,7 +468,7 @@ export class dockerdriver implements i_nodered_driver {
             let HostConfig: Dockerode.HostConfig = undefined;
             HostConfig = {};
             if (me != null) {
-                if (Config.nodered_docker_use_project) {
+                if (Config.agent_docker_use_project) {
                     if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
                     if (me.Labels["com.docker.compose.project"]) Labels["com.docker.compose.project"] = me.Labels["com.docker.compose.project"];
                     if (me.Labels["com.docker.compose.project.config_files"]) Labels["com.docker.compose.project.config_files"] = me.Labels["com.docker.compose.project.config_files"];
@@ -488,11 +488,11 @@ export class dockerdriver implements i_nodered_driver {
             Labels["agentid"] = agent.agentid;
             if(agent.webserver) {
                 Labels["traefik.enable"] = "true";
-                Labels["traefik.http.routers." + agent.slug + ".entrypoints"] = Config.nodered_docker_entrypoints;
+                Labels["traefik.http.routers." + agent.slug + ".entrypoints"] = Config.agent_docker_entrypoints;
                 Labels["traefik.http.routers." + agent.slug + ".rule"] = "Host(`" + hostname + "`)";
                 Labels["traefik.http.services." + agent.slug + ".loadbalancer.server.port"] = Config.port.toString()
-                if (!NoderedUtil.IsNullEmpty(Config.nodered_docker_certresolver)) {
-                    Labels["traefik.http.routers." + agent.slug + ".tls.certresolver"] = Config.nodered_docker_certresolver;
+                if (!NoderedUtil.IsNullEmpty(Config.agent_docker_certresolver)) {
+                    Labels["traefik.http.routers." + agent.slug + ".tls.certresolver"] = Config.agent_docker_certresolver;
                 }
             }
             let oidc_config: string = Config.agent_oidc_config;
