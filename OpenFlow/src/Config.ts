@@ -162,7 +162,7 @@ export class dbConfig extends Base {
         Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "120"));
         Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
         Config.api_bypass_perm_check = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.api_bypass_perm_check) ? conf.api_bypass_perm_check : Config.getEnv("api_bypass_perm_check", "false"));
-        Config.ignore_expiration = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ignore_expiration) ? conf.ignore_expiration : Config.getEnv("ignore_expiration", "true"));
+        Config.ignore_expiration = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ignore_expiration) ? conf.ignore_expiration : Config.getEnv("ignore_expiration", "false"));
         
 
 
