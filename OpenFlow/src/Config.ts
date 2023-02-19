@@ -55,6 +55,7 @@ export class dbConfig extends Base {
     public log_to_exchange: boolean;
     public heapdump_onstop: boolean;
     public api_bypass_perm_check: boolean;
+    public ignore_expiration: boolean;
 
     public workitem_queue_monitoring_interval: number;
     public workitem_queue_monitoring_enabled: boolean;
@@ -161,6 +162,8 @@ export class dbConfig extends Base {
         Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "120"));
         Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
         Config.api_bypass_perm_check = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.api_bypass_perm_check) ? conf.api_bypass_perm_check : Config.getEnv("api_bypass_perm_check", "false"));
+        Config.ignore_expiration = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ignore_expiration) ? conf.ignore_expiration : Config.getEnv("ignore_expiration", "true"));
+        
 
 
 
@@ -353,6 +356,7 @@ export class Config {
         Config.cleanup_on_delete_user = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
 
         Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+        Config.ignore_expiration = Config.parseBoolean(Config.getEnv("ignore_expiration", "false"));
         Config.force_audit_ts = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
         Config.force_dbusage_ts = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
         Config.migrate_audit_to_ts = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
@@ -597,6 +601,7 @@ export class Config {
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer", "false"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+    public static ignore_expiration: boolean = Config.parseBoolean(Config.getEnv("ignore_expiration", "false"));
     public static force_audit_ts: boolean = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
     public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
     public static migrate_audit_to_ts: boolean = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));

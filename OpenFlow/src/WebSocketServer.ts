@@ -214,18 +214,8 @@ export class WebSocketServer {
                             const clockTimestamp = Math.floor(Date.now() / 1000);
                             if ((payload.exp - clockTimestamp) < 60) {
                                 Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client", span);
-                                const tuser: TokenUser = await Message.DoSignin(cli, null, span);
-                                if (tuser != null) {
+                                if (await cli.RefreshToken(span)) {
                                     span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client");
-                                    const l: SigninMessage = new SigninMessage();
-                                    cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                                    l.jwt = cli.jwt;
-                                    l.user = tuser;
-                                    const m: Message = new Message(); m.command = "refreshtoken";
-                                    m.data = JSON.stringify(l);
-                                    if(cli && cli.Send) {
-                                        cli?.Send(m);
-                                    }
                                 } else {
                                     cli.Close(span);
                                 }

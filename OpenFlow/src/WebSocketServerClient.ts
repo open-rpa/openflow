@@ -3,7 +3,7 @@ import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper";
-import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser } from "@openiap/openflow-api";
+import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser, SigninMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -11,6 +11,7 @@ import { clientType } from "./Audit";
 import express = require("express");
 import { WebSocketServer } from "./WebSocketServer";
 import { WebServer } from "./WebServer";
+import { Crypt } from "./Crypt";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -220,6 +221,18 @@ export class WebSocketServerClient {
         } finally {
             Logger.otel.endSpan(span);
         }
+    }
+    public async RefreshToken(parent: Span): Promise<boolean> {
+        const tuser: TokenUser = await Message.DoSignin(this, null, parent);
+        if(tuser == null) return false;
+        const l: SigninMessage = new SigninMessage();
+        this.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+        l.jwt = this.jwt;
+        l.user = tuser;
+        const m: Message = new Message(); m.command = "refreshtoken";
+        m.data = JSON.stringify(l);
+        this.Send(m);
+        return true;
     }
     private message(message: string): void {
         try {

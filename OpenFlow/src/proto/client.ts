@@ -8,10 +8,12 @@ import { Span } from "@opentelemetry/api";
 import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
 import { Config } from "../Config";
 import { RegisterExchangeResponse } from "../WebSocketServerClient";
-import { client, config, protowrap, QueueEvent, WatchEvent } from "@openiap/nodeapi";
+import { client, config, protowrap, QueueEvent, RefreshToken, WatchEvent } from "@openiap/nodeapi";
 const { info, warn, err } = config;
 import { clientAgent } from "@openiap/nodeapi/lib/client";
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
+import { Message } from "../Messages/Message";
+import { Crypt } from "../Crypt";
 const Semaphore = (n) => ({
   n,
   async down() {
@@ -104,6 +106,16 @@ export class flowclient extends client {
       this.lastheartbeatsec = (this.lastheartbeat.getTime() / 1000).toString();
       }
   }
+    public async RefreshToken(parent: Span): Promise<boolean> {
+        const tuser: TokenUser = await Message.DoSignin(this as any, null, parent);
+        if (tuser == null) return false;
+        this.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+        const data = Any.create({type_url: "type.googleapis.com/openiap.RefreshToken", value: RefreshToken.encode(
+            RefreshToken.create({jwt: this.jwt, user: tuser as any, username: tuser.username })).finish() })
+        var paylad = {"command": "refreshtoken", "data": data}
+        protowrap.sendMesssag(this, paylad, null, true);
+        return true;
+    }
   async Watch(aggregates: object[], collectionname: string, jwt: string): Promise<string> {
     if (typeof aggregates === "string") {
       try {
