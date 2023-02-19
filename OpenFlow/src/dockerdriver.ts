@@ -311,7 +311,17 @@ export class dockerdriver implements i_nodered_driver {
             image = await imageep.inspect()
         } catch (error) {
         }
-        if(image == null) {
+        var pull: boolean = false;
+        if(image == null) pull = true;
+        if(imagename.indexOf(":") == -1) {
+            pull = true;
+        } else if(imagename.indexOf(":latest") > -1) {
+            pull = true;
+        } else if(imagename.indexOf(":edge") > -1) {
+            pull = true;
+        }
+
+        if(pull) {
             console.log("Pull image " + imagename)
             await docker.pull(imagename)
         }
