@@ -961,9 +961,15 @@ export class noderedcontribopenflowstorage {
                                 }
                             }
                         }
-                        Logger.instanse.info("storage", "onupdate", "noderedcontribopenflowstorage::onupdate DiffObjects " + new Date().toLocaleTimeString());
-                        if (this.DiffObjects(newsettings, oldsettings)) {
-                            update = true;
+                        if(oldsettings != null && newsettings != null) {
+                            var _old = JSON.parse(JSON.stringify(oldsettings));
+                            var _new = JSON.parse(JSON.stringify(newsettings));
+                            delete _old.users;
+                            delete _new.users;
+                            Logger.instanse.info("storage", "onupdate", "noderedcontribopenflowstorage::onupdate DiffObjects " + new Date().toLocaleTimeString());
+                            if (this.DiffObjects(_new, _old)) {
+                                update = true;
+                            }
                         }
                         this._settings = newsettings;
                     } catch (error) {
@@ -996,7 +1002,7 @@ export class noderedcontribopenflowstorage {
                     this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restart is needed, auto_restart_when_needed is false");
                 } else if (!exitprocess) {
                     Logger.instanse.info("storage", "onupdate", "Restart not needed");
-                    this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restart not needed");
+                    // this.RED.log.warn("noderedcontribopenflowstorage::onupdate: Restart not needed");
                 }
 
             }
