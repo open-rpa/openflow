@@ -128,7 +128,7 @@ export class rpa_detector_node {
     }
     async onclose(removed: boolean, done: any) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-            NoderedUtil.CloseQueue({ queuename: this.localqueue });
+            await NoderedUtil.CloseQueue({ queuename: this.localqueue });
             this.localqueue = "";
         }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
@@ -362,7 +362,9 @@ export class rpa_workflow_node {
     }
     async onclose(removed: boolean, done: any) {
         // if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.uid) {
-        await NoderedUtil.CloseQueue({ queuename: this.localqueue });
+        if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
+            await NoderedUtil.CloseQueue({ queuename: this.localqueue });
+        }
         this.localqueue = "";
         // }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
@@ -557,7 +559,7 @@ export class rpa_killworkflows_node {
     async onclose(removed: boolean, done: any) {
         // if ((!NoderedUtil.IsNullEmpty(this.localqueue) && removed) || this.originallocalqueue != this.uid) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-            NoderedUtil.CloseQueue({ queuename: this.localqueue });
+            await NoderedUtil.CloseQueue({ queuename: this.localqueue });
             this.localqueue = "";
         }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);

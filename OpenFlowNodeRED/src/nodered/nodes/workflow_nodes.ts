@@ -307,11 +307,11 @@ export class workflow_in_node {
                 }
             }
             if (!NoderedUtil.IsNullEmpty(this.localqueue)) {
-                NoderedUtil.CloseQueue({ queuename: this.localqueue });
+                await NoderedUtil.CloseQueue({ queuename: this.localqueue });
                 this.localqueue = "";
             }
             if (!NoderedUtil.IsNullEmpty(this.localexchangequeue)) {
-                NoderedUtil.CloseQueue({ queuename: this.localexchangequeue });
+                await NoderedUtil.CloseQueue({ queuename: this.localexchangequeue });
                 this.localexchangequeue = "";
             }
         } catch (error) {
@@ -709,7 +709,7 @@ export class assign_workflow_node {
     }
     async onclose(removed: boolean, done: any) {
         if (!NoderedUtil.IsNullEmpty(this.localqueue) && removed) {
-            NoderedUtil.CloseQueue({ queuename: this.localqueue });
+            await NoderedUtil.CloseQueue({ queuename: this.localqueue });
             this.localqueue = "";
         }
         WebSocketClient.instance.events.removeListener("onsignedin", this._onsignedin);
