@@ -936,7 +936,8 @@ export class entityCtrl<T> {
                 }
             }
             // @ts-ignore
-            this.weburl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.model.slug)
+            this.weburl = "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", this.model.slug)
+            // this.weburl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.model.slug)
         } catch (error) {
             this.loading = false;
             this.errormessage = JSON.stringify(error);

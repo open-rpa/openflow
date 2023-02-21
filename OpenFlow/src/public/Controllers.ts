@@ -4850,7 +4850,8 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         let name = model.username;
         name = name.toLowerCase();
         name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
-        const noderedurl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
+        // const noderedurl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
+        const noderedurl = "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", name);
         window.open(noderedurl);
     }
     ManageNodered(model: any) {
@@ -7625,7 +7626,8 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         }
     }
     weburl(model) {
-        return "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", model.slug)
+        // return "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", model.slug)
+        return "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", model.slug)
     }
     async DeleteAgent(model:any): Promise<void> {
         try {

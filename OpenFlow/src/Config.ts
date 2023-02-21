@@ -278,6 +278,10 @@ export class Config {
         Config.HTTP_PROXY = Config.getEnv("HTTP_PROXY", "");
         Config.HTTPS_PROXY = Config.getEnv("HTTPS_PROXY", "");
         Config.NO_PROXY = Config.getEnv("NO_PROXY", "");
+        Config.agent_HTTP_PROXY = Config.getEnv("agent_HTTP_PROXY", "");
+        Config.agent_HTTPS_PROXY = Config.getEnv("agent_HTTPS_PROXY", "");
+        Config.agent_NO_PROXY = Config.getEnv("agent_NO_PROXY", "");
+        
 
         Config.stripe_api_key = Config.getEnv("stripe_api_key", "");
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
@@ -297,6 +301,11 @@ export class Config {
         Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
         Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
         Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
+        Config.use_openshift_routes = Config.parseBoolean(Config.getEnv("use_openshift_routes", "false"));
+        Config.agent_image_pull_secrets = Config.parseArray(Config.getEnv("agent_image_pull_secrets", ""));
+
+        
+
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
         Config.auto_create_personal_noderedapi_group = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
         Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
@@ -409,6 +418,7 @@ export class Config {
 
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
         Config.agent_images = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+        Config.agent_domain_schema = Config.getEnv("agent_domain_schema", "");
 
         Config.agent_apiurl = Config.getEnv("agent_apiurl", "");
         Config.agent_oidc_config = Config.getEnv("agent_oidc_config", "");
@@ -524,6 +534,9 @@ export class Config {
     public static HTTP_PROXY: string = Config.getEnv("HTTP_PROXY", "");
     public static HTTPS_PROXY: string = Config.getEnv("HTTPS_PROXY", "");
     public static NO_PROXY: string = Config.getEnv("NO_PROXY", "");
+    public static agent_HTTP_PROXY: string = Config.getEnv("agent_HTTP_PROXY", "");
+    public static agent_HTTPS_PROXY: string = Config.getEnv("agent_HTTPS_PROXY", "");
+    public static agent_NO_PROXY: string = Config.getEnv("agent_NO_PROXY", "");
 
     public static stripe_api_key: string = Config.getEnv("stripe_api_key", "");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
@@ -544,6 +557,8 @@ export class Config {
 
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
     public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
+    public static use_openshift_routes: boolean = Config.parseBoolean(Config.getEnv("use_openshift_routes", "false"));
+    public static agent_image_pull_secrets: string[] = Config.parseArray(Config.getEnv("agent_image_pull_secrets", ""));
     public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
     public static auto_create_personal_noderedapi_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
     public static force_add_admins: boolean = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
@@ -658,6 +673,7 @@ export class Config {
     // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs with chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\"}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python with chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+    public static agent_domain_schema: string = Config.getEnv("agent_domain_schema", "");
 
     public static agent_apiurl: string = Config.getEnv("agent_apiurl", "");
     public static agent_oidc_config: string = Config.getEnv("agent_oidc_config", "");

@@ -459,9 +459,9 @@ export class dockerdriver implements i_nodered_driver {
 
         if (NoderedUtil.IsNullUndefinded(instance)) {
 
-            let domain_schema = Config.nodered_domain_schema;
+            let domain_schema = Config.agent_domain_schema;
             if (NoderedUtil.IsNullEmpty(domain_schema)) {
-                domain_schema = "$nodered_id$." + Config.domain;
+                domain_schema = "$slug$." + Config.domain;
             }
             domain_schema = domain_schema.split("$nodered_id$").join("$slug$")
             const hostname = domain_schema.replace("$slug$", agent.slug);

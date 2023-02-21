@@ -1110,6 +1110,11 @@ export class LoginProvider {
             if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
                 nodered_domain_schema = "$nodered_id$." + Config.domain;
             }
+            let agent_domain_schema = Config.agent_domain_schema;
+            if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
+                agent_domain_schema = "$slug$." + Config.domain;
+            }
+            
             let forceddomains = [];
             var providers = await Logger.DBHelper.GetProviders(null);
             for (let i = 0; i < providers.length; i++) {
@@ -1128,6 +1133,7 @@ export class LoginProvider {
                 auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
                 namespace: Config.namespace,
                 nodered_domain_schema: nodered_domain_schema,
+                agent_domain_schema: agent_domain_schema,
                 websocket_package_size: Config.websocket_package_size,
                 version: Config.version,
                 stripe_api_key: Config.stripe_api_key,
