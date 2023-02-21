@@ -7729,13 +7729,13 @@ export class AgentCtrl extends entityCtrl<any> {
         this.sizewarning = ""
         var product = this.products.find(x => x.stripeprice == this.model.stripeprice)
         if(product.stripeprice == "") product = null
-        if(this.model.image == "openiap/nodechromiumagent") {
+        if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             if(product == null || product.metadata.resources.limits.memory == "256Mi") {
                 this.sizewarningtitle = "Not enough ram"
                 this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Plus plan or higher"
             }
         }
-        if(this.model.image == "openiap/pychromiumagent") {
+        if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
             if(product == null || product.metadata.resources.limits.memory == "256Mi") {
                 this.sizewarningtitle = "Not enough ram"
                 this.sizewarning = "This instance might not start, or will run slow if not assigned a payed Plus plan or higher"
@@ -7749,13 +7749,13 @@ export class AgentCtrl extends entityCtrl<any> {
             this.PlanUpdated()
             return;
         }
-        if(this.model.image == "openiap/nodeagent") {
+        if(this.model.image.indexOf("openiap/nodeagent")> -1) {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/nodeagenttest.git",
                 "wiq":"nodeagent"
             }
         }
-        if(this.model.image == "openiap/noderedagent") {
+        if(this.model.image.indexOf("openiap/noderedagent") > -1) {
             // var name = WebSocketClient.instance.user.username.toLowerCase();
             // name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
             this.model.environment = {
@@ -7763,26 +7763,26 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             this.model.webserver = true;
         }
-        if(this.model.image == "openiap/nodechromiumagent") {
+        if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/nodepuppeteertest.git",
                 "wiq": "nodepuppeteertest"
             }
             this.PlanUpdated()
         }
-        if(this.model.image == "openiap/dotnetagent") {
+        if(this.model.image.indexOf("openiap/dotnetagent") > -1) {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/dotnetagenttest.git",
                 "wiq":"dotnetagent"
             }
         }
-        if(this.model.image == "openiap/pyagent") {
+        if(this.model.image.indexOf("openiap/pyagent") > -1) {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/pyagenttest.git",
                 "wiq":"pyagent"
             }
         }
-        if(this.model.image == "openiap/pychromiumagent") {
+        if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
             this.model.environment = {
                 "gitrepo3": "https://github.com/openiap/rcctest.git",
                 "gitrepo2": "https://github.com/openiap/robotframeworktest.git",
