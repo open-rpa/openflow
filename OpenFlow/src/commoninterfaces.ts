@@ -111,6 +111,7 @@ export interface iAgent extends iBase {
     slug: string;
     tz: string;
     image: string;
+    port: number;
     agentid: string;
     webserver: boolean;
     sleep: boolean;

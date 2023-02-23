@@ -496,11 +496,14 @@ export class dockerdriver implements i_nodered_driver {
             if(openiapagent.indexOf("/")> - 1) openiapagent = openiapagent.substring(openiapagent.lastIndexOf("/") + 1)
             Labels["openiapagent"] = openiapagent;
             Labels["agentid"] = agent.agentid;
+            var agentport:number = agent.port as any;
+            if(agentport == null || (agentport as any) == "") agentport = Config.port
+
             if(agent.webserver) {
                 Labels["traefik.enable"] = "true";
                 Labels["traefik.http.routers." + agent.slug + ".entrypoints"] = Config.agent_docker_entrypoints;
                 Labels["traefik.http.routers." + agent.slug + ".rule"] = "Host(`" + hostname + "`)";
-                Labels["traefik.http.services." + agent.slug + ".loadbalancer.server.port"] = Config.port.toString()
+                Labels["traefik.http.services." + agent.slug + ".loadbalancer.server.port"] = agentport.toString()
                 if (!NoderedUtil.IsNullEmpty(Config.agent_docker_certresolver)) {
                     Labels["traefik.http.routers." + agent.slug + ".tls.certresolver"] = Config.agent_docker_certresolver;
                 }
@@ -516,7 +519,7 @@ export class dockerdriver implements i_nodered_driver {
                 "wsapiurl=" + wsapiurl,
                 "domain=" + hostname,
                 "protocol=" + Config.protocol,
-                "port=" + Config.port.toString(),
+                "port=" + agentport.toString(),
                 "NODE_ENV=" + Config.NODE_ENV,
                 "HTTP_PROXY=" + Config.HTTP_PROXY,
                 "HTTPS_PROXY=" + Config.HTTPS_PROXY,

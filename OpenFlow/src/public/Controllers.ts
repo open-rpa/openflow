@@ -7779,6 +7779,12 @@ export class AgentCtrl extends entityCtrl<any> {
             this.PlanUpdated()
             return;
         }
+        var image = this.images.find(x => x.image == this.model.image)
+        if(this.model.port != null && this.model.port != "") {
+            this.model.webserver = true;
+        } else {
+            this.model.webserver = (image.port != null && image.port != "");
+        }        
         if(this.model.image.indexOf("openiap/nodeagent")> -1) {
             this.model.environment = {
                 "gitrepo": "https://github.com/openiap/nodeagenttest.git",
@@ -7791,7 +7797,6 @@ export class AgentCtrl extends entityCtrl<any> {
             this.model.environment = {
                 "nodered_id": this.model.slug,
             }
-            this.model.webserver = true;
         }
         if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             this.model.environment = {
@@ -7952,6 +7957,15 @@ export class AgentCtrl extends entityCtrl<any> {
         try {
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+            var image = this.images.find(x => x.image == this.model.image)
+            if(this.model.port != null && this.model.port != "") {
+                this.model.webserver = true;
+            } else if (image != null) {
+                this.model.webserver = (image.port != null && image.port != "");
+                this.model.port = image.port
+            }        
+    
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
