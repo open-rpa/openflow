@@ -7675,6 +7675,7 @@ export class AgentCtrl extends entityCtrl<any> {
     instancelog: string = "";
     products: any[] = [{"stripeprice": "", "name": "Free tier"}];
     images: any[] = [];
+    resource: any = null;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7693,6 +7694,7 @@ export class AgentCtrl extends entityCtrl<any> {
             // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
             var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
             if(products.length > 0) {
+                this.resource = products[0];
                 this.products = this.products.concat(products[0].products);
             }
             this.images = this.WebSocketClientService.agent_images;
@@ -7727,18 +7729,46 @@ export class AgentCtrl extends entityCtrl<any> {
     PlanUpdated() {
         this.sizewarningtitle = ""
         this.sizewarning = ""
+        if(this.resource == null || this.products == null || this.products.length < 2) return; // no plans, don't care
         var product = this.products.find(x => x.stripeprice == this.model.stripeprice)
         if(product.stripeprice == "") product = null
+        var ram = product?.metadata?.resources?.limits?.memory;
+        if(ram == null) {
+            ram = product?.metadata?.resources?.requests?.memory;
+        }
+        if(ram == null) {
+            ram = this.resource?.defaultmetadata?.resources?.limits?.memory;
+        }
+        if(ram == null) {
+            ram = this.resource?.defaultmetadata?.resources?.requests?.memory;
+        }
+        
+        if(ram == null) ram = "128Mi";
+        if(ram.indexOf("Mi") > -1) {
+            ram = ram.replace("Mi", "")
+            ram = parseInt(ram) / 1024;
+        } else if(ram.indexOf("Gi") > -1) {
+            ram = ram.replace("Gi", "")
+            ram = parseInt(ram);
+        }
         if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
-            if(product == null || product.metadata.resources.limits.memory == "256Mi") {
+            if(product == null || ram < 0.25) {
                 this.sizewarningtitle = "Not enough ram"
-                this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Plus plan or higher"
+                if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at 256Mi ram or higher"
+                } else {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at 256Mi ram or higher"
+                }
             }
         }
         if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
-            if(product == null || product.metadata.resources.limits.memory == "256Mi") {
+            if(product == null || ram < 0.25) {
                 this.sizewarningtitle = "Not enough ram"
-                this.sizewarning = "This instance might not start, or will run slow if not assigned a payed Plus plan or higher"
+                if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at 256Mi ram or higher"
+                } else {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at 256Mi ram or higher"
+                }
             }
         }
     }
