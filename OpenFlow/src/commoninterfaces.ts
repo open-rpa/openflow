@@ -84,7 +84,7 @@ export interface i_nodered_driver {
 
     EnsureInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, parent: Span): Promise<void>;
     GetInstancePods(tokenUser: TokenUser, jwt:string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]>;
-    RemoveInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, parent: Span): Promise<void>;
+    RemoveInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void>;
     GetInstanceLog(tokenUser: TokenUser, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<string>;
     RemoveInstancePod(tokenUser: TokenUser, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<void>;
     InstanceCleanup(parent: Span): Promise<void>;
@@ -106,12 +106,20 @@ export interface iBase {
     _version: number;
     constructor();
 }
-
+export interface iAgentVolume {
+    type: string;
+    name: string;
+    mountpath: string;
+    storageclass: string;
+    driver: string;
+    size: string
+}
 export interface iAgent extends iBase {
     slug: string;
     tz: string;
     image: string;
     port: number;
+    volumes: iAgentVolume[];
     agentid: string;
     webserver: boolean;
     sleep: boolean;

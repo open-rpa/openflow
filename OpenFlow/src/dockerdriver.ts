@@ -569,7 +569,7 @@ export class dockerdriver implements i_nodered_driver {
 
         }
     }
-    public async RemoveInstance(tokenUser: TokenUser, jwt: string, agent: iAgent, parent: Span): Promise<void> {
+    public async RemoveInstance(tokenUser: TokenUser, jwt: string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstance", parent);
         try {
             Logger.instanse.debug("[" + agent.slug + "] RemoveInstance", span);
@@ -661,7 +661,7 @@ export class dockerdriver implements i_nodered_driver {
                         Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
                         var agent = await Config.db.GetOne<iAgent>({ query: { slug: item.metadata.name }, collectionname: "agents", jwt: rootjwt }, parent);
                         if(agent != null) {
-                            await this.RemoveInstance(rootuser, rootjwt, agent, parent);
+                            await this.RemoveInstance(rootuser, rootjwt, agent, false, parent);
                         } else {
                             Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name , parent, { user: item.metadata.name });
                         }
@@ -698,7 +698,7 @@ export class dockerdriver implements i_nodered_driver {
                             let cpu_usage = 0;
                             let memory = 0;
                             let memorylimit = 0;
-                            memory = stats.memory_stats.usage;
+                            if(stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
                             if(stats.memory_stats.stats && stats.memory_stats.stats.inactive_file) {
                                 if(memory - stats.memory_stats.stats.inactive_file > 1000) {
                                     // is this correct ? usage is wrong when comparing to docker stats

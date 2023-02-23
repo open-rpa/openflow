@@ -7964,8 +7964,13 @@ export class AgentCtrl extends entityCtrl<any> {
             } else if (image != null) {
                 this.model.webserver = (image.port != null && image.port != "");
                 this.model.port = image.port
-            }        
-    
+            }
+            if(image != null && image.volumes != null && image.volumes.length > 0) {
+                this.model.volumes = image.volumes;
+            }
+            if(this.model.stripeprice == "" || this.model.stripeprice == null) {
+                this.model.autostart = false;
+            }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
                 await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})

@@ -129,7 +129,7 @@
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">options</span>
       </div>
-      <div class="custom-checkbox" ng-show="ctrl.model.stripeprice != ''">
+      <div class="custom-checkbox" ng-show="menuctrl.hasrole('admins') || ctrl.model.stripeprice != ''">
         <input type="checkbox" id="if-5-autostart" value="{{ctrl.model.autostart}}" ng-model="ctrl.model.autostart"
           ng-disabled="ctrl.loading==true">
         <label for="if-5-autostart" translate lib="web" ng-disabled="ctrl.loading==true">autostart</label>

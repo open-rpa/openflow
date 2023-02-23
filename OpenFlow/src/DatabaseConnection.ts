@@ -1573,6 +1573,13 @@ export class DatabaseConnection extends events.EventEmitter {
                         throw new Error("Access denied");
                     }
                 }
+                // @ts-ignore
+                if(item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice))
+                {
+                    if (!user.HasRoleName("admins")) {
+                        throw new Error("Access denied");
+                    }
+                }
             }
             if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
                 let user2: User = item as any;
@@ -1910,6 +1917,13 @@ export class DatabaseConnection extends events.EventEmitter {
                             throw new Error("Access denied");
                         }
                     }
+                    // @ts-ignore
+                    if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
+                        if (!user.HasRoleName("admins")) {
+                            throw new Error("Access denied");
+                        }
+                    }
+
                 }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
                     user2.passwordhash = await Crypt.hash((item as any).newpassword);
@@ -2164,6 +2178,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     // @ts-ignore
                     if(original.runas != q.item.runas && q.item.runas != user._id) {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                            throw new Error("Access denied");
+                        }
+                    }
+                    // @ts-ignore
+                    if(original.autostart != q.item.autostart && q.item.autostart == true && NoderedUtil.IsNullEmpty(q.item.stripeprice)) {
+                        if (!user.HasRoleName("admins")) {
                             throw new Error("Access denied");
                         }
                     }
