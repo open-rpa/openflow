@@ -2986,9 +2986,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     throw new Error("Access denied");
                 }
             }
-            if (collectionname == "agents") {
-                throw new Error("Access denied, use agents page or api to delete agents");
-            }
 
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
@@ -3161,9 +3158,6 @@ export class DatabaseConnection extends events.EventEmitter {
 
 
             let baseq: any = {};
-            if (collectionname == "agents") {
-                throw new Error("Access denied, use agents page or api to delete agents");
-            }
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;

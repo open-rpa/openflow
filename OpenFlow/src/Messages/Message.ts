@@ -1299,7 +1299,9 @@ export class Message {
                 if (doc._type == "workitemqueue") {
                     throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
                 }
-
+            }
+            if (msg.collectionname == "agents") {
+                throw new Error("Access denied, use agents page or api to delete agents");
             }
             // @ts-ignore
             msg.affectedrows = await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
@@ -1316,6 +1318,9 @@ export class Message {
         try {
             msg = DeleteManyMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (msg.collectionname == "agents") {
+                throw new Error("Access denied, use agents page or api to delete agents");
+            }
             msg.affectedrows = await Config.db.DeleteMany(msg.query, msg.ids, msg.collectionname, null, msg.recursive, msg.jwt, span);
             delete msg.ids;
             delete msg.query;
