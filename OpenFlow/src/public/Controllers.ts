@@ -7744,7 +7744,6 @@ export class AgentCtrl extends entityCtrl<any> {
         // this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
         for(var x = 0; x < this.instances.length; x++) {
             var instance =  this.instances[x]
-            console.log(instance)
             instance.showstatus = "unknown"
             if(instance.status && instance.status.phase) {
                 instance.showstatus = instance.status.phase;
