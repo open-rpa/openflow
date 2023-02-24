@@ -29,8 +29,7 @@
       <div class="input-group row-eq-spacing-sm">
         <div class="col-sm">
           <label for="name" translate lib="web">status</label>
-          <span class="form-control">{{ ( instance.metadata.deletionTimestamp != null ? " deleting" :
-            instance.status.phase) }}</span>
+          <span class="form-control">{{ instance.showstatus }}</span>
         </div>
         <div class="col-sm">
           <label for="name" translate lib="web">cpu</label>
@@ -64,16 +63,26 @@
       </div>
 
     </div>
-
-    <div ng-show="ctrl.instancelog!=''" class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom">
-      <!-- py-10 = padding-top: 1rem (10px) and padding-bottom: 1rem (10px), bg-light-lm = background-color: var(--gray-color-light) only in light mode, bg-very-dark-dm = background-color: var(--dark-color-dark) only in dark mode, rounded-bottom = rounded corners on the bottom -->
-      <p class="font-size-12 m-0"> <!-- font-size-12 = font-size: 1.2rem (12px), m-0 = margin: 0 -->
-      <pre>{{ ctrl.instancelog }}</pre>
-      </p>
-    </div>
   </div>
 </div>
 
+<div class="w-800 mw-full" ng-show="ctrl.instancelog!=''">
+  <div class="card p-0">
+    <div class="px-card py-10 border-bottom">
+      <h2 class="card-title font-size-18 m-0">
+        {{ ctrl.instancelogpodname }}
+      </h2>
+    </div>
+    <div class="content">
+      <div class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom">
+        <!-- py-10 = padding-top: 1rem (10px) and padding-bottom: 1rem (10px), bg-light-lm = background-color: var(--gray-color-light) only in light mode, bg-very-dark-dm = background-color: var(--dark-color-dark) only in dark mode, rounded-bottom = rounded corners on the bottom -->
+        <p class="font-size-12 m-0"> <!-- font-size-12 = font-size: 1.2rem (12px), m-0 = margin: 0 -->
+        <pre>{{ ctrl.instancelog }}</pre>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="shadow card">
   <div class="form-row input-group" ng-show="ctrl.model._id != '' && ctrl.model._id!=null">

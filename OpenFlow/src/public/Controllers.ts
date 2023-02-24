@@ -7592,13 +7592,16 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
         for(var x = 0; x < instances.length; x++) {
             var instance =  instances[x]
-            // @ts-ignore
-            if(model.status != "running") {
-                // @ts-ignore
+            model.status = "unknown"
+            if(instance.status && instance.status.phase) {
                 model.status = instance.status.phase;
-                // @ts-ignore
-                if(instance.metadata.deletionTimestamp) model.status = "deleting"
             }
+            if(model.status == "running" || model.status == "Running") {
+                if(instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
+                    model.status = instance.status.containerStatuses[0].started ? "running" : "stopped " + instance.status.containerStatuses[0].state.waiting.reason;
+                }
+            }
+            if(instance.metadata.deletionTimestamp) model.status = "deleting"
         }
         if(instances.length == 0) {
             model.status = "missing"
@@ -7683,6 +7686,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
 
 export class AgentCtrl extends entityCtrl<any> {
     instances: any[] = [];
+    instancelogpodname: string = "";
     instancelog: string = "";
     products: any[] = [{"stripeprice": "", "name": "Free tier"}];
     images: any[] = [];
@@ -7734,6 +7738,29 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.model.stripeprice == null) this.model.stripeprice = "";
         this.searchtext = this.model.runasname
         this.loadInstances()
+    }
+    async getStatus(model) {
+        this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+        // this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
+        for(var x = 0; x < this.instances.length; x++) {
+            var instance =  this.instances[x]
+            console.log(instance)
+            instance.showstatus = "unknown"
+            if(instance.status && instance.status.phase) {
+                instance.showstatus = instance.status.phase;
+            }
+            if(instance.showstatus == "running" || instance.showstatus == "Running") {
+                if(instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
+                    // instance.showstatus = instance.status.containerStatuses[0].state.running ? "running" : "stopped";
+                    instance.showstatus = instance.status.containerStatuses[0].started ? "Running" : "Stopped " + instance.status.containerStatuses[0].state.waiting.reason;
+                }
+            }
+            if(instance.metadata.deletionTimestamp) instance.showstatus = "Deleting"
+        }
+        if(this.instances.length == 0) {
+            instance.showstatus = "missing"
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     sizewarningtitle: string = "";
     sizewarning: string = "";
@@ -7849,7 +7876,8 @@ export class AgentCtrl extends entityCtrl<any> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if (!this.refreshtimer) {
             // this.loading = true;
-            this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+            // this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+            this.getStatus(this.model)
             this.loading = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.refreshtimer = setTimeout(() => {
@@ -7955,17 +7983,13 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     async GetInstanceLog(podname:string): Promise<void> {
         try {
-            if(this.instancelog != "") {
-                this.errormessage = "";
-                this.instancelog = "";
-            } else {
-                this.loading = true;
-                this.errormessage = "";
-                this.instancelog = "";
-                this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
-            }
+            this.loading = true;
+            this.instancelogpodname = podname;
+            this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
+            this.errormessage = "";
         } catch (error) {
             this.errormessage = error.message ? error.message : error
+            this.instancelog = "";
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
