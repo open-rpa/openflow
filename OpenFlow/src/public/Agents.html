@@ -27,7 +27,7 @@
     <tr ng-repeat="model in ctrl.models">
       <td><a ng-href="#/Agent/{{model._id}}">{{model.name}}</a></td>
       <td>{{model.slug}}</td>
-      <td>{{model.image}}</td>
+      <td>{{ctrl.trimimage(model.image)}}</td>
       <td>{{model.status}}</td>
       <td>
         <button ng-click="ctrl.StartAgent(model)" class="btn"  ng-disabled="ctrl.loading==true || (model.status == 'running' || model.status == 'Running') || model.status == '...'"><em

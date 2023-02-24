@@ -5041,7 +5041,6 @@ export class Message {
                 break;
             case "getagentlog":
                 if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
-                if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
@@ -5061,8 +5060,8 @@ export class Message {
                 if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
-                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
-                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.delete)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${agent.name}`);
                 }
                 await Logger.nodereddriver.RemoveInstance(this.tuser, this.jwt, agent, true, parent);
                 Config.db.DeleteOne(agent._id, "agents", false, jwt, parent);

@@ -678,10 +678,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
-            if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
-                var test = DatabaseConnection.hasAuthorization(user, item, Rights.full_control);
+            if (!DatabaseConnection.hasAuthorization(user , item, Rights.read)) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                // item = this.ensureResource(item, collectionname);
+            } else if (!DatabaseConnection.hasAuthorization(user , item, Rights.update)) {
+                Base.addRight(item, user._id, user.name, [Rights.full_control]);
             }
             item = this.ensureResource(item, collectionname);
         } catch (error) {
@@ -2986,6 +2986,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     throw new Error("Access denied");
                 }
             }
+            if (collectionname == "agents") {
+                throw new Error("Access denied, use agents page or api to delete agents");
+            }
 
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
@@ -2997,6 +3000,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: arr.length });
                 }
                 if (arr.length === 1) {
+                    // since admins by default can do everything using getbasequery, we need to check if the user really has delete
+                    if (!DatabaseConnection.hasAuthorization(user, arr[0].metadata, Rights.delete)) {
+                        throw new Error(`[${user.name}] Access denied, missing delete permission`);
+                    }
+
                     const ot_end = Logger.otel.startTimer();
                     await this._DeleteFile(id);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, DatabaseConnection.otel_label(collectionname, user, "delete"));
@@ -3008,6 +3016,9 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database", span, { collection: collectionname, user: user?.username });
             const docs = await this.db.collection(collectionname).find(_query).toArray();
             for (let i = 0; i < docs.length; i++) {
+                if (!DatabaseConnection.hasAuthorization(user, docs[0] as any, Rights.delete)) {
+                    throw new Error(`[${user.name}] Access denied, missing delete permission`);
+                }
                 // @ts-ignore
                 let doc: Customer = docs[i];
                 if (collectionname == "users" && doc._type == "user") {
@@ -3150,6 +3161,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
 
             let baseq: any = {};
+            if (collectionname == "agents") {
+                throw new Error("Access denied, use agents page or api to delete agents");
+            }
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
@@ -3501,7 +3515,12 @@ export class DatabaseConnection extends events.EventEmitter {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
         }
         if (Config.force_add_admins && item._id != WellknownIds.root) {
-            Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+            var fakeadmins: TokenUser = {_id: WellknownIds.admins } as any
+            if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.read)) {
+                Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+            } else if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.update)) {
+                Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+            }
         }
         if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
             var _searchnames = [];

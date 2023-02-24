@@ -7605,6 +7605,17 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    trimimage(image:string) {
+        if(image == null) return "";
+        while(image.indexOf("/") != image.lastIndexOf("/")) {
+            image = image.substring(image.indexOf("/") + 1);
+        }
+        // remove tag too ?
+        // if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(':') > -1) {
+        //     image = image.split(':')[0];
+        // }
+        return image;
+    }
     async processdata() {
         if (!this.userdata.data.AgentsCtrl) this.userdata.data.AgentsCtrl = {};
         this.userdata.data.AgentsCtrl.basequery = this.basequery;
