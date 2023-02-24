@@ -160,6 +160,23 @@ export class OAuthProvider {
                     }
                 )
             }
+            // var grafana = instance.clients.find(x => x.client_id == "grafana");
+            // if(grafana == null) {
+            //     instance.clients.push({
+            //             grants: ['password', 'refresh_token', 'authorization_code'],
+            //             defaultrole : "Viewer",
+            //             rolemappings : { "admins": "Admin" },
+            //             clientId: "grafana",client_id: "grafana", 
+            //             clientSecret: "tf555FrdWK7XJxYv2Nw3N1iFOliK4HHeIGct", client_secret: "tf555FrdWK7XJxYv2Nw3N1iFOliK4HHeIGct",
+            //             token_endpoint_auth_method: "client_secret_post",
+            //             response_types: ['code', 'id_token', 'code id_token'],
+            //             grant_types: ['implicit', 'authorization_code'],
+            //             post_logout_redirect_uris: [],
+            //             redirect_uris: [],
+            //             openflowsignout: true
+            //         }
+            //     )
+            // }
 
             const provider = new Provider(Config.baseurl() + "oidc", {
                 clients: instance.clients,

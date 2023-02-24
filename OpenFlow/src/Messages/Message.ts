@@ -3354,13 +3354,33 @@ export class Message {
         const jwt: string = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
-            if(Logger.nodereddriver != null) {
-                await Logger.nodereddriver.InstanceCleanup(span);
-                var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true } }, span);
-                for (let i = 0; i < agents.length; i++) {
-                    const agent = agents[i];
-                    await Logger.nodereddriver.EnsureInstance(rootuser, jwt, agent, span);                    
+            try {
+                if(Logger.nodereddriver != null) {
+                    try {
+                        Logger.instanse.info("HouseKeeping Run InstanceCleanup", span);
+                        await Logger.nodereddriver.InstanceCleanup(span);
+                    } catch (error) {
+                        Logger.instanse.error(error, span);
+                    }
+                    var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true }, jwt }, span);
+                    Logger.instanse.info("HouseKeeping ensure " + agents.length + " agents", span);
+                    for (let i = 0; i < agents.length; i++) {
+                        const agent = agents[i];
+                        var pods = await Logger.nodereddriver.GetInstancePods(rootuser, jwt, agent, false, span);
+                        if(pods == null || pods.length == 0) {
+                            if(agent.name != agent.slug) {
+                                Logger.instanse.info("HouseKeeping ensure " + agent.name + " (" + agent.slug + ")", span);
+                            } else {
+                                Logger.instanse.info("HouseKeeping ensure " + agent.name, span);
+                            }
+                            await Logger.nodereddriver.EnsureInstance(rootuser, jwt, agent, span);
+                        }
+                    }
+                } else {
+                    Logger.instanse.warn("nodereddriver is null, skip agent check", span);
                 }
+            } catch (error) {
+                Logger.instanse.error(error, span);
             }
             
             if (!skipNodered) {

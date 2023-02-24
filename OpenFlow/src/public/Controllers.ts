@@ -7826,6 +7826,12 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             this.PlanUpdated()
         }
+        if(this.model.image.indexOf("openiap/grafana") > -1) {
+            this.model.environment = {
+                "GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH": "contains(roles[*], 'users') && 'Admin'"
+            }
+            this.PlanUpdated()
+        }
     }
     async loadInstances() {
         this.loading = false;
@@ -7967,9 +7973,6 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             if(image != null && image.volumes != null && image.volumes.length > 0) {
                 this.model.volumes = image.volumes;
-            }
-            if(this.model.stripeprice == "" || this.model.stripeprice == null) {
-                this.model.autostart = false;
             }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });

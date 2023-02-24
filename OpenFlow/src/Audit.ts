@@ -152,13 +152,17 @@ export class Audit {
             log.name = name;
             log.username = user.username;
             log.instancename = instancename;
+            if (!NoderedUtil.IsNullEmpty(image)) {
+                while(image.indexOf("/") != image.lastIndexOf("/")) {
+                    image = image.substring(image.indexOf("/") + 1);
+                }
+            }
             log.image = image;
             if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(':') > -1) {
                 log.imagename = image.split(':')[0];
                 log.imageversion = image.split(':')[1];
             } else {
                 log.imagename = image;
-
             }
             if (!NoderedUtil.IsNullEmpty(instancename) && NoderedUtil.IsNullEmpty(log.name)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
