@@ -7824,7 +7824,7 @@ export class AgentCtrl extends entityCtrl<any> {
         }        
         if(this.model.image.indexOf("openiap/nodeagent")> -1) {
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/nodeagenttest.git",
+                "gitrepo": "https://github.com/openiap/nodeworkitemagent.git",
                 "wiq":"nodeagent"
             }
         }
@@ -7837,28 +7837,30 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/nodepuppeteertest.git",
+                "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
                 "wiq": "nodepuppeteertest"
             }
             this.PlanUpdated()
         }
         if(this.model.image.indexOf("openiap/dotnetagent") > -1) {
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/dotnetagenttest.git",
+                "gitrepo": "https://github.com/openiap/dotnetworkitemagent.git",
                 "wiq":"dotnetagent"
             }
         }
         if(this.model.image.indexOf("openiap/pyagent") > -1) {
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/pyagenttest.git",
+                "gitrepo": "https://github.com/openiap/pyworkitemagent.git",
                 "wiq":"pyagent"
             }
         }
         if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
             this.model.environment = {
-                "gitrepo3": "https://github.com/openiap/rcctest.git",
-                "gitrepo2": "https://github.com/openiap/robotframeworktest.git",
-                "gitrepo": "https://github.com/openiap/taguitest.git",
+                "gitrepo3": "https://github.com/openiap/rccworkitemagent.git",
+                "gitrepo2": "https://github.com/openiap/robotframeworkagent.git",
+                "gitrepo": "https://github.com/openiap/taguiagent.git",
+                "wiq3": "rcctest",
+                "wiq2": "robotframeworktest",
                 "wiq": "taguitest"
             }
             this.PlanUpdated()
