@@ -629,13 +629,14 @@ export class dockerdriver implements i_nodered_driver {
         }
     }
     public async InstanceCleanup(parent: Span): Promise<void> {
-        const noderedresource: any = await Config.db.GetResource("Nodered Instance", parent);
-        let runtime: number = noderedresource?.defaultmetadata?.runtime_hours;
+        // const noderedresource: any = await Config.db.GetResource("Nodered Instance", parent);
+        const resource: any = await Config.db.GetResource("Agent Instance", parent);
+        let runtime: number = resource?.defaultmetadata?.runtime_hours;
         if (NoderedUtil.IsNullUndefinded(runtime)) {
-            // If nodered resource does not exists, dont turn off nodereds
+            // If agent resource does not exists, dont turn off agents
             runtime = 0;
-            // If nodered resource does exists, but have no default, use 24 hours
-            if (!NoderedUtil.IsNullUndefinded(noderedresource)) runtime = 24;
+            // If agent resource does exists, but have no default, use 24 hours
+            if (!NoderedUtil.IsNullUndefinded(resource)) runtime = 24;
         }
         parent?.addEvent("init Docker()");
         const docker = new Docker();
@@ -653,12 +654,12 @@ export class dockerdriver implements i_nodered_driver {
             const openiapagent = item.Labels["openiapagent"];
             const billed = item.Labels["billed"];
             if (!NoderedUtil.IsNullEmpty(openiapagent)) {
-                if (!NoderedUtil.IsNullUndefinded(noderedresource) && runtime > 0) {
+                if (!NoderedUtil.IsNullUndefinded(resource) && runtime > 0) {
                     const date = new Date();
                     const a: number = (date as any) - (Created as any);
                     const diffhours = a / (1000 * 60 * 60);
                     if (billed != "true" && diffhours > runtime) {
-                        Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed nodered instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
+                        Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed agent instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
                         var agent = await Config.db.GetOne<iAgent>({ query: { slug: item.metadata.name }, collectionname: "agents", jwt: rootjwt }, parent);
                         if(agent != null) {
                             await this.RemoveInstance(rootuser, rootjwt, agent, false, parent);
