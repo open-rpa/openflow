@@ -5024,6 +5024,7 @@ export class Message {
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
+
                 await Logger.nodereddriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
                 break;
             case "stopagent":

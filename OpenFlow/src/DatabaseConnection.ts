@@ -14,6 +14,7 @@ import { clsstream } from "./WebSocketServerClient";
 import { SocketMessage } from "./SocketMessage";
 import { LoginProvider } from "./LoginProvider";
 import { WebServer } from "./WebServer";
+import { iAgent } from "./commoninterfaces";
 
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -1580,6 +1581,50 @@ export class DatabaseConnection extends events.EventEmitter {
                         throw new Error("Access denied");
                     }
                 }
+                if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
+                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                        customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
+                        if (customer != null) {
+                            (item as any).customerid = user.selectedcustomerid;
+                        }
+                    }
+                    if (NoderedUtil.IsNullEmpty((item as any).customerid) ) {
+                        (item as any).customerid = user.customerid;
+                    }
+                }
+                var agent:iAgent = (item as any);
+                if (NoderedUtil.IsNullEmpty(agent.slug)) {
+                    throw new Error("Slug is required for agents");
+                }
+                if (NoderedUtil.IsNullEmpty(agent.runas)) {
+                    agent.runas = user._id
+                }
+                if (!NoderedUtil.IsNullEmpty(agent.runas)) {
+                    var agentcount = 1;
+                    const resource: Resource = await Config.db.GetResource("Agent Instance", span);
+                    if(resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
+                        agentcount = parseInt(resource.defaultmetadata.agentcount);
+                    } else {
+                        agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
+                    }
+                    var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                    if(agentuser.customerid != null && agentuser.customerid != "") {
+                        const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
+                        agentcount += assigned.length
+
+                        var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt }, parent);
+                        if(agents.length >= agentcount) {
+                            throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                        }
+                    } else {
+                        var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas }, collectionname: "agents", jwt }, parent);
+                        if(agents.length >= agentcount) {
+                            throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                        }
+                    }
+                }
+                
+
             }
             if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
                 let user2: User = item as any;
@@ -1923,7 +1968,47 @@ export class DatabaseConnection extends events.EventEmitter {
                             throw new Error("Access denied");
                         }
                     }
+                    if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                            var customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
+                            if (customer != null) {
+                                (item as any).customerid = user.selectedcustomerid;
+                            }
+                        }
+                        if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
+                            (item as any).customerid = user.customerid;
+                        }
+                    }
 
+                    var agent:iAgent = (item as any);
+                    if (NoderedUtil.IsNullEmpty(agent.runas)) {
+                        agent.runas = user._id
+                    }
+                    if (!NoderedUtil.IsNullEmpty(agent.runas)) {
+                        var agentcount = 1;
+                        const resource: Resource = await Config.db.GetResource("Agent Instance", span);
+                        if(resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
+                            agentcount = parseInt(resource.defaultmetadata.agentcount);
+                        } else {
+                            agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
+                        }
+                        var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                        if(agentuser.customerid != null && agentuser.customerid != "") {
+                            const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
+                            agentcount += assigned.length
+    
+                            var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt }, parent);
+                            if(agents.length >= agentcount) {
+                                throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            }
+                        } else {
+                            var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas }, collectionname: "agents", jwt }, parent);
+                            if(agents.length >= agentcount) {
+                                throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            }
+                        }
+                    }
+    
                 }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
                     user2.passwordhash = await Crypt.hash((item as any).newpassword);
@@ -2187,6 +2272,48 @@ export class DatabaseConnection extends events.EventEmitter {
                             throw new Error("Access denied");
                         }
                     }
+                    if (NoderedUtil.IsNullEmpty((q.item as any).customerid)) {
+                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                            var _customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, true, span)
+                            if (_customer != null) {
+                                (q.item as any).customerid = user.selectedcustomerid;
+                            }
+                        }
+                        if (NoderedUtil.IsNullEmpty((q.item as any).customerid)) {
+                            (q.item as any).customerid = user.customerid;
+                        }
+                    }
+
+                    var agent:iAgent = (q.item as any);
+                    if (NoderedUtil.IsNullEmpty(agent.runas)) {
+                        agent.runas = user._id
+                    }
+                    if (!NoderedUtil.IsNullEmpty(agent.runas)) {
+                        var agentcount = 1;
+                        const resource: Resource = await Config.db.GetResource("Agent Instance", span);
+                        if(resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
+                            agentcount = parseInt(resource.defaultmetadata.agentcount);
+                        } else {
+                            agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
+                        }
+                        var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt: q.jwt }, parent);
+                        if(agentuser.customerid != null && agentuser.customerid != "") {
+                            const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
+                            agentcount += assigned.length
+    
+                            var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt: q.jwt }, parent);
+                            if(agents.length > agentcount) {
+                                throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            }
+                        } else {
+                            var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas }, collectionname: "agents", jwt: q.jwt }, parent);
+                            if(agents.length > agentcount) {
+                                throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            }
+                        }
+                    }
+    
+
                 }
     
                 if (q.collectionname === "users" && !NoderedUtil.IsNullEmpty(q.item._type) && !NoderedUtil.IsNullEmpty(q.item.name)) {
@@ -4334,13 +4461,22 @@ export class DatabaseConnection extends events.EventEmitter {
         if (assigned[0].quantity == 0) return null; // No longer assigned
         return assigned[0]
     }
-    public async GetResourceCustomerUsage(resourcename:string, customerid: string, parent: Span): Promise<ResourceUsage> {
+    public async GetResourceCustomerUsage(resourcename:string, customerid: string, parent: Span): Promise<ResourceUsage[]> {
         let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
         assigned = assigned.filter(x => x.resource == resourcename);
+        if(!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) ) {
+            assigned = assigned.filter(x => !NoderedUtil.IsNullEmpty(x.siid)); // Not completed payment
+        }
+        assigned = assigned.filter(x => x.quantity > 0);
         if(assigned.length == 0) return null; // No found
-        if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
-        if (assigned[0].quantity == 0) return null; // No longer assigned
-        return assigned[0]
+        return assigned;
+
+        // let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
+        // assigned = assigned.filter(x => x.resource == resourcename);
+        // if(assigned.length == 0) return null; // No found
+        // if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
+        // if (assigned[0].quantity == 0) return null; // No longer assigned
+        // return assigned[0]
     }
     public async GetProductResourceCustomerUsage(resourcename:string, stripeprice: string,  customerid: string, parent: Span): Promise<ResourceUsage> {
         let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
