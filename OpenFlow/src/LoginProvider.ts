@@ -681,18 +681,18 @@ export class LoginProvider {
             }
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "unknown", "unknown", span);
                 done("unknown user " + username, null);
                 return;
             }
             if (_user.disabled) {
-                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "unknown", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
 
             const tuser: TokenUser = TokenUser.From(_user);
-            await Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "unknown", "unknown", span);
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
@@ -812,16 +812,16 @@ export class LoginProvider {
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "unknown", "unknown", span);
                 done("unknown user " + username, null); return;
             }
             if (_user.disabled) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "unknown", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
             const tuser: TokenUser = TokenUser.From(_user);
-            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "unknown", "unknown", span);
             done(null, tuser);
         } catch (error) {
             Logger.instanse.error(error, span);

@@ -3,7 +3,7 @@ import { SocketMessage } from "../SocketMessage";
 import { Auth } from "../Auth";
 import { Crypt } from "../Crypt";
 import { Config } from "../Config";
-import { Audit, tokenType } from "../Audit";
+import { Audit, tokenType, clientType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
@@ -1403,299 +1403,317 @@ export class Message {
             // let hrend = process.hrtime(hrstart)
             let impostor: string = "";
             const UpdateDoc: any = { "$set": {} };
-            let type: tokenType = "local";
-                msg = SigninMessage.assign(this.data);
-                if (cli != null) {
-                    if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
-                    if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
-                }
-                let originialjwt = msg.jwt;
-                let tuser: TokenUser = null;
-                let user: User = null;
-                if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                    if(msg.validate_only) { this.command = "validatereply"; }
-                    span?.addEvent("using jwt, verify token");
-                    type = "jwtsignin";
-                    try {
-                        tuser = await Crypt.verityToken(msg.jwt, cli);
-                    } catch (error) {
-                        if (Config.client_disconnect_signin_error) cli.Close(span);
-                        throw error;
-                    }
-                    let _id = tuser._id;
-                    if (tuser != null) {
-                        if (NoderedUtil.IsNullEmpty(tuser._id)) {
-                            span?.addEvent("token valid, lookup username " + tuser.username);
-                            _id = tuser.username;
-                            user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
-                        } else {
-                            span?.addEvent("token valid, lookup id " + tuser._id);
-                            user = await Logger.DBHelper.FindById(tuser._id, span);
-                        }
-                    } else {
-                        span?.addEvent("Failed resolving token");
-                    }
-                    if (tuser == null || user == null) {
-                        if (!Config.auto_create_user_from_jwt) {
-                            // Nodered will spam this, so to not strain the system to much force an 1 second delay
-                            await new Promise(resolve => { setTimeout(resolve, 1000) });
-                            throw new Error("Failed resolving token, could not find user by " + _id);
-                        }
-                    }
+            let tokentype: tokenType = "local";
+            let protocol:clientType = "websocket";
+            // @ts-ignore
+            if(cli && cli.protocol) {
+                // @ts-ignore
+                protocol = cli.protocol;
+            }
+            msg = SigninMessage.assign(this.data);
+            if (cli != null) {
+                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
+                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+            }
+            // @ts-ignore
+            if(cli.clientagent == "") cli.clientagent = "unknown"
+            // @ts-ignore
+            if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+                cli.clientagent = "browser"
+            }
+            // @ts-ignore
+            if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+                cli.clientagent = "browser"
+            }
 
-                    if (cli?.clientagent == "openrpa" && user.dblocked == true) {
-                        // await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                        span?.addEvent("User dblocked, decline login");
-                        // Dillema ....
-                        // If we send an error or empy yser, the robot will spam new tabs 
-                        // If we just close the connection the user will not know what is wrong ...
-                        if (Config.client_disconnect_signin_error) cli.Close(span);
-                        throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
-                    }
-
-                    if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
-                        impostor = tuser.impostor;
-                    }
-
-                    if (user !== null && user !== undefined) {
-                        // refresh, for roles and stuff
-                        tuser = TokenUser.From(user);
-                    } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
-                        if (Config.auto_create_user_from_jwt) {
-                            const jwt: string = Crypt.rootToken();
-                            let extraoptions = {
-                                federationids: [],
-                                emailvalidated: true,
-                                formvalidated: true,
-                                validated: true
-                            }
-                            user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, extraoptions, span);
-                            if (user != null) tuser = TokenUser.From(user);
-                            if (user == null) {
-                                tuser = new TokenUser();
-                                tuser.username = msg.username;
-                            }
-                        } else {
-                            if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
-                        }
-                    }
-                    if (impostor !== "") {
-                        tuser.impostor = impostor;
-                    }
-                } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
-                    span?.addEvent("using rawAssertion, verify token");
-                    let AccessToken = null;
-                    let User = null;
-                    span?.addEvent("AccessToken.find");
-                    AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
-                    if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
-                        span?.addEvent("Account.findAccount");
-                        User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
-                    } else {
-                        var c = OAuthProvider.instance.clients;
-                        for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
-                            try {
-                                span?.addEvent("Client.find");
-                                var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
-                                span?.addEvent("IdToken.validate");
-                                AccessToken = await OAuthProvider.instance.oidc.IdToken.validate(msg.rawAssertion, _cli);
-                                if (!NoderedUtil.IsNullEmpty(AccessToken)) {
-                                    span?.addEvent("Account.findAccount");
-                                    User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.payload.sub);
-                                    break;
-                                }
-                            } catch (error) {
-
-                            }
-                        }
-                    }
-                    if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
-                        user = User.user;
-                        span?.addEvent("TokenUser.From");
-                        if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
-                    } else {
-                        type = "samltoken";
-                        span?.addEvent("LoginProvider.validateToken");
-                        user = await LoginProvider.validateToken(msg.rawAssertion, span);
-                        // refresh, for roles and stuff
-                        if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
-                    }
-                    delete msg.rawAssertion;
-                } else {
-                    span?.addEvent("using username/password, validate credentials");
-                    user = await Auth.ValidateByPassword(msg.username, msg.password, span);
-                    tuser = null;
-                    // refresh, for roles and stuff
-                    if (user != null) tuser = TokenUser.From(user);
-                    if (user == null) {
-                        span?.addEvent("using username/password, failed, check for exceptions");
-                        tuser = new TokenUser();
-                        tuser.username = msg.username;
-                    }
-                }
-                if(msg.validate_only !== true) {
-                    if (cli) cli.clientagent = msg.clientagent as any;
-                    if (cli) cli.clientversion = msg.clientversion;
-                    }
-                if (user === null || user === undefined || tuser === null || tuser === undefined) {
-                    if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
-                    await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
-                    throw new Error(tuser.username + " failed logging in using " + type);
-                } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
-                    if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
-                    await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+            let originialjwt = msg.jwt;
+            let tuser: TokenUser = null;
+            let user: User = null;
+            if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+                if (msg.validate_only) { this.command = "validatereply"; }
+                span?.addEvent("using jwt, verify token");
+                tokentype = "jwtsignin";
+                try {
+                    tuser = await Crypt.verityToken(msg.jwt, cli);
+                } catch (error) {
                     if (Config.client_disconnect_signin_error) cli.Close(span);
-                    throw new Error("Disabled user " + tuser.username + " failed logging in using " + type);
-                } else {
-                    if (msg.impersonate == "-1" || msg.impersonate == "false") {
-                        span?.addEvent("looking up impersonated user " + impostor);
-                        user = await Logger.DBHelper.FindById(impostor, span);
-                        if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
-                        user.impersonating = undefined;
-                        if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
-                            tuser = TokenUser.From(user);
-                            tuser.validated = true;
-                        } else {
-                            tuser = TokenUser.From(user);
-                        }
-                        msg.impersonate = undefined;
-                        impostor = undefined;
-                    }
-                    Logger.instanse.debug(tuser.username + " successfully signed in", span);
-                    span?.setAttribute("name", tuser.name);
-                    span?.setAttribute("username", tuser.username);
-                    if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
-                        // await Audit.LoginFailed(tuser.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    throw error;
+                }
+                let _id = tuser._id;
+                if (tuser != null) {
+                    if (NoderedUtil.IsNullEmpty(tuser._id)) {
+                        span?.addEvent("token valid, lookup username " + tuser.username);
+                        _id = tuser.username;
+                        user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
                     } else {
-                        await Audit.LoginSuccess(tuser, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                        span?.addEvent("token valid, lookup id " + tuser._id);
+                        user = await Logger.DBHelper.FindById(tuser._id, span);
                     }
-                    const userid: string = user._id;
+                } else {
+                    span?.addEvent("Failed resolving token");
+                }
+                if (tuser == null || user == null) {
+                    if (!Config.auto_create_user_from_jwt) {
+                        // Nodered will spam this, so to not strain the system to much force an 1 second delay
+                        await new Promise(resolve => { setTimeout(resolve, 1000) });
+                        throw new Error("Failed resolving token, could not find user by " + _id);
+                    }
+                }
+
+                if (cli?.clientagent == "openrpa" && user.dblocked == true) {
+                    // await Audit.LoginFailed(msg.user.username, type, provider, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                    span?.addEvent("User dblocked, decline login");
+                    // Dillema ....
+                    // If we send an error or empy yser, the robot will spam new tabs 
+                    // If we just close the connection the user will not know what is wrong ...
+                    if (Config.client_disconnect_signin_error) cli.Close(span);
+                    throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
+                }
+
+                if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
+                    impostor = tuser.impostor;
+                }
+
+                if (user !== null && user !== undefined) {
+                    // refresh, for roles and stuff
+                    tuser = TokenUser.From(user);
+                } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
+                    if (Config.auto_create_user_from_jwt) {
+                        const jwt: string = Crypt.rootToken();
+                        let extraoptions = {
+                            federationids: [],
+                            emailvalidated: true,
+                            formvalidated: true,
+                            validated: true
+                        }
+                        user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, extraoptions, span);
+                        if (user != null) tuser = TokenUser.From(user);
+                        if (user == null) {
+                            tuser = new TokenUser();
+                            tuser.username = msg.username;
+                        }
+                    } else {
+                        if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
+                    }
+                }
+                if (impostor !== "") {
+                    tuser.impostor = impostor;
+                }
+            } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
+                span?.addEvent("using rawAssertion, verify token");
+                let AccessToken = null;
+                let User = null;
+                span?.addEvent("AccessToken.find");
+                AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
+                if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                    span?.addEvent("Account.findAccount");
+                    User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
+                } else {
+                    var c = OAuthProvider.instance.clients;
+                    for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
+                        try {
+                            span?.addEvent("Client.find");
+                            var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
+                            span?.addEvent("IdToken.validate");
+                            AccessToken = await OAuthProvider.instance.oidc.IdToken.validate(msg.rawAssertion, _cli);
+                            if (!NoderedUtil.IsNullEmpty(AccessToken)) {
+                                span?.addEvent("Account.findAccount");
+                                User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.payload.sub);
+                                break;
+                            }
+                        } catch (error) {
+
+                        }
+                    }
+                }
+                if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                    user = User.user;
+                    span?.addEvent("TokenUser.From");
+                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                } else {
+                    tokentype = "samltoken";
+                    span?.addEvent("LoginProvider.validateToken");
+                    user = await LoginProvider.validateToken(msg.rawAssertion, span);
+                    // refresh, for roles and stuff
+                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                }
+                delete msg.rawAssertion;
+            } else {
+                span?.addEvent("using username/password, validate credentials");
+                user = await Auth.ValidateByPassword(msg.username, msg.password, span);
+                tuser = null;
+                // refresh, for roles and stuff
+                if (user != null) tuser = TokenUser.From(user);
+                if (user == null) {
+                    span?.addEvent("using username/password, failed, check for exceptions");
+                    tuser = new TokenUser();
+                    tuser.username = msg.username;
+                }
+            }
+            if (msg.validate_only !== true) {
+                if (cli) cli.clientagent = msg.clientagent as any;
+                if (cli) cli.clientversion = msg.clientversion;
+            }
+            if (user === null || user === undefined || tuser === null || tuser === undefined) {
+                if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
+                await Audit.LoginFailed(tuser.username, tokentype,  protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                throw new Error(tuser.username + " failed logging in using " + tokentype);
+            } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
+                if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
+                await Audit.LoginFailed(tuser.username, tokentype, protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                if (Config.client_disconnect_signin_error) cli.Close(span);
+                throw new Error("Disabled user " + tuser.username + " failed logging in using " + tokentype);
+            } else {
+                if (msg.impersonate == "-1" || msg.impersonate == "false") {
+                    span?.addEvent("looking up impersonated user " + impostor);
+                    user = await Logger.DBHelper.FindById(impostor, span);
+                    if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
+                    user.impersonating = undefined;
+                    if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                        tuser = TokenUser.From(user);
+                        tuser.validated = true;
+                    } else {
+                        tuser = TokenUser.From(user);
+                    }
+                    msg.impersonate = undefined;
+                    impostor = undefined;
+                }
+                Logger.instanse.debug(tuser.username + " successfully signed in", span);
+                span?.setAttribute("name", tuser.name);
+                span?.setAttribute("username", tuser.username);
+                if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
+                    // await Audit.LoginFailed(tuser.username, type, provider, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                } else {
+
+                    await Audit.LoginSuccess(tuser, tokentype, protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                }
+                const userid: string = user._id;
+                span?.setAttribute("name", tuser.name);
+                span?.setAttribute("username", tuser.username);
+                if (msg.longtoken) {
+                    span?.addEvent("createToken for longtoken");
+                    msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+                    originialjwt = msg.jwt;
+                } else {
+                    span?.addEvent("createToken for shorttoken");
+                    msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                    originialjwt = msg.jwt;
+                }
+                msg.user = tuser;
+                if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                    span?.addEvent("Lookup impersonating user " + user.impersonating);
+                    const items = await Config.db.query({ query: { _id: user.impersonating }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
+                    if (items.length == 0) {
+                        span?.addEvent("Failed Lookup");
+                        msg.impersonate = null;
+                    } else {
+                        span?.addEvent("Lookup succeeded");
+                        msg.impersonate = user.impersonating;
+                        user.selectedcustomerid = null;
+                        tuser.selectedcustomerid = null;
+                    }
+                }
+                if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
+                    span?.addEvent("Lookup impersonate user " + user.impersonating);
+                    const items = await Config.db.query({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
+                    if (items.length == 0) {
+                        span?.addEvent("Lookup failed, lookup as root");
+                        const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                        const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                        let imp: TokenUser = TokenUser.From(impb);
+                        if (impostors.length == 1) {
+                            imp = TokenUser.From(impostors[0]);
+
+                        }
+                        await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
+                        throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
+                    }
+                    user.selectedcustomerid = null;
+                    tuser.selectedcustomerid = null;
+                    const tuserimpostor = tuser;
+                    user = User.assign(items[0] as User);
+                    user = await Logger.DBHelper.DecorateWithRoles(user, span);
+                    // Check we have update rights
+                    try {
+                        await Logger.DBHelper.Save(user, originialjwt, span);
+                        if (Config.persist_user_impersonation) {
+                            await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
+                        }
+                    } catch (error) {
+                        const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                        const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
+                        let imp: TokenUser = TokenUser.From(impb);
+                        if (impostors.length == 1) {
+                            imp = TokenUser.From(impostors[0]);
+                        }
+
+                        await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
+                        throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
+                    }
+                    tuser.impostor = tuserimpostor._id;
+
+                    tuser = TokenUser.From(user);
+                    tuser.impostor = userid;
+                    (user as any).impostor = userid;
+                    span?.setAttribute("impostername", tuserimpostor.name);
+                    span?.setAttribute("imposterusername", tuserimpostor.username);
                     span?.setAttribute("name", tuser.name);
                     span?.setAttribute("username", tuser.username);
                     if (msg.longtoken) {
                         span?.addEvent("createToken for longtoken");
                         msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
-                        originialjwt = msg.jwt;
                     } else {
                         span?.addEvent("createToken for shorttoken");
                         msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                        originialjwt = msg.jwt;
                     }
                     msg.user = tuser;
-                    if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
-                        span?.addEvent("Lookup impersonating user " + user.impersonating);
-                        const items = await Config.db.query({ query: { _id: user.impersonating }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
-                        if (items.length == 0) {
-                            span?.addEvent("Failed Lookup");
-                            msg.impersonate = null;
-                        } else {
-                            span?.addEvent("Lookup succeeded");
-                            msg.impersonate = user.impersonating;
-                            user.selectedcustomerid = null;
-                            tuser.selectedcustomerid = null;
-                        }
-                    }
-                    if (msg.impersonate !== undefined && msg.impersonate !== null && msg.impersonate !== "" && tuser._id != msg.impersonate) {
-                        span?.addEvent("Lookup impersonate user " + user.impersonating);
-                        const items = await Config.db.query({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
-                        if (items.length == 0) {
-                            span?.addEvent("Lookup failed, lookup as root");
-                            const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
-                            const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                            let imp: TokenUser = TokenUser.From(impb);
-                            if (impostors.length == 1) {
-                                imp = TokenUser.From(impostors[0]);
-
-                            }
-                            await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
-                            throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
-                        }
-                        user.selectedcustomerid = null;
-                        tuser.selectedcustomerid = null;
-                        const tuserimpostor = tuser;
-                        user = User.assign(items[0] as User);
-                        user = await Logger.DBHelper.DecorateWithRoles(user, span);
-                        // Check we have update rights
-                        try {
-                            await Logger.DBHelper.Save(user, originialjwt, span);
-                            if (Config.persist_user_impersonation) {
-                                await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
-                            }
-                        } catch (error) {
-                            const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
-                            const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                            let imp: TokenUser = TokenUser.From(impb);
-                            if (impostors.length == 1) {
-                                imp = TokenUser.From(impostors[0]);
-                            }
-
-                            await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
-                            throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
-                        }
-                        tuser.impostor = tuserimpostor._id;
-
-                        tuser = TokenUser.From(user);
-                        tuser.impostor = userid;
-                        (user as any).impostor = userid;
-                        span?.setAttribute("impostername", tuserimpostor.name);
-                        span?.setAttribute("imposterusername", tuserimpostor.username);
-                        span?.setAttribute("name", tuser.name);
-                        span?.setAttribute("username", tuser.username);
-                        if (msg.longtoken) {
-                            span?.addEvent("createToken for longtoken");
-                            msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
-                        } else {
-                            span?.addEvent("createToken for shorttoken");
-                            msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                        }
-                        msg.user = tuser;
-                        Logger.instanse.debug(tuser.username + " successfully impersonated", span);
-                        await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
-                    }
-                    if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
-                        UpdateDoc.$set["firebasetoken"] = msg.firebasetoken;
-                        user.firebasetoken = msg.firebasetoken;
-                    }
-                    if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
-                        UpdateDoc.$set["onesignalid"] = msg.onesignalid;
-                        user.onesignalid = msg.onesignalid;
-                    }
-                    if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
-                        UpdateDoc.$set["gpslocation"] = msg.gpslocation;
-                        user.gpslocation = msg.gpslocation;
-                    }
-                    if (msg.device != null && msg.device != undefined && msg.device != "") {
-                        UpdateDoc.$set["device"] = msg.device;
-                        user.device = msg.device;
-                    }
-                    if (msg.validate_only !== true) {
-                        // @ts-ignore
-                        if(msg.ping == false || msg.ping == true) {
-                            // @ts-ignore
-                            cli.doping = msg.ping;
-                        }
-                        Logger.instanse.debug(tuser.username + " signed in using " + type + " " + cli?.id + "/" + cli?.clientagent, span);
-                        if (cli) cli.jwt = msg.jwt;
-                        if (cli) cli.user = user;
-                        if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
-                    } else {
-                        Logger.instanse.debug(tuser.username + " was validated in using " + type, span);
-                    }
-                    msg.supports_watch = Config.supports_watch;
-                    var keys = Object.keys(UpdateDoc.$set);
-                    if (keys.length > 0 || UpdateDoc.$unset || NoderedUtil.IsNullEmpty(user.lastseen)) {
-                        // ping will handle this, if no new information needs to be added
-                        span?.addEvent("Update user using update document");
-                        var newdoc = { ...UpdateDoc, ...Logger.DBHelper.UpdateHeartbeat(cli) }
-                        await Config.db._UpdateOne({ "_id": user._id }, newdoc, "users", 1, false, Crypt.rootToken(), span)
-                    }
-                    span?.addEvent("memoryCache.delete users" + user._id);
-                    await Logger.DBHelper.CheckCache("users", user, false, false, span);
-                    if (!NoderedUtil.IsNullEmpty(tuser.impostor) && tuser.impostor != user._id) {
-                        await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
-                        span?.addEvent("memoryCache.delete users" + tuser.impostor);
-                    }
+                    Logger.instanse.debug(tuser.username + " successfully impersonated", span);
+                    await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                 }
+                if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
+                    UpdateDoc.$set["firebasetoken"] = msg.firebasetoken;
+                    user.firebasetoken = msg.firebasetoken;
+                }
+                if (msg.onesignalid != null && msg.onesignalid != undefined && msg.onesignalid != "") {
+                    UpdateDoc.$set["onesignalid"] = msg.onesignalid;
+                    user.onesignalid = msg.onesignalid;
+                }
+                if (msg.gpslocation != null && msg.gpslocation != undefined && msg.gpslocation != "") {
+                    UpdateDoc.$set["gpslocation"] = msg.gpslocation;
+                    user.gpslocation = msg.gpslocation;
+                }
+                if (msg.device != null && msg.device != undefined && msg.device != "") {
+                    UpdateDoc.$set["device"] = msg.device;
+                    user.device = msg.device;
+                }
+                if (msg.validate_only !== true) {
+                    // @ts-ignore
+                    if (msg.ping == false || msg.ping == true) {
+                        // @ts-ignore
+                        cli.doping = msg.ping;
+                    }
+                    Logger.instanse.debug(tuser.username + " signed in using " + tokentype + " " + cli?.id + "/" + cli?.clientagent, span);
+                    if (cli) cli.jwt = msg.jwt;
+                    if (cli) cli.user = user;
+                    if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+                } else {
+                    Logger.instanse.debug(tuser.username + " was validated in using " + tokentype, span);
+                }
+                msg.supports_watch = Config.supports_watch;
+                var keys = Object.keys(UpdateDoc.$set);
+                if (keys.length > 0 || UpdateDoc.$unset || NoderedUtil.IsNullEmpty(user.lastseen)) {
+                    // ping will handle this, if no new information needs to be added
+                    span?.addEvent("Update user using update document");
+                    var newdoc = { ...UpdateDoc, ...Logger.DBHelper.UpdateHeartbeat(cli) }
+                    await Config.db._UpdateOne({ "_id": user._id }, newdoc, "users", 1, false, Crypt.rootToken(), span)
+                }
+                span?.addEvent("memoryCache.delete users" + user._id);
+                await Logger.DBHelper.CheckCache("users", user, false, false, span);
+                if (!NoderedUtil.IsNullEmpty(tuser.impostor) && tuser.impostor != user._id) {
+                    await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
+                    span?.addEvent("memoryCache.delete users" + tuser.impostor);
+                }
+            }
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
                 var validated = true;
                 if (Config.validate_user_form != "") {
@@ -1707,7 +1725,7 @@ export class Message {
                 if (!validated) {
                     if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
                         span?.addEvent("User not validet, decline login");
-                        await Audit.LoginFailed(msg.user.username, type, "websocket", cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                        await Audit.LoginFailed(msg.user.username, tokentype, protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                         msg.error = "User not validated, please login again";
                         msg.jwt = undefined;
                         if (Config.client_disconnect_signin_error) cli.Close(span);
@@ -1723,14 +1741,14 @@ export class Message {
                     throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
-                msg.websocket_package_size = Config.websocket_package_size;
-                msg.openflow_uniqueid = Config.openflow_uniqueid;
-                if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
-                if (!NoderedUtil.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
-                if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
-                if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
-                msg.enable_analytics = Config.enable_analytics;
-                this.data = JSON.stringify(msg);
+            msg.websocket_package_size = Config.websocket_package_size;
+            msg.openflow_uniqueid = Config.openflow_uniqueid;
+            if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
+            if (!NoderedUtil.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
+            if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
+            if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
+            msg.enable_analytics = Config.enable_analytics;
+            this.data = JSON.stringify(msg);
             // hrend = process.hrtime(hrstart)
         } finally {
             span?.addEvent("Signin complete");

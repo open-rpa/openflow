@@ -933,7 +933,7 @@ export class DBHelper {
             cli.user._noderedheartbeat = dt;
             return { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()), _lastnoderedclientversion: cli.clientversion } };
         }
-        if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+        if (cli.clientagent == "browser") {
             (cli.user as any)._webheartbeat = dt;
             return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion } };
         }
@@ -941,16 +941,16 @@ export class DBHelper {
             cli.user._powershellheartbeat = dt;
             return { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()), _lastpowershellclientversion: cli.clientversion } };
         }
-        if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
-            (cli.user as any)._webheartbeat = dt;
-            (cli.user as any)._mobilheartbeat = dt;
-            return {
-                $set: {
-                    ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion
-                    , _mobilheartbeat: new Date(new Date().toISOString()), _lastmobilclientversion: cli.clientversion
-                }
-            };
-        }
+        // if (cli.clientagent ==  "mobileapp" || cli.clientagent == "aiotmobileapp") {
+        //     (cli.user as any)._webheartbeat = dt;
+        //     (cli.user as any)._mobilheartbeat = dt;
+        //     return {
+        //         $set: {
+        //             ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion
+        //             , _mobilheartbeat: new Date(new Date().toISOString()), _lastmobilclientversion: cli.clientversion
+        //         }
+        //     };
+        // }
         else {
             return { $set: updatedoc };
         }

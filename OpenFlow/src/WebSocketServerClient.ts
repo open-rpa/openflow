@@ -7,7 +7,7 @@ import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, Qu
 import { ChangeStream } from "mongodb";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { clientType } from "./Audit";
+import { clientAgent } from "./Audit";
 import express = require("express");
 import { WebSocketServer } from "./WebSocketServer";
 import { WebServer } from "./WebServer";
@@ -51,7 +51,7 @@ export class WebSocketServerClient {
     private _sendQueue: SocketMessage[] = [];
     public messageQueue: IHashTable<QueuedMessage> = {};
     public remoteip: string = "unknown";
-    public clientagent: clientType;
+    public clientagent: clientAgent;
     public clientversion: string;
     public created: Date = new Date();
     public lastheartbeat: Date = new Date();
@@ -363,17 +363,9 @@ export class WebSocketServerClient {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let exchange = exchangename;
             if (NoderedUtil.IsNullEmpty(exchange)) {
-                if (this.clientagent == "nodered") {
-                    exchange = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "webapp") {
-                    exchange = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "openrpa") {
-                    exchange = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "powershell") {
-                    exchange = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else {
-                    exchange = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                }
+                // @ts-ignore
+                if(this.clientagent == "") this.clientagent = "unknown"
+                exchange = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
             }
             let exchangequeue: amqpexchange = null;
             try {
@@ -425,17 +417,9 @@ export class WebSocketServerClient {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let qname = queuename;
             if (NoderedUtil.IsNullEmpty(qname)) {
-                if (this.clientagent == "nodered") {
-                    qname = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "webapp") {
-                    qname = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "openrpa") {
-                    qname = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "powershell") {
-                    qname = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else {
-                    qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                }
+                // @ts-ignore
+                if(this.clientagent == "") this.clientagent = "unknown"
+                qname = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
             }
             await this.CloseConsumer(this.user, qname, span);
             let queue: amqpqueue = null;

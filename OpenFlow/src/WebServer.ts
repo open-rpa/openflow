@@ -500,6 +500,10 @@ export class WebServer {
                     if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
                     delete msg.Id;                    
                 }
+                if(message.command == "signin") {
+                    msg.clientagent = msg.agent;
+                    msg.clientversion = msg.version;
+                }
                 var _msg = Message.fromjson({ ...message, data: msg });
                 var result = await _msg.Process(client as any);
                 if(message.rid != null && message.rid != "" && result.command == "error") {
