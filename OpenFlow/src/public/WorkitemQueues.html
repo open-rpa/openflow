@@ -20,24 +20,24 @@
     <tr>
       <th ng-click="ctrl.ToggleOrder('name')"><strong translate lib="web">name</strong></th>
       <th ng-click="ctrl.ToggleOrder('maxretries')"><strong translate lib="web">maxretries</strong></th>
-      <th ng-click="ctrl.ToggleOrder('projectid')"><strong translate lib="web">projectid</strong></th>
-      <th ng-click="ctrl.ToggleOrder('_createdby')" class="w-150"><strong translate lib="web">createdby</strong></th>
+      <!-- <th ng-click="ctrl.ToggleOrder('projectid')"><strong translate lib="web">projectid</strong></th> -->
+      <th ng-click="ctrl.ToggleOrder('_createdby')"><strong translate lib="web">createdby</strong></th>
       <th class="text-right"></th>
     </tr>
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td class="text-truncate">
+      <td>
         <a style="color: inherit; text-decoration: inherit;" ng-href="#/WorkitemQueue/{{model._id}}">
         {{model.name}}</a></td>
-      <td class="text-truncate">{{model.maxretries}}</td>
-      <td class="text-truncate">
+      <td class="col-1">{{model.maxretries}}</td>
+      <!-- <td class="text-truncate">
         <a ng-href="#/Entity/openrpa/{{model.projectid}}">
           {{model.projectid}}
         </a>
-      </td>
-      <td class="text-truncate">{{model._createdby}}</td>
-      <td>
+      </td> -->
+      <td class="col-2">{{model._createdby}}</td>
+      <td class="text-right col-1">
         <div class="w-200 text-right">
           <a class="btn" ng-href="#/WorkitemQueue/{{model._id}}" title="Edit Workitem queue">
             <em class="fas fa-edit"></em>
