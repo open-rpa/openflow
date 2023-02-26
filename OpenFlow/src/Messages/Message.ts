@@ -1414,6 +1414,10 @@ export class Message {
             if (cli != null) {
                 if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
                 if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+                // @ts-ignore
+                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.agent)) cli.clientagent = msg.agent as any;
+                // @ts-ignore
+                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.version)) cli.clientversion = msg.version;
             }
             // @ts-ignore
             if(cli.clientagent == "") cli.clientagent = "unknown"
@@ -1550,9 +1554,13 @@ export class Message {
                     tuser.username = msg.username;
                 }
             }
-            if (msg.validate_only !== true) {
-                if (cli) cli.clientagent = msg.clientagent as any;
-                if (cli) cli.clientversion = msg.clientversion;
+            if (msg.validate_only !== true && cli) {
+                if(NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
+                    if (cli) cli.clientagent = msg.clientagent as any;
+                }
+                if(NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) {
+                    if (cli) cli.clientversion = msg.clientversion;
+                }                
             }
             if (user === null || user === undefined || tuser === null || tuser === undefined) {
                 if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";

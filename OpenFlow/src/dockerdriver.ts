@@ -645,16 +645,16 @@ export class dockerdriver implements i_nodered_driver {
         const rootjwt = Crypt.rootToken()
         const rootuser = TokenUser.From(Crypt.rootUser());
         var result = [];
-        for (let i = 0; i < list.length; i++) {
-            const item = list[i];
-            var Created = new Date(item.Created * 1000);
-            item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
-            item.status = { phase: item.State }
-            const image = item.Image;
-            const openiapagent = item.Labels["openiapagent"];
-            const billed = item.Labels["billed"];
-            if (!NoderedUtil.IsNullEmpty(openiapagent)) {
-                if (!NoderedUtil.IsNullUndefinded(resource) && runtime > 0) {
+        if (!NoderedUtil.IsNullUndefinded(resource) && runtime > 0) {
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                var Created = new Date(item.Created * 1000);
+                item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
+                item.status = { phase: item.State }
+                const image = item.Image;
+                const openiapagent = item.Labels["openiapagent"];
+                const billed = item.Labels["billed"];
+                if (!NoderedUtil.IsNullEmpty(openiapagent)) {
                     const date = new Date();
                     const a: number = (date as any) - (Created as any);
                     const diffhours = a / (1000 * 60 * 60);
@@ -669,6 +669,7 @@ export class dockerdriver implements i_nodered_driver {
                     }
                 }
             }
+    
         }
     }
     public async GetInstancePods(tokenUser: TokenUser, jwt: string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]> {
