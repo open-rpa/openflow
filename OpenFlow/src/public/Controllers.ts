@@ -7862,10 +7862,14 @@ export class AgentCtrl extends entityCtrl<any> {
             }
         }
         if(this.model.image.indexOf("openiap/noderedagent") > -1) {
-            // var name = WebSocketClient.instance.user.username.toLowerCase();
-            // name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
             this.model.environment = {
-                "nodered_id": this.model.slug,
+                "nodered_id": this.model.slug
+            }
+            try {
+                var name = WebSocketClient.instance.user.username.toLowerCase();
+                name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
+                this.model.environment["old_nodered_id"] = name;
+            } catch (error) {                
             }
         }
         if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
