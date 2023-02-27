@@ -1610,7 +1610,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
                     if(agentuser.customerid != null && agentuser.customerid != "") {
                         const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                        agentcount += assigned.length
+                        if(assigned != null) agentcount += assigned.length
 
                         var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt }, parent);
                         if(agents.length >= agentcount) {
@@ -1995,7 +1995,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
                         if(agentuser.customerid != null && agentuser.customerid != "") {
                             const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                            agentcount += assigned.length
+                            if(assigned != null) agentcount += assigned.length
     
                             var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt }, parent);
                             if(agents.length >= agentcount) {
@@ -2299,7 +2299,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt: q.jwt }, parent);
                         if(agentuser.customerid != null && agentuser.customerid != "") {
                             const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                            agentcount += assigned.length
+                            if(assigned != null) agentcount += assigned.length
     
                             var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt: q.jwt }, parent);
                             if(agents.length > agentcount) {
