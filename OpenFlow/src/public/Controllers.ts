@@ -7894,6 +7894,13 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             this.PlanUpdated()
         }
+        if(this.model.image.indexOf("elsaworkflow") > -1) {
+            var url = window.location.protocol + "//"+  this.WebSocketClientService.agent_domain_schema.replace("$slug$", this.model.slug);
+            this.model.environment = {
+                "ELSA__SERVER__BASEURL": url
+            }
+            this.PlanUpdated()
+        }
     }
     async loadInstances() {
         this.loading = false;
@@ -8024,11 +8031,12 @@ export class AgentCtrl extends entityCtrl<any> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
             var image = this.images.find(x => x.image == this.model.image)
-            if(this.model.port != null && this.model.port != "") {
-                this.model.webserver = true;
-            } else if (image != null) {
-                this.model.webserver = (image.port != null && image.port != "");
-                this.model.port = image.port
+            if(image != null) {
+                if(this.model.stripeprice == null || this.model.stripeprice == "") {
+                    this.model.webserver = (image.port != null && image.port != "");
+                } else if (this.model.port == null || this.model.port == "") {
+                    this.model.webserver = false;
+                }
             }
             if(image != null && image.volumes != null && image.volumes.length > 0) {
                 this.model.volumes = image.volumes;
