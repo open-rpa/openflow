@@ -7714,6 +7714,8 @@ export class AgentCtrl extends entityCtrl<any> {
     products: any[] = [{"stripeprice": "", "name": "Free tier"}];
     images: any[] = [];
     resource: any = null;
+    agentcount: number = 0;
+    runtime_hours: number = 0;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7733,6 +7735,14 @@ export class AgentCtrl extends entityCtrl<any> {
             var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
             if(products.length > 0) {
                 this.resource = products[0];
+                if(this.resource.defaultmetadata) {
+                    if(this.resource.defaultmetadata.agentcount != null && this.resource.defaultmetadata.agentcount != "") {
+                        this.agentcount = parseInt(this.resource.defaultmetadata.agentcount);
+                    }
+                    if(this.resource.defaultmetadata.runtime_hours != null && this.resource.defaultmetadata.runtime_hours != "") {
+                        this.runtime_hours = parseInt(this.resource.defaultmetadata.runtime_hours);
+                    }
+                }
                 this.products = this.products.concat(products[0].products);
             }
             this.images = this.WebSocketClientService.agent_images;

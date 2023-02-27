@@ -676,10 +676,13 @@
 </div>
 
 <br />
-<small ng-show="menuctrl.WebSocketClientService.stripe_api_key == 'pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99' || 
-menuctrl.WebSocketClientService.stripe_api_key == 'pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI'"><em
+<small ng-show="ctrl.runtime_hours > 0"><em
     style="color: gray;">
-    Agents using free plan will be shutdown after 8 hours. Buy one or more plans, and then assign it to an agent to allow it to run 24/7.
+    Agents using free plan will be shutdown after {{ctrl.runtime_hours}} hours. Buy one or more plans, and then assign it to an agent to allow it to run 24/7.
   </em></small>
 <br />
+<small ng-show="ctrl.agentcount > 0"><em
+  style="color: gray;">
+  You are limited to {{ctrl.agentcount}} free agents. Add more resources on the customer page increase the limit.
+</em></small>
 <br />
