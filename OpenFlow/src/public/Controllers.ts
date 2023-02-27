@@ -7129,12 +7129,14 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
-                    await this.loadselects();
                     this.model = new WorkitemQueue();
                     this.model.maxretries = 3;
                     this.model.retrydelay = 0;
                     this.model.initialdelay = 0;
-                    this.processdata();
+                    this.stats = "No items";
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    await this.loadselects();
+           
                 }
             } catch (error) {
                 console.error(error);
@@ -7180,8 +7182,10 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         await this.loadselects();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         var total = 0;
-        if(this.id != null && this.id != "") {
-            total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+        if(this.id == null || this.id == "") {
+            if(this.id != null && this.id != "") {
+                total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+            }
         }
         // this.stats = total + " items";
         // if (!this.$scope.$$phase) { this.$scope.$apply(); }
