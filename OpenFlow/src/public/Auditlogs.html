@@ -70,9 +70,13 @@
           <td>type</td>
           <td>{{ctrl.model.type}}</td>
         </tr>
-        <tr>
+        <tr ng-show="ctrl.model.provider">
           <td>provider</td>
           <td>{{ctrl.model.provider}}</td>
+        </tr>
+        <tr ng-show="ctrl.model.type=='assignplan' || ctrl.model.type=='unassignplan'">
+          <td>name</td>
+          <td>{{ctrl.model.name}}</td>
         </tr>
         <tr>
           <td>userid</td>

@@ -22,9 +22,11 @@
             ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch">
         </div>
       </div>
-      <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
+      <!-- <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
         ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
-        <span translate lib="web">nodered</span></a>
+        <span translate lib="web">nodered</span></a> -->
+      <a href="#/Agents" class="sidebar-link" id="menuagents" ng-class="{active: menuctrl.PathIs(['/Agent'])}">
+        <span translate lib="web">agents</span></a>
 
       <a href="#/Workitems" class="sidebar-link" id="menuworkitems"
         ng-class="{active: menuctrl.PathIs(['/Workitems', '/Workitem', '/Workitem/'])}"
@@ -40,11 +42,6 @@
         ng-class="{active: menuctrl.PathIs(['/RPAWorkflows', '/RPAWorkflow/'])}"
         ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
           translate lib="web">rpaworkflows</span></a>
-
-      <a href="//{{menuctrl.WebSocketClientService.nodered_domain_schema.replace('$nodered_id$', 'grafana')}}"
-        class="sidebar-link" id="menugrafana" target="_blank"
-        ng-show="(menuctrl.WebSocketClientService.validlicense && !menuctrl.hasrole('menu hide grafana'))"><span
-          translate lib="web">grafana</span></a>
 
       <div ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide admins')) || menuctrl.hasrole('admins')">
         <h5 class="sidebar-title">User management</h5>
@@ -84,6 +81,7 @@
           ng-class="{active: menuctrl.PathIs(['/Clients', '/Nodered/'])}"
           ng-show="!menuctrl.WebSocketClientService.multi_tenant || (menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins'))"><span
             translate lib="web">clients</span></a>
+        
 
         <a class="sidebar-link" href="#/Credentials" id="menuadmincredentials"
           ng-class="{active: menuctrl.PathIs(['/Credentials', '/Credential', '/Credential/'])}"><span translate
@@ -116,12 +114,12 @@
           <span translate lib="web">customers</span></a>
         <a class="sidebar-link" href="#/Resources"
           ng-class="{active: menuctrl.PathIs(['/Resources', '/Resource', '/Resource/'])}"
-          ng-show="menuctrl.WebSocketClientService.multi_tenant && menuctrl.hasrole('admins')">
+          ng-show="menuctrl.hasrole('admins')">
           <span translate lib="web">Resources</span></a>
         <a class="sidebar-link" href="#/MailHists"
           ng-class="{active: menuctrl.PathIs(['/MailHists', '/MailHist', '/MailHist/'])}"
           ng-show="menuctrl.hasrole('admins') && (menuctrl.WebSocketClientService.validate_emails || menuctrl.WebSocketClientService.forgot_pass_emails)">
-          <span translate lib="web">Mail History</span></a>
+          <span translate lib="web">mailhistory</span></a>
 
       </div>
     </div>
@@ -211,9 +209,11 @@
             <a href="#/Clients" class="dropdown-item" 
             ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"><span translate
                 lib="web">clients</span></a>
-            <a href="#/Nodered" class="dropdown-item"
+            <!-- <a href="#/Nodered" class="dropdown-item"
               ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
-              <span translate lib="web">nodered</span></a>
+              <span translate lib="web">nodered</span></a> -->
+            <a href="#/Agents" class="dropdown-item">
+              <span translate lib="web">agents</span></a>
             <div class="dropdown-divider"></div>
             <div class="dropdown-content" id="signoutbutton2">
               <a href="/Signout" class="btn btn-primary"><span translate lib="web">logout</span></a>

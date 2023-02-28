@@ -14,9 +14,6 @@ export class QueueClient {
             instance.on("connected", () => {
                 QueueClient.connect();
             });
-        } catch (error) {
-            Logger.instanse.error(error, span);
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -90,6 +87,12 @@ export class QueueClient {
     public static async SendForProcessing(msg: Message, priority: number, span: Span) {
         return new Promise<Message>(async (resolve, reject) => {
             try {
+                if(this.queue == null) {
+                    throw new Error("Queue is not initialized");
+                }
+                var d = Object.assign({}, msg);
+                delete d.tuser;
+                var json = JSON.stringify(d)
                 msg.correlationId = NoderedUtil.GetUniqueIdentifier();
                 this.messages.push(msg);
                 Logger.instanse.debug("Submit command: " + msg.command + " id: " + msg.id + " correlationId: " + msg.correlationId, span);
@@ -104,8 +107,9 @@ export class QueueClient {
                     resolve(result);
                 }
                 Logger.instanse.silly("Submit request for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + this.queue.queue + " correlationId: " + msg.correlationId, null)
-                await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, JSON.stringify(msg), Config.openflow_amqp_expiration, msg.correlationId, "", span, priority);
+                await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, json, Config.openflow_amqp_expiration, msg.correlationId, "", span, priority);
             } catch (error) {
+                console.error(error);
                 if (NoderedUtil.IsNullUndefinded(this.queue)) {
                     Logger.instanse.warn("SendForProcessing queue is null, shutdown amqp connection", span);
                     process.exit(406);

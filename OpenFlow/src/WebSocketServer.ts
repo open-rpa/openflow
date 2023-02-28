@@ -14,7 +14,7 @@ import { WebServer } from "./WebServer";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 
 export class WebSocketServer {
-    private static _socketserver: WebSocket.Server;
+    // private static _socketserver: WebSocket.Server;
     public static _clients: WebSocketServerClient[];
     public static p_all: Observable;
     public static websocket_queue_count: Observable;
@@ -42,19 +42,25 @@ export class WebSocketServer {
             });
 
             this._clients = [];
-            this._socketserver = new WebSocket.Server({ server: server });
-            this._socketserver.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
+
+            WebServer.wss.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
                 try {
-                    var sock = new WebSocketServerClient();
-                    this._clients.push(sock);
-                    await sock.Initialize(socketObject, req);
+                    const url = require('url');
+                    const location = url.parse(req.url, true);
+                    if(location.pathname == "/" || location.pathname == "/ws"|| location.pathname == "/ws/v1") {
+                        var sock = new WebSocketServerClient();
+                        this._clients.push(sock);
+                        await sock.Initialize(socketObject, req);
+                    }
                 } catch (error) {
                     Logger.instanse.error(error, null);    
                 }
             });
-            this._socketserver.on("error", (error: Error): void => {
-                Logger.instanse.error(error, null);
-            });
+            if(WebServer.wss.on) {
+                WebServer.wss.on("error", (error: Error): void => {
+                    Logger.instanse.error(error, null);
+                });
+            }
             if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
                     description: 'Total number of online websocket clients'
@@ -169,6 +175,10 @@ export class WebSocketServer {
                 c.api = hostname;
                 c.id = cli.id;
                 c.clientagent = cli.clientagent;
+                // @ts-ignore
+                if(cli.agent) c.clientagent = cli.agent;
+                // @ts-ignore
+                if(cli.protocol) c.protocol = cli.protocol;
                 c.clientversion = cli.clientversion;
                 c._exchanges = cli._exchanges;
                 c._queues = cli._queues;
@@ -204,16 +214,8 @@ export class WebSocketServer {
                             const clockTimestamp = Math.floor(Date.now() / 1000);
                             if ((payload.exp - clockTimestamp) < 60) {
                                 Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client", span);
-                                const tuser: TokenUser = await Message.DoSignin(cli, null, span);
-                                if (tuser != null) {
+                                if (await cli.RefreshToken(span)) {
                                     span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client");
-                                    const l: SigninMessage = new SigninMessage();
-                                    cli.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
-                                    l.jwt = cli.jwt;
-                                    l.user = tuser;
-                                    const m: Message = new Message(); m.command = "refreshtoken";
-                                    m.data = JSON.stringify(l);
-                                    cli.Send(m);
                                 } else {
                                     cli.Close(span);
                                 }
@@ -257,7 +259,12 @@ export class WebSocketServer {
                     cli.Close(span);
                 }
                 cli.ping(span);
-                if (!cli.connected() && cli.queuecount() == 0) {
+                // if cli.connected is a function, call it
+                var connected = cli.connected;
+                if (typeof connected === "function") {
+                    connected = cli.connected() as any;
+                }
+                if (!connected && cli.queuecount() == 0) {
                     if (cli.user != null) {
                         Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip, span);
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip);

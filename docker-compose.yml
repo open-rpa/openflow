@@ -14,7 +14,6 @@ services:
       - "27017:27017"
   # traefik:
   #   image: "traefik"
-  #   container_name: "traefik"
   #   command:
   #     - "--providers.docker=true"
   #     - "--providers.docker.exposedbydefault=false"
@@ -26,7 +25,6 @@ services:
   #     - "//var/run/docker.sock:/var/run/docker.sock:ro"
   rabbitmq:
     image: "rabbitmq:3-management"
-    container_name: "rabbitmq"
     # network_mode: "host"
     ports:
       - "5672:5672"

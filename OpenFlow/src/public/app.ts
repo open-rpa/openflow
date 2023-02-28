@@ -5,7 +5,7 @@ import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
     WorkflowsCtrl, ReportsCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, NoderedCtrl,
     hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
-    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl, WebsocketClientsCtrl, ConsoleCtrl
+    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl, WebsocketClientsCtrl, ConsoleCtrl, AgentsCtrl, AgentCtrl
 } from "./Controllers";
 
 require('angular-route');
@@ -146,6 +146,10 @@ module openflow {
 
                 .when('/MailHists', { templateUrl: 'MailHists.html', controller: MailHistsCtrl, controllerAs: 'ctrl' })
                 .when('/MailHist/:id', { templateUrl: 'MailHist.html', controller: MailHistCtrl, controllerAs: 'ctrl' })
+
+                .when('/Agents', { templateUrl: 'Agents.html', controller: AgentsCtrl, controllerAs: 'ctrl' })
+                .when('/Agent', { templateUrl: 'Agent.html', controller: AgentCtrl, controllerAs: 'ctrl' })
+                .when('/Agent/:id', { templateUrl: 'Agent.html', controller: AgentCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

@@ -55,6 +55,7 @@ export class dbConfig extends Base {
     public log_to_exchange: boolean;
     public heapdump_onstop: boolean;
     public api_bypass_perm_check: boolean;
+    public ignore_expiration: boolean;
 
     public workitem_queue_monitoring_interval: number;
     public workitem_queue_monitoring_enabled: boolean;
@@ -161,6 +162,8 @@ export class dbConfig extends Base {
         Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "120"));
         Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
         Config.api_bypass_perm_check = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.api_bypass_perm_check) ? conf.api_bypass_perm_check : Config.getEnv("api_bypass_perm_check", "false"));
+        Config.ignore_expiration = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ignore_expiration) ? conf.ignore_expiration : Config.getEnv("ignore_expiration", "false"));
+        
 
 
 
@@ -185,7 +188,7 @@ export class dbConfig extends Base {
         Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval.toString() : Config.getEnv("ping_clients_interval", (10000).toString()))
         Config.websocket_message_callback_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.websocket_message_callback_timeout) ? conf.websocket_message_callback_timeout.toString() : Config.getEnv("websocket_message_callback_timeout", (10000).toString()))
 
-        Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval : Config.getEnv("otel_trace_pingclients", "false"));
+        Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_pingclients) ? conf.otel_trace_pingclients : Config.getEnv("otel_trace_pingclients", "false"));
         Config.otel_trace_dashboardauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_dashboardauth) ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
         Config.otel_trace_include_query = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_include_query) ? conf.otel_trace_include_query : Config.getEnv("otel_trace_include_query", "false"));
         Config.otel_trace_connection_ips = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_connection_ips) ? conf.otel_trace_connection_ips : Config.getEnv("otel_trace_connection_ips", "false"));
@@ -275,6 +278,10 @@ export class Config {
         Config.HTTP_PROXY = Config.getEnv("HTTP_PROXY", "");
         Config.HTTPS_PROXY = Config.getEnv("HTTPS_PROXY", "");
         Config.NO_PROXY = Config.getEnv("NO_PROXY", "");
+        Config.agent_HTTP_PROXY = Config.getEnv("agent_HTTP_PROXY", "");
+        Config.agent_HTTPS_PROXY = Config.getEnv("agent_HTTPS_PROXY", "");
+        Config.agent_NO_PROXY = Config.getEnv("agent_NO_PROXY", "");
+        
 
         Config.stripe_api_key = Config.getEnv("stripe_api_key", "");
         Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
@@ -291,9 +298,14 @@ export class Config {
         Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
         Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
         Config.persist_user_impersonation = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
-        Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
+        Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
         Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
         Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
+        Config.use_openshift_routes = Config.parseBoolean(Config.getEnv("use_openshift_routes", "false"));
+        Config.agent_image_pull_secrets = Config.parseArray(Config.getEnv("agent_image_pull_secrets", ""));
+
+        
+
         Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
         Config.auto_create_personal_noderedapi_group = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
         Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
@@ -353,6 +365,7 @@ export class Config {
         Config.cleanup_on_delete_user = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
 
         Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+        Config.ignore_expiration = Config.parseBoolean(Config.getEnv("ignore_expiration", "false"));
         Config.force_audit_ts = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
         Config.force_dbusage_ts = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
         Config.migrate_audit_to_ts = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
@@ -404,21 +417,33 @@ export class Config {
         Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
+        Config.agent_images = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\", \"port\": 3000}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+        Config.agent_domain_schema = Config.getEnv("agent_domain_schema", "");
+
+        Config.agent_apiurl = Config.getEnv("agent_apiurl", "");
+        Config.agent_oidc_config = Config.getEnv("agent_oidc_config", "");
+        Config.agent_oidc_client_id = Config.getEnv("agent_oidc_client_id", "");
+        Config.agent_oidc_client_secret = Config.getEnv("agent_oidc_client_secret", "");
+        Config.agent_oidc_userinfo_endpoint = Config.getEnv("agent_oidc_userinfo_endpoint", "");
+        Config.agent_oidc_issuer = Config.getEnv("agent_oidc_issuer", "");
+        Config.agent_oidc_authorization_endpoint = Config.getEnv("agent_oidc_authorization_endpoint", "");
+        Config.agent_oidc_token_endpoint = Config.getEnv("agent_oidc_token_endpoint", "");
+    
         Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
         Config.api_ws_url = Config.getEnv("api_ws_url", "");
         Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
         Config.nodered_saml_entrypoint = Config.getEnv("nodered_saml_entrypoint", "");
-        Config.nodered_docker_entrypoints = Config.getEnv("nodered_docker_entrypoints", "web");
-        Config.nodered_docker_use_project = Config.parseBoolean(Config.getEnv("nodered_docker_use_project", "false"));
-        Config.nodered_docker_certresolver = Config.getEnv("nodered_docker_certresolver", "");
+        Config.agent_docker_entrypoints = Config.getEnv("agent_docker_entrypoints", "web");
+        Config.agent_docker_use_project = Config.parseBoolean(Config.getEnv("agent_docker_use_project", "false"));
+        Config.agent_docker_certresolver = Config.getEnv("agent_docker_certresolver", "");
         Config.namespace = Config.getEnv("namespace", ""); // also sent to website 
         Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", ""); // also sent to website
         Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
         Config.nodered_allow_nodeselector = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
-        Config.nodered_requests_memory = Config.getEnv("nodered_requests_memory", "");
-        Config.nodered_requests_cpu = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
-        Config.nodered_limits_memory = Config.getEnv("nodered_limits_memory", "");
-        Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
+        // Config.nodered_requests_memory = Config.getEnv("nodered_requests_memory", "");
+        // Config.nodered_requests_cpu = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
+        // Config.nodered_limits_memory = Config.getEnv("nodered_limits_memory", "");
+        // Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
 
         Config.nodered_liveness_failurethreshold = parseInt(Config.getEnv("nodered_liveness_failurethreshold", "5"));
         Config.nodered_liveness_timeoutseconds = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
@@ -509,6 +534,9 @@ export class Config {
     public static HTTP_PROXY: string = Config.getEnv("HTTP_PROXY", "");
     public static HTTPS_PROXY: string = Config.getEnv("HTTPS_PROXY", "");
     public static NO_PROXY: string = Config.getEnv("NO_PROXY", "");
+    public static agent_HTTP_PROXY: string = Config.getEnv("agent_HTTP_PROXY", "");
+    public static agent_HTTPS_PROXY: string = Config.getEnv("agent_HTTPS_PROXY", "");
+    public static agent_NO_PROXY: string = Config.getEnv("agent_NO_PROXY", "");
 
     public static stripe_api_key: string = Config.getEnv("stripe_api_key", "");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret", "");
@@ -525,10 +553,12 @@ export class Config {
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
     public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
-    public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 12 seconds
+    public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
 
     public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
     public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
+    public static use_openshift_routes: boolean = Config.parseBoolean(Config.getEnv("use_openshift_routes", "false"));
+    public static agent_image_pull_secrets: string[] = Config.parseArray(Config.getEnv("agent_image_pull_secrets", ""));
     public static auto_create_personal_nodered_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
     public static auto_create_personal_noderedapi_group: boolean = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
     public static force_add_admins: boolean = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
@@ -586,6 +616,7 @@ export class Config {
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer", "false"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
+    public static ignore_expiration: boolean = Config.parseBoolean(Config.getEnv("ignore_expiration", "false"));
     public static force_audit_ts: boolean = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
     public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
     public static migrate_audit_to_ts: boolean = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
@@ -641,23 +672,35 @@ export class Config {
 
     // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
+    public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\", \"port\": 3000}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+    public static agent_domain_schema: string = Config.getEnv("agent_domain_schema", "");
+
+    public static agent_apiurl: string = Config.getEnv("agent_apiurl", "");
+    public static agent_oidc_config: string = Config.getEnv("agent_oidc_config", "");
+    public static agent_oidc_client_id: string = Config.getEnv("agent_oidc_client_id", "");
+    public static agent_oidc_client_secret: string = Config.getEnv("agent_oidc_client_secret", "");
+    public static agent_oidc_userinfo_endpoint: string = Config.getEnv("agent_oidc_userinfo_endpoint", "");
+    public static agent_oidc_issuer: string = Config.getEnv("agent_oidc_issuer", "");
+    public static agent_oidc_authorization_endpoint: string = Config.getEnv("agent_oidc_authorization_endpoint", "");
+    public static agent_oidc_token_endpoint: string = Config.getEnv("agent_oidc_token_endpoint", "");
+
     public static saml_federation_metadata: string = Config.getEnv("saml_federation_metadata", "");
     public static api_ws_url: string = Config.getEnv("api_ws_url", "");
     public static nodered_ws_url: string = Config.getEnv("nodered_ws_url", "");
     public static nodered_saml_entrypoint: string = Config.getEnv("nodered_saml_entrypoint", "");
 
-    public static nodered_docker_entrypoints: string = Config.getEnv("nodered_docker_entrypoints", "web");
-    public static nodered_docker_use_project: boolean = Config.parseBoolean(Config.getEnv("nodered_docker_use_project", "false"));
-    public static nodered_docker_certresolver: string = Config.getEnv("nodered_docker_certresolver", "");
+    public static agent_docker_entrypoints: string = Config.getEnv("agent_docker_entrypoints", "web");
+    public static agent_docker_use_project: boolean = Config.parseBoolean(Config.getEnv("agent_docker_use_project", "false"));
+    public static agent_docker_certresolver: string = Config.getEnv("agent_docker_certresolver", "");
 
     public static namespace: string = Config.getEnv("namespace", ""); // also sent to website 
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     public static nodered_allow_nodeselector: boolean = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
-    public static nodered_requests_memory: string = Config.getEnv("nodered_requests_memory", "");
-    public static nodered_requests_cpu: string = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
-    public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "");
-    public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
+    // public static nodered_requests_memory: string = Config.getEnv("nodered_requests_memory", "");
+    // public static nodered_requests_cpu: string = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
+    // public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "");
+    // public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
     public static nodered_liveness_failurethreshold: number = parseInt(Config.getEnv("nodered_liveness_failurethreshold", "5"));
     public static nodered_liveness_timeoutseconds: number = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
     public static noderedcatalogues: string = Config.getEnv("noderedcatalogues", "");

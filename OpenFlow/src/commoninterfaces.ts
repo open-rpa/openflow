@@ -1,6 +1,6 @@
 import { Meter, Histogram } from '@opentelemetry/api-metrics';
 import { HrTime, Span } from "@opentelemetry/api";
-import { TokenUser } from "@openiap/openflow-api";
+import { Ace, TokenUser } from "@openiap/openflow-api";
 import * as express from "express";
 
 export interface i_license_data {
@@ -81,4 +81,51 @@ export interface i_nodered_driver {
     DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<void>;
     GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<string>;
     NodeLabels(parent: Span): Promise<any>;
+
+    EnsureInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, parent: Span): Promise<void>;
+    GetInstancePods(tokenUser: TokenUser, jwt:string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]>;
+    RemoveInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void>;
+    GetInstanceLog(tokenUser: TokenUser, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<string>;
+    RemoveInstancePod(tokenUser: TokenUser, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<void>;
+    InstanceCleanup(parent: Span): Promise<void>;
+}
+
+export interface iBase {
+    _id: string;
+    _type: string;
+    _acl: Ace[];
+    name: string;
+    _name: string;
+    _encrypt: string[];
+    _createdbyid: string;
+    _createdby: string;
+    _created: Date;
+    _modifiedbyid: string;
+    _modifiedby: string;
+    _modified: Date;
+    _version: number;
+    constructor();
+}
+export interface iAgentVolume {
+    type: string;
+    name: string;
+    mountpath: string;
+    storageclass: string;
+    driver: string;
+    size: string
+}
+export interface iAgent extends iBase {
+    slug: string;
+    tz: string;
+    image: string;
+    port: number;
+    volumes: iAgentVolume[];
+    agentid: string;
+    webserver: boolean;
+    sleep: boolean;
+    stripeprice: string;
+    runas: string;
+    environment: any;
+    nodeselector: any;
+    constructor();
 }

@@ -30,6 +30,8 @@ export class WebSocketClientService {
                 this.auto_create_personal_nodered_group = data.auto_create_personal_nodered_group;
                 this.namespace = data.namespace;
                 this.nodered_domain_schema = data.nodered_domain_schema;
+                this.agent_domain_schema = data.agent_domain_schema;
+                
                 this.websocket_package_size = data.websocket_package_size;
                 this.stripe_api_key = data.stripe_api_key;
                 this.validate_user_form = data.validate_user_form;
@@ -38,6 +40,7 @@ export class WebSocketClientService {
                 this.multi_tenant = data.multi_tenant;
 
                 this.nodered_images = data.nodered_images;
+                this.agent_images = data.agent_images;
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
                 this.enable_nodered_tours = data.enable_nodered_tours;
@@ -180,12 +183,14 @@ export class WebSocketClientService {
     public auto_create_personal_nodered_group: boolean = false;
     public namespace: string = "";
     public nodered_domain_schema: string = "";
+    public agent_domain_schema: string = "";
     public websocket_package_size: number = 25000;
     public stripe_api_key: string = "";
     public validate_user_form: string = "";
     public validate_emails: boolean = false;
     public forgot_pass_emails: boolean = false;
     public nodered_images: nodered_image[];
+    public agent_images: nodered_image[];
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;
     public enable_web_tours: boolean;

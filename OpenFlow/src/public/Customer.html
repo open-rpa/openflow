@@ -401,7 +401,10 @@
     <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'"
         ng-show="Resource.customerassign == 'multiplevariants'">
         <div class="col">{{Product.name}}</div>
-        <div class="col">{{ Product.count }}</div>
+        <div class="col">
+            {{ Product.count }}
+            <span ng-show="Product.usedby && Product.usedby > 0" > / {{Product.usedby}} used</spamn></spa>
+        </div>
 
         <div class="col">
 
