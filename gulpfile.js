@@ -16,14 +16,14 @@ const sass = require('gulp-sass')(require('sass'));
 let minify = true;
 let watch = false;
 
-const OpenFlowFiles = [
+const OpenFlowPublicFiles = [
     "./OpenFlow/src/public/**/*.html", "./OpenFlow/src/public/**/*.css", "./OpenFlow/src/public/**/*.js", "./OpenFlow/src/public/**/*.json",
     "./OpenFlow/src/public/**/*.ico", "./OpenFlow/src/public/**/*.eot", "./OpenFlow/src/public/**/*.svg", "./OpenFlow/src/public/**/*.ttf",
     "./OpenFlow/src/public/**/*.woff", "./OpenFlow/src/public/**/*.woff2", "./OpenFlow/src/public/**/*.png", "./OpenFlow/src/public/**/*.lang"];
 const NodeREDHTMLFiles = ["./OpenFlowNodeRED/src/nodered/nodes/**/*.html", "./OpenFlowNodeRED/src/nodered/nodes/**/*.png", "./OpenFlowNodeRED/src/nodered/nodes/**/*.json"]
 
-const destination = "./dist/public";
-const mapfile = path.join(__dirname, destination, 'bundle.js.map')
+const publicdestination = "./dist/public";
+const mapfile = path.join(__dirname, publicdestination, 'bundle.js.map')
 let version = "0.0.1";
 if (fs.existsSync("../VERSION")) {
     version = fs.readFileSync("../VERSION", "utf8");
@@ -32,13 +32,12 @@ if (fs.existsSync("../VERSION")) {
 }
 gulp.task("copyfiles1", function () {
     console.log("copyfiles1")
-    const openflow = gulp.src(OpenFlowFiles).pipe(gulp.dest(destination));
-    const nodered = gulp.src(NodeREDHTMLFiles).pipe(gulp.dest("OpenFlowNodeRED/dist/nodered/nodes"));
+    const openflow = gulp.src(OpenFlowPublicFiles).pipe(gulp.dest(publicdestination));
     const version1 = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
-    const version2 = gulp.src('./VERSION').pipe(gulp.dest("OpenFlowNodeRED/dist"));
 
-    const copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(destination + '/OpenFlow/src/public'));
-    return merge(openflow, nodered, version1, version2, copyspurce);
+    const copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(publicdestination + '/OpenFlow/src/public'));
+    const copyproto = gulp.src('./proto/**/*.*').pipe(gulp.dest('./dist/proto/proto'));
+    return merge(openflow, version1, copyspurce, copyproto);
 });
 gulp.task("setwatch", async function () {
     minify = false;
@@ -46,7 +45,17 @@ gulp.task("setwatch", async function () {
 });
 gulp.task("dowatch", function () {
     console.log("watch")
-    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowFiles).concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts'), gulp.series("browserify", "copyfiles1"));
+    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowPublicFiles).
+        concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts')
+        .concat('./OpenFlow/src/proto/**/*.*')
+        , gulp.series("browserify", "copyfiles1"));
+});
+gulp.task("filewatch", function () {
+    console.log("watch")
+    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowPublicFiles).
+        concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts')
+        .concat('./OpenFlow/src/proto/**/*.*')
+        , gulp.series( "copyfiles1"));
 });
 
 
@@ -241,7 +250,9 @@ gulp.task("compose", shell.task([
     // mv buildx-v0.4.1.linux-amd64 ~/.docker/cli-plugins/docker-buildx
 
     `docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push .`,
-    `docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push --file ./OpenFlowNodeRED/Dockerfile .`,
+    // `docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push --file ./OpenFlowNodeRED/Dockerfile .`,
+
+
     // `echo "docker buildx build -t openiap/openflow:edge -t openiap/openflow:` + version + ` --platform linux/amd64 --push ."`,
     // `echo "docker buildx build -t openiap/nodered:edge -t openiap/nodered:` + version + ` --platform linux/amd64 --push --file ./OpenFlowNodeRED/Dockerfile ."`,
     // `echo "docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer ."`,
@@ -254,51 +265,22 @@ gulp.task("compose", shell.task([
 
 gulp.task("latest", shell.task([
     `echo "docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push ."`,
-    `echo "docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --file ./OpenFlowNodeRED/Dockerfile ."`,
-    `echo "docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer ."`,
-    `echo "docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui ."`,
-    `docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .`,
-    `docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --file ./OpenFlowNodeRED/Dockerfile .`,
-    `docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer .`,
-    `docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui .`,
+    // `echo "docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --file ./OpenFlowNodeRED/Dockerfile ."`,
+    // `echo "docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer ."`,
+    // `echo "docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui ."`,
+    // ,linux/arm64,linux/arm/v7,linux/arm/v6
+    `docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:` + version + ` --platform linux/amd64 --push .`,
+    // `docker buildx build -t openiap/nodered:edge -t openiap/nodered:latest -t openiap/nodered:` + version + ` --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --file ./OpenFlowNodeRED/Dockerfile .`,
+    // `docker buildx build -t openiap/nodered-puppeteer:edge -t openiap/nodered-puppeteer:latest -t openiap/nodered-puppeteer:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfilepuppeteer .`,
+    // `docker buildx build -t openiap/nodered-tagui:edge -t openiap/nodered-tagui:latest -t openiap/nodered-tagui:` + version + ` --platform linux/amd64 --push -f ./OpenFlowNodeRED/Dockerfiletagui .`,
 ]));
+/*
+docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:1.5.0 --platform linux/amd64 --push .
+docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:1.5.0 --platform linux/arm/v7 --push .
+docker buildx build -t openiap/openflow:edge -t openiap/openflow:latest -t openiap/openflow:1.5.0 --platform linux/arm/v6 --push .
 
-gulp.task("bumpyml1", function () {
-    return gulp.src(["./*.yml"]).pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version)).
-        pipe(gulp.dest("./"));
-});
-gulp.task("bumpyml2", function () {
-    return nodered = gulp.src(["./*.yml"]).pipe(replace(/nodered:\d+(\.\d+)+/g, 'nodered:' + version)).
-        pipe(gulp.dest("./"));
-});
-gulp.task("bumpflow", function () {
-    console.log('openiap/openflow:' + version);
-    return gulp.src(["config/**/controllers.yml"])
-        .pipe(replace(/openflow:\d+(\.\d+)+/g, 'openflow:' + version))
-        .pipe(gulp.dest("config"));
-});
-gulp.task("bumpnodered", function () {
-    console.log('openiap/nodered:' + version);
-    return gulp.src(["config/**/controllers.yml"])
-        .pipe(replace(/nodered:\d+(\.\d+)+/g, 'nodered:' + version))
-        .pipe(gulp.dest("config"));
-});
-gulp.task("bumpconfigmap", function () {
-    console.log('openiap/nodered:' + version);
-    return gulp.src(["config/**/configmap.yml"])
-        .pipe(replace(/nodered:\d+(\.\d+)+/g, 'nodered:' + version))
-        .pipe(gulp.dest("config"));
-});
+*/
 
-gulp.task("bumpaiotfrontend", function () {
-    let version = "0.0.1";
-    if (!fs.existsSync('../aiot-frontend')) return gulp.src('.');
-    version = fs.readFileSync("../aiot-frontend/VERSION", "utf8");
-    console.log('openiap/aiot-frontend:' + version);
-    return gulp.src(["config/**/controllers.yml"])
-        .pipe(replace(/aiot-frontend:\d+(\.\d+)+/g, 'aiot-frontend:' + version))
-        .pipe(gulp.dest("config"));
-});
 gulp.task("bumpprojectfiles", function () {
     let data = require("./package.json");
     console.log(data.version + " updated to " + version);
@@ -309,11 +291,11 @@ gulp.task("bumpprojectfiles", function () {
     // json = JSON.stringify(data, null, 2);
     // fs.writeFileSync("docker-package.json", json); // keep a project file that is not changed so we dont need to rebuild everything every time
 
-    data = require("./OpenFlowNodeRED/package.json");
-    console.log(data.version + " updated to " + version);
-    data.version = version;
-    json = JSON.stringify(data, null, 2);
-    fs.writeFileSync("OpenFlowNodeRED/package.json", json);
+    // data = require("./OpenFlowNodeRED/package.json");
+    // console.log(data.version + " updated to " + version);
+    // data.version = version;
+    // json = JSON.stringify(data, null, 2);
+    // fs.writeFileSync("OpenFlowNodeRED/package.json", json);
 
     // data.version = "1.1.57";
     // json = JSON.stringify(data, null, 2);
@@ -339,7 +321,7 @@ gulp.task("ts", gulp.series("ts-openflow", "ts-nodered"));
 gulp.task("build", gulp.series("copyfiles1", "sass", "ts", "browserify", "copyfiles1"));
 
 
-gulp.task("bump", gulp.series("bumpyml1", "bumpyml2", "bumpflow", "bumpnodered", "bumpconfigmap", "bumpaiotfrontend", "bumpprojectfiles", "copyfiles1"));
+gulp.task("bump", gulp.series("bumpprojectfiles", "copyfiles1"));
 
 gulp.task("watch", gulp.series("setwatch", "browserify", "copyfiles1", "dowatch"));
 gulp.task("default", gulp.series("copyfiles1", "browserify", "copyfiles1"));

@@ -1,3 +1,4 @@
+import * as  stream from "stream";
 import * as os from "os";
 import * as path from "path";
 import * as http from "http";
@@ -10,14 +11,24 @@ import * as flash from "flash";
 import { SamlProvider } from "./SamlProvider";
 import { LoginProvider } from "./LoginProvider";
 import { Config } from "./Config";
-import { InsertOrUpdateOneMessage, NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, TokenUser, WellknownIds } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
-var _hostname = "";
 
+import * as WebSocket from "ws";
+import { flowclient } from "./proto/client";
+import { WebSocketServer } from "./WebSocketServer";
+import { Message } from "./Messages/Message";
+import { GridFSBucket, ObjectId } from "mongodb";
+import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse } from "@openiap/nodeapi";
+const { info, warn, err } = config;
+import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
+
+var _hostname = "";
+const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
     if (req.originalUrl.indexOf('/oidc') > -1) return next();
     try {
@@ -47,6 +58,7 @@ export class WebServer {
     public static BaseRateLimiter: any;
     public static server: http.Server = null;
     public static webpush = require('web-push');
+    public static wss: WebSocket.Server;
     public static async isBlocked(req: express.Request): Promise<boolean> {
         try {
             var remoteip = LoginProvider.remoteip(req);
@@ -253,9 +265,16 @@ export class WebServer {
                 WebServer.server = http.createServer(this.app);
             }
             await Config.db.connect(span);
+
+            WebServer.wss = new WebSocket.Server({ server: WebServer.server });
+            await protowrap.init();
+
+            config.doDumpMesssages = true;
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
+            // WebServer.server.close();
+            process.exit(404);
             return null;
         } finally {
             Logger.otel.endSpan(span);
@@ -269,7 +288,320 @@ export class WebServer {
                 process.exit(404);
             }
         });
+        var servers = [];
+        servers.push(protowrap.serve("pipe", this.onClientConnected, config.defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server, flowclient));
+        servers.push(protowrap.serve("socket", this.onClientConnected, config.defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
+        servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, "/ws/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
+        servers.push(protowrap.serve("grpc", this.onClientConnected, config.defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
+        servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
+    }
+    public static async ReceiveFileContent(client: flowclient, rid:string, msg: any) {
+        return new Promise<string>((resolve, reject) => {
+            const bucket = new GridFSBucket(Config.db.db);
+            var metadata = new Base();
+            metadata.name = msg.filename;
+            metadata._acl = [];
+            metadata._createdby = "root";
+            metadata._createdbyid = WellknownIds.root;
+            metadata._modifiedby = "root";
+            metadata._modifiedbyid = WellknownIds.root;
+            if(client.user)
+            {
+                Base.addRight(metadata, client.user._id , client.user.name, [Rights.full_control]);
+                metadata._createdby = client.user.name;
+                metadata._createdbyid = client.user._id;
+                metadata._modifiedby = client.user.name;
+                metadata._modifiedbyid = client.user._id;
+            }
+            metadata._created = new Date(new Date().toISOString());
+            metadata._modified = metadata._created;
+    
+            Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+    
+            const rs = new stream.Readable;
+            rs._read = () => { };
+            const s = protowrap.SetStream(client, rs, rid)
+            let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
+            let id = uploadStream.id
+            uploadStream.on('finish', ()=> {
+                resolve(id.toString());
+            })
+            uploadStream.on('error', (err)=> {
+                reject(err);
+            });
+            rs.pipe(uploadStream);
+        });
+    }
+    static sendFileContent(client:flowclient, rid, id):Promise<void> {
+        return new Promise<void>(async (resolve, reject) => {
+            const bucket = new GridFSBucket(Config.db.db);
+            let downloadStream = bucket.openDownloadStream(safeObjectID(id));
+            const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
+            protowrap.sendMesssag(client, { rid, command: "beginstream", data: data }, null, true);
+            downloadStream.on('data', (chunk) => {
+                const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: Stream.encode(Stream.create({data: chunk})).finish() })
+                protowrap.sendMesssag(client, { rid, command: "stream", 
+                data: data }, null, true);
+            });
+            downloadStream.on('end', ()=> {
+                const data = Any.create({type_url: "type.googleapis.com/openiap.EndStream", value: EndStream.encode(EndStream.create()).finish() })
+                protowrap.sendMesssag(client, { rid, command: "endstream", data: data }, null, true);
+                resolve();
+            });
+            downloadStream.on('error', (err) => {
+                reject(err);
+            });
+        });
+      }
+    public static async onMessage(client: flowclient, message: any) {
+        let command, msg, reply;
+        try {
+            [command, msg, reply] = protowrap.unpack(message);
+        } catch (error) {
+            err(error);
+            message.command = "error";
+            if (typeof error == "string") error = new Error(error);
+            const data = Any.create({type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
+            message.data = data
+            message.rid = message.id;
+            return message;
+        }
+        try {
+            if (command == "noop" || command == "pong") {
+                reply.command = "noop";
+            } else if ( command == "queuemessagereply") {
+                reply.command = "noop";
+            } else if (command == "ping") {
+                reply.command = "pong";
+            } else if (command == "getelement") {
+                if(NoderedUtil.IsNullUndefinded(msg)) msg = {xpath: ""};
+                msg.xpath = "Did you say " + msg?.xpath + " ?";
+                reply.data = GetElementResponse.encode(GetElementResponse.create(msg)).finish()
+            } else if (command == "send") {
+                let len = msg.count;
+                reply.command = "getelement"
+                for (var i = 1; i < len; i++) {
+                    const data = Any.create({type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test" + (i + 1) })).finish() })
+                    var payload = { ...reply, 
+                        data: data };
+                    protowrap.sendMesssag(client, payload, null, true);
+                }
+                const data = Any.create({type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test1" })).finish() })
+                reply.data = data
+
+            } else if (command == "upload") {
+                var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
+                reply.command = "uploadreply"
+                const data = Any.create({type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id })).finish() })
+                reply.data = data
+                // var filename = msg.filename;
+                // let name = path.basename(filename);
+                // name = "upload.png";
+                // const result = await protowrap.ReceiveFileContent(client, reply.rid, name, SendFileHighWaterMark);
+                // reply.data = protowrap.pack("upload", result);
+                // // @ts-ignore
+                // info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
+            } else if (command == "download") {
+                if(msg.id && msg.id != "") {
+                    reply.command = "downloadreply"
+                    const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
+                    if(rows.length > 0) {
+                        result = rows[0];
+                        await WebServer.sendFileContent(client, reply.rid, msg.id)
+                        result = rows[0];
+                        reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadRequest",
+                            value: DownloadResponse.encode(DownloadResponse.create({
+                            filename: result.filename,
+                            mimetype: result.contentType,
+                            id: result._id.toString()})).finish()})
+
+                    } else {
+                        throw new Error("Access denied")
+                    }
+                } else {
+                    throw new Error("Access denied")
+                    // var filename = msg.filename;
+                    // await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
+                    // msg.filename = path.basename(filename);
+                    // reply.data = protowrap.pack(command, msg);
+                }
+            } else if (command == "clientconsole") {
+                throw new Error("Access denied")
+                // var Readable = require('stream').Readable;
+                // var rs = new Readable;
+                // rs._read = function () { };
+                // protowrap.SetStream(client, rs, reply.rid);
+                // protowrap.sendMesssag(client, reply, null, true);
+                // rs.pipe(process.stdout); // pipe the read stream to stdout
+            } else if (command == "console") {
+                throw new Error("Access denied")
+                // var old = process.stdout.write;
+                // const rid = reply.rid;
+                // // @ts-ignore
+                // process.stdout.write = (function (write) {
+                //     return function (string, encoding, fd) {
+                //         try {
+                //             write.apply(process.stdout, arguments);
+                //             protowrap.sendMesssag(client, { rid, command: "stream", data: protowrap.pack("stream", { data: Buffer.from(string) }) }, null, false);
+                //         } catch (error) {
+                //             process.stdout.write = old;
+                //             err(error);
+                //         }
+                //     }
+                // })(process.stdout.write);
+            } else {
+                if(message.command == "updatedocument") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    msg.item = msg.document; // new style to new 
+                    delete msg.document;
+                    message.command = "updatemany" // new command to new
+                }
+                if(message.command == "unregisterqueue") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    message.command = "closequeue" // new command to new
+                }
+                if(message.command == "pushworkitem") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
+                    message.command = "addworkitem" // new command to new
+                }
+                if(message.command == "pushworkitems") {
+                    msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    if(msg.items != null ) {
+                        msg.items.forEach(wi => {
+                            if(typeof wi.payload == "string") wi.payload = JSON.parse(wi.payload); // new style to new 
+                        });
+                    }
+                    message.command = "addworkitems" // new command to new
+                }
+                if(message.command == "updateworkitem") {
+                    if(msg.workitem && typeof msg.workitem.payload == "string") msg.workitem.payload = JSON.parse(msg.workitem.payload); 
+                    // if(msg.workitem) {
+                    //     msg.workitem = JSON.parse(JSON.stringify(msg.workitem))
+                    // }
+                    // msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
+                    // if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
+                    if(msg.workitem && msg.workitem.files && msg.workitem.files.length > 0) {
+                        if(msg.files && msg.files.length > 0) {
+                            msg.files.forEach(f => {
+                                msg.workitem.files.push(f)                                
+                            });
+                        }
+                        delete msg.files;
+                    } else if (msg.workitem && msg.files && msg.files.length > 0) {
+                        msg.files.forEach(f => {
+                            msg.workitem.files.push(f)                                
+                        });
+                        delete msg.files;
+                    }
+                    if(msg.workitem) msg = Object.assign(msg.workitem, msg);
+                    delete msg.workitem;
+                    if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
+                    delete msg.Id;                    
+                }
+                if(message.command == "signin") {
+                    msg.clientagent = msg.agent;
+                    msg.clientversion = msg.version;
+                }
+                var _msg = Message.fromjson({ ...message, data: msg });
+                var result = await _msg.Process(client as any);
+                if(message.rid != null && message.rid != "" && result.command == "error") {
+                    return null;
+                }
+                if(message.command == "signin") {
+                    if(msg.ping != null) {
+                        client.doping = msg.ping;
+                    }
+                }
+                reply.command = result.command + "reply"
+                if(reply.command == "errorreply") reply.command = "error";
+                if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
+                if(reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
+                if(reply.command == "addworkitemreply") {
+                    reply.command = "pushworkitemreply";
+                    reply.workitem = result.result;
+                }
+                if(reply.command == "addworkitemsreply") {
+                    reply.command = "pushworkitemsreply";
+                    reply.workitems = result.results;
+                }
+                var res = result.data;
+                if(typeof res == "string") var res = JSON.parse(res);
+                delete res.password;
+                if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
+                    if(res.results == null && res.result != null) {
+                        res.results = res.result;
+                        delete res.result;
+                    }
+                }
+                if(result.command == "addworkitem" || result.command == "pushworkitem" || result.command == "updateworkitem" || result.command == "popworkitem") {
+                    res.workitem = res.result;
+                    delete res.result;
+                }
+                if(result.command == "popworkitem") {
+                    let includefiles = msg.includefiles || false;
+                    // @ts-ignore
+                    let compressed = msg.compressed || false;
+                    if(res.workitem && includefiles == true) {
+                        for(var i = 0; i < res.workitem.files.length; i++) {
+                            var file = res.workitem.files[i];
+                            var buf: Buffer = await _msg._GetFile(file._id, compressed);
+                            // @ts-ignore
+                            // b = new Uint8Array(b);
+                            // b = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+                            // @ts-ignore
+                            file.compressed = compressed;
+                            // @ts-ignore
+                            file.file = buf;
+                            // @ts-ignore
+                            res.workitem.file = buf;
+                            // Slice (copy) its segment of the underlying ArrayBuffer
+                            // @ts-ignore
+                            // file.file = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);                            
+                        }
+                    }
+                }
+                // if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
+                // if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
+                if(res.result) res.result = JSON.stringify(res.result);
+                if(res.workitem && !NoderedUtil.IsNullUndefinded(res.workitem.payload) ) {
+                    res.workitem.payload = JSON.stringify(res.workitem.payload);
+                }
+                if(res.results) res.results = JSON.stringify(res.results);
+                if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
+                // reply.data = QueueMessageResponse.encode(QueueMessageResponse.create(res)).finish()
+                reply.data = protowrap.pack(reply.command, res);
+            }
+        } catch (error) {
+            err(error);
+            reply.command = "error";
+            if (typeof error == "string") error = new Error(error);
+            const data = Any.create({type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
+            reply.data = data
+        }
+        return reply;
+    }
+    public static async onClientConnected(client: any) {
+        client.onConnected = WebServer.onConnected;
+        client.onDisconnected = WebServer.onDisconnected;
+        client.onMessage = WebServer.onMessage;
+        WebSocketServer._clients.push(client);
+        info("Client connected, client count " + WebSocketServer._clients.length);
+    }
+    public static async onConnected(client: flowclient) {
+    }
+    public static async onDisconnected(client: flowclient, error: any) {
+        client.Close();
+        var index = WebSocketServer._clients.indexOf(client as any);
+        if (index > -1) {
+            WebSocketServer._clients.splice(index, 1);
+        }
+        if (error) {
+            err("Disconnected client, client count " + WebSocketServer._clients.length + " " + (error.message || error) as any);
+        } else {
+            info("Disconnected client, client count " + WebSocketServer._clients.length);
+        }
     }
     static async get_crashme(req: any, res: any, next: any): Promise<void> {
         const remoteip = LoginProvider.remoteip(req);

@@ -14,7 +14,7 @@ RUN tsc --build OpenFlow/tsconfig.json
 
 FROM node:lts-alpine
 ENV NODE_ENV=production
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash nano
 EXPOSE 3000
 EXPOSE 5858
 WORKDIR /data
@@ -22,6 +22,7 @@ COPY --from=builder /app/package*.json .
 COPY --from=builder /app/dist/ .
 # RUN npm install --omit=dev 
 # RUN npm install mongodb
+ENV HOME=.
 RUN npm install --omit=dev --production
 
 # ENTRYPOINT ["/usr/local/bin/node", "index.js"]

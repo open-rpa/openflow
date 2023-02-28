@@ -202,7 +202,9 @@ export class MenuCtrl {
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) return false;
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) return false;
         if (role == "customer admins" && !NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user.customerid)) {
-            return true;
+            if(this.customer == null) return false;
+            const hits = WebSocketClient.instance.user.roles.filter(member => member._id == this.customer.admins);
+            if(hits.length == 1) return true;
         }
         const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
         return (hits.length == 1)
@@ -671,7 +673,7 @@ export class MenuCtrl {
 
             // tour.addStep({
             //     title: 'Manage credentials',
-            //     text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
+            //     text: `For a more secure environment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
             //     attachTo: {
             //         element: '#menuadmincredentials'
             //     },
@@ -1091,7 +1093,7 @@ export class MenuCtrl {
 
             tour.addStep({
                 title: 'Credentials',
-                text: `For a more secure envoriment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
+                text: `For a more secure environment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
@@ -2750,6 +2752,7 @@ export class RoleCtrl extends entityCtrl<Role> {
     }
 
 
+
     restrictInput(e) {
         if (e.keyCode == 13) {
             e.preventDefault();
@@ -2794,6 +2797,10 @@ export class RoleCtrl extends entityCtrl<Role> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -2820,7 +2827,11 @@ export class RoleCtrl extends entityCtrl<Role> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -4175,6 +4186,10 @@ export class EntityCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -4206,7 +4221,11 @@ export class EntityCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -4831,7 +4850,8 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         let name = model.username;
         name = name.toLowerCase();
         name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
-        const noderedurl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
+        // const noderedurl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
+        const noderedurl = "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", name);
         window.open(noderedurl);
     }
     ManageNodered(model: any) {
@@ -5129,6 +5149,10 @@ export class CredentialCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -5159,7 +5183,11 @@ export class CredentialCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -5873,7 +5901,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     (prod as any).count = this.AssignCount(prod);
                     if ((prod as any).count > 0) {
                         (res as any).newproduct = prod;
-                    }
+                        (prod as any).usedby = this.UsedbyCount(prod);
+                    }                    
                     if (prod.customerassign == "metered" && res.name == 'Database Usage') {
 
                         let billabledbusage: number = this.model.dbusage - res.defaultmetadata.dbusage;
@@ -5971,6 +6000,17 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         let quantity: number = 0;
         assigned.forEach(x => {
             quantity += x.quantity;
+        });
+        return quantity;
+    }
+    UsedbyCount(Product: ResourceVariant) {
+        const assigned = this.Assigned.filter(x => x.product.stripeprice == Product.stripeprice && x.quantity > 0 && x.siid != null);
+        let quantity: number = 0;
+        assigned.forEach(x => {
+            // @ts-ignore
+            if(assigned[0].usedby == null) return 0;
+            // @ts-ignore
+            quantity = quantity + assigned[0].usedby.length;
         });
         return quantity;
     }
@@ -6212,7 +6252,7 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
 
             await this.newRestriction("Create workitemqueue in mq", "mq", ["$.[?(@ && @._type == 'workitemqueue')]"], false);
             await this.newRestriction("Create workitem in workitems", "workitems", ["$.[?(@ && @._type == 'workitem')]"], false);
-
+            await this.newRestriction("Create agent in agents", "agents", ["$.[?(@ && @._type == 'agent')]"], false);
 
             await this.newRestriction("Create queues", "mq", ["$.[?(@ && @._type == 'queue')]"], false);
             await this.newRestriction("Create exchanges", "mq", ["$.[?(@ && @._type == 'exchange')]"], false);
@@ -6428,6 +6468,10 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }
                 return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = "";
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         } else {
             if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
@@ -6459,7 +6503,11 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { $or: [
+                        {name: new RegExp([this.searchtext].join(""), "i")},
+                        {email: new RegExp([this.searchtext].join(""), "i")},
+                        {username: new RegExp([this.searchtext].join(""), "i")}
+                    ]},
                     { _id: { $nin: ids } }
                 ]
             }
@@ -6538,12 +6586,19 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
         this.loading = true;
         try {
             if (this.WebSocketClientService.stripe_api_key == "pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99") {
-                const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                // const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                //     [
+                //         this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
+                //         this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
+                //         this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
+                //         this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
+                //     ], true, true, 0);
+                const nodered: Resource = await this.newResource("Agent Instance", "customer", "multiplevariants", "singlevariant", { "runtime_hours": 8, "agentcount": 1, "resources": { "limits": { "memory": "225Mi" } } },
                     [
-                        this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
-                        this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
-                        this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
-                        this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
+                        this.newProduct("Basic (256Mi ram)", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
+                        this.newProduct("Plus (512Mi ram)", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
+                        this.newProduct("Premium (1Gi ram)", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
+                        this.newProduct("Premium+ (2Gi ram)+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
                     ], true, true, 0);
                 const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
                     [
@@ -6567,13 +6622,21 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
                         this.newProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "metered", "metered", null, null, 0, { dbusage: (1048576 * 50) }, true, 0),
                     ], true, true, 1);
             } if (this.WebSocketClientService.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
-                const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                // const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                //     [
+                //         this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false, 0),
+                //         this.newProduct("Basic", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 1),
+                //         this.newProduct("Plus", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 2),
+                //         this.newProduct("Premium", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 3),
+                //         this.newProduct("Premium+", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 4),
+                //     ], true, true, 0);
+                const nodered: Resource = await this.newResource("Agent Instance", "customer", "multiplevariants", "singlevariant", { "runtime_hours": 8, "agentcount": 1, "resources": { "limits": { "memory": "225Mi" } } },
                     [
-                        this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false, 0),
-                        this.newProduct("Basic", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 1),
-                        this.newProduct("Plus", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 2),
-                        this.newProduct("Premium", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 3),
-                        this.newProduct("Premium+", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 4),
+                        this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0","multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false, 0),
+                        this.newProduct("Basic (256Mi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 1),
+                        this.newProduct("Plus (512Mi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 2),
+                        this.newProduct("Premium (1Gi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 3),
+                        this.newProduct("Premium+ (2Gi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 4),
                     ], true, true, 0);
                 const supporthours: Resource = await this.newResource("Support Hours", "customer", "multiplevariants", "multiplevariants", {},
                     [
@@ -6605,12 +6668,19 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
                 poc.products.push(this.newProduct("POC Starter pack", "prod_Jgk2LqELt4QFwB", "price_1J3MZZC2vUMc6gvhh0sOq19z", "single", "single", poc._id, "price_1J3MZ3C2vUMc6gvhhWdgSqjW", 1, {}, true, 1));
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: poc });
             } else {
-                const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                // const nodered: Resource = await this.newResource("Nodered Instance", "user", "singlevariant", "singlevariant", { "resources": { "limits": { "memory": "225Mi" } } },
+                //     [
+                //         this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
+                //         this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
+                //         this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
+                //         this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
+                //     ], true, true, 0);
+                const nodered: Resource = await this.newResource("Agent Instance", "customer", "multiplevariants", "singlevariant", { "runtime_hours": 24, "agentcount": 1, "resources": { "limits": { "memory": "225Mi" } } },
                     [
-                        this.newProduct("Basic", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
-                        this.newProduct("Plus", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
-                        this.newProduct("Premium", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
-                        this.newProduct("Premium+", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "single", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
+                        this.newProduct("Basic (256Mi ram)", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 0),
+                        this.newProduct("Plus (512Mi ram)", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 1),
+                        this.newProduct("Premium (1Gi ram)", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 2),
+                        this.newProduct("Premium+ (2Gi ram)", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, 3),
                     ], true, true, 0);
                 const databaseusage: Resource = await this.newResource("Database Usage", "customer", "singlevariant", "singlevariant", { dbusage: (1048576 * 25) },
                     [
@@ -6860,7 +6930,7 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
             if (this.id !== null && this.id !== undefined) {
                 await this.loadData();
             } else {
-                this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 } });
+                this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, orderby: "name", projection: { "name": 1 } });
                 this.workitemqueues.unshift({ "name": "" } as any)
                 this.model = new Workitem();
                 this.model.retries = 0;
@@ -7059,12 +7129,14 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                 if (this.id !== null && this.id !== undefined) {
                     await this.loadData();
                 } else {
-                    await this.loadselects();
                     this.model = new WorkitemQueue();
                     this.model.maxretries = 3;
                     this.model.retrydelay = 0;
                     this.model.initialdelay = 0;
-                    this.processdata();
+                    this.stats = "No items";
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    await this.loadselects();
+           
                 }
             } catch (error) {
                 console.error(error);
@@ -7074,24 +7146,28 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         });
     }
     async loadselects() {
-        this.projects = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "project" }, projection: { "name": 1 } });
+        this.projects = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "project" }, projection: { "name": 1 }, orderby: "name" });
         this.projects.forEach((e: any) => { e.display = e.name });
         this.projects.unshift({ "_id": "", "name": "", "display": "(no project)" } as any);
         let queryas: string = null;
         if (this.model != null) queryas = this.model.robotqueue;
         console.log("queryas", queryas)
-        this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, top: 500, queryas });
+        this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, orderby: "name", top: 500, queryas });
         this.workflows.forEach((e: any) => { e.display = e.projectandname });
         this.workflows.unshift({ "_id": "", "name": "", "projectandname": "", "display": "(no workflow)" } as any);
-        this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, projection: { "name": 1 }, top: 500 });
+        this.users = await NoderedUtil.Query({ collectionname: "users", query: { "$or": [{ "_type": "user" }, { "_type": "role", "rparole": true }] }, orderby: "name", projection: { "name": 1 }, top: 500 });
         this.users.forEach((e: any) => { e.display = e.name });
         this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
-        this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, projection: { "name": 1 }, top: 500 });
+        this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, orderby: "name", projection: { "name": 1 }, top: 500 });
         this.amqpqueues.forEach((e: any) => { e.display = e.name });
+        if(this.model) {
+            this.amqpqueues.unshift({ "_id": this.model._id, "name": this.model.name, "display": this.model.name } as any);
+        }
         this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
-        this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, projection: { "name": 1 }, top: 500 });
+        this.workitemqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "workitemqueue" }, orderby: "name", projection: { "name": 1 }, top: 500 });
         this.workitemqueues = this.workitemqueues.filter(x => x._id != this.id);
         this.workitemqueues.forEach((e: any) => { e.display = e.name });
+        // this.workitemqueues.forEach((e: any) => { this.amqpqueues.push(e) });
         this.workitemqueues.unshift({ "_id": "", "name": "", "display": "(no workitem queue)" } as any);
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -7105,7 +7181,12 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         if (NoderedUtil.IsNullEmpty(this.model.failed_wiqid)) this.model.failed_wiqid = "";
         await this.loadselects();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        var total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+        var total = 0;
+        if(this.id == null || this.id == "") {
+            if(this.id != null && this.id != "") {
+                total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
+            }
+        }
         // this.stats = total + " items";
         // if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if(total > 0) {
@@ -7148,6 +7229,9 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.success_wiqid = model.success_wiqid;
                     q.failed_wiq = model.failed_wiq;
                     q.failed_wiqid = model.failed_wiqid;
+                    if((q.robotqueue == null || q.robotqueue == "") && (q.amqpqueue == null || q.amqpqueue == "")) {
+                        q.amqpqueue =model.name;
+                    }
                     _msg.command = 'addworkitemqueue';
                     _msg.data = JSON.stringify(q);
                     const result: AddWorkitemQueueMessage = await WebSocketClient.instance.Send<AddWorkitemQueueMessage>(_msg, 1);
@@ -7494,4 +7578,626 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
             console.error('Async: Could not copy text: ', err);
         });
     }
+}
+
+
+
+export class AgentsCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("AgentsCtrl");
+        this.basequery = {_type: "agent"};
+        this.collection = "agents";
+        this.postloadData = this.processdata;
+        this.skipcustomerfilter = true;
+        this.searchfields = ["name", "slug"];
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, webserver:1, runas: 1, _createdby:1, slug: 1 };
+        if (this.userdata.data.AgentsCtrl) {
+            this.basequery = this.userdata.data.AgentsCtrl.basequery;
+            this.collection = this.userdata.data.AgentsCtrl.collection;
+            this.baseprojection = this.userdata.data.AgentsCtrl.baseprojection;
+            this.orderby = this.userdata.data.AgentsCtrl.orderby;
+            this.searchstring = this.userdata.data.AgentsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.AgentsCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.AgentsCtrl.skipcustomerfilter;
+        }
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async getStatus(model) {
+        var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
+        for(var x = 0; x < instances.length; x++) {
+            var instance =  instances[x]
+            model.status = "unknown"
+            if(instance.status && instance.status.phase) {
+                model.status = instance.status.phase;
+            }
+            if(model.status == "running" || model.status == "Running") {
+                if(instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
+                    model.status = instance.status.containerStatuses[0].started ? "running" : "stopped " + instance.status.containerStatuses[0].state.waiting.reason;
+                }
+            }
+            if(instance.metadata.deletionTimestamp) model.status = "deleting"
+        }
+        if(instances.length == 0) {
+            model.status = "missing"
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    trimimage(image:string) {
+        if(image == null) return "";
+        while(image.indexOf("/") != image.lastIndexOf("/")) {
+            image = image.substring(image.indexOf("/") + 1);
+        }
+        // remove tag too ?
+        // if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(':') > -1) {
+        //     image = image.split(':')[0];
+        // }
+        return image;
+    }
+    async processdata() {
+        if (!this.userdata.data.AgentsCtrl) this.userdata.data.AgentsCtrl = {};
+        this.userdata.data.AgentsCtrl.basequery = this.basequery;
+        this.userdata.data.AgentsCtrl.collection = this.collection;
+        this.userdata.data.AgentsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.AgentsCtrl.orderby = this.orderby;
+        this.userdata.data.AgentsCtrl.searchstring = this.searchstring;
+        this.userdata.data.AgentsCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.AgentsCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        for(var i = 0; i < this.models.length; i++) {
+            var model = this.models[i];
+            // @ts-ignore
+            model.status = "...";
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        for(var i = 0; i < this.models.length; i++) {
+            var model = this.models[i];
+            await this.getStatus(model);
+        }
+    }
+    weburl(model) {
+        // return "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", model.slug)
+        return "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", model.slug)
+    }
+    async DeleteAgent(model:any): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            await NoderedUtil.CustomCommand({command:"deleteagent", id:model._id})
+            this.loading = false;
+            setTimeout(this.loadData.bind(this), 500)
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+            
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StopAgent(model:any): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            await NoderedUtil.CustomCommand({command:"stopagent", id:model._id, name:model.slug})
+            await this.getStatus(model);
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StartAgent(model:any): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            await NoderedUtil.CustomCommand({command:"startagent", id:model._id, name:model.slug})
+            await this.getStatus(model);
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+
+
+export class AgentCtrl extends entityCtrl<any> {
+    instances: any[] = [];
+    instancelogpodname: string = "";
+    instancelog: string = "";
+    products: any[] = [{"stripeprice": "", "name": "Free tier"}];
+    images: any[] = [];
+    resource: any = null;
+    agentcount: number = 0;
+    runtime_hours: number = 0;
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("AgentCtrl");
+        this.collection = "agents";
+        this.postloadData = this.processData;
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
+            var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
+            if(products.length > 0) {
+                this.resource = products[0];
+                if(this.resource.defaultmetadata) {
+                    if(this.resource.defaultmetadata.agentcount != null && this.resource.defaultmetadata.agentcount != "") {
+                        this.agentcount = parseInt(this.resource.defaultmetadata.agentcount);
+                    }
+                    if(this.resource.defaultmetadata.runtime_hours != null && this.resource.defaultmetadata.runtime_hours != "") {
+                        this.runtime_hours = parseInt(this.resource.defaultmetadata.runtime_hours);
+                    }
+                }
+                this.products = this.products.concat(products[0].products);
+            }
+            this.images = this.WebSocketClientService.agent_images;
+            
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.model = new Role();
+                this.model._type = "agent";
+                this.model.name = this.randomname();
+                // @ts-ignore
+                this.model.image = this.images[0].image;
+                // @ts-ignore
+                this.model.slug = this.model.name; this.model.stripeprice = ""
+                this.ImageUpdated()
+                this.loading = false;
+                this.model.runas = user._id;
+                this.model.runasname = user.name;
+                this.searchtext = user.name;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        });
+    }
+    refreshtimer: any;
+    async processData(): Promise<void> {
+        if(this.model.stripeprice == null) this.model.stripeprice = "";
+        this.searchtext = this.model.runasname
+        this.loadInstances()
+    }
+    async getStatus(model) {
+        this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+        // this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
+        for(var x = 0; x < this.instances.length; x++) {
+            var instance =  this.instances[x]
+            instance.showstatus = "unknown"
+            if(instance.status && instance.status.phase) {
+                instance.showstatus = instance.status.phase;
+            }
+            if(instance.showstatus == "running" || instance.showstatus == "Running") {
+                if(instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
+                    // instance.showstatus = instance.status.containerStatuses[0].state.running ? "running" : "stopped";
+                    instance.showstatus = instance.status.containerStatuses[0].started ? "Running" : "Stopped " + instance.status.containerStatuses[0].state.waiting.reason;
+                }
+            }
+            if(instance.metadata.deletionTimestamp) instance.showstatus = "Deleting"
+        }
+        if(this.instances.length == 0) {
+            instance.showstatus = "missing"
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    sizewarningtitle: string = "";
+    sizewarning: string = "";
+    PlanUpdated() {
+        this.sizewarningtitle = ""
+        this.sizewarning = ""
+        if(this.resource == null || this.products == null || this.products.length < 2) return; // no plans, don't care
+        var product = this.products.find(x => x.stripeprice == this.model.stripeprice)
+        if(product.stripeprice == "") product = null
+        var ram = product?.metadata?.resources?.limits?.memory;
+        if(ram == null) {
+            ram = product?.metadata?.resources?.requests?.memory;
+        }
+        if(ram == null) {
+            ram = this.resource?.defaultmetadata?.resources?.limits?.memory;
+        }
+        if(ram == null) {
+            ram = this.resource?.defaultmetadata?.resources?.requests?.memory;
+        }
+        
+        if(ram == null) ram = "128Mi";
+        if(ram.indexOf("Mi") > -1) {
+            ram = ram.replace("Mi", "")
+            ram = parseInt(ram) / 1024;
+        } else if(ram.indexOf("Gi") > -1) {
+            ram = ram.replace("Gi", "")
+            ram = parseInt(ram);
+        }
+        if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
+            if(product == null || ram < 0.25) {
+                this.sizewarningtitle = "Not enough ram"
+                if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at 256Mi ram or higher"
+                } else {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at 256Mi ram or higher"
+                }
+            }
+        }
+        if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
+            if(product == null || ram < 0.25) {
+                this.sizewarningtitle = "Not enough ram"
+                if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at 256Mi ram or higher"
+                } else {
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at 256Mi ram or higher"
+                }
+            }
+        }
+    }
+    ImageUpdated() {
+        this.sizewarningtitle = ""
+        this.sizewarning = ""
+        if(this.model._id != null && this.model._id != "") {
+            this.PlanUpdated()
+            return;
+        }
+        var image = this.images.find(x => x.image == this.model.image)
+        if(this.model.port != null && this.model.port != "") {
+            this.model.webserver = true;
+        } else {
+            this.model.webserver = (image.port != null && image.port != "");
+        }        
+        if(this.model.image.indexOf("openiap/nodeagent")> -1) {
+            this.model.environment = {
+                "gitrepo": "https://github.com/openiap/nodeworkitemagent.git",
+                "wiq":"nodeagent"
+            }
+        }
+        if(this.model.image.indexOf("openiap/noderedagent") > -1) {
+            this.model.environment = {
+                "nodered_id": this.model.slug
+            }
+            try {
+                var name = WebSocketClient.instance.user.username.toLowerCase();
+                name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
+                this.model.environment["old_nodered_id"] = name;
+            } catch (error) {                
+            }
+        }
+        if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
+            this.model.environment = {
+                "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
+                "wiq": "nodepuppeteertest"
+            }
+            this.PlanUpdated()
+        }
+        if(this.model.image.indexOf("openiap/dotnetagent") > -1) {
+            this.model.environment = {
+                "gitrepo": "https://github.com/openiap/dotnetworkitemagent.git",
+                "wiq":"dotnetagent"
+            }
+        }
+        if(this.model.image.indexOf("openiap/pyagent") > -1) {
+            this.model.environment = {
+                "gitrepo": "https://github.com/openiap/pyworkitemagent.git",
+                "wiq":"pyagent"
+            }
+        }
+        if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
+            this.model.environment = {
+                "gitrepo3": "https://github.com/openiap/rccworkitemagent.git",
+                "gitrepo2": "https://github.com/openiap/robotframeworkagent.git",
+                "gitrepo": "https://github.com/openiap/taguiagent.git",
+                "wiq3": "rcctest",
+                "wiq2": "robotframeworktest",
+                "wiq": "taguitest"
+            }
+            this.PlanUpdated()
+        }
+        if(this.model.image.indexOf("openiap/grafana") > -1) {
+            this.model.environment = {
+                "GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH": "contains(roles[*], 'users') && 'Admin'"
+            }
+            this.PlanUpdated()
+        }
+        if(this.model.image.indexOf("elsaworkflow") > -1) {
+            var url = window.location.protocol + "//"+  this.WebSocketClientService.agent_domain_schema.replace("$slug$", this.model.slug);
+            this.model.environment = {
+                "ELSA__SERVER__BASEURL": url
+            }
+            this.PlanUpdated()
+        }
+    }
+    async loadInstances() {
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        if (!this.refreshtimer) {
+            // this.loading = true;
+            // this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+            this.getStatus(this.model)
+            this.loading = false;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.refreshtimer = setTimeout(() => {
+                this.refreshtimer = null;
+                var path = this.$location.path();
+                if (path == null && path == undefined) { console.debug("getagent, path is null"); return false; }
+                if (!path.toLowerCase().startsWith("/agent/") && path.toLowerCase() != "/agent") { console.debug("getagent, path is no longer /Agent"); return false; }
+                this.loadInstances();
+            }, 2000);
+        }
+    }
+    random(min, max) {
+        return Math.floor(Math.random() * (max - min + 1) + min)
+    }
+    Adjectives = [
+        'aged', 'ancient', 'autumn', 'billowing', 'bitter', 'black', 'blue', 'bold',
+        'broad', 'broken', 'calm', 'cold', 'cool', 'crimson', 'curly', 'damp',
+        'dark', 'dawn', 'delicate', 'divine', 'dry', 'empty', 'falling', 'fancy',
+        'flat', 'floral', 'fragrant', 'frosty', 'gentle', 'green', 'hidden', 'holy',
+        'icy', 'jolly', 'late', 'lingering', 'little', 'lively', 'long', 'lucky',
+        'misty', 'morning', 'muddy', 'mute', 'nameless', 'noisy', 'odd', 'old',
+        'orange', 'patient', 'plain', 'polished', 'proud', 'purple', 'quiet', 'rapid',
+        'raspy', 'red', 'restless', 'rough', 'round', 'royal', 'shiny', 'shrill',
+        'shy', 'silent', 'small', 'snowy', 'soft', 'solitary', 'sparkling', 'spring',
+        'square', 'steep', 'still', 'summer', 'super', 'sweet', 'throbbing', 'tight',
+        'tiny', 'twilight', 'wandering', 'weathered', 'white', 'wild', 'winter', 'wispy',
+        'withered', 'yellow', 'young'
+      ]
+      
+      Nouns = [
+        'art', 'band', 'bar', 'base', 'bird', 'block', 'boat', 'bonus',
+        'bread', 'breeze', 'brook', 'bush', 'butterfly', 'cake', 'cell', 'cherry',
+        'cloud', 'credit', 'darkness', 'dawn', 'dew', 'disk', 'dream', 'dust',
+        'feather', 'field', 'fire', 'firefly', 'flower', 'fog', 'forest', 'frog',
+        'frost', 'glade', 'glitter', 'grass', 'hall', 'hat', 'haze', 'heart',
+        'hill', 'king', 'lab', 'lake', 'leaf', 'limit', 'math', 'meadow',
+        'mode', 'moon', 'morning', 'mountain', 'mouse', 'mud', 'night', 'paper',
+        'pine', 'poetry', 'pond', 'queen', 'rain', 'recipe', 'resonance', 'rice',
+        'river', 'salad', 'scene', 'sea', 'shadow', 'shape', 'silence', 'sky',
+        'smoke', 'snow', 'snowflake', 'sound', 'star', 'sun', 'sun', 'sunset',
+        'surf', 'term', 'thunder', 'tooth', 'tree', 'truth', 'union', 'unit',
+        'violet', 'voice', 'water', 'waterfall', 'wave', 'wildflower', 'wind', 'wood'
+    ]
+    tokenChars = '0123456789abcdef'
+    randomname() {
+        let token = ''
+        for (let i = 0; i < 4; i++) {
+            token += this.tokenChars[this.random(0, this.tokenChars.length - 1)]
+        }        
+        return this.Adjectives[this.random(0, this.Adjectives.length - 1)] + "-" +
+        this.Nouns[this.random(0, this.Nouns.length -1 )] + "-" + token;
+    }
+    async DeleteAgent(): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"deleteagent", id:this.model._id, name:this.model.slug})
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DeleteAgentPod(podname:string): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"deleteagentpod", id:this.model._id, name:podname})
+            this.loadInstances()
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StopAgent(): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"stopagent", id:this.model._id, name:this.model.slug})
+            this.loadInstances()
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async StartAgent(): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            this.instancelog = "";
+            await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+            this.loadInstances()
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async GetInstanceLog(podname:string): Promise<void> {
+        try {
+            this.loading = true;
+            this.instancelogpodname = podname;
+            this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
+            this.errormessage = "";
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+            this.instancelog = "";
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async submit(): Promise<void> {
+        try {
+            this.loading = true;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+            var image = this.images.find(x => x.image == this.model.image)
+            if(image != null) {
+                if(this.model.stripeprice == null || this.model.stripeprice == "") {
+                    this.model.webserver = (image.port != null && image.port != "");
+                } else if (this.model.port == null || this.model.port == "") {
+                    this.model.webserver = false;
+                }
+            }
+            if(image != null && image.volumes != null && image.volumes.length > 0) {
+                this.model.volumes = image.volumes;
+            }
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+                await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+            } else {
+                var tmp = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+                if(this.model) {
+                    this.model = tmp;
+                    console.log("insertone", this.model)
+                    this.id = this.model._id
+                    this.basequery = { _id: this.id };
+                    console.log("startagent", this.model.slug)
+                    await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+                    console.log("load data")
+                }
+            }
+            this.loading = false;
+            if(this.model) { this.loadData(); }
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error;
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+
+    searchFilteredList: Role[] = [];
+    searchSelectedItem: Role = null;
+    searchtext: string = "";
+    e: any = null;
+
+    restrictInput(e) {
+        if (e.keyCode == 13) {
+            e.preventDefault();
+            return false;
+        }
+    }
+    setkey(e) {
+        this.e = e;
+        this.handlekeys();
+    }
+    handlekeys() {
+        if (this.searchFilteredList.length > 0) {
+            let idx: number = -1;
+            for (let i = 0; i < this.searchFilteredList.length; i++) {
+                if (this.searchSelectedItem != null) {
+                    if (this.searchFilteredList[i]._id == this.searchSelectedItem._id) {
+                        idx = i;
+                    }
+                }
+            }
+            if (this.e.keyCode == 38) { // up
+                if (idx <= 0) {
+                    idx = 0;
+                } else { idx--; }
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            }
+            else if (this.e.keyCode == 40) { // down
+                if (idx >= this.searchFilteredList.length) {
+                    idx = this.searchFilteredList.length - 1;
+                } else { idx++; }
+                // this.searchtext = this.searchFilteredList[idx].name;
+                this.searchSelectedItem = this.searchFilteredList[idx];
+                return;
+            } else if (this.e.keyCode == 13) { // enter
+                if (idx >= 0) {
+                    this.searchtext = this.searchFilteredList[idx].name;
+                    this.searchSelectedItem = this.searchFilteredList[idx];
+                    if (this.searchSelectedItem != null) {
+                        this.model.runasname = this.searchSelectedItem.name
+                        this.model.runas = this.searchSelectedItem._id
+                    }
+                    this.searchFilteredList = [];
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }
+                return;
+            } else if (this.e.keyCode == 27) { // esc
+                this.searchtext = this.model.runasname;
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        } else {
+            if (this.e.keyCode == 13 && this.searchSelectedItem != null) {
+                // this.AddMember(this.searchSelectedItem);
+                this.model.runasname = this.searchSelectedItem.name
+                this.model.runas = this.searchSelectedItem._id
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        }
+    }
+    async handlefilter(e) {
+        this.e = e;
+        const ids: string[] = this.model.members.map(item => item._id);
+        
+        this.searchFilteredList = await NoderedUtil.Query({
+            collectionname: "users",
+            query: {
+                _type: "user",
+                name: this.searchtext
+            }
+            , orderby: { _type: -1, name: 1 }, top: 2
+        });
+        this.searchFilteredList = this.searchFilteredList.concat(await NoderedUtil.Query({
+            collectionname: "users",
+            query: {
+                _type: "user",
+                "$or" : [
+                    {name: new RegExp([this.searchtext].join(""), "i")},
+                    {email: new RegExp([this.searchtext].join(""), "i")},
+                    {username: new RegExp([this.searchtext].join(""), "i")}
+                ]
+                
+            }
+            , orderby: { _type: -1, name: 1 }, top: 5
+        }));
+        // this.searchFilteredList = await NoderedUtil.Query("users",
+        //     {
+        //         $and: [
+        //             { $or: [{ _type: "user" }, { _type: "role" }] },
+        //             { name: new RegExp([this.searchtext].join(""), "i") },
+        //             { _id: { $nin: ids } }
+        //         ]
+        //     }
+        //     , null, { _type: -1, name: 1 }, 8, 0, null);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    fillTextbox(searchtext) {
+        this.searchFilteredList.forEach((item: any) => {
+            if (item.name.toLowerCase() == searchtext.toLowerCase()) {
+                this.searchtext = item.name;
+                this.searchSelectedItem = item;
+                this.model.runasname = this.searchSelectedItem.name
+                this.model.runas = this.searchSelectedItem._id
+                this.searchFilteredList = [];
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            }
+        });
+    }
+
 }

@@ -25,7 +25,8 @@
             "envFile": "${workspaceFolder}/config/.env",
             "name": "OpenFlow",
             "outFiles": [
-                "${workspaceRoot}/dist/**/*"
+                "${workspaceRoot}/dist/**/*",
+                "**/node_modules/@openiap/**/*",
             ],
             "outputCapture": "std",
             "preLaunchTask": "openflow-tsc-watch",
@@ -39,7 +40,8 @@
             "type": "node",
             "resolveSourceMapLocations": [
                 "${workspaceFolder}/**",
-                "!**/node_modules/**"
+                "!**/node_modules/**",
+                "**/node_modules/@openiap/**",
             ]
         },
         {

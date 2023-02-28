@@ -7,8 +7,8 @@ import { DatabaseConnection } from "./DatabaseConnection";
 import { UpDownCounter } from "@opentelemetry/api-metrics";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
-export type loginProvider = "saml" | "google" | "openid" | "local" | "websocket";
-export type clientType = "browser" | "openrpa" | "nodered" | "webapp" | "openflow" | "powershell" | "mobileapp" | "samlverify" | "googleverify" | "aiotmobileapp" | "aiotwebapp";
+export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
+export type clientAgent = "node" | "browser" | "nodered" | "openrpa" | "powershell" | "python" | "java" | "csharp" | "go" | "unknown";
 export class Audit {
     public static openflow_logins: UpDownCounter = null;
     public static ensure_openflow_logins() {
@@ -19,7 +19,7 @@ export class Audit {
             });
         }
     }
-    public static async LoginSuccess(user: TokenUser, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
+    public static async LoginSuccess(user: TokenUser, type: tokenType, provider: clientType, remoteip: string, clientagent: clientAgent, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginSuccess", parent);
         try {
             Audit.ensure_openflow_logins();
@@ -44,7 +44,7 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
-    public static async ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
+    public static async ImpersonateSuccess(user: TokenUser, impostor: TokenUser, clientagent: clientAgent, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.ImpersonateSuccess", parent);
         try {
             Audit.ensure_openflow_logins();
@@ -71,7 +71,7 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
-    public static async ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
+    public static async ImpersonateFailed(user: TokenUser, impostor: TokenUser, clientagent: clientAgent, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.ImpersonateFailed", parent);
         try {
             Audit.ensure_openflow_logins();
@@ -97,7 +97,7 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
-    public static async LoginFailed(username: string, type: tokenType, provider: loginProvider, remoteip: string, clientagent: clientType, clientversion: string, parent: Span): Promise<void> {
+    public static async LoginFailed(username: string, type: tokenType, provider: clientType, remoteip: string, clientagent: clientAgent, clientversion: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginFailed", parent);
         try {
             Audit.ensure_openflow_logins();
@@ -152,15 +152,19 @@ export class Audit {
             log.name = name;
             log.username = user.username;
             log.instancename = instancename;
+            if (!NoderedUtil.IsNullEmpty(image)) {
+                while(image.indexOf("/") != image.lastIndexOf("/")) {
+                    image = image.substring(image.indexOf("/") + 1);
+                }
+            }
             log.image = image;
             if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(':') > -1) {
                 log.imagename = image.split(':')[0];
                 log.imageversion = image.split(':')[1];
             } else {
                 log.imagename = image;
-
             }
-            if (!NoderedUtil.IsNullEmpty(instancename)) log.name = instancename;
+            if (!NoderedUtil.IsNullEmpty(instancename) && NoderedUtil.IsNullEmpty(log.name)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
             Logger.instanse.error(error, span);

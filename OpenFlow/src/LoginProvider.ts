@@ -228,8 +228,6 @@ export class LoginProvider {
                     passport.unuse(key);
                 }
             }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -683,18 +681,18 @@ export class LoginProvider {
             }
 
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "unknown", "unknown", span);
                 done("unknown user " + username, null);
                 return;
             }
             if (_user.disabled) {
-                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "unknown", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
 
             const tuser: TokenUser = TokenUser.From(_user);
-            await Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "samlverify", "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "unknown", "unknown", span);
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
@@ -814,16 +812,16 @@ export class LoginProvider {
                 }
             }
             if (NoderedUtil.IsNullUndefinded(_user)) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "unknown", "unknown", span);
                 done("unknown user " + username, null); return;
             }
             if (_user.disabled) {
-                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+                await Audit.LoginFailed(username, "weblogin", "google", remoteip, "unknown", "unknown", span);
                 done("Disabled user " + username, null);
                 return;
             }
             const tuser: TokenUser = TokenUser.From(_user);
-            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "googleverify", "unknown", span);
+            await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "unknown", "unknown", span);
             done(null, tuser);
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -951,8 +949,6 @@ export class LoginProvider {
             res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
             res.end('Unauthorized');
             return;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -961,6 +957,13 @@ export class LoginProvider {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.get_Signout", req);
         try {
             req.logout();
+            res.cookie("_session.legacy.sig", "", { expires: new Date(0) });
+            res.cookie("_session.legacy", "", { expires: new Date(0) });
+            res.cookie("session", "", { expires: new Date(0) });
+            res.cookie("_session.sig", "", { expires: new Date(0) });
+            res.cookie("_interaction.sig", "", { expires: new Date(0) });
+            res.cookie("_interaction", "", { expires: new Date(0) });
+            res.cookie("_session", "", { expires: new Date(0) });
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                 Logger.instanse.debug("Redirect user to " + originalUrl, span);
@@ -1019,8 +1022,6 @@ export class LoginProvider {
                 res.end(JSON.stringify({}));
             }
             res.end();
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -1109,6 +1110,11 @@ export class LoginProvider {
             if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
                 nodered_domain_schema = "$nodered_id$." + Config.domain;
             }
+            let agent_domain_schema = Config.agent_domain_schema;
+            if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
+                agent_domain_schema = "$slug$." + Config.domain;
+            }
+            
             let forceddomains = [];
             var providers = await Logger.DBHelper.GetProviders(null);
             for (let i = 0; i < providers.length; i++) {
@@ -1127,6 +1133,7 @@ export class LoginProvider {
                 auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
                 namespace: Config.namespace,
                 nodered_domain_schema: nodered_domain_schema,
+                agent_domain_schema: agent_domain_schema,
                 websocket_package_size: Config.websocket_package_size,
                 version: Config.version,
                 stripe_api_key: Config.stripe_api_key,
@@ -1136,6 +1143,7 @@ export class LoginProvider {
                 forgot_pass_emails: Config.forgot_pass_emails,
                 supports_watch: Config.supports_watch,
                 nodered_images: Config.nodered_images,
+                agent_images: Config.agent_images,
                 amqp_enabled_exchange: Config.amqp_enabled_exchange,
                 multi_tenant: Config.multi_tenant,
                 enable_entity_restriction: Config.enable_entity_restriction,

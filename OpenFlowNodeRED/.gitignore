@@ -1,8 +1,0 @@
-node_modules
-logs
-dist
-.env
-*license*
-ee
-package-lock.json
-.cache-require-paths.json

@@ -10,7 +10,7 @@ import { LoginProvider, Provider } from "./LoginProvider";
 import * as cacheManager from "cache-manager";
 import { TokenRequest } from "./TokenRequest";
 import { amqpwrapper } from "./amqpwrapper";
-import { EntityRestriction } from "./DatabaseConnection";
+import { EntityRestriction } from "./EntityRestriction";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 var mongoStore = require('@skadefro/cache-manager-mongodb');
@@ -155,8 +155,6 @@ export class DBHelper {
             Logger.instanse.silly("Return user " + _id + " " + item.formvalidated, span);
             var res2 = await this.DecorateWithRoles(User.assign<User>(item), span);
             return res2;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -182,8 +180,6 @@ export class DBHelper {
             let items = await this.memoryCache.wrap("resource", () => { return this.GetResourcesWrap(span) });
             Logger.instanse.silly("Return " + items.length + " resources", span);
             return items;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -200,8 +196,22 @@ export class DBHelper {
             let items = await this.memoryCache.wrap(key, () => { return this.GetResourceUsageByUserIDWrap(userid, span) });
             Logger.instanse.silly("Return resources for user " + userid, span);
             return items;
-        } catch (error) {
-            throw error;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public GetResourceUsageByCustomerIDWrap(customerid: string, span: Span) {
+        Logger.instanse.debug("Add Customer resources to cache : " + customerid, span);
+        return Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", customerid }, collectionname: "config", jwt: Crypt.rootToken() }, span);
+    }
+    public async GetResourceUsageByCustomerID(customerid: string, parent: Span): Promise<ResourceUsage[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetResourceUsageByCustomerID", parent);
+        try {
+            var key = ("resourceusage_" + customerid).toString().toLowerCase();
+            let items = await this.memoryCache.wrap(key, () => { return this.GetResourceUsageByCustomerIDWrap(customerid, span) });
+            Logger.instanse.silly("Return resources for customer " + customerid, span);
+            return items;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -229,8 +239,6 @@ export class DBHelper {
                 items.push(item);
             }
             return items;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -255,8 +263,6 @@ export class DBHelper {
                 items[i] = EntityRestriction.assign(items[i]);
             }
             return items;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -274,8 +280,6 @@ export class DBHelper {
             } else {
                 return await this.mongoCache.get("requesttoken" + key);
             }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -289,8 +293,6 @@ export class DBHelper {
             } else {
                 return await this.mongoCache.set("requesttoken" + key, data);
             }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -304,8 +306,6 @@ export class DBHelper {
             } else {
                 return await this.mongoCache.del("requesttoken" + key);
             }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -351,8 +351,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindQueueByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -360,7 +358,12 @@ export class DBHelper {
     public FindQueueByNameWrap(name, jwt, span: Span) {
         if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
         Logger.instanse.debug("Add queue to cache : " + name, span);
-        return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
+        return Config.db.GetOne<User>({ query: {"$or": [
+            { name, "_type": "queue" },
+            { name: new RegExp(["^", name, "$"].join(""), "i"), "_type": "workitemqueue" },
+            { queue: name, "_type": "workitemqueue"}
+        ]} , collectionname: "mq", jwt }, span);
+        // return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
     }
     public async FindQueueByName(name: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
@@ -371,8 +374,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindQueueByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -391,8 +392,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindExchangeByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -411,8 +410,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindExchangeByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -431,8 +428,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindRoleByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return Role.assign(item);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -451,8 +446,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindByUsernameWrap(username, jwt, span); });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -475,8 +468,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.GetDisposableDomainWrap(domain, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return item;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -495,8 +486,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindByUsernameOrFederationidWrap(username, issuer, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -655,8 +644,6 @@ export class DBHelper {
                 }
             } while (updated)
             user.roles.sort((a, b) => a.name.localeCompare(b.name));
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -675,8 +662,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, async () => { return this.FindRoleByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return Role.assign(item);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -770,6 +755,24 @@ export class DBHelper {
         await this.DeleteKey("pushablequeues", watch, false, span);
         if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
+    public GetQueuesWrap(span: Span) {
+        Logger.instanse.debug("Add pushable queues", span);
+        return Config.db.query<WorkitemQueue>({
+            query: { _type: "workitemqueue"}
+            , top:1000, collectionname: "mq", jwt: Crypt.rootToken()
+        }, span);
+    }
+    public async GetQueues(parent: Span): Promise<WorkitemQueue[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetQueues", parent);
+        try {
+            if (!Config.cache_workitem_queues) return await this.GetQueuesWrap(span);
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetQueuesWrap(span) });
+            return items;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     public GetPushableQueuesWrap(span: Span) {
         Logger.instanse.debug("Add pushable queues", span);
         return Config.db.query<WorkitemQueue>({
@@ -787,8 +790,6 @@ export class DBHelper {
             if (!Config.cache_workitem_queues) return await this.GetPushableQueuesWrap(span);
             let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) });
             return items;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -809,8 +810,6 @@ export class DBHelper {
             var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
             let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); });
             return count;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -842,8 +841,6 @@ export class DBHelper {
             Logger.instanse.verbose(`Updating ACL for new role ${name}`, span);
             await this.Save(role, jwt, span);
             return Role.assign(role);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -883,8 +880,6 @@ export class DBHelper {
             user = await this.DecorateWithRoles(user, span);
             span?.addEvent("return user");
             return user;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -938,7 +933,7 @@ export class DBHelper {
             cli.user._noderedheartbeat = dt;
             return { $set: { ...updatedoc, _noderedheartbeat: new Date(new Date().toISOString()), _lastnoderedclientversion: cli.clientversion } };
         }
-        if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+        if (cli.clientagent == "browser") {
             (cli.user as any)._webheartbeat = dt;
             return { $set: { ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion } };
         }
@@ -946,16 +941,16 @@ export class DBHelper {
             cli.user._powershellheartbeat = dt;
             return { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()), _lastpowershellclientversion: cli.clientversion } };
         }
-        if (cli.clientagent == "mobileapp" || cli.clientagent == "aiotmobileapp") {
-            (cli.user as any)._webheartbeat = dt;
-            (cli.user as any)._mobilheartbeat = dt;
-            return {
-                $set: {
-                    ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion
-                    , _mobilheartbeat: new Date(new Date().toISOString()), _lastmobilclientversion: cli.clientversion
-                }
-            };
-        }
+        // if (cli.clientagent ==  "mobileapp" || cli.clientagent == "aiotmobileapp") {
+        //     (cli.user as any)._webheartbeat = dt;
+        //     (cli.user as any)._mobilheartbeat = dt;
+        //     return {
+        //         $set: {
+        //             ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion
+        //             , _mobilheartbeat: new Date(new Date().toISOString()), _lastmobilclientversion: cli.clientversion
+        //         }
+        //     };
+        // }
         else {
             return { $set: updatedoc };
         }
@@ -970,8 +965,6 @@ export class DBHelper {
             let items = await this.memoryCache.wrap("ipblock", () => { return this.GetIPBlockListWrap(span) });
             if (NoderedUtil.IsNullUndefinded(items)) items = [];
             return items;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }

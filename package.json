@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.4.36",
+  "version": "1.5.0",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,9 @@
     "coverage": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'",
     "oldtest": "ts-mocha --paths -p OpenFlow/tsconfig.json OpenFlow/**/*.spec.ts",
     "rebuild": "docker-compose up registry -d && docker-compose build && docker-compose push --ignore-push-failures  && docker-compose up -d",
-    "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d"
+    "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d",
+    "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
+    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi"
   },
   "repository": {
     "type": "git",
@@ -35,6 +37,7 @@
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "0.17.1",
     "@node-saml/passport-saml": "^4.0.1",
+    "@openiap/nodeapi": "github:openiap/nodeapi",
     "@openiap/openflow-api": "^2.1.9",
     "@opentelemetry/api-metrics": "^0.33.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.34.0",

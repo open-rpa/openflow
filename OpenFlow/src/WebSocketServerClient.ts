@@ -3,14 +3,15 @@ import { SocketMessage } from "./SocketMessage";
 import { Message, JSONfn } from "./Messages/Message";
 import { Config } from "./Config";
 import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper";
-import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser } from "@openiap/openflow-api";
+import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser, SigninMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { clientType } from "./Audit";
+import { clientAgent } from "./Audit";
 import express = require("express");
 import { WebSocketServer } from "./WebSocketServer";
 import { WebServer } from "./WebServer";
+import { Crypt } from "./Crypt";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -50,7 +51,7 @@ export class WebSocketServerClient {
     private _sendQueue: SocketMessage[] = [];
     public messageQueue: IHashTable<QueuedMessage> = {};
     public remoteip: string = "unknown";
-    public clientagent: clientType;
+    public clientagent: clientAgent;
     public clientversion: string;
     public created: Date = new Date();
     public lastheartbeat: Date = new Date();
@@ -221,6 +222,18 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
+    public async RefreshToken(parent: Span): Promise<boolean> {
+        const tuser: TokenUser = await Message.DoSignin(this, null, parent);
+        if(tuser == null) return false;
+        const l: SigninMessage = new SigninMessage();
+        this.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+        l.jwt = this.jwt;
+        l.user = tuser;
+        const m: Message = new Message(); m.command = "refreshtoken";
+        m.data = JSON.stringify(l);
+        this.Send(m);
+        return true;
+    }
     private message(message: string): void {
         try {
             Logger.instanse.silly("WebSocket message received " + message, null, Logger.parsecli(this));
@@ -303,9 +316,6 @@ export class WebSocketServerClient {
                 delete this.messageQueue[keys[i]];
             }
             this._exchanges = [];
-        } catch (error) {
-            Logger.instanse.error(error, span, Logger.parsecli(this));
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -342,30 +352,20 @@ export class WebSocketServerClient {
                     }
                 }
             }
-        } catch (error) {
-            throw error;
         } finally {
             semaphore.up();
             Logger.otel.endSpan(span);
         }
     }
     public async RegisterExchange(user: TokenUser | User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
-        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CreateConsumer", parent);
+        const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.RegisterExchange", parent);
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let exchange = exchangename;
             if (NoderedUtil.IsNullEmpty(exchange)) {
-                if (this.clientagent == "nodered") {
-                    exchange = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "webapp") {
-                    exchange = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "openrpa") {
-                    exchange = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "powershell") {
-                    exchange = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else {
-                    exchange = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                }
+                // @ts-ignore
+                if(this.clientagent == "") this.clientagent = "unknown"
+                exchange = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
             }
             let exchangequeue: amqpexchange = null;
             try {
@@ -407,8 +407,6 @@ export class WebSocketServerClient {
             if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
             return null;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -419,17 +417,9 @@ export class WebSocketServerClient {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let qname = queuename;
             if (NoderedUtil.IsNullEmpty(qname)) {
-                if (this.clientagent == "nodered") {
-                    qname = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "webapp") {
-                    qname = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "openrpa") {
-                    qname = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else if (this.clientagent == "powershell") {
-                    qname = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                } else {
-                    qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
-                }
+                // @ts-ignore
+                if(this.clientagent == "") this.clientagent = "unknown"
+                qname = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
             }
             await this.CloseConsumer(this.user, qname, span);
             let queue: amqpqueue = null;
@@ -482,18 +472,13 @@ export class WebSocketServerClient {
                     this._queuescurrentstr = this._queuescurrent.toString();
                     this._queues.push(queue);
                 }
-            } catch (error) {
-                throw error
-            }
-            finally {
+            } finally {
                 if (queue) semaphore.up();
             }
             if (queue != null) {
                 return queue.queue;
             }
             return null;
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -539,7 +524,21 @@ export class WebSocketServerClient {
                         const singleresult: Message = Message.frommessage(first, first.data);
                         singleresult.priority = first.priority;
                         if (singleresult.command != "ping" && singleresult.command != "pong") {
-                            singleresult.Process(this);
+                            singleresult.Process(this).then(msg=> {
+                                if(msg==null) return;
+                                if(msg.command == "error" && !msg.error && msg.data) {
+                                    msg.data = JSON.parse(msg.data);
+                                    msg.data.error = msg.data.message;
+                                    msg.data = JSON.stringify(msg.data);
+                                    // msg.error =  msg.data; // backward compaility
+                                }
+                                this.Send(msg);
+                            }) .catch((error) => {
+                                singleresult.command = "error";
+                                singleresult.data = JSON.stringify({"error": error.message});
+                                this.Send(singleresult);
+                                Logger.instanse.error(error, span, Logger.parsecli(this));
+                            });
                         }
                     } else {
                         let chunk: string = "";
@@ -550,7 +549,11 @@ export class WebSocketServerClient {
                         const result: Message = Message.frommessage(first, chunk);
                         result.priority = first.priority;
                         if (result.command != "ping" && result.command != "pong") {
-                            result.Process(this);
+                            result.Process(this).then(msg=> {
+                                this.Send(msg);
+                            }) .catch((error) => {
+                                Logger.instanse.error(error, span, Logger.parsecli(this));
+                            });
                         }
 
                     }
@@ -682,13 +685,41 @@ export class WebSocketServerClient {
         stream.aggregates = aggregates;
         if (id == null) id = NoderedUtil.GetUniqueIdentifier();
         this.watches[id] = {
-            aggregates, collectionname //, streamid: stream.id
+            aggregates, collectionname, id //, streamid: stream.id
         } as ClientWatch;
         return id;
     }
+    SendWatch(watch: ClientWatch, next: any, span: Span) {
+        var _type = next.fullDocument._type;
+        let subspan: Span = Logger.otel.startSpan("Watch " + watch.collectionname + " " + next.operationType + " " + _type, null, null);
+        try {
+            Logger.instanse.verbose("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name, span, { collection: watch.collectionname });
+            const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
+            const q = new WatchEventMessage();
+            const [traceId, spanId] = Logger.otel.GetTraceSpanId(subspan);
+            q.traceId = traceId;
+            q.spanId = spanId;
+
+            q.id = watch.id;
+            q.result = next;
+            msg.data = JSON.stringify(q);
+            this._socketObject.send(msg.tojson(), (err) => {
+                if (err) {
+                    var message: string = (err.message ? err.message : err as any);
+                    Logger.instanse.warn(message, subspan, { collection: watch.collectionname });
+                }
+            });
+        } catch (error) {
+            console.error(error);
+        } finally {
+            subspan?.end();
+        }
+    }
 }
 export class ClientWatch {
+    public id: string;
     public streamid: string;
     public aggregates: object[];
+    public paths: string[];
     public collectionname: string;
 }

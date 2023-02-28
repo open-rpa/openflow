@@ -238,7 +238,7 @@ function printusage() {
         Logger.instanse.info("   --start - Will start the service with the given name", null);
         Logger.instanse.info("   --stop - Will stop the service with the given name", null);
         Logger.instanse.info("   name - Service and instance name", null);
-        Logger.instanse.info("Will look for an envoriment file called name.env and copy that to the", null);
+        Logger.instanse.info("Will look for an environment file called name.env and copy that to the", null);
         Logger.instanse.info("source directory", null);
         return;
     }
@@ -249,7 +249,7 @@ function printusage() {
     Logger.instanse.info("   --start - Will start the service with the given name", null);
     Logger.instanse.info("   --stop - Will stop the service with the given name", null);
     Logger.instanse.info("   name - Service and instance name", null);
-    Logger.instanse.info("Will look for an envoriment file called name.env and copy that to the", null);
+    Logger.instanse.info("Will look for an environment file called name.env and copy that to the", null);
     Logger.instanse.info("source directory", null);
 }
 

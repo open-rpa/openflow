@@ -26,8 +26,6 @@ export class Crypt {
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -38,8 +36,6 @@ export class Crypt {
             if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
-        } catch (error) {
-            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -127,7 +123,7 @@ export class Crypt {
                 throw new Error('jwt must be provided');
             }
             if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-            const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
+            const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: Config.ignore_expiration });
             let impostor: string = null;
             if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
                 if (!NoderedUtil.IsNullEmpty(o.data.impostor)) {
@@ -165,6 +161,6 @@ export class Crypt {
     }
     static decryptToken(token: string): any {
         if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-        return jsonwebtoken.verify(token, Crypt.encryption_key);
+        return jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: Config.ignore_expiration });
     }
 }
