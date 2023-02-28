@@ -149,7 +149,8 @@ export class Crypt {
                 if (!NoderedUtil.IsNullEmpty(token)) {
                     const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: true });
                     if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
-                        if (cli != null) {
+                        // fake login, so we can track who was trying to login with an expired token
+                        if (cli != null && cli.user == null) { 
                             cli.user = TokenUser.assign(o.data);
                             cli.username = cli.user?.username;
                         }

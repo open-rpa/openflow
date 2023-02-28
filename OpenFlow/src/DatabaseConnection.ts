@@ -285,7 +285,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (payload != null) {
                             Logger.instanse.debug("Send workitem payload '" + payload.name + "' to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null, { workflowid: wiq.workflowid, wi: payload._id, name: payload.name });
                             try {
-                                await client.Queue(JSON.stringify(sendthis), queueid, {} as any, null)
+                                client.Queue(JSON.stringify(sendthis), queueid, {} as any, null).catch(e=> {
+                                    Logger.instanse.error(e, null);
+                                });
                             } catch (error) {
                             }
                         } else {
@@ -496,7 +498,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                             }
                                             msg.data = JSON.stringify(q);
                                             client._socketObject.send(msg.tojson(), (err) => {
-                                                if (err) Logger.instanse.warn(err, subspan, { collection: collectionname });
+                                                if (err) Logger.instanse.warn(err as any, subspan, { collection: collectionname });
                                             });
                                         } catch (error) {
 
@@ -1001,20 +1003,20 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.read], span);
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read]), impersonationquery] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
                 } else {
-                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
                 }
                 projection = null;
             } else {
                 let impersonationquery: any;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.read], span)
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read]), impersonationquery] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
                 } else {
-                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
                 }
             }
             if (!top) { top = 500; }
@@ -1107,19 +1109,19 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.read], span);
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read]), impersonationquery] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
                 } else {
-                    _query = { $and: [query, this.getbasequery(user, "metadata._acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
                 }
             } else {
                 let impersonationquery: any;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.read], span)
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read]), impersonationquery] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
                 } else {
-                    _query = { $and: [query, this.getbasequery(user, "_acl", [Rights.read])] };
+                    _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
                 }
             }
             span?.setAttribute("collection", collectionname);
@@ -1316,9 +1318,9 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.addEvent("getbasequery");
         let base: object;
         if (DatabaseConnection.usemetadata(collectionname)) {
-            base = this.getbasequery(user, "metadata._acl", [Rights.read]);
+            base = this.getbasequery(user, [Rights.read], collectionname);
         } else {
-            base = this.getbasequery(user, "_acl", [Rights.read]);
+            base = this.getbasequery(user, [Rights.read], collectionname);
         }
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
@@ -1386,7 +1388,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const user: TokenUser = await Crypt.verityToken(jwt);
         // TODO: Should we filter on rights other than read ? should a person with reade be allowed to know when it was updated ?
         // a person with read, would beablt to know anyway, so guess read should be enough for now ... 
-        const base = this.getbasequery(user, "fullDocument._acl", [Rights.read]);
+        const base = this.getbasequery(user, [Rights.read], "fullDocument._acl");
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
@@ -1512,18 +1514,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
                     throw Error("Create " + item._type + " access denied");
                 }
-
-                // const hasUser: Ace = item._acl.find(e => e._id === user._id);
-                // if ((hasUser === null || hasUser === undefined)) {
-                //     Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                //     item = this.ensureResource(item, collectionname);
-                // }
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
                     item = this.ensureResource(item, collectionname);
                 }
             } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
-                item._created = new Date(new Date().toISOString());
+                if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                    item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
+                }
                 if (collectionname == "audit") {
                     item._createdby = user.name;
                     item._createdbyid = user._id;
@@ -1535,76 +1533,53 @@ export class DatabaseConnection extends events.EventEmitter {
                     // @ts-ignore
                     throw Error("Create " + item._type + " access denied");
                 }
-                // item._createdby = user.name;
-                // item._createdbyid = user._id;
-                // const hasUser: Ace = item._acl.find(e => e._id === user._id);
-                // if ((hasUser === null || hasUser === undefined)) {
-                //     // @ts-ignore
-                //     Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                //     // @ts-ignore
-                //     item = this.ensureResource(item, collectionname);
-                // }
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
                     Base.addRight(item, user._id, user.name, [Rights.full_control]);
                     item = this.ensureResource(item, collectionname);
                 }
             } else {
-                item._created = new Date(new Date().toISOString());
-                // @ts-ignore
-                if (NoderedUtil.IsNullUndefinded(item.metadata)) item.metadata = {};
+                if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                    item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
+                }
+                let metadata = DatabaseConnection.metadataname(collectionname);
+                if (NoderedUtil.IsNullUndefinded(item[metadata])) item[metadata] = {};
                 span?.addEvent("ensureResource");
-                // @ts-ignore
-                item.metadata = this.ensureResource(item.metadata, collectionname);
+                item[metadata] = this.ensureResource(item[metadata], collectionname);
                 if (item.hasOwnProperty("name")) {
                     // @ts-ignore
-                    item.metadata.name = item.name;
-                    delete item.name;
+                    item[metadata].name = item.name;
+                    // delete item.name;
                 }
                 if (item.hasOwnProperty("_type")) {
                     // @ts-ignore
-                    item.metadata._type = item._type;
-                    delete item._type;
+                    item[metadata]._type = item._type;
+                    // delete item._type;
                 }
                 if (item.hasOwnProperty("_acl")) {
                     // @ts-ignore
-                    item.metadata._acl = item._acl;
+                    item[metadata]._acl = item._acl;
                     delete item._acl;
                 }
                 if (collectionname == "audit") {
                     // @ts-ignore
-                    item.metadata.userid = item.userid;
+                    item[metadata].userid = item.userid;
                     // @ts-ignore
-                    item.metadata.username = item.username;
+                    item[metadata].username = item.username;
                     // @ts-ignore
                     delete item.userid;
                     // @ts-ignore
                     delete item.username;
                 }
-                // @ts-ignore
-                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item.metadata, span)) {
+                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item[metadata], span)) {
                     // @ts-ignore
-                    throw Error("Create " + item.metadata._type + " access denied");
+                    throw Error("Create " + item[metadata]._type + " access denied");
                 }
-                // @ts-ignore
-                item.metadata._version = 0;
-                // @ts-ignore
-                item.metadata._createdby = user.name;
-                // @ts-ignore
-                item.metadata._createdbyid = user._id;
-                // @ts-ignore
-                // const hasUser: Ace = item.metadata._acl.find(e => e._id === user._id);
-                // if ((hasUser === null || hasUser === undefined)) {
-                //     // @ts-ignore
-                //     Base.addRight(item.metadata, user._id, user.name, [Rights.full_control]);
-                //     // @ts-ignore
-                //     item.metadata = this.ensureResource(item.metadata, collectionname);
-                // }
-                // @ts-ignore
-                if (!DatabaseConnection.hasAuthorization(user, item.metadata, Rights.create)) {
-                    // @ts-ignore
-                    Base.addRight(item.metadata, user._id, user.name, [Rights.full_control]);
-                    // @ts-ignore
-                    item.metadata = this.ensureResource(item.metadata, collectionname);
+                item[metadata]._version = 0;
+                item[metadata]._createdby = user.name;
+                item[metadata]._createdbyid = user._id;
+                if (!DatabaseConnection.hasAuthorization(user, item[metadata], Rights.create)) {
+                    Base.addRight(item[metadata], user._id, user.name, [Rights.full_control]);
+                    item[metadata] = this.ensureResource(item[metadata], collectionname);
                 }
 
             }
@@ -1755,8 +1730,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 item = await this.CleanACL(item, user, collectionname, span);
             } else {
                 span?.addEvent("CleanACL");
-                // @ts-ignore
-                item.metadata = await this.CleanACL(item.metadata, user, collectionname, span);
+                let metadata = DatabaseConnection.metadataname(collectionname);
+                item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
             }
             if (collectionname === "users" && item._type === "user" && !NoderedUtil.IsNullEmpty(item._id)) {
                 Base.addRight(item, item._id, item.name, [Rights.full_control]);
@@ -1810,25 +1785,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     { _id: WellknownIds.users },
                     { "$push": { members: new Rolemember(item.name, item._id) } }
                 );
-                //  fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
-                // span?.addEvent("FindRoleByName users");
-                // const users: Role = await Logger.DBHelper.FindRoleByName("users", null, span);
-                // users.AddMember(item);
-                // span?.addEvent("Save Users");
-                // await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
-
                 let user2: User = User.assign(item as any);
-                // if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
-                //     // TODO: Check user has permission to this customer
-                //     const custusers: Role = Role.assign(await this.getbyid<Role>(customer.users, "users", jwt, true, span));
-                //     if (!NoderedUtil.IsNullUndefinded(custusers)) {
-                //         custusers.AddMember(item);
-                //         await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
-                //     } else {
-                //         Logger.instanse.debug("DatabaseConnection", "InsertOne", "[" + user.username + "][" + collectionname + "] Failed finding customer users " + customer.users + " role while updating item " + item._id);
-                //     }
-                // }
-
                 if (Config.validate_emails && user2.emailvalidated || !Config.validate_emails) {
                     let domain: string = user2.username;
                     if (!NoderedUtil.IsNullEmpty(user2.email)) domain = user2.email;
@@ -1939,33 +1896,55 @@ export class DatabaseConnection extends events.EventEmitter {
             let hadWorkitemQueue = false;
             let wiqids = [];
             for (let i = 0; i < items.length; i++) {
-                let item = this.ensureResource(items[i], collectionname);
+                let item = items[i];
+                // let item = this.ensureResource(items[i], collectionname);
                 DatabaseConnection.traversejsonencode(item);
 
                 if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
                     continue;
                 }
-
                 let name = item.name;
                 if (NoderedUtil.IsNullEmpty(name)) name = item._name;
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-                item._createdby = user.name;
-                item._createdbyid = user._id;
-                item._created = new Date(new Date().toISOString());
-                item._modifiedby = user.name;
-                item._modifiedbyid = user._id;
-                item._modified = item._created;
-                if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
-                    Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
+                    item._version = 0;
+                    item._createdby = user.name;
+                    item._createdbyid = user._id;
+                    item._created = new Date(new Date().toISOString());
+                    item._modifiedby = user.name;
+                    item._modifiedbyid = user._id;
+                    item._modified = item._created;
+                    if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                        Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                    }
                     item = this.ensureResource(item, collectionname);
+                    // Logger.instanse.silly("Adding " + item._type + " " + name + " to database", span, { collection: collectionname, user: user.username });
+                    // if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
+                } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
+
+                    if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                        item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
+                    }
+                    if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                        Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                        item = this.ensureResource(item, collectionname);
+                    }
+                } else {                    
+                    if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                        item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
+                    }
+                    let metadata = DatabaseConnection.metadataname(collectionname);
+                    if (NoderedUtil.IsNullUndefinded(item[metadata])) item[metadata] = {};
+                    span?.addEvent("ensureResource");
+                    item[metadata] = this.ensureResource(item[metadata], collectionname);
+                    item[metadata]._version = 0;
+                    item[metadata]._createdby = user.name;
+                    item[metadata]._createdbyid = user._id;                    
+                    if (!DatabaseConnection.hasAuthorization(user, item[metadata], Rights.create)) {
+                        Base.addRight(item[metadata], user._id, user.name, [Rights.full_control]);
+                        item[metadata] = this.ensureResource(item[metadata], collectionname);
+                    }
                 }
-                // const hasUser: Ace = item._acl.find(e => e._id === user._id);
-                // if ((hasUser === null || hasUser === undefined)) {
-                //     Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                //     item = this.ensureResource(item, collectionname);
-                // }
-                Logger.instanse.silly("Adding " + item._type + " " + name + " to database", span, { collection: collectionname, user: user.username });
-                if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
 
                 item = this.encryptentity(item) as T;
                 var user2: User = item as any;
@@ -2008,7 +1987,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
-                item._version = 0;
+                
                 if (item._id != null) {
                     const basehist = await this.query<any>({ query: { id: item._id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken() }, span);
                     if (basehist.length > 0) {
@@ -2038,10 +2017,20 @@ export class DatabaseConnection extends events.EventEmitter {
                     item._id = new ObjectId().toHexString();
                 }
                 span?.addEvent("CleanACL");
-                item = await this.CleanACL(item, user, collectionname, span);
-                if (item._type === "role" && collectionname === "users") {
-                    item = await this.Cleanmembers(item as any, null, span);
+                if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
+                    item = await this.CleanACL(item, user, collectionname, span);
+                    if (item._type === "role" && collectionname === "users") {
+                        item = await this.Cleanmembers(item as any, null, span);
+                    }
+                } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
+                } else {
+                    let metadata = DatabaseConnection.metadataname(collectionname);
+                    item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
+                    if (item._type === "role" && collectionname === "users") {
+                        item[metadata] = await this.Cleanmembers(item[metadata] as any, null, span);
+                    }
                 }
+                
 
                 if (collectionname === "users" && item._type === "user") {
                     const u: TokenUser = (item as any);
@@ -2305,11 +2294,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (user._id != WellknownIds.root && original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
                         throw Error("Create " + q.item._type + " access denied");
                     }
-                    // if (!DatabaseConnection.usemetadata(q.collectionname)) {
-                    //     q.item = await this.CleanACL(q.item, user, q.collectionname, span);
-                    // } else {
-                    //     (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
-                    // }
                     // force cleaning members, to clean up mess with auto added members
                     if (q.item._type === "role" && q.collectionname === "users") {
                         q.item = await this.Cleanmembers(q.item as any, original, span);
@@ -2333,52 +2317,54 @@ export class DatabaseConnection extends events.EventEmitter {
                     DatabaseConnection.traversejsonencode(q.item);
                     q.item = this.encryptentity(q.item);
                 } else {
-                    if (!DatabaseConnection.hasAuthorization(user, (q.item as any).metadata, Rights.update)) {
+                    let metadata = DatabaseConnection.metadataname(q.collectionname);
+
+                    if (!DatabaseConnection.hasAuthorization(user, q.item[metadata], Rights.update)) {
                         throw new Error("Access denied, no authorization to UpdateOne file " + (q.item as any).filename + " to database");
                     }
-                    if (!DatabaseConnection.hasAuthorization(user, (original as any).metadata, Rights.update)) {
+                    if (!DatabaseConnection.hasAuthorization(user, original[metadata], Rights.update)) {
                         throw new Error("Access denied, no authorization to UpdateOne file " + (original as any).filename + " to database");
                     }
-                    (q.item as any).metadata = Base.assign((q.item as any).metadata);
-                    (q.item as any).metadata._modifiedby = user.name;
-                    (q.item as any).metadata._modifiedbyid = user._id;
-                    (q.item as any).metadata._modified = new Date(new Date().toISOString());
+                    q.item[metadata] = Base.assign(q.item[metadata]);
+                    q.item[metadata]._modifiedby = user.name;
+                    q.item[metadata]._modifiedbyid = user._id;
+                    q.item[metadata]._modified = new Date(new Date().toISOString());
                     // now add all _ fields to the new object
-                    const keys: string[] = Object.keys((original as any).metadata);
+                    const keys: string[] = Object.keys(original[metadata]);
                     for (let i: number = 0; i < keys.length; i++) {
                         let key: string = keys[i];
                         if (key === "_created") {
-                            (q.item as any).metadata[key] = new Date((original as any).metadata[key]);
+                            q.item[metadata][key] = new Date(original[metadata][key]);
                         } else if (key === "_type") {
-                            (q.item as any).metadata[key] = (original as any).metadata[key];
+                            q.item[metadata][key] = original[metadata][key];
                         } else if (key === "_createdby" || key === "_createdbyid") {
-                            (q.item as any).metadata[key] = (original as any).metadata[key];
+                            q.item[metadata][key] = original[metadata][key];
                         } else if (key === "_modifiedby" || key === "_modifiedbyid" || key === "_modified") {
                             // allready updated
                         } else if (key.indexOf("_") === 0) {
-                            if (!(q.item as any).metadata.hasOwnProperty(key)) {
-                                (q.item as any).metadata[key] = (original as any).metadata[key]; // add missing key
-                            } else if ((q.item as any).metadata[key] === null) {
-                                delete (q.item as any).metadata[key]; // remove key
+                            if (!q.item[metadata].hasOwnProperty(key)) {
+                                q.item[metadata][key] = original[metadata][key]; // add missing key
+                            } else if (q.item[metadata][key] === null) {
+                                delete q.item[metadata][key]; // remove key
                             } else {
                                 // key allready exists, might been updated since last save
                             }
                         }
                     }
-                    if ((q.item as any).metadata._acl === null || (q.item as any).metadata._acl === undefined || !Array.isArray((q.item as any).metadata._acl)) {
-                        (q.item as any).metadata._acl = (original as any).metadata._acl;
-                        (q.item as any).metadata._version = (original as any).metadata._version;
-                        if (!DatabaseConnection.hasAuthorization(user, (q.item as any).metadata, Rights.update)) {
+                    if (q.item[metadata]._acl === null || q.item[metadata]._acl === undefined || !Array.isArray(q.item[metadata]._acl)) {
+                        q.item[metadata]._acl = original[metadata]._acl;
+                        q.item[metadata]._version = original[metadata]._version;
+                        if (!DatabaseConnection.hasAuthorization(user, q.item[metadata], Rights.update)) {
                             throw new Error("Access denied, no authorization to UpdateOne with current ACL");
                         }
 
                     }
-                    (q.item as any).metadata = this.ensureResource((q.item as any).metadata, q.collectionname);
+                    q.item[metadata] = this.ensureResource(q.item[metadata], q.collectionname);
                     DatabaseConnection.traversejsonencode(q.item);
-                    (q.item as any).metadata = this.encryptentity((q.item as any).metadata);
-                    const hasUser: Ace = (q.item as any).metadata._acl.find(e => e._id === user._id);
-                    if ((hasUser === null || hasUser === undefined) && (q.item as any).metadata._acl.length === 0) {
-                        Base.addRight((q.item as any).metadata, user._id, user.name, [Rights.full_control]);
+                    q.item[metadata] = this.encryptentity(q.item[metadata]);
+                    const hasUser: Ace = q.item[metadata]._acl.find(e => e._id === user._id);
+                    if ((hasUser === null || hasUser === undefined) && q.item[metadata]._acl.length === 0) {
+                        Base.addRight(q.item[metadata], user._id, user.name, [Rights.full_control]);
                         q.item = this.ensureResource(q.item, q.collectionname);
                     }
                 }
@@ -2457,10 +2443,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             let _query: Object = {};
             if (DatabaseConnection.usemetadata(q.collectionname)) {
-                _query = { $and: [q.query, this.getbasequery(user, "metadata._acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, [Rights.update], q.collectionname)] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = { $and: [q.query, this.getbasequery(user, "_acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, [Rights.update], q.collectionname)] };
             }
             if (Config.api_bypass_perm_check) { _query = q.query; }
 
@@ -2478,7 +2464,8 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (!DatabaseConnection.usemetadata(q.collectionname)) {
                             q.item = await this.CleanACL(q.item, user, q.collectionname, span);
                         } else {
-                            (q.item as any).metadata = await this.CleanACL((q.item as any).metadata, user, q.collectionname, span);
+                            let metadata = DatabaseConnection.metadataname(q.collectionname);
+                            q.item[metadata] = await this.CleanACL(q.item[metadata], user, q.collectionname, span);
                         }
                     }
                     if (q.item._type === "role" && q.collectionname === "users") {
@@ -2515,7 +2502,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else {
                         const fsc = Config.db.db.collection(q.collectionname);
                         const ot_end = Logger.otel.startTimer();
-                        q.opresult = await fsc.updateOne(_query, { $set: { metadata: (q.item as any).metadata } });
+                        let metadata = DatabaseConnection.metadataname(q.collectionname);
+                        q.opresult = await fsc.updateOne(_query, { $set: { metadata: q.item[metadata] } });
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, DatabaseConnection.otel_label(q.collectionname, user, "update"));
                         if ((q.opresult && q.opresult.matchedCount == 0) && (q.w != 0)) {
                             throw new Error("ReplaceOne failed, matched 0 documents with query {_id: '" + q.item._id + "'}");
@@ -2548,7 +2536,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!DatabaseConnection.usemetadata(q.collectionname)) {
                     q.item = this.decryptentity(q.item);
                 } else {
-                    (q.item as any).metadata = this.decryptentity<T>((q.item as any).metadata);
+                    let metadata = DatabaseConnection.metadataname(q.collectionname);
+                    q.item[metadata] = this.decryptentity<T>(q.item[metadata]);
                 }
                 if (original != null) {
                     await Logger.DBHelper.CheckCache(q.collectionname, original, false, false, span);
@@ -2690,10 +2679,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(q.collectionname)) {
-                _query = { $and: [q.query, this.getbasequery(user, "metadata._acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, [Rights.update], q.collectionname)] };
             } else {
                 // todo: enforcer permissions when fetching _hist ?
-                _query = { $and: [q.query, this.getbasequery(user, "_acl", [Rights.update])] };
+                _query = { $and: [q.query, this.getbasequery(user, [Rights.update], q.collectionname)] };
             }
 
             if ((q.item["$set"]) === undefined) { (q.item["$set"]) = {} };
@@ -2991,9 +2980,9 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: TokenUser = await Crypt.verityToken(jwt);
             let _query: any = {};
             if (typeof id === 'string' || id instanceof String) {
-                _query = { $and: [{ _id: id }, this.getbasequery(user, "_acl", [Rights.delete])] };
+                _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
             } else {
-                _query = { $and: [{ id }, this.getbasequery(user, "_acl", [Rights.delete])] };
+                _query = { $and: [{ id }, this.getbasequery(user, [Rights.delete], collectionname)] };
             }
             if (collectionname == "audit") {
                 if (!user.HasRoleId(WellknownIds.admins)) {
@@ -3003,7 +2992,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
-                _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, "metadata._acl", [Rights.delete])] };
+                _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, [Rights.delete], collectionname)] };
                 const ot_end = Logger.otel.startTimer();
                 const arr = await this.db.collection(collectionname).find(_query).toArray();
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
@@ -3168,19 +3157,19 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "metadata._acl", [Rights.delete], span);
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas,  [Rights.delete], collectionname, span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     baseq = impersonationquery;
                 } else {
-                    baseq = this.getbasequery(user, "metadata._acl", [Rights.delete]);
+                    baseq = this.getbasequery(user, [Rights.delete], collectionname);
                 }
             } else {
                 let impersonationquery: any;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, "_acl", [Rights.delete], span)
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.delete], collectionname, span)
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     baseq = impersonationquery;
                 } else {
-                    baseq = this.getbasequery(user, "_acl", [Rights.delete]);
+                    baseq = this.getbasequery(user, [Rights.delete], collectionname);
                 }
             }
             let _query: any = {};
@@ -3437,7 +3426,11 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {number[]} bits Permission wanted on objects
      * @returns Object MongoDB query
      */
-    public getbasequery(user: TokenUser | User, field: string, bits: number[]): Object {
+    public getbasequery(user: TokenUser | User,  bits: number[], collectionname: string): Object {
+        let field = "_acl"; 
+        if(DatabaseConnection.usemetadata(collectionname)) {
+            field = DatabaseConnection.metadataname(collectionname) + "._acl";
+        }
         if (Config.api_bypass_perm_check) {
             return { _id: { $ne: "bum" } };
         }
@@ -3479,12 +3472,12 @@ export class DatabaseConnection extends events.EventEmitter {
         finalor.push(q);
         return { $or: finalor.concat() };
     }
-    private async getbasequeryuserid(calluser: TokenUser, userid: string, field: string, bits: number[], parent: Span): Promise<Object> {
+    private async getbasequeryuserid(calluser: TokenUser, userid: string, bits: number[], collectionname: string, parent: Span): Promise<Object> {
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
         if (user._type == "user" || user._type == "role") {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
-            return this.getbasequery(user, field, bits);
+            return this.getbasequery(user, bits, collectionname);
         } else if (user._type == "customer") {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             user.roles.push(new Rolemember(user.name + " users", (user as any).users))
@@ -3494,7 +3487,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!NoderedUtil.IsNullEmpty((user as any as Customer).userid)) {
                 user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
             }
-            return this.getbasequery(user, field, bits);
+            return this.getbasequery(user, bits, collectionname);
         }
     }
     /**
@@ -3978,18 +3971,57 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.addEvent("Get collections");
         let collections = await DatabaseConnection.toArray(this.db.listCollections());
         collections = collections.filter(x => x.name.indexOf("system.") === -1);
+        collections = collections.filter(x => x.type == "timeseries");
 
         DatabaseConnection.timeseries_collections = [];
+        DatabaseConnection.timeseries_collections_metadata = {};
         for (let i = 0; i < collections.length; i++) {
             var collection = collections[i];
-            if (collection.type == "timeseries") {
-                DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
-                DatabaseConnection.timeseries_collections.push(collection.name);
+            DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+            DatabaseConnection.timeseries_collections.push(collection.name);
+            if(collection.options && collection.options.timeseries) {
+                DatabaseConnection.timeseries_collections_metadata[collection.name] = collection.options.timeseries.metaField;
+                DatabaseConnection.timeseries_collections_time[collection.name] = collection.options.timeseries.timeField;
             }
         }
     }
+    static istimeseries(collectionname: string) {
+        if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
+            return true;
+        }
+        return false;
+    }
+    static usemetadata(collectionname: string) {
+        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+            return true;
+        }
+        if(collectionname == "fullDocument._acl") return true;
+        if(Config.metadata_collections.indexOf(collectionname) > -1) {
+            const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
+            if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
+        }
+        return false;
+    }
+    static metadataname(collectionname: string) {
+        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+            return "metadata";
+        }
+        if(collectionname == "fullDocument._acl") return "fullDocument._acl";
+        const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
+        return metadataname;
+    }
+    static timefield(collectionname: string) {
+        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+            return "_created";
+        }
+        if(collectionname == "fullDocument._acl") return "fullDocument._created";
+        const timefield = DatabaseConnection.timeseries_collections_time[collectionname];
+        return timefield;
+    }
     public static collections_with_text_index: string[] = [];
     public static timeseries_collections: string[] = [];
+    public static timeseries_collections_metadata: any = {};
+    public static timeseries_collections_time: any = {};
     async ensureindexes(parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
@@ -4251,24 +4283,6 @@ export class DatabaseConnection extends events.EventEmitter {
         } finally {
             Logger.otel.endSpan(span);
         }
-    }
-    static istimeseries(collectionname: string) {
-        if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
-            return true;
-        }
-        return false;
-    }
-    static usemetadata(collectionname: string) {
-        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
-            return true;
-        }
-        // if (this.istimeseries("audit")) {
-        //     return true;
-        // }
-        // if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) {
-        //     return true;
-        // }
-        return false;
     }
     static otel_label(collectionname: string, user: TokenUser | User, action: "query" | "count" | "aggregate" | "insert" | "insertmany" | "update" | "updatemany" | "replace" | "delete" | "deletemany") {
         if (Config.otel_trace_mongodb_per_users) {

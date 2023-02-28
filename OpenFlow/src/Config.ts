@@ -53,6 +53,7 @@ export class dbConfig extends Base {
     public log_verbose: boolean;
     public log_silly: boolean;
     public log_to_exchange: boolean;
+    public heapdump_onstop: boolean;
     public api_bypass_perm_check: boolean;
 
     public workitem_queue_monitoring_interval: number;
@@ -68,6 +69,7 @@ export class dbConfig extends Base {
 
     public ensure_indexes: boolean;
     public text_index_name_fields: string[];
+    public metadata_collections: string[];    
 
     public auto_create_users: boolean;
     public auto_create_user_from_jwt: boolean;
@@ -153,6 +155,8 @@ export class dbConfig extends Base {
         Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
         Config.log_silly = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_silly) ? conf.log_silly : Config.getEnv("log_silly", "false"));
         Config.log_to_exchange = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_to_exchange) ? conf.log_to_exchange : Config.getEnv("log_to_exchange", "false"));
+        Config.heapdump_onstop = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.heapdump_onstop) ? conf.heapdump_onstop : Config.getEnv("heapdump_onstop", "false"));
+
         Config.client_heartbeat_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_heartbeat_timeout) ? conf.client_heartbeat_timeout.toString() : Config.getEnv("client_heartbeat_timeout", "60"));
         Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "120"));
         Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
@@ -171,6 +175,7 @@ export class dbConfig extends Base {
 
         Config.ensure_indexes = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ensure_indexes) ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
         Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields.toString() : Config.getEnv("text_index_name_fields", "name,_names"))
+        Config.metadata_collections = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.metadata_collections) ? conf.metadata_collections.toString() : Config.getEnv("metadata_collections", ""))
         Config.auto_create_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_users) ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
 
         Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
@@ -244,6 +249,8 @@ export class Config {
         Config.log_verbose = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
         Config.log_silly = Config.parseBoolean(Config.getEnv("log_silly", "false"));
         Config.log_to_exchange = Config.parseBoolean(Config.getEnv("log_to_exchange", "false"));
+        
+        Config.heapdump_onstop = Config.parseBoolean(Config.getEnv("heapdump_onstop", "false"));
 
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -278,6 +285,7 @@ export class Config {
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
         Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
         Config.text_index_name_fields = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
+        Config.metadata_collections = Config.parseArray(Config.getEnv("metadata_collections", ""));        
 
         Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
         Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
@@ -473,7 +481,9 @@ export class Config {
     public static log_debug: boolean = Config.parseBoolean(Config.getEnv("log_debug", "false"));
     public static log_verbose: boolean = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
     public static log_silly: boolean = Config.parseBoolean(Config.getEnv("log_silly", "false"));
-    public static log_to_exchange: boolean = Config.parseBoolean(Config.getEnv("log_to_exchange", "false"));    
+    public static log_to_exchange: boolean = Config.parseBoolean(Config.getEnv("log_to_exchange", "false"));
+
+    public static heapdump_onstop: boolean = Config.parseBoolean(Config.getEnv("heapdump_onstop", "false"));
 
     public static amqp_allow_replyto_empty_queuename: boolean = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
 
@@ -509,6 +519,7 @@ export class Config {
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
     public static text_index_name_fields: string[] = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
+    public static metadata_collections: string[] = Config.parseArray(Config.getEnv("metadata_collections", ""));    
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
