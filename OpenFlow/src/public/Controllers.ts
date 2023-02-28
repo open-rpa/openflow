@@ -7867,7 +7867,9 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         if(this.model.image.indexOf("openiap/noderedagent") > -1) {
             this.model.environment = {
-                "nodered_id": this.model.slug
+                "nodered_id": this.model.slug,
+                "admin_role": "users",
+                "api_role": ""
             }
             try {
                 var name = WebSocketClient.instance.user.username.toLowerCase();
