@@ -5084,8 +5084,11 @@ export class Message {
                 break;
             case "getagentpods":
                 if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
-                var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                var agent: iAgent = null;
+                if(!NoderedUtil.IsNullEmpty(msg.id)) {
+                    var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                    if(agent == null) throw new Error("Access denied");
+                }
                 var getstats = false;
                 if(!NoderedUtil.IsNullEmpty(msg.name)) getstats = true;                
                 msg.result = await Logger.nodereddriver.GetInstancePods(this.tuser, this.jwt, agent, getstats, parent);
