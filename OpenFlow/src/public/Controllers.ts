@@ -7675,7 +7675,6 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
                 })
             }
         }
-        console.log(this.orderby)
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     weburl(model) {
