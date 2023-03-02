@@ -3807,7 +3807,11 @@ export class DatabaseConnection extends events.EventEmitter {
             } else if (o[key]) {
                 if (typeof o[key] === 'string') {
                     if (o[key].length === 24 && o[key].endsWith('Z')) {
-                        o[key] = new Date(o[key]);
+                        try {
+                            o[key] = new Date(o[key]);
+                        } catch (error) {
+                            
+                        }
                     }
                 }
                 if (typeof (o[key]) === "object") {
@@ -3837,7 +3841,11 @@ export class DatabaseConnection extends events.EventEmitter {
             } else if (o[key]) {
                 if (typeof o[key] === 'string') {
                     if (o[key].length === 24 && o[key].endsWith('Z')) {
-                        o[key] = new Date(o[key]);
+                        try {
+                            o[key] = new Date(o[key]);
+                        } catch (error) {
+                            
+                        }
                     }
                 }
                 if (typeof (o[key]) === "object") {

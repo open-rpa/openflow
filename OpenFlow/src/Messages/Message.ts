@@ -4332,7 +4332,11 @@ export class Message {
         wi.wiq = _wiq.name;
         wi.wiqid = _wiq._id;
         wi.nextrun = new Date(new Date().toISOString());
-        wi.nextrun.setSeconds(wi.nextrun.getSeconds() + _wiq.initialdelay);
+        try {
+            wi.nextrun.setSeconds(wi.nextrun.getSeconds() + _wiq.initialdelay);
+        } catch (error) {
+            wi.nextrun = new Date(new Date().toISOString());
+        }
         for (let i = _wiq._acl.length - 1; i >= 0; i--) {
             const ace = _wiq._acl[i];
             let bits = [];
