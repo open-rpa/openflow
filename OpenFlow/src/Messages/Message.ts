@@ -4646,12 +4646,21 @@ export class Message {
         }
 
         if (retry) {
-            const end: number = new Date().getTime();
-            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
-            const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
-            if (seconds > 5 && nextrun_seconds >= 0) {
-                Config.db.queuemonitoringlastrun = new Date();
-                // Config.db.queuemonitoring()
+            try {
+                const end: number = new Date().getTime();
+                const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+                try {
+                    wi.nextrun = new Date(wi.nextrun)
+                } catch (error) {
+                    wi.nextrun = new Date(new Date().toISOString());
+                }
+                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+                if (seconds > 5 && nextrun_seconds >= 0) {
+                    Config.db.queuemonitoringlastrun = new Date();
+                    // Config.db.queuemonitoring()
+                }
+            } catch (error) {
+                console.log("Trick queuemonitoringlastrun error " + error.message)
             }
         }
         wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
