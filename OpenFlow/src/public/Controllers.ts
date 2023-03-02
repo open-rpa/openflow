@@ -7615,8 +7615,9 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             this.loadData();
         });
     }
-    async getStatus(model) {
-        var instances:any[] =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
+    knownpods = [];
+    getStatus(model) {
+        var instances = this.knownpods.filter(x => (x.metadata.labels && x.metadata.labels.app == model.slug) || (x.metadata.name == model.slug));
         for(var x = 0; x < instances.length; x++) {
             var instance =  instances[x]
             model.status = "unknown"
@@ -7633,7 +7634,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         if(instances.length == 0) {
             model.status = "missing"
         }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        // if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     trimimage(image:string) {
         if(image == null) return "";
@@ -7655,16 +7656,26 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.AgentsCtrl.searchstring = this.searchstring;
         this.userdata.data.AgentsCtrl.basequeryas = this.basequeryas;
         this.userdata.data.AgentsCtrl.skipcustomerfilter = this.skipcustomerfilter;
+
+        this.knownpods =  await NoderedUtil.CustomCommand({command:"getagentpods"})
         for(var i = 0; i < this.models.length; i++) {
             var model = this.models[i];
             // @ts-ignore
-            model.status = "...";
+            // model.status = "...";
+            await this.getStatus(model)
+        }
+        if(this.orderby != null && this.orderby["status"] != null) {
+            if(this.orderby["status"] == 1) {
+                this.models.sort(function (a:any, b:any) {
+                    return ('' + a.status).localeCompare(b.status);
+                })
+            } else {
+                this.models.sort(function (a:any, b:any) {
+                    return ('' + b.status).localeCompare(a.status);
+                })
+            }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        for(var i = 0; i < this.models.length; i++) {
-            var model = this.models[i];
-            await this.getStatus(model);
-        }
     }
     weburl(model) {
         // return "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", model.slug)
@@ -7793,9 +7804,6 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             if(instance.metadata.deletionTimestamp) instance.showstatus = "Deleting"
         }
-        if(this.instances.length == 0) {
-            instance.showstatus = "missing"
-        }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     sizewarningtitle: string = "";
@@ -7867,7 +7875,9 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         if(this.model.image.indexOf("openiap/noderedagent") > -1) {
             this.model.environment = {
-                "nodered_id": this.model.slug
+                "nodered_id": this.model.slug,
+                "admin_role": "users",
+                "api_role": ""
             }
             try {
                 var name = WebSocketClient.instance.user.username.toLowerCase();

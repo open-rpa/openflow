@@ -4332,7 +4332,11 @@ export class Message {
         wi.wiq = _wiq.name;
         wi.wiqid = _wiq._id;
         wi.nextrun = new Date(new Date().toISOString());
-        wi.nextrun.setSeconds(wi.nextrun.getSeconds() + _wiq.initialdelay);
+        try {
+            wi.nextrun.setSeconds(wi.nextrun.getSeconds() + _wiq.initialdelay);
+        } catch (error) {
+            wi.nextrun = new Date(new Date().toISOString());
+        }
         for (let i = _wiq._acl.length - 1; i >= 0; i--) {
             const ace = _wiq._acl[i];
             let bits = [];
@@ -4646,12 +4650,21 @@ export class Message {
         }
 
         if (retry) {
-            const end: number = new Date().getTime();
-            const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
-            const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
-            if (seconds > 5 && nextrun_seconds >= 0) {
-                Config.db.queuemonitoringlastrun = new Date();
-                // Config.db.queuemonitoring()
+            try {
+                const end: number = new Date().getTime();
+                const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
+                try {
+                    wi.nextrun = new Date(wi.nextrun)
+                } catch (error) {
+                    wi.nextrun = new Date(new Date().toISOString());
+                }
+                const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
+                if (seconds > 5 && nextrun_seconds >= 0) {
+                    Config.db.queuemonitoringlastrun = new Date();
+                    // Config.db.queuemonitoring()
+                }
+            } catch (error) {
+                console.log("Trick queuemonitoringlastrun error " + error.message)
             }
         }
         wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
@@ -5084,8 +5097,11 @@ export class Message {
                 break;
             case "getagentpods":
                 if (Logger.nodereddriver == null) throw new Error("No nodereddriver is loaded")
-                var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                var agent: iAgent = null;
+                if(!NoderedUtil.IsNullEmpty(msg.id)) {
+                    var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
+                    if(agent == null) throw new Error("Access denied");
+                }
                 var getstats = false;
                 if(!NoderedUtil.IsNullEmpty(msg.name)) getstats = true;                
                 msg.result = await Logger.nodereddriver.GetInstancePods(this.tuser, this.jwt, agent, getstats, parent);

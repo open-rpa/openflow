@@ -2772,7 +2772,7 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect();
             const user: TokenUser = await Crypt.verityToken(q.jwt);
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
+            // if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
                 (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -3807,7 +3807,11 @@ export class DatabaseConnection extends events.EventEmitter {
             } else if (o[key]) {
                 if (typeof o[key] === 'string') {
                     if (o[key].length === 24 && o[key].endsWith('Z')) {
-                        o[key] = new Date(o[key]);
+                        try {
+                            o[key] = new Date(o[key]);
+                        } catch (error) {
+                            
+                        }
                     }
                 }
                 if (typeof (o[key]) === "object") {
@@ -3837,7 +3841,11 @@ export class DatabaseConnection extends events.EventEmitter {
             } else if (o[key]) {
                 if (typeof o[key] === 'string') {
                     if (o[key].length === 24 && o[key].endsWith('Z')) {
-                        o[key] = new Date(o[key]);
+                        try {
+                            o[key] = new Date(o[key]);
+                        } catch (error) {
+                            
+                        }
                     }
                 }
                 if (typeof (o[key]) === "object") {

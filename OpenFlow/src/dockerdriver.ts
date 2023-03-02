@@ -691,7 +691,20 @@ export class dockerdriver implements i_nodered_driver {
                 const billed = item.Labels["billed"];
                 let deleted: boolean = false;
                 if (!NoderedUtil.IsNullEmpty(openiapagent)) {
-                    if ((item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) && deleted == false) {
+                    let addit: boolean = false;
+
+                    if(agent == null) {
+                        var _slug = item.Names[0];
+                        if(_slug != null) {
+                            if(_slug.startsWith("/")) { _slug = _slug.substr(1); }
+                            var _agent = await Config.db.GetOne<iAgent>({ query: { slug: _slug }, collectionname: "agents", jwt }, parent);
+                            if(_agent != null) { addit = true; }
+                        }
+                    } else if ((item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) && deleted == false) {
+                        addit = true;
+                    }
+
+                    if(addit) {
                         if(getstats) {
                             span?.addEvent("getContainer(" + item.Id + ")");
                             const container = docker.getContainer(item.Id);

@@ -58,20 +58,17 @@
         <div ng-show="ctrl.show == 'webapp'">{{model._lastwebappclientversion}}</div>
         <div ng-show="ctrl.show == 'all'">{{model._lastclientversion}}</div>
       </td>
-      <td>
+      <td class="text-right">
         <a href ng-click="ctrl.ShowWorkflows(model)" class="btn">workflows</a>
         <a ng-href ng-click="model._id == ctrl.WebSocketClientService.user._id || ctrl.Impersonate(model)" class="btn"
           ng-class="{disabled: model._id == ctrl.WebSocketClientService.user._id}">
           <em class="fas fa-user-secret"></em></a>
-        <a href ng-click="model.hasnodered!=true || ctrl.OpenNodered(model)" ng-disabled="model.hasnodered==true"
+          <!-- <a href ng-click="model.hasnodered!=true || ctrl.OpenNodered(model)" ng-disabled="model.hasnodered==true"
           class="btn" ng-class="{disabled: model.hasnodered!=true}">
           <em class="fas fa-project-diagram"></em></a>
-        <!-- <a ng-href="#/Payment/{{model._id}}" class="btn" ng-disabled=""
-          ng-class="{disabled: !(menuctrl.WebSocketClientService.stripe_api_key != '' && menuctrl.hasrole('admins') && model._hasbilling == true)}">
-          <em class="fas fa-money-bill-wave"></em></a> -->
         <a ng-href="#/Nodered/{{model._id}}" class="btn" ng-disabled=""
           ng-class="{disabled: menuctrl.WebSocketClientService.allow_personal_nodered != true}">
-          <em class="fas fa-tools"></em></a>
+          <em class="fas fa-tools"></em></a> -->
         <a ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" class="btn">
           <em class="fas fa-edit"></em></a>
       </td>
