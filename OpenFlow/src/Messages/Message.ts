@@ -997,6 +997,9 @@ export class Message {
                 if (result.filter(x => x.name == "entities").length == 0) {
                     result.push({ name: "entities", type: "collection" });
                 }
+                if (result.filter(x => x.name == "audit").length == 0) {
+                    result.push({ name: "audit", type: "collection" });
+                }
                 span?.addEvent("Add result to cache");
                 Message.collectionCache[msg.jwt] = result;
                 span?.setAttribute("cache size", keys.length + 1);
