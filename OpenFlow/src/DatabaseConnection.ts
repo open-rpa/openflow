@@ -1611,8 +1611,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
                     if(agentuser.customerid != null && agentuser.customerid != "") {
                         const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                        if(assigned != null) agentcount += assigned.length
-
+                        if(assigned != null) {
+                            for (let i = 0; i < assigned.length; i++) {
+                                const element = assigned[i];
+                                agentcount += element.quantity
+                            }
+                        }
                         var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt }, parent);
                         if(agents.length >= agentcount) {
                             throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
@@ -1996,8 +2000,12 @@ export class DatabaseConnection extends events.EventEmitter {
                         var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
                         if(agentuser.customerid != null && agentuser.customerid != "") {
                             const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                            if(assigned != null) agentcount += assigned.length
-    
+                            if(assigned != null) {
+                                for (let i = 0; i < assigned.length; i++) {
+                                    const element = assigned[i];
+                                    agentcount += element.quantity
+                                }
+                            }
                             var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt }, parent);
                             if(agents.length >= agentcount) {
                                 throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
@@ -2300,8 +2308,12 @@ export class DatabaseConnection extends events.EventEmitter {
                         var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt: q.jwt }, parent);
                         if(agentuser.customerid != null && agentuser.customerid != "") {
                             const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                            if(assigned != null) agentcount += assigned.length
-    
+                            if(assigned != null) {
+                                for (let i = 0; i < assigned.length; i++) {
+                                    const element = assigned[i];
+                                    agentcount += element.quantity
+                                }
+                            }
                             var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid }, collectionname: "agents", jwt: q.jwt }, parent);
                             if(agents.length > agentcount) {
                                 throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
