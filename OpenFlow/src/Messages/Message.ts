@@ -1014,7 +1014,7 @@ export class Message {
                     const allall = authorized.filter(x => x.collection == "");
                     if (allall.length == 0) {
                         const names = authorized.map(x => x.collection);
-                        msg.result = msg.result.filter(x => names.indexOf(x.name) > -1);
+                        msg.result = msg.result.filter(x => names.indexOf(x.name) > -1 || x.name == "entities" || x.name == "audit");
                     }
                 }
             } else {
