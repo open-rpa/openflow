@@ -3418,6 +3418,22 @@ export class Message {
             } catch (error) {
                 Logger.instanse.error(error, span);
             }
+
+
+            try {
+                Logger.instanse.info("Begin validating builtin roles", span);
+                for(var i = 0; i < Config.db.WellknownIdsArray.length; i++) {
+                    const item: Role = await Config.db.GetOne<Role>({ 
+                        query: {_id: Config.db.WellknownIdsArray[i], 
+                            "_type": "role"}, collectionname: "users", jwt}, span);
+                    if(item != null) {
+                        Logger.instanse.verbose("Save/validate " + item.name, span);
+                        await Logger.DBHelper.Save(item, jwt, span);
+                    }
+                }
+            } catch (error) {
+                Logger.instanse.error(error, span);
+            }
             
             // if (!skipNodered) {
             //     Logger.instanse.debug("Get running Nodered Instances", span);

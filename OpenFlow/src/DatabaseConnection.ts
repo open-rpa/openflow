@@ -691,8 +691,9 @@ export class DatabaseConnection extends events.EventEmitter {
         Logger.otel.endSpan(span);
         return item;
     }
-    async Cleanmembers<T extends Role>(item: T, original: T, span: Span): Promise<T> {
+    async Cleanmembers<T extends Role>(item: T, original: T, force: boolean, span: Span): Promise<T> {
         const removed: Rolemember[] = [];
+        if(force == false && this.WellknownIdsArray.indexOf(item._id) >= 0) return item;
         if (NoderedUtil.IsNullUndefinded(item.members)) item.members = [];
         if (original != null && Config.update_acl_based_on_groups === true) {
             for (let i = original.members.length - 1; i >= 0; i--) {
@@ -1749,7 +1750,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 item = this.ensureResource(item, collectionname);
             }
             if (item._type === "role" && collectionname === "users") {
-                item = await this.Cleanmembers(item as any, null, span);
+                item = await this.Cleanmembers(item as any, null, false, span);
             }
 
             if (collectionname === "users" && item._type === "user") {
@@ -2081,14 +2082,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
                     item = await this.CleanACL(item, user, collectionname, span);
                     if (item._type === "role" && collectionname === "users") {
-                        item = await this.Cleanmembers(item as any, null, span);
+                        item = await this.Cleanmembers(item as any, null, false, span);
                     }
                 } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
                 } else {
                     let metadata = DatabaseConnection.metadataname(collectionname);
                     item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
                     if (item._type === "role" && collectionname === "users") {
-                        item[metadata] = await this.Cleanmembers(item[metadata] as any, null, span);
+                        item[metadata] = await this.Cleanmembers(item[metadata] as any, null, false, span);
                     }
                 }
                 
@@ -2419,7 +2420,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     // force cleaning members, to clean up mess with auto added members
                     if (q.item._type === "role" && q.collectionname === "users") {
-                        q.item = await this.Cleanmembers(q.item as any, original, span);
+                        q.item = await this.Cleanmembers(q.item as any, original, false, span);
                         // DBHelper.cached_roles = [];
                     }
 
@@ -2598,7 +2599,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if (q.item._type === "role" && q.collectionname === "users") {
-                    q.item = await this.Cleanmembers(q.item as any, original, span);
+                    q.item = await this.Cleanmembers(q.item as any, original, false, span);
                 }
                 if (q.collectionname === "mq") {
                     if (!NoderedUtil.IsNullEmpty(q.item.name)) {
