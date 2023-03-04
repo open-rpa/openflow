@@ -1474,7 +1474,7 @@ export class Message {
                     // If we send an error or empy yser, the robot will spam new tabs 
                     // If we just close the connection the user will not know what is wrong ...
                     if (Config.client_disconnect_signin_error) cli.Close(span);
-                    throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
+                    throw new Error("User " + user.username + " is dblocked, please login to openflow and buy more storage and try again");
                 }
 
                 if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
@@ -1749,7 +1749,7 @@ export class Message {
                     // If we send an error or empy yser, the robot will spam new tabs 
                     // If we just close the connection the user will not know what is wrong ...
                     if (Config.client_disconnect_signin_error) cli.Close(span);
-                    throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
+                    throw new Error("User  " + msg.user.username + " is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
             msg.websocket_package_size = Config.websocket_package_size;
