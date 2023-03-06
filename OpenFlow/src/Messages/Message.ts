@@ -1297,14 +1297,19 @@ export class Message {
             }
             if (msg.collectionname == "mq") {
                 if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
-                var doc = await Config.db.getbyid(msg.id, "mq", msg.jwt, false, span);
+                var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
                 if (doc == null) throw new Error("item not found, or Access Denied");
                 if (doc._type == "workitemqueue") {
                     throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
                 }
             }
             if (msg.collectionname == "agents") {
-                throw new Error("Access denied, use agents page or api to delete agents");
+                if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
+                var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
+                if (doc._type == "agent") {
+                    throw new Error("Access denied, use agents page or api to delete agents");
+                }
+                
             }
             // @ts-ignore
             msg.affectedrows = await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
