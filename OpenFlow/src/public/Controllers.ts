@@ -7656,6 +7656,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.AgentsCtrl.searchstring = this.searchstring;
         this.userdata.data.AgentsCtrl.basequeryas = this.basequeryas;
         this.userdata.data.AgentsCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
         this.knownpods =  await NoderedUtil.CustomCommand({command:"getagentpods"})
         for(var i = 0; i < this.models.length; i++) {
@@ -7727,6 +7728,8 @@ export class AgentCtrl extends entityCtrl<any> {
     instancelogpodname: string = "";
     instancelog: string = "";
     products: any[] = [{"stripeprice": "", "name": "Free tier"}];
+    packages: any[] = [];
+    allpackages: any[] = [];
     images: any[] = [];
     resource: any = null;
     agentcount: number = 0;
@@ -7748,6 +7751,7 @@ export class AgentCtrl extends entityCtrl<any> {
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
             var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
+            this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: {"_type": "package", "daemon": true } });
             if(products.length > 0) {
                 this.resource = products[0];
                 if(this.resource.defaultmetadata) {
@@ -7785,6 +7789,7 @@ export class AgentCtrl extends entityCtrl<any> {
     async processData(): Promise<void> {
         if(this.model.stripeprice == null) this.model.stripeprice = "";
         this.searchtext = this.model.runasname
+        this.ImageUpdated();
         this.loadInstances()
     }
     async getStatus(model) {
@@ -7833,6 +7838,7 @@ export class AgentCtrl extends entityCtrl<any> {
             ram = ram.replace("Gi", "")
             ram = parseInt(ram);
         }
+        if(this.model.image == null) return;
         if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             if(product == null || ram < 0.25) {
                 this.sizewarningtitle = "Not enough ram"
@@ -7854,9 +7860,35 @@ export class AgentCtrl extends entityCtrl<any> {
             }
         }
     }
-    ImageUpdated() {
+    async ImageUpdated() {
+        console.log("ImageUpdated")
         this.sizewarningtitle = ""
         this.sizewarning = ""
+
+        var image = this.images.find(x => x.image == this.model.image)
+        var languages = this.model.languages;
+        if(image != null && image.languages != null && image.languages.length > 0) {
+            languages = image.languages;
+        }
+        if(languages == null || languages.length == 0) {
+            this.packages = []; 
+            console.log("languages empty", this.packages)
+        } else {
+            console.log("languages", languages[0])
+            this.packages = this.allpackages.filter(x => languages.indexOf(x.language) > -1)
+            console.log("filtered", this.packages)
+            if(!this.model.chrome && !this.model.chromium) {
+                this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
+                console.log("filtered again", this.packages)
+            }
+            if(this.model._id == null || this.model._id == "") {
+                this.model.package = "";
+            }
+            if((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
+                this.model.package = this.packages[0]._id;
+            }
+        }
+
         if(this.model._id != null && this.model._id != "") {
             this.PlanUpdated()
             return;
@@ -7868,8 +7900,8 @@ export class AgentCtrl extends entityCtrl<any> {
             this.model.webserver = (image.port != null && image.port != "");
         }        
         if(this.model.image.indexOf("openiap/nodeagent")> -1) {
+            // "gitrepo": "https://github.com/openiap/nodeworkitemagent.git",
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/nodeworkitemagent.git",
                 "wiq":"nodeagent"
             }
         }
@@ -7887,32 +7919,30 @@ export class AgentCtrl extends entityCtrl<any> {
             }
         }
         if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
+            // "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
-                "wiq": "nodepuppeteertest"
+                "wiq": "nodeagent"
             }
             this.PlanUpdated()
         }
         if(this.model.image.indexOf("openiap/dotnetagent") > -1) {
+            // "gitrepo": "https://github.com/openiap/dotnetworkitemagent.git",
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/dotnetworkitemagent.git",
                 "wiq":"dotnetagent"
             }
         }
         if(this.model.image.indexOf("openiap/pyagent") > -1) {
+            // "gitrepo": "https://github.com/openiap/pyworkitemagent.git",
             this.model.environment = {
-                "gitrepo": "https://github.com/openiap/pyworkitemagent.git",
                 "wiq":"pyagent"
             }
         }
         if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
+            // "gitrepo3": "https://github.com/openiap/rccworkitemagent.git",
+            // "gitrepo2": "https://github.com/openiap/robotframeworkagent.git",
+            // "gitrepo": "https://github.com/openiap/taguiagent.git",
             this.model.environment = {
-                "gitrepo3": "https://github.com/openiap/rccworkitemagent.git",
-                "gitrepo2": "https://github.com/openiap/robotframeworkagent.git",
-                "gitrepo": "https://github.com/openiap/taguiagent.git",
-                "wiq3": "rcctest",
-                "wiq2": "robotframeworktest",
-                "wiq": "taguitest"
+                "wiq": "pyagent",
             }
             this.PlanUpdated()
         }
@@ -8163,7 +8193,6 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     async handlefilter(e) {
         this.e = e;
-        const ids: string[] = this.model.members.map(item => item._id);
         
         this.searchFilteredList = await NoderedUtil.Query({
             collectionname: "users",
@@ -8208,6 +8237,160 @@ export class AgentCtrl extends entityCtrl<any> {
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
+    }
+
+}
+
+
+export class PackagesCtrl extends entitiesCtrl<Base> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        this.autorefresh = true;
+        console.debug("PackagesCtrl");
+        this.basequery = {_type: "package"};
+        this.collection = "agents";
+        this.postloadData = this.processdata;
+        this.skipcustomerfilter = true;
+        this.searchfields = ["name", "languages"];
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, language: 1, _createdby:1 };
+        if (this.userdata.data.PackagesCtrl) {
+            this.basequery = this.userdata.data.PackagesCtrl.basequery;
+            this.collection = this.userdata.data.PackagesCtrl.collection;
+            this.baseprojection = this.userdata.data.PackagesCtrl.baseprojection;
+            this.orderby = this.userdata.data.PackagesCtrl.orderby;
+            this.searchstring = this.userdata.data.PackagesCtrl.searchstring;
+            this.basequeryas = this.userdata.data.PackagesCtrl.basequeryas;
+            this.skipcustomerfilter = this.userdata.data.PackagesCtrl.skipcustomerfilter;
+        }
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processdata() {
+        if (!this.userdata.data.PackagesCtrl) this.userdata.data.PackagesCtrl = {};
+        this.userdata.data.PackagesCtrl.basequery = this.basequery;
+        this.userdata.data.PackagesCtrl.collection = this.collection;
+        this.userdata.data.PackagesCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.PackagesCtrl.orderby = this.orderby;
+        this.userdata.data.PackagesCtrl.searchstring = this.searchstring;
+        this.userdata.data.PackagesCtrl.basequeryas = this.basequeryas;
+        this.userdata.data.PackagesCtrl.skipcustomerfilter = this.skipcustomerfilter;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async DeletePackage(model:any): Promise<void> {
+        try {
+            this.loading = true;
+            this.errormessage = "";
+            await NoderedUtil.CustomCommand({command:"deletepackage", id:model._id})
+            this.loading = false;
+            setTimeout(this.loadData.bind(this), 500)
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error
+            
+        }
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+}
+
+export class PackageCtrl extends entityCtrl<Base> {
+    e: any = null;
+    languages: string[] = ["nodejs", "python", "dotnet"];
+    oldfileid: string = "";
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("PackageCtrl");
+        this.collection = "agents";
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                this.model = new Base();
+                this.model._type = "package";
+                // @ts-ignore
+                this.model.language = "nodejs";
+                // @ts-ignore
+                this.model.fileid = "";
+            }
+        });
+    }
+    async submit(): Promise<void> {
+        try {
+            await this.Upload()
+            // @ts-ignore
+            if(this.model.fileid == null || this.model.fileid == "") {
+                throw new Error("File is required")
+            }
+            if (this.model._id) {
+                await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
+            } else {
+                this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
+            }
+            if(this.oldfileid != "" && this.oldfileid != null) {
+                await NoderedUtil.DeleteOne({ collectionname: "files", id: this.oldfileid });
+            }
+            this.$location.path("/Packages");
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    toBase64(file) {
+        return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as any);
+        reader.onerror = error => reject(error);
+        });
+    }    
+    async Upload() {
+        try {
+            const e: any = document.getElementById('fileupload')
+            // const buffer = new Uint8Array(await e.files[0].arrayBuffer())
+            if(e.files && e.files.length > 0) {
+                let buffer:string = await this.toBase64(e.files[0])
+                if(buffer != null) {
+                    buffer = buffer.split(",")[1]
+                }                
+                const mimeType = e.files[0].type
+                const filename = e.files[0].name
+                // @ts-ignore
+                var result = await NoderedUtil.SaveFile({ filename, mimeType,  file: buffer, compressed: false, metadata: { _type: "package" } });
+                // console.log(result)
+                console.log(result.id)
+                // @ts-ignore
+                this.oldfileid = this.model.fileid;
+                // @ts-ignore
+                this.model.fileid = result.id;
+                e.value= null;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            } else {
+                console.log("no files in form")
+            }
+
+        } catch (error) {
+            console.error(error);
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
 }

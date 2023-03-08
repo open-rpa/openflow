@@ -1306,10 +1306,9 @@ export class Message {
             if (msg.collectionname == "agents") {
                 if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
                 var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
-                if (doc._type == "agent") {
-                    throw new Error("Access denied, use agents page or api to delete agents");
-                }
-                
+                if (doc._type == "agent" || doc._type == "package") {
+                    throw new Error("Access denied, use packages page or api to delete package");
+                }                
             }
             // @ts-ignore
             msg.affectedrows = await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
@@ -5089,7 +5088,7 @@ export class Message {
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
-
+                if(agent.image == null || agent.image == "") break;
                 await Logger.nodereddriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
                 break;
             case "stopagent":
@@ -5139,6 +5138,67 @@ export class Message {
                 }
                 await Logger.nodereddriver.RemoveInstance(this.tuser, this.jwt, agent, true, parent);
                 Config.db.DeleteOne(agent._id, "agents", false, jwt, parent);
+                break;
+            case "registeragent":
+                // @ts-ignore
+                var data = msg.data
+                if(data == null || data == "") throw new Error("No data found");
+                try {
+                    data = JSON.parse(data);
+                } catch (error) {
+                    
+                }
+                var agent:iAgent = data as any;
+                if(msg.id != null && msg.id != "") agent._id =  msg.id;
+                if(agent.slug == null || agent.slug == "") agent.slug = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                agent._type = "agent";
+                agent.lastseen = new Date(new Date().toISOString());
+                if(agent._id != null && agent._id != "") {
+                    var _agent = await Config.db.GetOne<iAgent>({ query: { _id: agent._id }, collectionname: "agents", jwt }, parent);
+                    if(_agent == null) {
+                        if(agent.queue == null || agent.queue == "") agent.queue = agent.slug;
+                        if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
+                        _agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+                    }
+                    _agent.lastseen = new Date(new Date().toISOString());
+                    if(agent.hostname != null && agent.hostname != "") _agent.hostname = agent.hostname;
+                    if(agent.os != null && agent.os != "") _agent.os = agent.os;
+                    if(agent.arch != null && agent.arch != "") _agent.arch = agent.arch;
+                    if(agent.username != null && agent.username != "") _agent.username = agent.username;
+                    if(agent.version != null && agent.version != "") _agent.version = agent.version;
+
+                    if(_agent.queue == null || _agent.queue == "") _agent.queue = _agent.slug;
+                    if(_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
+
+                    agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);
+                } else {
+                    if(agent.queue == null || agent.queue == "") agent.queue = agent.slug;
+                    if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
+                    agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+                }
+                var agentuser = this.tuser;
+                if(agent.runas != null && agent.runas != "" && this.tuser._id != agent.runas) {
+                    agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                }
+                if(agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
+                    if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
+                        throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agentuser.name}`);
+                    }
+                    // @ts-ignore
+                    agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
+                }
+                msg.result = agent
+                break;
+            case "deletepackage":
+                var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt }, parent);
+                if(pack == null) throw new Error("Access denied or package not found");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
+                }
+                if(pack.fileid != null && pack.fileid != "") {
+                    await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                }
+                await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;
             default:
                 msg.error = "Unknown custom command";
