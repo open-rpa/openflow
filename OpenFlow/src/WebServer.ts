@@ -1,3 +1,4 @@
+var mimetype = require('mimetype');
 import * as  stream from "stream";
 import * as os from "os";
 import * as path from "path";
@@ -322,6 +323,10 @@ export class WebServer {
             const rs = new stream.Readable;
             rs._read = () => { };
             const s = protowrap.SetStream(client, rs, rid)
+            if (NoderedUtil.IsNullEmpty(msg.mimetype)) {
+                msg.mimetype = mimetype.lookup(msg.filename);
+            }
+   
             let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
             let id = uploadStream.id
             uploadStream.on('finish', ()=> {
@@ -358,6 +363,7 @@ export class WebServer {
         let command, msg, reply;
         try {
             [command, msg, reply] = protowrap.unpack(message);
+            if(message.command == "") throw new Error("Invalid/empty command");
         } catch (error) {
             err(error);
             message.command = "error";
@@ -393,7 +399,7 @@ export class WebServer {
             } else if (command == "upload") {
                 var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
                 reply.command = "uploadreply"
-                const data = Any.create({type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id })).finish() })
+                const data = Any.create({type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id, filename: msg.filename })).finish() })
                 reply.data = data
                 // var filename = msg.filename;
                 // let name = path.basename(filename);

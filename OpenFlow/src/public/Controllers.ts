@@ -8344,9 +8344,12 @@ export class PackageCtrl extends entityCtrl<Base> {
             } else {
                 this.model = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
             }
-            if(this.oldfileid != "" && this.oldfileid != null) {
-                await NoderedUtil.DeleteOne({ collectionname: "files", id: this.oldfileid });
-            }
+            // if(this.oldfileid != "" && this.oldfileid != null) {
+            //     try {
+            //         await NoderedUtil.DeleteOne({ collectionname: "files", id: this.oldfileid });
+            //     } catch (error) {
+            //     }
+            // }
             this.$location.path("/Packages");
         } catch (error) {
             console.error(error);
