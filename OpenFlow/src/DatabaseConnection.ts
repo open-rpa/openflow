@@ -1521,6 +1521,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     // @ts-ignore
                     delete item.username;
                 }
+                if( item._id == "") delete item._id;
                 if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item[metadata], span)) {
                     // @ts-ignore
                     throw new Error("Create " + item[metadata]._type + " access denied");
@@ -1574,6 +1575,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                         throw new Error("Access denied");
                     }
+                }
+                // @ts-ignore
+                var fileid = item.fileid;
+                if (item._type == "package" && fileid != "" && fileid != null) {
+                    var f = await this.getbyid<any>(fileid, "fs.files", jwt, true, span);
+                    if (f == null) throw new Error("File " + fileid + " not found");
                 }
                 if(item._type == "agent") {
                     // @ts-ignore
@@ -1957,6 +1964,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
 
+                if( item._id == "") delete item._id;
                 item = this.encryptentity(item) as T;
                 var user2: User = item as any;
 
@@ -1967,6 +1975,13 @@ export class DatabaseConnection extends events.EventEmitter {
                             throw new Error("Access denied");
                         }
                     }
+                    // @ts-ignore
+                    var fileid = item.fileid;
+                    if (item._type == "package" && fileid != "" && fileid != null) {
+                        var f = await this.getbyid<any>(fileid, "fs.files", jwt, true, span);
+                        if (f == null) throw new Error("File " + fileid + " not found");
+                    }
+
                     if(item._type == "agent") {
                         // @ts-ignore
                         if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
@@ -2276,6 +2291,23 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                             throw new Error("Access denied");
                         }
+                    }
+                    // @ts-ignore
+                    var fileid = q.item.fileid;
+                    if (q.item._type == "package" && fileid != "" && fileid != null) {
+                        var f = await this.getbyid<any>(fileid, "fs.files", q.jwt, true, span);
+                        if (f == null) throw new Error("File " + fileid + " not found");
+                        // is f.metadata._acl different from q.item._acl ?
+                        f.metadata._acl = q.item._acl;
+                        await this._UpdateOne( null, f, "fs.files", 1, false, q.jwt, span);
+                        if(original != null) {
+                            // @ts-ignore
+                            var oldfileid = original.fileid;                            
+                            if(oldfileid != fileid && oldfileid != null && oldfileid != "") {
+                                await this.DeleteOne(oldfileid, "fs.files", false, q.jwt, span);
+                            }
+                        }
+
                     }
                     if (q.item._type == "agent") {
                         // @ts-ignore
