@@ -6253,6 +6253,7 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
             await this.newRestriction("Create workitemqueue in mq", "mq", ["$.[?(@ && @._type == 'workitemqueue')]"], false);
             await this.newRestriction("Create workitem in workitems", "workitems", ["$.[?(@ && @._type == 'workitem')]"], false);
             await this.newRestriction("Create agent in agents", "agents", ["$.[?(@ && @._type == 'agent')]"], false);
+            await this.newRestriction("Create packages in agents", "agents", ["$.[?(@ && @._type == 'package')]"], false);
 
             await this.newRestriction("Create queues", "mq", ["$.[?(@ && @._type == 'queue')]"], false);
             await this.newRestriction("Create exchanges", "mq", ["$.[?(@ && @._type == 'exchange')]"], false);
