@@ -417,7 +417,9 @@ export class Config {
         Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
-        Config.agent_images = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\", \"port\": 3000}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+        Config.agent_images = JSON.parse(Config.getEnv("agent_images", 
+        JSON.stringify([{"name":"nodejs", "image":"openiap/nodeagent", "languages": ["nodejs"]}, {"name":"nodejs+chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]}, {"name":"python", "image":"openiap/pyagent", "languages": ["python"]}, {"name":"python+chromium", "image":"openiap/pychromiumagent", "chromium": true, "languages": ["python"]} ])
+        ));
         Config.agent_domain_schema = Config.getEnv("agent_domain_schema", "");
 
         Config.agent_apiurl = Config.getEnv("agent_apiurl", "");
@@ -672,7 +674,9 @@ export class Config {
 
     // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
-    public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", "[{\"name\":\"nodejs\", \"image\":\"openiap/nodeagent\"}, {\"name\":\"nodejs chrome\", \"image\":\"openiap/nodechromiumagent\"}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\", \"port\": 3000}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\"}, {\"name\":\"python\", \"image\":\"openiap/pyagent\"}, {\"name\":\"python chrome\", \"image\":\"openiap/pychromiumagent\"}]"));
+    public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", 
+    JSON.stringify([{"name":"nodejs", "image":"openiap/nodeagent", "languages": ["nodejs"]}, {"name":"nodejs+chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]}, {"name":"python", "image":"openiap/pyagent", "languages": ["python"]}, {"name":"python+chromium", "image":"openiap/pychromiumagent", "chromium": true, "languages": ["python"]} ])
+    ));
     public static agent_domain_schema: string = Config.getEnv("agent_domain_schema", "");
 
     public static agent_apiurl: string = Config.getEnv("agent_apiurl", "");
