@@ -543,6 +543,12 @@ export class WebServer {
                 }
                 if(result.command == "addworkitem" || result.command == "pushworkitem" || result.command == "updateworkitem" || result.command == "popworkitem") {
                     res.workitem = res.result;
+                    if(res.workitem && res.workitem.errormessage) {
+                        if(typeof res.workitem.errormessage !== "string") {
+                            res.workitem.errormessage = JSON.stringify(res.workitem.errormessage);
+                        }
+                        
+                    }
                     delete res.result;
                 }
                 if(result.command == "popworkitem") {
