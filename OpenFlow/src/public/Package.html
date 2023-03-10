@@ -31,11 +31,11 @@
         </select>
       </div>
       <div class="col-sm">
-        <label for="last-name"><span translate lib="web">require chrome</span>
+        <label for="last-name"><span translate lib="web">require chromium</span>
         <div class="custom-checkbox">
-          <input type="checkbox" id="if-5-chrome" value="{{ctrl.model.chrome}}" ng-model="ctrl.model.chrome"
+          <input type="checkbox" id="if-5-chromium" value="{{ctrl.model.chromium}}" ng-model="ctrl.model.chromium"
             ng-disabled="ctrl.loading==true">
-          <label for="if-5-chrome" translate lib="web" ng-disabled="ctrl.loading==true"></label>
+          <label for="if-5-chromium" translate lib="web" ng-disabled="ctrl.loading==true"></label>
         </div>
       </div>
       <div class="col-sm">
@@ -74,11 +74,11 @@
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">git examples</span>
       </div>
-      <pre ng-show="ctrl.model.language=='nodejs' && ctrl.model.chrome!=true">https://github.com/openiap/nodeworkitemagent.git</pre>
-      <pre ng-show="ctrl.model.language=='nodejs' && ctrl.model.chrome==true">https://github.com/openiap/nodepuppeteeragent.git</pre>
+      <pre ng-show="ctrl.model.language=='nodejs' && ctrl.model.chromium!=true">https://github.com/openiap/nodeworkitemagent.git</pre>
+      <pre ng-show="ctrl.model.language=='nodejs' && ctrl.model.chromium==true">https://github.com/openiap/nodepuppeteeragent.git</pre>
       <pre ng-show="ctrl.model.language=='dotnet'">https://github.com/openiap/dotnetworkitemagent.git</pre>
-      <pre ng-show="ctrl.model.language=='python' && ctrl.model.chrome!=true">https://github.com/openiap/pyworkitemagent.git</pre>
-      <pre ng-show="ctrl.model.language=='python' && ctrl.model.chrome==true">
+      <pre ng-show="ctrl.model.language=='python' && ctrl.model.chromium!=true">https://github.com/openiap/pyworkitemagent.git</pre>
+      <pre ng-show="ctrl.model.language=='python' && ctrl.model.chromium==true">
         https://github.com/openiap/rccworkitemagent.git
         https://github.com/openiap/robotframeworkagent.git
         https://github.com/openiap/taguiagent.git
