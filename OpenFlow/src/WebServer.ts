@@ -345,7 +345,7 @@ export class WebServer {
             const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
             protowrap.sendMesssag(client, { rid, command: "beginstream", data: data }, null, true);
             downloadStream.on('data', (chunk) => {
-                const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: Stream.encode(Stream.create({data: chunk})).finish() })
+                const data = Any.create({type_url: "type.googleapis.com/openiap.Stream", value: Stream.encode(Stream.create({data: chunk})).finish() })
                 protowrap.sendMesssag(client, { rid, command: "stream", 
                 data: data }, null, true);
             });
@@ -416,7 +416,7 @@ export class WebServer {
                         result = rows[0];
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
                         result = rows[0];
-                        reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadRequest",
+                        reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadResponse",
                             value: DownloadResponse.encode(DownloadResponse.create({
                             filename: result.filename,
                             mimetype: result.contentType,
