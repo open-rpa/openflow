@@ -7844,9 +7844,9 @@ export class AgentCtrl extends entityCtrl<any> {
             if(product == null || ram < 0.25) {
                 this.sizewarningtitle = "Not enough ram"
                 if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
-                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at 256Mi ram or higher"
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at least 256Mi ram or higher"
                 } else {
-                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at 256Mi ram or higher"
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at least 256Mi ram or higher"
                 }
             }
         }
@@ -7854,9 +7854,9 @@ export class AgentCtrl extends entityCtrl<any> {
             if(product == null || ram < 0.25) {
                 this.sizewarningtitle = "Not enough ram"
                 if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
-                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at 256Mi ram or higher"
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at least 256Mi ram or higher"
                 } else {
-                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at 256Mi ram or higher"
+                    this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at least 256Mi ram or higher"
                 }
             }
         }
