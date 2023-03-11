@@ -202,6 +202,34 @@ export class Message {
         this.replyto = this.id;
         this.id = NoderedUtil.GetUniqueIdentifier();
     }
+    public static async verityToken(token:string, cli?: WebSocketServerClient) {
+        if(token == null || token == "") return null;
+        var user = null;
+        try {
+            user = User.assign(await Crypt.verityToken(token, cli));
+            if(user!=null) return user;
+        } catch (error) {
+        }
+        var AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(token);
+        if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+            user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
+        } else {
+            var c = OAuthProvider.instance.clients;
+            for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
+                try {
+                    var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
+                    var AccessToken2 = await OAuthProvider.instance.oidc.IdToken.validate(token, _cli);
+                    if (!NoderedUtil.IsNullEmpty(AccessToken2)) {
+                        user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken2.payload.sub);
+                        break;
+                    }
+                } catch (error) {
+                }
+            }
+        }
+        if(user && user.user) return user.user;
+        return user;
+    }
 
     public async EnsureJWT(cli: WebSocketServerClient, jwtrequired: boolean): Promise<boolean> {
         if (!NoderedUtil.IsNullUndefinded(this.data)) {
@@ -224,7 +252,7 @@ export class Message {
             // return false;
         } else if (!NoderedUtil.IsNullEmpty(this.jwt)) {
             try {
-                this.tuser = User.assign(await Crypt.verityToken(this.jwt, cli));
+                this.tuser = User.assign(await Message.verityToken(this.jwt, cli));
             } catch (error) {
                 if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, Logger.parsecli(cli));
                 if (this.command == "signin") {
@@ -910,7 +938,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                const tuser = await Crypt.verityToken(msg.jwt);
+                const tuser = await Message.verityToken(msg.jwt, cli);
                 msg.user = tuser;
             }
             if (typeof sendthis === "object") {
@@ -1364,7 +1392,7 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
             tuser = TokenUser.From(cli.user);
         } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-            tuser = await Crypt.verityToken(cli.jwt);
+            tuser = await this.verityToken(cli.jwt, cli);
             const impostor: string = tuser.impostor;
             cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -1445,7 +1473,7 @@ export class Message {
                 span?.addEvent("using jwt, verify token");
                 tokentype = "jwtsignin";
                 try {
-                    tuser = await Crypt.verityToken(msg.jwt, cli);
+                    tuser = await Message.verityToken(msg.jwt, cli);
                 } catch (error) {
                     if (Config.client_disconnect_signin_error) cli.Close(span);
                     throw error;
@@ -1775,7 +1803,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceName", parent);
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: TokenUser = await Message.verityToken(jwt);
             var qs: any[] = [{ _id: _id }];
             qs.push(Config.db.getbasequery(user, [Rights.update], "users"))
             const res = await Config.db.query<User>({ query: { "$and": qs }, top: 1, collectionname: "users", jwt }, span);
@@ -1991,7 +2019,7 @@ export class Message {
             metadata._acl = [];
             Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
         }
-        const user: TokenUser = await Crypt.verityToken(jwt);
+        const user: TokenUser = await Message.verityToken(jwt);
         metadata._createdby = user.name;
         metadata._createdbyid = user._id;
         metadata._created = new Date(new Date().toISOString());
@@ -2270,7 +2298,7 @@ export class Message {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
-            const tuser = await Crypt.verityToken(jwt);
+            const tuser = await Message.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -2388,7 +2416,7 @@ export class Message {
             }
 
 
-            const user = await Crypt.verityToken(cli.jwt);
+            const user = await Message.verityToken(cli.jwt, cli);
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
                 throw new Error("Access denied, getting invoice (not in '" + customer.name + " admins')");
             }
@@ -2585,7 +2613,7 @@ export class Message {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
 
-            const tuser = await Crypt.verityToken(jwt);
+            const tuser = await Message.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -2984,7 +3012,7 @@ export class Message {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
                 if (msg.object == "billing_portal/sessions") {
-                    const tuser = await Crypt.verityToken(cli.jwt);
+                    const tuser = await Message.verityToken(cli.jwt, cli);
                     let customer: Customer;
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
