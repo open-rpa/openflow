@@ -944,11 +944,13 @@ export class Message {
             if (typeof sendthis === "object") {
                 sendthis.__jwt = msg.jwt;
                 sendthis.__user = msg.user;
+                delete msg.jwt;
+                delete msg.user;;
+                delete msg.data.jwt;
             }
             if (msg.striptoken) {
-                delete msg.jwt;
-                delete msg.data.jwt;
                 delete sendthis.__jwt;
+                delete sendthis.__user;
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
