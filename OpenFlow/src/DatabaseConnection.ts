@@ -1455,6 +1455,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 item._modifiedby = user.name;
                 item._modifiedbyid = user._id;
                 item._modified = item._created;
+                if( item._id == "") delete item._id;
                 if (collectionname == "audit") {
                     delete item._modifiedby;
                     delete item._modifiedbyid;
@@ -1549,12 +1550,30 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (item._type == "exchange") item.name = item.name.toLowerCase();
                 if (item._type == "queue") item.name = item.name.toLowerCase();
             }
+            var wi: Workitem = item as any;
             // @ts-ignore
             if (collectionname == "workitems" && item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid, false, span);
             // @ts-ignore
             if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
-            // @ts-ignore
-            if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
+            if (collectionname == "workitems" && item._type == "workitem") {
+                wi.state = "new";
+                if(NoderedUtil.IsNullEmpty(wi.wiq) && NoderedUtil.IsNullEmpty(wi.wiqid)) {
+                    throw new Error("Workitemqueue (wiq or wiqid) is required");
+                }
+                if(NoderedUtil.IsNullEmpty(wi.wiq)) {
+                    var wiq = await this.GetOne({collectionname:"mq", query: { _id: wi.wiqid, _type: "workitemqueue" }, jwt}, span);
+                    if(NoderedUtil.IsNullEmpty(wiq)) {
+                        throw new Error("Workitemqueue " + wi.wiqid + " not found");
+                    }
+                    wi.wiq = wiq.name;
+                } else if(NoderedUtil.IsNullEmpty(wi.wiqid)) {
+                    var wiq = await this.GetOne({collectionname:"workitemqueues", query: { name: wi.wiq, _type: "workitemqueue" }, jwt}, span);
+                    if(NoderedUtil.IsNullEmpty(wiq)) {
+                        throw new Error("Workitemqueue " + wi.wiq + " not found");
+                    }
+                    wi.wiqid = wiq._id;
+                }
+            }
 
             if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                 if ((item._type === "user" || item._type === "role") &&
@@ -3360,10 +3379,9 @@ export class DatabaseConnection extends events.EventEmitter {
                             objectids.push(safeObjectID(ids[i]))
                         } catch (error) {
                         }
-                        if (objectids.length > 0) ids = ids.concat(objectids);
                     }
                 }
-                _query = { $and: [{ _id: { "$in": ids } }, baseq] };
+                _query = { $and: [{ _id: { "$in": objectids } }, baseq] };
             } else if (!NoderedUtil.IsNullUndefinded(query)) {
                 if (query !== null && query !== undefined) {
                     let json: any = query;
