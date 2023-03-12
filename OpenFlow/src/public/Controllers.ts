@@ -7886,7 +7886,6 @@ export class AgentCtrl extends entityCtrl<any> {
             console.log("languages", languages[0])
             this.packages = this.allpackages.filter(x => languages.indexOf(x.language) > -1)
             console.log("filtered", this.packages)
-            debugger
             if(!haschromium && !haschrome) {
                 this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
                 console.log("filtered again", this.packages)
@@ -8102,7 +8101,8 @@ export class AgentCtrl extends entityCtrl<any> {
             if(image != null) {
                 if(this.model.stripeprice == null || this.model.stripeprice == "") {
                     this.model.webserver = (image.port != null && image.port != "");
-                } else if (this.model.port == null || this.model.port == "") {
+                // } else if (this.model.port == null || this.model.port == "") {
+                } else if (image.port == null || image.port == "") {
                     this.model.webserver = false;
                 }
             }
