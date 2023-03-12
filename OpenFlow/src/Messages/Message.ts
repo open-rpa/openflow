@@ -1015,7 +1015,7 @@ export class Message {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
                 }
                 msg.result = msg.result.filter(x => x.name != "fs.chunks");
-                msg.result = msg.result.filter(x => x.name != "fs.files");
+                // msg.result = msg.result.filter(x => x.name != "fs.files");
                 msg.result = msg.result.filter(x => x.name != "uploads.files");
                 msg.result = msg.result.filter(x => x.name != "uploads.chunks");
                 const result = [];
