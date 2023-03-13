@@ -202,7 +202,7 @@ export class Message {
         this.replyto = this.id;
         this.id = NoderedUtil.GetUniqueIdentifier();
     }
-    public static async verityToken(token:string, cli?: WebSocketServerClient) {
+    public static async verityToken(token:string, cli?: WebSocketServerClient, ) {
         if(token == null || token == "") return null;
         var user = null;
         try {
@@ -1448,6 +1448,8 @@ export class Message {
                 protocol = cli.protocol;
             }
             msg = SigninMessage.assign(this.data);
+            // @ts-ignore
+            if(msg.validateonly != null) msg.validate_only = msg.validateonly;
             if (cli != null) {
                 if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
                 if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
@@ -1470,17 +1472,25 @@ export class Message {
             let originialjwt = msg.jwt;
             let tuser: TokenUser = null;
             let user: User = null;
+            if(NoderedUtil.IsNullEmpty(msg.jwt) && NoderedUtil.IsNullEmpty(msg.username) && NoderedUtil.IsNullEmpty(msg.password) && msg.validate_only == true) {
+                msg.jwt = cli.jwt;
+            }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                if (msg.validate_only) { this.command = "validatereply"; }
+                // if (msg.validate_only) { this.command = "validatereply"; }
                 span?.addEvent("using jwt, verify token");
                 tokentype = "jwtsignin";
                 try {
                     tuser = await Message.verityToken(msg.jwt, cli);
+
+                    if(tuser == null) {
+                        tuser = User.assign(await Crypt.verityToken(msg.jwt, cli, true));
+                        Logger.instanse.warn("[" + tuser.username + "] validated with expired token!", span);
+                    }
                 } catch (error) {
                     if (Config.client_disconnect_signin_error) cli.Close(span);
                     throw error;
                 }
-                let _id = tuser._id;
+                let _id = tuser?._id;
                 if (tuser != null) {
                     if (NoderedUtil.IsNullEmpty(tuser._id)) {
                         span?.addEvent("token valid, lookup username " + tuser.username);

@@ -117,13 +117,14 @@ export class Crypt {
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
-    static async verityToken(token: string, cli?: WebSocketServerClient): Promise<TokenUser> {
+    static async verityToken(token: string, cli?: WebSocketServerClient, ignoreExpiration: boolean = false): Promise<TokenUser> {
         try {
             if (NoderedUtil.IsNullEmpty(token)) {
                 throw new Error('jwt must be provided');
             }
             if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-            const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: Config.ignore_expiration });
+            if(ignoreExpiration == false && Config.ignore_expiration == true) ignoreExpiration = true;
+            const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: ignoreExpiration });
             let impostor: string = null;
             if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
                 if (!NoderedUtil.IsNullEmpty(o.data.impostor)) {
