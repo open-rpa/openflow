@@ -3376,8 +3376,17 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "files" || collectionname == "fs.files") {
                     for (let i = 0; i < ids.length; i++) {
                         try {
-                            objectids.push(safeObjectID(ids[i]))
+                            if(ids[i] != null && ids[i].trim() != "") objectids.push(safeObjectID(ids[i]))
                         } catch (error) {
+                            console.error(error);
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < ids.length; i++) {
+                        try {
+                            if(ids[i] != null && ids[i].trim() != "") objectids.push(ids[i])
+                        } catch (error) {
+                            console.error(error);
                         }
                     }
                 }
