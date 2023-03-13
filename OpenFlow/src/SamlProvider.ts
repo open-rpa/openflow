@@ -65,89 +65,93 @@ export class SamlProvider {
         const cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         const key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
-        const samlpoptions: any = {
-            issuer: Config.saml_issuer,
-            cert: cert,
-            key: key,
-            getPostURL: (wtrealm: any, wreply: any, req: any, callback: any) => {
-                (async () => {
-                    if (typeof wreply === "object") {
-                        wreply = wreply.documentElement.getAttribute("AssertionConsumerServiceURL");
-                    }
-                    return callback(null, wreply);
-                })();
-
-            },
-            getUserFromRequest: (req: any) => {
-                const span: Span = Logger.otel.startSpanExpress("SAML.getUserFromRequest", req);
-                try {
-                    const tuser: TokenUser = TokenUser.From(req.user);
-                    const remoteip = SamlProvider.remoteip(req);
-                    span?.setAttribute("remoteip", remoteip);
-                    Audit.LoginSuccess(tuser,  "tokenissued", "saml", remoteip, "unknown", "unknown", span).catch((e) => {
-                        Logger.instanse.error(e, span);
-                    });
-                } catch (error) {
-                    Logger.instanse.error(error, span);
-                } finally {
-                    Logger.otel.endSpan(span);
-                }
-                return req.user;
-            },
-            profileMapper: SamlProvider.profileMapper,
-            lifetimeInSeconds: (3600 * 24)
-        };
-
-        app.get("/issue/", (req: any, res: any, next: any): void => {
-            if (req.query.SAMLRequest !== undefined && req.query.SAMLRequest !== null) {
-                if ((req.user === undefined || req.user === null)) {
-                    try {
-                        // tslint:disable-next-line: max-line-length
-                        samlp.parseRequest(req, samlpoptions, async (_err: any, samlRequestDom: any): Promise<void> => {
-                            res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
-                            res.redirect("/");
-                        });
-                    } catch (error) {
-                        res.body(error.message ? error.message : error);
-                        res.end();
-                        Logger.instanse.error(error, null);
-                    }
-                } else {
-                    // continue with issuing token using samlp
-                    next();
-                }
-            } else {
-                res.send("Please login again");
-                res.end();
-            }
-        });
-
-        app.get("/issue/", samlp.auth(samlpoptions));
-        try {
-            app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
+        if(cert != null && cert != "") {
+            const samlpoptions: any = {
                 issuer: Config.saml_issuer,
                 cert: cert,
-            }));
-        } catch (error) {
-            Logger.instanse.error(error, null);
+                key: key,
+                getPostURL: (wtrealm: any, wreply: any, req: any, callback: any) => {
+                    (async () => {
+                        if (typeof wreply === "object") {
+                            wreply = wreply.documentElement.getAttribute("AssertionConsumerServiceURL");
+                        }
+                        return callback(null, wreply);
+                    })();
+    
+                },
+                getUserFromRequest: (req: any) => {
+                    const span: Span = Logger.otel.startSpanExpress("SAML.getUserFromRequest", req);
+                    try {
+                        const tuser: TokenUser = TokenUser.From(req.user);
+                        const remoteip = SamlProvider.remoteip(req);
+                        span?.setAttribute("remoteip", remoteip);
+                        Audit.LoginSuccess(tuser,  "tokenissued", "saml", remoteip, "unknown", "unknown", span).catch((e) => {
+                            Logger.instanse.error(e, span);
+                        });
+                    } catch (error) {
+                        Logger.instanse.error(error, span);
+                    } finally {
+                        Logger.otel.endSpan(span);
+                    }
+                    return req.user;
+                },
+                profileMapper: SamlProvider.profileMapper,
+                lifetimeInSeconds: (3600 * 24)
+            };
+    
+            app.get("/issue/", (req: any, res: any, next: any): void => {
+                if (req.query.SAMLRequest !== undefined && req.query.SAMLRequest !== null) {
+                    if ((req.user === undefined || req.user === null)) {
+                        try {
+                            // tslint:disable-next-line: max-line-length
+                            samlp.parseRequest(req, samlpoptions, async (_err: any, samlRequestDom: any): Promise<void> => {
+                                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                                res.redirect("/");
+                            });
+                        } catch (error) {
+                            res.body(error.message ? error.message : error);
+                            res.end();
+                            Logger.instanse.error(error, null);
+                        }
+                    } else {
+                        // continue with issuing token using samlp
+                        next();
+                    }
+                } else {
+                    res.send("Please login again");
+                    res.end();
+                }
+            });
+    
+            try {
+                app.get("/issue/", samlp.auth(samlpoptions));
+                app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
+                    issuer: Config.saml_issuer,
+                    cert: cert,
+                }));
+            } catch (error) {
+                Logger.instanse.error(error, null);
+            }
+            // TODO: FIX !!!!
+            app.get('/wssignout', async (req: any, res: any, next: any) => {
+                req.logout();
+                let html = "<html><head></head><body>";
+                html += "<h1>Du er nu logget ud</h1><br>";
+                // html += "<br/><p><a href='/'>Til login</ifarame></p>";
+                html += "</body></html>";
+                res.send(html);
+            });
+            app.post('/wssignout', async (req: any, res: any, next: any) => {
+                req.logout();
+                let html = "<html><head></head><body>";
+                html += "<h1>Du er nu logget ud</h1><br>";
+                // html += "<br/><p><a href='/'>Til login</ifarame></p>";
+                html += "</body></html>";
+                res.send(html);
+            });
+        } else {
+            Logger.instanse.warn("SAML signing certificate is not configured, saml not possible", null);
         }
-        // TODO: FIX !!!!
-        app.get('/wssignout', async (req: any, res: any, next: any) => {
-            req.logout();
-            let html = "<html><head></head><body>";
-            html += "<h1>Du er nu logget ud</h1><br>";
-            // html += "<br/><p><a href='/'>Til login</ifarame></p>";
-            html += "</body></html>";
-            res.send(html);
-        });
-        app.post('/wssignout', async (req: any, res: any, next: any) => {
-            req.logout();
-            let html = "<html><head></head><body>";
-            html += "<h1>Du er nu logget ud</h1><br>";
-            // html += "<br/><p><a href='/'>Til login</ifarame></p>";
-            html += "</body></html>";
-            res.send(html);
-        });
         app.get('/logout', async (req: any, res: any, next: any) => {
             const referer: string = req.headers.referer;
             const providerid: any = req.cookies.provider;
@@ -185,14 +189,17 @@ export class SamlProvider {
             }
         });
         app.post('/logout', (req: any, res: any, next: any): void => {
-
-            samlp.logout({
-                issuer: Config.saml_issuer,
-                protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
-                cert: cert,
-                key: key
-            })(req, res, next);
-
+            if(cert != null && cert != "") {
+                samlp.logout({
+                    issuer: Config.saml_issuer,
+                    protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                    cert: cert,
+                    key: key
+                })(req, res, next);
+            } else {
+                req.logout();
+                res.redirect("/");
+            }
         });
 
     }

@@ -202,6 +202,34 @@ export class Message {
         this.replyto = this.id;
         this.id = NoderedUtil.GetUniqueIdentifier();
     }
+    public static async verityToken(token:string, cli?: WebSocketServerClient, ) {
+        if(token == null || token == "") return null;
+        var user = null;
+        try {
+            user = User.assign(await Crypt.verityToken(token, cli));
+            if(user!=null) return user;
+        } catch (error) {
+        }
+        var AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(token);
+        if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+            user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
+        } else {
+            var c = OAuthProvider.instance.clients;
+            for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
+                try {
+                    var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
+                    var AccessToken2 = await OAuthProvider.instance.oidc.IdToken.validate(token, _cli);
+                    if (!NoderedUtil.IsNullEmpty(AccessToken2)) {
+                        user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken2.payload.sub);
+                        break;
+                    }
+                } catch (error) {
+                }
+            }
+        }
+        if(user && user.user) return user.user;
+        return user;
+    }
 
     public async EnsureJWT(cli: WebSocketServerClient, jwtrequired: boolean): Promise<boolean> {
         if (!NoderedUtil.IsNullUndefinded(this.data)) {
@@ -224,7 +252,7 @@ export class Message {
             // return false;
         } else if (!NoderedUtil.IsNullEmpty(this.jwt)) {
             try {
-                this.tuser = User.assign(await Crypt.verityToken(this.jwt, cli));
+                this.tuser = User.assign(await Message.verityToken(this.jwt, cli));
             } catch (error) {
                 if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, Logger.parsecli(cli));
                 if (this.command == "signin") {
@@ -910,17 +938,19 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                const tuser = await Crypt.verityToken(msg.jwt);
+                const tuser = await Message.verityToken(msg.jwt, cli);
                 msg.user = tuser;
             }
             if (typeof sendthis === "object") {
                 sendthis.__jwt = msg.jwt;
                 sendthis.__user = msg.user;
+                delete msg.jwt;
+                delete msg.user;;
+                delete msg.data.jwt;
             }
             if (msg.striptoken) {
-                delete msg.jwt;
-                delete msg.data.jwt;
                 delete sendthis.__jwt;
+                delete sendthis.__user;
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
@@ -985,7 +1015,7 @@ export class Message {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
                 }
                 msg.result = msg.result.filter(x => x.name != "fs.chunks");
-                msg.result = msg.result.filter(x => x.name != "fs.files");
+                // msg.result = msg.result.filter(x => x.name != "fs.files");
                 msg.result = msg.result.filter(x => x.name != "uploads.files");
                 msg.result = msg.result.filter(x => x.name != "uploads.chunks");
                 const result = [];
@@ -996,6 +1026,9 @@ export class Message {
                 }
                 if (result.filter(x => x.name == "entities").length == 0) {
                     result.push({ name: "entities", type: "collection" });
+                }
+                if (result.filter(x => x.name == "audit").length == 0) {
+                    result.push({ name: "audit", type: "collection" });
                 }
                 span?.addEvent("Add result to cache");
                 Message.collectionCache[msg.jwt] = result;
@@ -1011,7 +1044,7 @@ export class Message {
                     const allall = authorized.filter(x => x.collection == "");
                     if (allall.length == 0) {
                         const names = authorized.map(x => x.collection);
-                        msg.result = msg.result.filter(x => names.indexOf(x.name) > -1);
+                        msg.result = msg.result.filter(x => names.indexOf(x.name) > -1 || x.name == "entities" || x.name == "audit");
                     }
                 }
             } else {
@@ -1294,14 +1327,18 @@ export class Message {
             }
             if (msg.collectionname == "mq") {
                 if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
-                var doc = await Config.db.getbyid(msg.id, "mq", msg.jwt, false, span);
+                var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
                 if (doc == null) throw new Error("item not found, or Access Denied");
                 if (doc._type == "workitemqueue") {
                     throw new Error("Access Denied, you must call DeleteWorkItemQueue to delete");
                 }
             }
             if (msg.collectionname == "agents") {
-                throw new Error("Access denied, use agents page or api to delete agents");
+                if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
+                var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
+                if (doc._type == "agent" || doc._type == "package") {
+                    throw new Error("Access denied, use packages page or api to delete package");
+                }                
             }
             // @ts-ignore
             msg.affectedrows = await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
@@ -1357,7 +1394,7 @@ export class Message {
             if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
             tuser = TokenUser.From(cli.user);
         } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-            tuser = await Crypt.verityToken(cli.jwt);
+            tuser = await this.verityToken(cli.jwt, cli);
             const impostor: string = tuser.impostor;
             cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -1411,6 +1448,8 @@ export class Message {
                 protocol = cli.protocol;
             }
             msg = SigninMessage.assign(this.data);
+            // @ts-ignore
+            if(msg.validateonly != null) msg.validate_only = msg.validateonly;
             if (cli != null) {
                 if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
                 if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
@@ -1433,17 +1472,25 @@ export class Message {
             let originialjwt = msg.jwt;
             let tuser: TokenUser = null;
             let user: User = null;
+            if(NoderedUtil.IsNullEmpty(msg.jwt) && NoderedUtil.IsNullEmpty(msg.username) && NoderedUtil.IsNullEmpty(msg.password) && msg.validate_only == true) {
+                msg.jwt = cli.jwt;
+            }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                if (msg.validate_only) { this.command = "validatereply"; }
+                // if (msg.validate_only) { this.command = "validatereply"; }
                 span?.addEvent("using jwt, verify token");
                 tokentype = "jwtsignin";
                 try {
-                    tuser = await Crypt.verityToken(msg.jwt, cli);
+                    tuser = await Message.verityToken(msg.jwt, cli);
+
+                    if(tuser == null) {
+                        tuser = User.assign(await Crypt.verityToken(msg.jwt, cli, true));
+                        Logger.instanse.warn("[" + tuser.username + "] validated with expired token!", span);
+                    }
                 } catch (error) {
                     if (Config.client_disconnect_signin_error) cli.Close(span);
                     throw error;
                 }
-                let _id = tuser._id;
+                let _id = tuser?._id;
                 if (tuser != null) {
                     if (NoderedUtil.IsNullEmpty(tuser._id)) {
                         span?.addEvent("token valid, lookup username " + tuser.username);
@@ -1471,7 +1518,7 @@ export class Message {
                     // If we send an error or empy yser, the robot will spam new tabs 
                     // If we just close the connection the user will not know what is wrong ...
                     if (Config.client_disconnect_signin_error) cli.Close(span);
-                    throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
+                    throw new Error("User " + user.username + " is dblocked, please login to openflow and buy more storage and try again");
                 }
 
                 if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
@@ -1746,7 +1793,7 @@ export class Message {
                     // If we send an error or empy yser, the robot will spam new tabs 
                     // If we just close the connection the user will not know what is wrong ...
                     if (Config.client_disconnect_signin_error) cli.Close(span);
-                    throw new Error("User is dblocked, please login to openflow and buy more storage and try again");
+                    throw new Error("User  " + msg.user.username + " is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
             msg.websocket_package_size = Config.websocket_package_size;
@@ -1768,7 +1815,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceName", parent);
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: TokenUser = await Message.verityToken(jwt);
             var qs: any[] = [{ _id: _id }];
             qs.push(Config.db.getbasequery(user, [Rights.update], "users"))
             const res = await Config.db.query<User>({ query: { "$and": qs }, top: 1, collectionname: "users", jwt }, span);
@@ -1984,7 +2031,7 @@ export class Message {
             metadata._acl = [];
             Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
         }
-        const user: TokenUser = await Crypt.verityToken(jwt);
+        const user: TokenUser = await Message.verityToken(jwt);
         metadata._createdby = user.name;
         metadata._createdbyid = user._id;
         metadata._created = new Date(new Date().toISOString());
@@ -2263,7 +2310,7 @@ export class Message {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
-            const tuser = await Crypt.verityToken(jwt);
+            const tuser = await Message.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -2381,7 +2428,7 @@ export class Message {
             }
 
 
-            const user = await Crypt.verityToken(cli.jwt);
+            const user = await Message.verityToken(cli.jwt, cli);
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
                 throw new Error("Access denied, getting invoice (not in '" + customer.name + " admins')");
             }
@@ -2578,7 +2625,7 @@ export class Message {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
 
-            const tuser = await Crypt.verityToken(jwt);
+            const tuser = await Message.verityToken(jwt);
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -2977,7 +3024,7 @@ export class Message {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
                 if (msg.object == "billing_portal/sessions") {
-                    const tuser = await Crypt.verityToken(cli.jwt);
+                    const tuser = await Message.verityToken(cli.jwt, cli);
                     let customer: Customer;
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
@@ -3411,6 +3458,22 @@ export class Message {
                     }
                 } else {
                     Logger.instanse.warn("nodereddriver is null, skip agent check", span);
+                }
+            } catch (error) {
+                Logger.instanse.error(error, span);
+            }
+
+
+            try {
+                Logger.instanse.info("Begin validating builtin roles", span);
+                for(var i = 0; i < Config.db.WellknownIdsArray.length; i++) {
+                    const item: Role = await Config.db.GetOne<Role>({ 
+                        query: {_id: Config.db.WellknownIdsArray[i], 
+                            "_type": "role"}, collectionname: "users", jwt}, span);
+                    if(item != null) {
+                        Logger.instanse.verbose("Save/validate " + item.name, span);
+                        await Logger.DBHelper.Save(item, jwt, span);
+                    }
                 }
             } catch (error) {
                 Logger.instanse.error(error, span);
@@ -5065,7 +5128,7 @@ export class Message {
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
-
+                if(agent.image == null || agent.image == "") break;
                 await Logger.nodereddriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
                 break;
             case "stopagent":
@@ -5115,6 +5178,67 @@ export class Message {
                 }
                 await Logger.nodereddriver.RemoveInstance(this.tuser, this.jwt, agent, true, parent);
                 Config.db.DeleteOne(agent._id, "agents", false, jwt, parent);
+                break;
+            case "registeragent":
+                // @ts-ignore
+                var data = msg.data
+                if(data == null || data == "") throw new Error("No data found");
+                try {
+                    data = JSON.parse(data);
+                } catch (error) {
+                    
+                }
+                var agent:iAgent = data as any;
+                if(msg.id != null && msg.id != "") agent._id =  msg.id;
+                if(agent.slug == null || agent.slug == "") agent.slug = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                agent._type = "agent";
+                agent.lastseen = new Date(new Date().toISOString());
+                if(agent._id != null && agent._id != "") {
+                    var _agent = await Config.db.GetOne<iAgent>({ query: { _id: agent._id }, collectionname: "agents", jwt }, parent);
+                    if(_agent == null) {
+                        if(agent.queue == null || agent.queue == "") agent.queue = agent.slug;
+                        if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
+                        _agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+                    }
+                    _agent.lastseen = new Date(new Date().toISOString());
+                    if(agent.hostname != null && agent.hostname != "") _agent.hostname = agent.hostname;
+                    if(agent.os != null && agent.os != "") _agent.os = agent.os;
+                    if(agent.arch != null && agent.arch != "") _agent.arch = agent.arch;
+                    if(agent.username != null && agent.username != "") _agent.username = agent.username;
+                    if(agent.version != null && agent.version != "") _agent.version = agent.version;
+
+                    if(_agent.queue == null || _agent.queue == "") _agent.queue = _agent.slug;
+                    if(_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
+
+                    agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);
+                } else {
+                    if(agent.queue == null || agent.queue == "") agent.queue = agent.slug;
+                    if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
+                    agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+                }
+                var agentuser = this.tuser;
+                if(agent.runas != null && agent.runas != "" && this.tuser._id != agent.runas) {
+                    agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                }
+                if(agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
+                    if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
+                        throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agentuser.name}`);
+                    }
+                    // @ts-ignore
+                    agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
+                }
+                msg.result = agent
+                break;
+            case "deletepackage":
+                var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt }, parent);
+                if(pack == null) throw new Error("Access denied or package not found");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
+                }
+                if(pack.fileid != null && pack.fileid != "") {
+                    await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                }
+                await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;
             default:
                 msg.error = "Unknown custom command";

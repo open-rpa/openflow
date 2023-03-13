@@ -1,3 +1,4 @@
+var mimetype = require('mimetype');
 import * as  stream from "stream";
 import * as os from "os";
 import * as path from "path";
@@ -151,7 +152,7 @@ export class WebServer {
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
                 // Request headers you wish to allow
-                res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization");
+                res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization, x-jwt-token");
 
                 // Set to true if you need the website to include cookies in the requests sent
                 // to the API (e.g. in case you use sessions)
@@ -322,6 +323,10 @@ export class WebServer {
             const rs = new stream.Readable;
             rs._read = () => { };
             const s = protowrap.SetStream(client, rs, rid)
+            if (NoderedUtil.IsNullEmpty(msg.mimetype)) {
+                msg.mimetype = mimetype.lookup(msg.filename);
+            }
+   
             let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
             let id = uploadStream.id
             uploadStream.on('finish', ()=> {
@@ -340,7 +345,7 @@ export class WebServer {
             const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
             protowrap.sendMesssag(client, { rid, command: "beginstream", data: data }, null, true);
             downloadStream.on('data', (chunk) => {
-                const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: Stream.encode(Stream.create({data: chunk})).finish() })
+                const data = Any.create({type_url: "type.googleapis.com/openiap.Stream", value: Stream.encode(Stream.create({data: chunk})).finish() })
                 protowrap.sendMesssag(client, { rid, command: "stream", 
                 data: data }, null, true);
             });
@@ -358,6 +363,7 @@ export class WebServer {
         let command, msg, reply;
         try {
             [command, msg, reply] = protowrap.unpack(message);
+            if(message.command == "") throw new Error("Invalid/empty command");
         } catch (error) {
             err(error);
             message.command = "error";
@@ -393,7 +399,7 @@ export class WebServer {
             } else if (command == "upload") {
                 var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
                 reply.command = "uploadreply"
-                const data = Any.create({type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id })).finish() })
+                const data = Any.create({type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id, filename: msg.filename })).finish() })
                 reply.data = data
                 // var filename = msg.filename;
                 // let name = path.basename(filename);
@@ -410,7 +416,7 @@ export class WebServer {
                         result = rows[0];
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
                         result = rows[0];
-                        reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadRequest",
+                        reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadResponse",
                             value: DownloadResponse.encode(DownloadResponse.create({
                             filename: result.filename,
                             mimetype: result.contentType,
@@ -537,6 +543,12 @@ export class WebServer {
                 }
                 if(result.command == "addworkitem" || result.command == "pushworkitem" || result.command == "updateworkitem" || result.command == "popworkitem") {
                     res.workitem = res.result;
+                    if(res.workitem && res.workitem.errormessage) {
+                        if(typeof res.workitem.errormessage !== "string") {
+                            res.workitem.errormessage = JSON.stringify(res.workitem.errormessage);
+                        }
+                        
+                    }
                     delete res.result;
                 }
                 if(result.command == "popworkitem") {

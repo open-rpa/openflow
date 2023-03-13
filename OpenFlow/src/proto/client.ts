@@ -359,8 +359,17 @@ export class flowclient extends client {
   async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<void> {
     try {
       var q: any= {};
+      var traceid = null, spanid = null;
       q.data = data;
-      if(typeof data !== "string") q.data = JSON.stringify(data);
+      try {
+        if(typeof q.data === "string") q.data = JSON.parse(q.data);
+        traceid = q.data.traceId;
+        spanid = q.data.spanId;
+        delete q.data.traceId;
+        delete q.data.spanId;
+      } catch (error) {        
+      }
+      if(typeof q.data !== "string") q.data = JSON.stringify(q.data);
       if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = NoderedUtil.GetUniqueIdentifier(); }
       q.replyto = options.replyTo;
       q.correlationId = options.correlationId; q.queuename = queuename;
@@ -370,7 +379,7 @@ export class flowclient extends client {
     var t = QueueEvent.create(q);
       const data2 = Any.create({type_url: "type.googleapis.com/openiap.QueueEvent", value: QueueEvent.encode(QueueEvent.create(q)).finish() })
     var paylad = {"command": "queueevent",
-      "data": data2}
+      "data": data2, traceid, spanid}
       // var result = await protowrap.RPC(this, paylad);
       protowrap._RPC(this, paylad);
     } catch (error) {

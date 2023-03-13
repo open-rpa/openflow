@@ -127,5 +127,18 @@ export interface iAgent extends iBase {
     runas: string;
     environment: any;
     nodeselector: any;
-    constructor();
+    queue: string;
+    lastseen: Date;
+    hostname: string;
+    os: string;
+    arch: string;
+    username: string;
+    version: string;
+    maxpackages: number;
+    package: string;
+    languages: string[];
+    chrome: boolean;
+    chromium: boolean;
+    daemon: boolean;
+constructor();
 }

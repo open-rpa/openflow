@@ -5,7 +5,7 @@ import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
     WorkflowsCtrl, ReportsCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, NoderedCtrl,
     hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
-    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl, WebsocketClientsCtrl, ConsoleCtrl, AgentsCtrl, AgentCtrl
+    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl, WebsocketClientsCtrl, ConsoleCtrl, AgentsCtrl, AgentCtrl, PackagesCtrl, PackageCtrl
 } from "./Controllers";
 
 require('angular-route');
@@ -150,6 +150,10 @@ module openflow {
                 .when('/Agents', { templateUrl: 'Agents.html', controller: AgentsCtrl, controllerAs: 'ctrl' })
                 .when('/Agent', { templateUrl: 'Agent.html', controller: AgentCtrl, controllerAs: 'ctrl' })
                 .when('/Agent/:id', { templateUrl: 'Agent.html', controller: AgentCtrl, controllerAs: 'ctrl' })
+
+                .when('/Packages', { templateUrl: 'Packages.html', controller: PackagesCtrl, controllerAs: 'ctrl' })
+                .when('/Package', { templateUrl: 'Package.html', controller: PackageCtrl, controllerAs: 'ctrl' })
+                .when('/Package/:id', { templateUrl: 'Package.html', controller: PackageCtrl, controllerAs: 'ctrl' })
 
                 .otherwise({ redirectTo: '/main' });
         }

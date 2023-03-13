@@ -638,7 +638,15 @@
         </optgroup>
       </select>
     </div>
+    <div class="input-group col-sm-8" ng-show="ctrl.packages && ctrl.packages.length > 0 && (ctrl.model.maxpackages == null || ctrl.model.maxpackages == 1)">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">package</span>
+      </div>
+      <select id="package" ng-model="ctrl.model.package" ng-disabled="ctrl.loading==true" class="form-control"
+        ng-options="item._id as item.name for item in ctrl.packages">
+      </select>
 
+    </div>
     <div class="input-group col-sm-8" ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')">
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">runas</span>

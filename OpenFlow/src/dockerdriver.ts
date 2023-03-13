@@ -514,6 +514,8 @@ export class dockerdriver implements i_nodered_driver {
             }
             const Env = [
                 "jwt=" + agentjwt,
+                "agentid=" + agent._id,
+                "packageid=" + agent.package,
                 "apiurl=" + apiurl,
                 "grpcapiurl=" + grpcapiurl,
                 "wsapiurl=" + wsapiurl,

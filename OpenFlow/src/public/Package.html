@@ -1,0 +1,108 @@
+<style type="text/css">
+  .list-group-item:hover {
+    color: #337ab7;
+    text-shadow: 0 0 1em #337ab7;
+    cursor: pointer;
+  }
+
+  .listgroupitemselected {
+    border: 6px;
+    border-color: black;
+    background-color: #337ab7;
+    color: white;
+    cursor: pointer;
+  }
+</style>
+
+<pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+
+<div class="shadow card">
+  <form ng-submit="ctrl.submit()" class="form-horizontal" role="form" autocomplete="off">
+    <div class="form-row row-eq-spacing-sm">
+      <div class="col-sm">
+        <label for="name" class="required" translate lib="web">name</label>
+        <input ng-model="ctrl.model.name" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
+      </div>
+      <div class="col-sm">
+        <label for="name" class="required" translate lib="web">language</label>
+        <select id="language" ng-model="ctrl.model.language" ng-disabled="ctrl.loading==true" class="form-control"
+          ng-options="item as item for item in ctrl.languages">
+        </select>
+      </div>
+      <div class="col-sm">
+        <label for="last-name"><span translate lib="web">require chromium</span>
+        <div class="custom-checkbox">
+          <input type="checkbox" id="if-5-chromium" value="{{ctrl.model.chromium}}" ng-model="ctrl.model.chromium"
+            ng-disabled="ctrl.loading==true">
+          <label for="if-5-chromium" translate lib="web" ng-disabled="ctrl.loading==true"></label>
+        </div>
+      </div>
+      <div class="col-sm">
+        <label for="last-name"><span translate lib="web">daemon</span>
+        <div class="custom-checkbox">
+          <input type="checkbox" id="if-5-daemon" value="{{ctrl.model.daemon}}" ng-model="ctrl.model.daemon"
+            ng-disabled="ctrl.loading==true">
+          <label for="if-5-daemon" translate lib="web" ng-disabled="ctrl.loading==true"></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">upload</span>
+      </div>
+      <input type="file" name="fileupload" id="fileupload">
+      <!-- <input type="button" ng-disabled="ctrl.loading==true" ng-click="ctrl.Upload()" value="Upload"></input> -->
+    </div>
+    <div class="input-group" ng-show="ctrl.model.fileid != null && ctrl.model.fileid != ''">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">download</span>
+      </div>
+      <a ng-href="/download/{{ctrl.model.fileid}}" class="table-btn">
+        <em class="fas fa-file-download"></em>
+      </a>
+    </div>
+
+    <!-- <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">git url</span>
+      </div>
+      <input type="text" name="giturl" id="giturl" ng-model="ctrl.model.giturl">
+    </div> -->
+    <div class="input-group" ng-show="ctrl.model._id == null || ctrl.model._id == ''">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">git examples</span>
+      </div>
+      <pre ng-show="ctrl.model.language=='nodejs' && ctrl.model.chromium!=true">https://github.com/openiap/nodeworkitemagent.git</pre>
+      <pre ng-show="ctrl.model.language=='nodejs' && ctrl.model.chromium==true">https://github.com/openiap/nodepuppeteeragent.git</pre>
+      <pre ng-show="ctrl.model.language=='dotnet'">https://github.com/openiap/dotnetworkitemagent.git</pre>
+      <pre ng-show="ctrl.model.language=='python' && ctrl.model.chromium!=true">https://github.com/openiap/pyworkitemagent.git</pre>
+      <pre ng-show="ctrl.model.language=='python' && ctrl.model.chromium==true">
+        https://github.com/openiap/rccworkitemagent.git
+        https://github.com/openiap/robotframeworkagent.git
+        https://github.com/openiap/taguiagent.git
+      </pre>
+    </div>
+
+    <div class="form-group">
+      <div class="col-sm-offset-2 col-sm-10">
+        <button type="submit" ng-disabled="ctrl.loading==true" class="ml-auto btn btn-success" translate
+          lib="web">Save</button>
+      </div>
+    </div>
+
+  </form>
+</div>
+
+<br />
+<small ng-show="ctrl.runtime_hours > 0"><em
+    style="color: gray;">
+    Agents using free plan will be shutdown after {{ctrl.runtime_hours}} hours. Buy one or more plans on the customer page, and then assign it to an agent to allow it to run 24/7.
+  </em></small>
+<br />
+<small ng-show="ctrl.agentcount > 0"><em
+  style="color: gray;">
+  You are limited to {{ctrl.agentcount}} free agents. Add more resources on the customer page to increase the limit.
+</em></small>
+<br />
