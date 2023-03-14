@@ -125,6 +125,7 @@ export interface iAgent extends iBase {
     sleep: boolean;
     stripeprice: string;
     runas: string;
+    runasname: string;
     environment: any;
     nodeselector: any;
     queue: string;

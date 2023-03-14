@@ -5193,6 +5193,18 @@ export class Message {
                 if(agent.slug == null || agent.slug == "") agent.slug = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
                 agent._type = "agent";
                 agent.lastseen = new Date(new Date().toISOString());
+                var agentuser = this.tuser;
+                if(agent.runas != null && agent.runas != "" && this.tuser._id != agent.runas) {
+                    agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                }
+                if(agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
+                    if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
+                        throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agentuser.name}`);
+                    }
+                    // @ts-ignore
+                    agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
+                }
+
                 if(agent._id != null && agent._id != "") {
                     var _agent = await Config.db.GetOne<iAgent>({ query: { _id: agent._id }, collectionname: "agents", jwt }, parent);
                     if(_agent == null) {
@@ -5209,23 +5221,16 @@ export class Message {
 
                     if(_agent.queue == null || _agent.queue == "") _agent.queue = _agent.slug;
                     if(_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
+                    _agent.runas = agentuser._id
+                    _agent.runasname = agentuser.name
 
                     agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);
                 } else {
                     if(agent.queue == null || agent.queue == "") agent.queue = agent.slug;
                     if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
+                    agent.runas = agentuser._id
+                    agent.runasname = agentuser.name
                     agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
-                }
-                var agentuser = this.tuser;
-                if(agent.runas != null && agent.runas != "" && this.tuser._id != agent.runas) {
-                    agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-                }
-                if(agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
-                    if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
-                        throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agentuser.name}`);
-                    }
-                    // @ts-ignore
-                    agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
                 }
                 msg.result = agent
                 break;
