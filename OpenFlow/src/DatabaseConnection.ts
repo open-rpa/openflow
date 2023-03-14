@@ -1566,12 +1566,14 @@ export class DatabaseConnection extends events.EventEmitter {
                         throw new Error("Workitemqueue " + wi.wiqid + " not found");
                     }
                     wi.wiq = wiq.name;
-                } else if(NoderedUtil.IsNullEmpty(wi.wiqid)) {
-                    var wiq = await this.GetOne({collectionname:"workitemqueues", query: { name: wi.wiq, _type: "workitemqueue" }, jwt}, span);
+                    wi._acl = wiq._acl;
+                } else {
+                    var wiq = await this.GetOne({collectionname:"mq", query: { name: wi.wiq, _type: "workitemqueue" }, jwt}, span);
                     if(NoderedUtil.IsNullEmpty(wiq)) {
                         throw new Error("Workitemqueue " + wi.wiq + " not found");
                     }
                     wi.wiqid = wiq._id;
+                    wi._acl = wiq._acl;
                 }
                 if(NoderedUtil.IsNullEmpty(wi.nextrun)) {
                     wi.nextrun = new Date(new Date().toISOString());
