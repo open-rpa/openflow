@@ -1573,6 +1573,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     wi.wiqid = wiq._id;
                 }
+                if(NoderedUtil.IsNullEmpty(wi.nextrun)) {
+                    wi.nextrun = new Date(new Date().toISOString());
+                }
             }
 
             if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
@@ -2070,6 +2073,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     hadWorkitemQueue = true;
                     // @ts-ignore
                     if (item.hasOwnProperty("wiqid")) wiqids.push(item.wiqid);
+                    // @ts-ignore
+                    if(NoderedUtil.IsNullEmpty(item.nextrun)) item.nextrun = new Date(new Date().toISOString());
                 }
                 // @ts-ignore
                 if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
