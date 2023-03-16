@@ -1595,11 +1595,18 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (collectionname === "agents") {
                 // @ts-ignore
-                if(!NoderedUtil.IsNullEmpty(item.runas) && item.runas != user._id) {
+                var runas = item.runas;
+                // @ts-ignore
+                var runasname = item.runasname;
+                if(!NoderedUtil.IsNullEmpty(runas) && runas != user._id) {
                     if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                         throw new Error("Access denied");
                     }
                 }
+                if(!NoderedUtil.IsNullEmpty(runas)) {
+                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                }
+
                 // @ts-ignore
                 var fileid = item.fileid;
                 if (item._type == "package" && fileid != "" && fileid != null) {
@@ -1999,6 +2006,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             throw new Error("Access denied");
                         }
                     }
+                    
                     // @ts-ignore
                     var fileid = item.fileid;
                     if (item._type == "package" && fileid != "" && fileid != null) {
@@ -2007,6 +2015,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
 
                     if(item._type == "agent") {
+                        // @ts-ignore
+                        var runas = item.runas;
+                        // @ts-ignore
+                        var runasname = item.runasname;
+                        if(!NoderedUtil.IsNullEmpty(runas)) {
+                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                        }
+        
                         // @ts-ignore
                         if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
                             if (!user.HasRoleName("admins")) {
@@ -2058,7 +2074,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
-    
+                    await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
                     user2.passwordhash = await Crypt.hash((item as any).newpassword);
@@ -2312,11 +2328,18 @@ export class DatabaseConnection extends events.EventEmitter {
                 await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
 
                 if (q.collectionname === "agents") {
+                    // @ts-ignore;
+                    var runas = q.item.runas;
+                    // @ts-ignore;
+                    var runasname = q.item.runasname;
                     // @ts-ignore
-                    if(original.runas != q.item.runas && q.item.runas != user._id) {
+                    if(original.runas != runas && runas != user._id) {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                             throw new Error("Access denied");
                         }
+                    }
+                    if(!NoderedUtil.IsNullEmpty(runas)) {
+                        Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                     }
                     // @ts-ignore
                     var fileid = q.item.fileid;

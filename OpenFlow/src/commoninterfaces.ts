@@ -128,7 +128,6 @@ export interface iAgent extends iBase {
     runasname: string;
     environment: any;
     nodeselector: any;
-    queue: string;
     lastseen: Date;
     hostname: string;
     os: string;

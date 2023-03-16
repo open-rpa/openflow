@@ -11,6 +11,7 @@ import * as cacheManager from "cache-manager";
 import { TokenRequest } from "./TokenRequest";
 import { amqpwrapper } from "./amqpwrapper";
 import { EntityRestriction } from "./EntityRestriction";
+import { iAgent } from "./commoninterfaces";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 var mongoStore = require('@skadefro/cache-manager-mongodb');
@@ -133,6 +134,9 @@ export class DBHelper {
         }
         if (collectionname === "config" && item._type === "restriction") {
             await Logger.DBHelper.ClearEntityRestrictions();
+        }
+        if( collectionname === "agents" && item._type === "agent") {
+            await Logger.DBHelper.AgentUpdate(item._id, (item as any).slug, watch, span);
         }
     }
 
@@ -335,6 +339,27 @@ export class DBHelper {
             let item: User = await this.memoryCache.wrap(b64auth, () => { return this.FindByAuthorizationWrap2(login, password, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
+        }
+    }
+    public FindAgentBySlugOrIdWrap(_id, jwt, span) {
+        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        Logger.instanse.debug("Add queue to cache : " + _id, span);
+        return Config.db.GetOne<iAgent>({ query: {"_type": "agent", "$or": [
+            { _id },
+            { slug: _id }]} , collectionname: "agents", jwt }, span);
+
+    }
+    public async FindAgentBySlugOrId(_id: string, jwt: string, parent: Span): Promise<iAgent> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
+        try {
+            if (NoderedUtil.IsNullEmpty(_id)) return null;
+            var key = ("agent_" + _id).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindAgentBySlugOrIdWrap(_id, jwt, span) });
+            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            return item;
+        } finally {
+            Logger.otel.endSpan(span);
         }
     }
     public FindQueueByIdWrap(_id, jwt, span) {
@@ -739,6 +764,11 @@ export class DBHelper {
             if (!NoderedUtil.IsNullEmpty(userrole._id)) await this.DeleteKey(("users_" + userrole._id).toString(), watch, false, span);
         }
 
+    }
+    private async AgentUpdate(_id: string, slug: string, watch: boolean, span: Span) {
+        Logger.instanse.debug("Clear queue cache : " + slug + " " + _id, span);
+        if (!NoderedUtil.IsNullEmpty(slug)) await this.DeleteKey(("agent_" + slug).toString(), watch, false, span);
+        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("agent_" + _id).toString(), watch, false, span);
     }
     private async QueueUpdate(_id: string, name: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear queue cache : " + name + " " + _id, span);
