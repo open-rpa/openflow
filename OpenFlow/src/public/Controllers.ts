@@ -8101,9 +8101,17 @@ export class AgentCtrl extends entityCtrl<any> {
             if(image != null) {
                 if(this.model.stripeprice == null || this.model.stripeprice == "") {
                     this.model.webserver = (image.port != null && image.port != "");
+                    if(this.model.webserver == true) {
+                        this.model.port = image.port;
+                    }
+                    
                 // } else if (this.model.port == null || this.model.port == "") {
                 } else if (image.port == null || image.port == "") {
                     this.model.webserver = false;
+                } else {
+                    if(image.port != null && image.port != "") {
+                        this.model.port = image.port;
+                    }
                 }
             }
             if(image != null && image.volumes != null && image.volumes.length > 0) {
