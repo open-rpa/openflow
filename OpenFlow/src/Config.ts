@@ -93,6 +93,9 @@ export class dbConfig extends Base {
 
     public cache_workitem_queues: boolean;
 
+    public agent_images: NoderedImage[]
+
+
     public async Save(jwt: string, parent: Span): Promise<void> {
         if (this.needsupdate = true) {
             this.updatedat = new Date(new Date().toISOString());
@@ -203,6 +206,14 @@ export class dbConfig extends Base {
         Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
 
 
+        if(!NoderedUtil.IsNullUndefinded(conf.agent_images)) {
+            Config.agent_images = conf.agent_images;
+            if(typeof conf.agent_images === "string") conf.agent_images = JSON.parse(conf.agent_images);
+        } else {
+            Config.agent_images = JSON.parse(Config.getEnv("agent_images", 
+                JSON.stringify([{"name":"nodejs", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"nodejs+chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
+            ));
+        }
         Logger.reload();
         return conf;
     }
