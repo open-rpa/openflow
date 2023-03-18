@@ -1174,7 +1174,7 @@ export class LoginProvider {
                 return res.status(500).send({ message: "Illegal key" });
             }
             await Logger.DBHelper.AddRequestTokenID(key, {}, span);
-            Logger.instanse.debug(key, span);
+            Logger.instanse.info("Added token request " + key, span);
             res.status(200).send({ message: "ok" });
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -1196,6 +1196,7 @@ export class LoginProvider {
             }
 
             if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
+                Logger.instanse.info("Token " + key + " has been forfilled", span);
                 if (Config.validate_user_form != "") {
                     try {
                         var tuser = await await Crypt.verityToken(exists.jwt);
