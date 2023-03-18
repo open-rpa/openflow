@@ -1173,7 +1173,7 @@ export class LoginProvider {
                 Logger.instanse.error("Key has already been used! " + key, span);
                 return res.status(500).send({ message: "Illegal key" });
             }
-            await Logger.DBHelper.AdddRequestTokenID(key, {}, span);
+            await Logger.DBHelper.AddRequestTokenID(key, {}, span);
             Logger.instanse.debug(key, span);
             res.status(200).send({ message: "ok" });
         } catch (error) {
@@ -1247,7 +1247,7 @@ export class LoginProvider {
                     var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
                         Logger.instanse.debug("adding jwt for request token " + key, span);
-                        await Logger.DBHelper.AdddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
+                        await Logger.DBHelper.AddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
                         res.cookie("requesttoken", "", { expires: new Date(0) });
                     }
                 } else {

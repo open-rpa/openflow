@@ -1642,7 +1642,6 @@ export class Message {
                 if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
                     // await Audit.LoginFailed(tuser.username, type, provider, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                 } else {
-
                     await Audit.LoginSuccess(tuser, tokentype, protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                 }
                 const userid: string = user._id;

@@ -288,9 +288,9 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public async AdddRequestTokenID(key: string, data: any, parent: Span): Promise<TokenRequest> {
+    public async AddRequestTokenID(key: string, data: any, parent: Span): Promise<TokenRequest> {
         await this.init();
-        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.AddRequestTokenID", parent);
         try {
             if (Config.cache_store_type == "redis") {
                 return await this.memoryCache.set("requesttoken" + key, data);
@@ -303,7 +303,7 @@ export class DBHelper {
     }
     public async RemoveRequestTokenID(key: string, parent: Span): Promise<TokenRequest> {
         await this.init();
-        const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
+        const span: Span = Logger.otel.startSubSpan("dbhelper.RemoveRequestTokenID", parent);
         try {
             if (Config.cache_store_type == "redis") {
                 return await this.memoryCache.del("requesttoken" + key);
