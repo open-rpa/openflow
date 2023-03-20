@@ -476,7 +476,11 @@ export class dockerdriver implements i_nodered_driver {
             };
             let NetworkingConfig: Dockerode.EndpointsConfig = undefined;
             let HostConfig: Dockerode.HostConfig = undefined;
-            HostConfig = {};
+            HostConfig = {
+                "RestartPolicy": {
+                    "Name": "always"
+                }
+            };
             if (me != null) {
                 if (Config.agent_docker_use_project) {
                     if (me.Labels["com.docker.compose.config-hash"]) Labels["com.docker.compose.config-hash"] = me.Labels["com.docker.compose.config-hash"];
@@ -509,7 +513,7 @@ export class dockerdriver implements i_nodered_driver {
                 }
             }
             let oidc_config: string = Config.agent_oidc_config;
-            if(oidc_config == null || oidc_config == "") {
+            if((oidc_config == null || oidc_config == "") && Config.agent_oidc_issuer == "") {
                 if(Config.domain != "localhost.openiap.io") oidc_config = Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration"
             }
             const Env = [
