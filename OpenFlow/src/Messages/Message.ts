@@ -5195,11 +5195,22 @@ export class Message {
                 if(agent.slug == null || agent.slug == "") agent.slug = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
                 agent._type = "agent";
                 agent.lastseen = new Date(new Date().toISOString());
+                if(agent._id == null || agent._id == "") {
+                    var _agent = await Config.db.GetOne<iAgent>({ query: { hostname: agent.hostname, username: agent.username }, collectionname: "agents", jwt }, parent);
+                    if(_agent != null) {
+                        agent._id = _agent._id;
+                        agent.name = _agent.name;
+                    }
+                }
                 if(agent._id != null && agent._id != "") {
                     var _agent = await Config.db.GetOne<iAgent>({ query: { _id: agent._id }, collectionname: "agents", jwt }, parent);
                     if(_agent == null) {
                         if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
-                        _agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+
+                        _agent = await Config.db.GetOne<iAgent>({ query: { hostname: agent.hostname, username: agent.username }, collectionname: "agents", jwt }, parent);
+                        if(_agent == null) {
+                            _agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+                        }
                     }
                     _agent.lastseen = new Date(new Date().toISOString());
                     if(agent.hostname != null && agent.hostname != "") _agent.hostname = agent.hostname;
@@ -5240,7 +5251,7 @@ export class Message {
                         }
                     }
                     // @ts-ignore
-                    delete _agent.jwt;
+                    delete agent.jwt;
 
                     agent.runas = agentuser._id
                     agent.runasname = agentuser.name
