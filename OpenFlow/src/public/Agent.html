@@ -656,7 +656,7 @@
         ng-keypress="ctrl.restrictInput($event)" />
 
         <div class="input-group-append">
-          <a href ng-click="ctrl.searchtext =''; ctrl.model.runas='';ctrl.model.runasname=''" class="btn">clear</a>
+          <a href ng-click="ctrl.searchtext = ctrl.currentusername; ctrl.model.runas=ctrl.currentuser;ctrl.model.runasname=ctrl.currentusername" class="btn">clear</a>
         </div>
 
     </div>

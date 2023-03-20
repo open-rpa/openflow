@@ -7735,6 +7735,8 @@ export class AgentCtrl extends entityCtrl<any> {
     resource: any = null;
     agentcount: number = 0;
     runtime_hours: number = 0;
+    currentuser: string = "";
+    currentusername: string = "";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7750,6 +7752,8 @@ export class AgentCtrl extends entityCtrl<any> {
         this.collection = "agents";
         this.postloadData = this.processData;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.currentuser = user._id;
+            this.currentusername = user.name;
             // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
             var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
             this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: {"_type": "package", "daemon": true } });
@@ -8101,9 +8105,17 @@ export class AgentCtrl extends entityCtrl<any> {
             if(image != null) {
                 if(this.model.stripeprice == null || this.model.stripeprice == "") {
                     this.model.webserver = (image.port != null && image.port != "");
+                    if(this.model.webserver == true) {
+                        this.model.port = image.port;
+                    }
+                    
                 // } else if (this.model.port == null || this.model.port == "") {
                 } else if (image.port == null || image.port == "") {
                     this.model.webserver = false;
+                } else {
+                    if(image.port != null && image.port != "") {
+                        this.model.port = image.port;
+                    }
                 }
             }
             if(image != null && image.volumes != null && image.volumes.length > 0) {

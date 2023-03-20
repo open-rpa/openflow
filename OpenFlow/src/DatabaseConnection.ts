@@ -1566,12 +1566,17 @@ export class DatabaseConnection extends events.EventEmitter {
                         throw new Error("Workitemqueue " + wi.wiqid + " not found");
                     }
                     wi.wiq = wiq.name;
-                } else if(NoderedUtil.IsNullEmpty(wi.wiqid)) {
-                    var wiq = await this.GetOne({collectionname:"workitemqueues", query: { name: wi.wiq, _type: "workitemqueue" }, jwt}, span);
+                    wi._acl = wiq._acl;
+                } else {
+                    var wiq = await this.GetOne({collectionname:"mq", query: { name: wi.wiq, _type: "workitemqueue" }, jwt}, span);
                     if(NoderedUtil.IsNullEmpty(wiq)) {
                         throw new Error("Workitemqueue " + wi.wiq + " not found");
                     }
                     wi.wiqid = wiq._id;
+                    wi._acl = wiq._acl;
+                }
+                if(NoderedUtil.IsNullEmpty(wi.nextrun)) {
+                    wi.nextrun = new Date(new Date().toISOString());
                 }
             }
 
@@ -1590,11 +1595,18 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (collectionname === "agents") {
                 // @ts-ignore
-                if(!NoderedUtil.IsNullEmpty(item.runas) && item.runas != user._id) {
+                var runas = item.runas;
+                // @ts-ignore
+                var runasname = item.runasname;
+                if(!NoderedUtil.IsNullEmpty(runas) && runas != user._id) {
                     if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                         throw new Error("Access denied");
                     }
                 }
+                if(!NoderedUtil.IsNullEmpty(runas)) {
+                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                }
+
                 // @ts-ignore
                 var fileid = item.fileid;
                 if (item._type == "package" && fileid != "" && fileid != null) {
@@ -1994,6 +2006,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             throw new Error("Access denied");
                         }
                     }
+                    
                     // @ts-ignore
                     var fileid = item.fileid;
                     if (item._type == "package" && fileid != "" && fileid != null) {
@@ -2002,6 +2015,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
 
                     if(item._type == "agent") {
+                        // @ts-ignore
+                        var runas = item.runas;
+                        // @ts-ignore
+                        var runasname = item.runasname;
+                        if(!NoderedUtil.IsNullEmpty(runas)) {
+                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                        }
+        
                         // @ts-ignore
                         if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
                             if (!user.HasRoleName("admins")) {
@@ -2053,7 +2074,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
-    
+                    await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
                     user2.passwordhash = await Crypt.hash((item as any).newpassword);
@@ -2070,6 +2091,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     hadWorkitemQueue = true;
                     // @ts-ignore
                     if (item.hasOwnProperty("wiqid")) wiqids.push(item.wiqid);
+                    // @ts-ignore
+                    if(NoderedUtil.IsNullEmpty(item.nextrun)) item.nextrun = new Date(new Date().toISOString());
                 }
                 // @ts-ignore
                 if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
@@ -2305,11 +2328,18 @@ export class DatabaseConnection extends events.EventEmitter {
                 await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
 
                 if (q.collectionname === "agents") {
+                    // @ts-ignore;
+                    var runas = q.item.runas;
+                    // @ts-ignore;
+                    var runasname = q.item.runasname;
                     // @ts-ignore
-                    if(original.runas != q.item.runas && q.item.runas != user._id) {
+                    if(original.runas != runas && runas != user._id) {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                             throw new Error("Access denied");
                         }
+                    }
+                    if(!NoderedUtil.IsNullEmpty(runas)) {
+                        Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                     }
                     // @ts-ignore
                     var fileid = q.item.fileid;
@@ -3376,8 +3406,17 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "files" || collectionname == "fs.files") {
                     for (let i = 0; i < ids.length; i++) {
                         try {
-                            objectids.push(safeObjectID(ids[i]))
+                            if(ids[i] != null && ids[i].trim() != "") objectids.push(safeObjectID(ids[i]))
                         } catch (error) {
+                            console.error(error);
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < ids.length; i++) {
+                        try {
+                            if(ids[i] != null && ids[i].trim() != "") objectids.push(ids[i])
+                        } catch (error) {
+                            console.error(error);
                         }
                     }
                 }
