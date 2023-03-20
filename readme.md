@@ -14,8 +14,7 @@ npm OpenFlow API: ![@openiap/openflow-api](https://badges.weareopensource.me:/np
 npm Node-Red: ![@openiap/nodered](https://badges.weareopensource.me:/npm/dt/@openiap/nodered?style=social)
 
 ## **community help**
-Join rocket chat 💬[#openrpa](https://rocket.openiap.io/)
-Join the forum 🤷💻🤦 [community forum](https://bb.openiap.io/)
+Join the 🤷💻🤦 [community forum](https://discourse.openiap.io/)
 
 ## **Commercial Support**
 Click here for💲🤷 [Commercial Support](https://openiap.io/)
