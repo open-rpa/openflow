@@ -66,6 +66,7 @@ export class dbConfig extends Base {
     public amqp_allow_replyto_empty_queuename: boolean;
     public enable_web_tours: boolean;
     public enable_nodered_tours: boolean;
+    public grafana_url:string;
     public housekeeping_skip_collections: string;
 
     public ensure_indexes: boolean;
@@ -176,6 +177,7 @@ export class dbConfig extends Base {
         Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.amqp_allow_replyto_empty_queuename) ? conf.amqp_allow_replyto_empty_queuename : Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
         Config.enable_web_tours = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_web_tours) ? conf.enable_web_tours : Config.getEnv("enable_web_tours", "true"));
         Config.enable_nodered_tours = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_nodered_tours) ? conf.enable_nodered_tours : Config.getEnv("enable_nodered_tours", "true"));
+        Config.grafana_url = !NoderedUtil.IsNullEmpty(conf.grafana_url) ? conf.grafana_url : Config.getEnv("grafana_url", "");
         Config.housekeeping_skip_collections = !NoderedUtil.IsNullEmpty(conf.housekeeping_skip_collections) ? conf.housekeeping_skip_collections : Config.getEnv("housekeeping_skip_collections", "");
 
 
@@ -275,6 +277,7 @@ export class Config {
         Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
         Config.enable_web_tours = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
         Config.enable_nodered_tours = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
+        Config.grafana_url = Config.getEnv("grafana_url", "");
         Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
         Config.housekeeping_update_usage_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
         Config.housekeeping_update_usersize_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
@@ -532,6 +535,7 @@ export class Config {
     public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
     public static enable_web_tours: boolean = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
     public static enable_nodered_tours: boolean = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
+    public static grafana_url:string = Config.getEnv("grafana_url", "");
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
     public static housekeeping_update_usage_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
     public static housekeeping_update_usersize_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));

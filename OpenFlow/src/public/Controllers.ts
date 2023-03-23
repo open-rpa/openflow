@@ -3476,6 +3476,13 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     } else {
                         this.queue_message_timeout = (60 * 1000); // 1 min
                     }
+                    if(data != null && data.error != null) {
+                        this.errormessage = data.error;
+                    } else if(data != null && data.data != null && data.data.error != null) {
+                        this.errormessage = data.data.error;
+                    } else {
+                        this.errormessage = "";
+                    }
                     if (this.instanceid == null && data.data._id != null) {
                         this.instanceid = data.data._id;
                         // this.$location.path("/Form/" + this.id + "/" + this.instanceid);
