@@ -577,6 +577,7 @@ export class WebSocketServerClient {
     }
     public async Send<T>(message: Message, parent: Span = null): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
+            if(message == null) return reject("message is null");
             this._Send(message, ((msg) => {
                 if (!NoderedUtil.IsNullUndefinded(msg.error)) { return reject(msg.error); }
                 resolve(msg);
