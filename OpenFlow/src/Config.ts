@@ -213,7 +213,7 @@ export class dbConfig extends Base {
             if(typeof conf.agent_images === "string") conf.agent_images = JSON.parse(conf.agent_images);
         } else {
             Config.agent_images = JSON.parse(Config.getEnv("agent_images", 
-                JSON.stringify([{"name":"nodejs", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"nodejs+chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
+                JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
             ));
         }
         Logger.reload();
@@ -432,7 +432,7 @@ export class Config {
 
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
         Config.agent_images = JSON.parse(Config.getEnv("agent_images", 
-        JSON.stringify([{"name":"nodejs", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"nodejs+chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
+        JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
         ));
         Config.agent_domain_schema = Config.getEnv("agent_domain_schema", "");
 
@@ -690,7 +690,7 @@ export class Config {
     // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", 
-        JSON.stringify([{"name":"nodejs", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"nodejs+chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
+        JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
     ));
     public static agent_domain_schema: string = Config.getEnv("agent_domain_schema", "");
 
