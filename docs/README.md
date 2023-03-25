@@ -9,7 +9,7 @@ Read more about the [security model here](securitymodel).
 
 Read more about the [architecture here](architecture).
 
-Read more about the [web socket protocol](protocol).
+Read more about the [protocol](protocol).
 
 Read more about [size recommendations](requirements).
 
