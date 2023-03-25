@@ -5071,7 +5071,13 @@ export class Message {
                 if (Config.enable_openflow_amqp && WebSocketServer._remoteclients.length > 0) {
                     for(var x = 0; x < WebSocketServer._remoteclients.length; x++) {
                         var cli = WebSocketServer._remoteclients[x];
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
                         if(cli.user != null) {
+                            // @ts-ignore
+                            cli.name = cli.user.name;
                             if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
                                 result.push(cli);
                             }
@@ -5082,7 +5088,13 @@ export class Message {
                 } else {
                     for(var x = 0; x < WebSocketServer._clients.length; x++) {
                         var cli = WebSocketServer._clients[x];
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
                         if(cli.user != null) {
+                            // @ts-ignore
+                            cli.name = cli.user.name;
                             if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
                                 result.push(cli);
                             }
@@ -5092,6 +5104,7 @@ export class Message {
                     }
                 }
                 msg.result = result;
+                break;
             case "dumpwebsocketclients":
                 if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
                 await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, false, jwt, parent);

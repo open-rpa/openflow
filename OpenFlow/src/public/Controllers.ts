@@ -4783,26 +4783,11 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("RobotsCtrl");
-        this.basequery = { _type: "user" };
-        this.searchfields = ["name", "username"];
-        this.collection = "users";
+        this.basequery = { };
+        this.searchfields = [];
+        this.collection = "entities";
+        this.pagesize = 1;
         this.postloadData = this.processdata;
-        this.preloadData = () => {
-            const dt = new Date(new Date().toISOString());
-            if (this.showinactive) {
-                if (this.show == "openrpa") this.basequery = { "_rpaheartbeat": { "$exists": true } };
-                if (this.show == "nodered") this.basequery = { "_noderedheartbeat": { "$exists": true } };
-                if (this.show == "webapp") this.basequery = { "_webheartbeat": { "$exists": true } };
-                if (this.show == "all") this.basequery = { _heartbeat: { "$exists": true } };
-            } else {
-                dt.setMilliseconds(dt.getMilliseconds() - (WebSocketClientService.ping_clients_interval + 20000));
-                this.basequery = { "$or": [] };
-                if (this.show == "openrpa") this.basequery = { "_rpaheartbeat": { "$gte": dt } };
-                if (this.show == "nodered") this.basequery = { "_noderedheartbeat": { "$gte": dt } };
-                if (this.show == "webapp") this.basequery = { "_webheartbeat": { "$gte": dt } };
-                if (this.show == "all") this.basequery = { _heartbeat: { "$gte": dt } };
-            }
-        };
         if (this.userdata.data.ClientsCtrl) {
             this.basequery = this.userdata.data.ClientsCtrl.basequery;
             this.collection = this.userdata.data.ClientsCtrl.collection;
@@ -4814,13 +4799,12 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
             this.show = this.userdata.data.ClientsCtrl.show;
         }
         WebSocketClientService.onSignedin((user: TokenUser) => {
-            this.loadData();
+            // this.loadData();
+            this.processdata()
         });
     }
     async processdata() {
-        debugger
         var result = await NoderedUtil.CustomCommand({ "command": "getclients" });
-        debugger
         this.models = result as any;
         if (!this.userdata.data.ClientsCtrl) this.userdata.data.ClientsCtrl = {};
         this.userdata.data.ClientsCtrl.basequery = this.basequery;
@@ -4832,15 +4816,23 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         this.userdata.data.ClientsCtrl.showinactive = this.showinactive;
         this.userdata.data.ClientsCtrl.show = this.show;
 
-        for (let i = 0; i < this.models.length; i++) {
-            const model: any = this.models[i];
-            (model as any).hasnodered = false;
-            if (model._noderedheartbeat != undefined && model._noderedheartbeat != null) {
-                const dt = new Date(model._noderedheartbeat)
-                const now: Date = new Date(),
-                    secondsPast: number = (now.getTime() - dt.getTime()) / 1000;
-                if (secondsPast < 60) (model as any).hasnodered = true;
+
+        if(this.orderby != null) {
+            var keys = Object.keys(this.orderby);
+            if(keys.length > 0) {
+                var key = keys[0];
+                var asc = this.orderby[key] == 1;
+                this.models.sort((a, b) => {
+                    if (a[key] < b[key]) return asc ? -1 : 1;
+                    if (a[key] > b[key]) return asc ? 1 : -1;
+                    return 0;
+                });
             }
+        }
+        // if this.show is not empty, then order this.models by the field in this.show
+        if (this.show != "all") {
+            // @ts-ignore
+            this.models = this.models.filter(x => x.agent == this.show);
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -7924,7 +7916,6 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.model.image.indexOf("openiap/nodeagent")> -1) {
             // "gitrepo": "https://github.com/openiap/nodeworkitemagent.git",
             this.model.environment = {
-                "wiq":"nodeagent"
             }
         }
         if(this.model.image.indexOf("openiap/noderedagent") > -1) {
@@ -7943,20 +7934,17 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             // "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
             this.model.environment = {
-                "wiq": "nodeagent"
             }
             this.PlanUpdated()
         }
         if(this.model.image.indexOf("openiap/dotnetagent") > -1) {
             // "gitrepo": "https://github.com/openiap/dotnetworkitemagent.git",
             this.model.environment = {
-                "wiq":"dotnetagent"
             }
         }
         if(this.model.image.indexOf("openiap/pyagent") > -1) {
             // "gitrepo": "https://github.com/openiap/pyworkitemagent.git",
             this.model.environment = {
-                "wiq":"pyagent"
             }
         }
         if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
@@ -7964,7 +7952,6 @@ export class AgentCtrl extends entityCtrl<any> {
             // "gitrepo2": "https://github.com/openiap/robotframeworkagent.git",
             // "gitrepo": "https://github.com/openiap/taguiagent.git",
             this.model.environment = {
-                "wiq": "pyagent",
             }
             this.PlanUpdated()
         }
