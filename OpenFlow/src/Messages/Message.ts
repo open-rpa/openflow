@@ -259,8 +259,17 @@ export class Message {
                     try {
                         var msg = SigninMessage.assign(this.data);
                         if (cli != null) {
-                            if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
-                            if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+                            if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
+                                if(msg.clientagent == "pyclient") msg.clientagent = "python"
+                                cli.clientagent = msg.clientagent as any;
+                                // @ts-ignore
+                                cli.agent = msg.clientagent as any;
+                            }
+                            if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) {
+                                cli.clientversion = msg.clientversion;
+                                // @ts-ignore
+                                cli.version = msg.clientversion;
+                            }
                         }
                     } catch (error) {
                     }
