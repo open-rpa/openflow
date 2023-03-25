@@ -1676,8 +1676,6 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
 
         const chart2: chartset = new chartset();
         chart2.heading = "Workflow runs (top 20)";
-        // chart2.series = ['name', 'count'];
-        // chart2.labels = ['name', 'count'];
         chart2.data = [];
         chart2.ids = [];
         for (let x = 0; x < workflowruns.length; x++) {
@@ -1686,8 +1684,6 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
             chart2.data.push(workflowruns[x].count);
             chart2.ids.push(workflowruns[x]._id.WorkflowId);
             chart2.labels.push(workflowruns[x]._id.name);
-            //     if (workflow == undefined) { chart2.labels.push("unknown"); } else { chachart2rt.labels.push(workflow.name); }
-            // }
         }
         chart2.click = this.workflowclick.bind(this);
         this.charts.push(chart2);
@@ -4821,7 +4817,11 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
             this.loadData();
         });
     }
-    processdata() {
+    async processdata() {
+        debugger
+        var result = await NoderedUtil.CustomCommand({ "command": "getclients" });
+        debugger
+        this.models = result as any;
         if (!this.userdata.data.ClientsCtrl) this.userdata.data.ClientsCtrl = {};
         this.userdata.data.ClientsCtrl.basequery = this.basequery;
         this.userdata.data.ClientsCtrl.collection = this.collection;
@@ -7792,6 +7792,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.loading = false;
                 this.model.runas = user._id;
                 this.model.runasname = user.name;
+                this.model.docker = true;
                 this.searchtext = user.name;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
@@ -7907,6 +7908,7 @@ export class AgentCtrl extends entityCtrl<any> {
             if((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
                 this.model.package = this.packages[0]._id;
             }
+            this.packages.unshift({_id: "", name: "None"})
         }
 
         if(this.model._id != null && this.model._id != "") {
@@ -8127,6 +8129,9 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             if(image != null && image.volumes != null && image.volumes.length > 0) {
                 this.model.volumes = image.volumes;
+            }
+            if(image != null && image != "") {
+                this.model.docker = true;
             }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });

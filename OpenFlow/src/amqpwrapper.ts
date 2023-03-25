@@ -605,6 +605,9 @@ export class amqpwrapper extends events.EventEmitter {
                         case "dumpwebsocketclients":
                             WebSocketServer.DumpClients(span);
                             break;
+                        case "notifywebsocketclients":                            
+                            WebSocketServer.NotifyClients(msg, span);
+                            break;
                         case "killwebsocketclient":
                             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                                 const cli: WebSocketServerClient = WebSocketServer._clients[i];

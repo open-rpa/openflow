@@ -5066,6 +5066,32 @@ export class Message {
 
         msg = CustomCommandMessage.assign(this.data);
         switch (msg.command) {
+            case "getclients":
+                var result = [];
+                if (Config.enable_openflow_amqp && WebSocketServer._remoteclients.length > 0) {
+                    for(var x = 0; x < WebSocketServer._remoteclients.length; x++) {
+                        var cli = WebSocketServer._remoteclients[x];
+                        if(cli.user != null) {
+                            if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
+                                result.push(cli);
+                            }
+                        } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
+                            result.push(cli);
+                        }
+                    }
+                } else {
+                    for(var x = 0; x < WebSocketServer._clients.length; x++) {
+                        var cli = WebSocketServer._clients[x];
+                        if(cli.user != null) {
+                            if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
+                                result.push(cli);
+                            }
+                        } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
+                            result.push(cli);
+                        }
+                    }
+                }
+                msg.result = result;
             case "dumpwebsocketclients":
                 if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
                 await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, false, jwt, parent);
@@ -5235,6 +5261,13 @@ export class Message {
                     if(_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
                     _agent.runas = agentuser._id
                     _agent.runasname = agentuser.name
+
+                    if(this.clientagent == "assistent") {
+                        _agent.assistent = true;
+                    }
+                    if(this.clientagent == "nodeagent") {
+                        _agent.agent = true;
+                    }
 
                     agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);
                 } else {
