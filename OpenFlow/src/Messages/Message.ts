@@ -5098,6 +5098,11 @@ export class Message {
                     if(agent.arch != null && agent.arch != "") _agent.arch = agent.arch;
                     if(agent.username != null && agent.username != "") _agent.username = agent.username;
                     if(agent.version != null && agent.version != "") _agent.version = agent.version;
+                    if(!NoderedUtil.IsNullEmpty(agent.chrome)) _agent.chrome = agent.chrome;
+                    if(!NoderedUtil.IsNullEmpty(agent.chromium)) _agent.chromium = agent.chromium;
+                    if(!NoderedUtil.IsNullEmpty(agent.docker)) _agent.docker = agent.docker;
+                    if(!NoderedUtil.IsNullEmpty(agent.assistent)) _agent.assistent = agent.assistent;
+                    if(!NoderedUtil.IsNullEmpty(agent.daemon)) _agent.daemon = agent.daemon;
 
                     var agentuser = this.tuser;
                     if (_agent.runas != null && _agent.runas != "" && this.tuser._id != _agent.runas) {
@@ -5120,7 +5125,7 @@ export class Message {
                         _agent.assistent = true;
                     }
                     if(this.clientagent == "nodeagent") {
-                        _agent.agent = true;
+                        _agent.daemon = true;
                     }
 
                     agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);

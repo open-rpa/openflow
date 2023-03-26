@@ -7590,6 +7590,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
 
 
 export class AgentsCtrl extends entitiesCtrl<Base> {
+    public show: string = "all";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7618,6 +7619,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             this.basequeryas = this.userdata.data.AgentsCtrl.basequeryas;
             this.skipcustomerfilter = this.userdata.data.AgentsCtrl.skipcustomerfilter;
         }
+        this.preloadData = this.preLoad.bind(this);
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
@@ -7654,6 +7656,14 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         // }
         return image;
     }
+    preLoad() {
+        if (this.show != "all") {
+            this.basequery = { _type: "agent" };
+            this.basequery[this.show] = true;
+        }else {
+            this.basequery = { _type: "agent" };
+        }
+    }
     async processdata() {
         if (!this.userdata.data.AgentsCtrl) this.userdata.data.AgentsCtrl = {};
         this.userdata.data.AgentsCtrl.basequery = this.basequery;
@@ -7666,6 +7676,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
         this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
+        console.log(this.knownpods);
         for (var i = 0; i < this.models.length; i++) {
             var model = this.models[i];
             // @ts-ignore
