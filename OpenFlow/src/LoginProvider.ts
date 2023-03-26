@@ -1153,7 +1153,8 @@ export class LoginProvider {
                 timeseries_collections: DatabaseConnection.timeseries_collections,
                 ping_clients_interval: Config.ping_clients_interval,
                 validlicense: Logger.License.validlicense,
-                forceddomains: forceddomains
+                forceddomains: forceddomains,
+                grafana_url: Config.grafana_url
             }
             Logger.instanse.debug("Return configuration settings", span);
             res.end(JSON.stringify(res2));

@@ -259,8 +259,17 @@ export class Message {
                     try {
                         var msg = SigninMessage.assign(this.data);
                         if (cli != null) {
-                            if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
-                            if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+                            if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
+                                if(msg.clientagent == "pyclient") msg.clientagent = "python"
+                                cli.clientagent = msg.clientagent as any;
+                                // @ts-ignore
+                                cli.agent = msg.clientagent as any;
+                            }
+                            if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) {
+                                cli.clientversion = msg.clientversion;
+                                // @ts-ignore
+                                cli.version = msg.clientversion;
+                            }
                         }
                     } catch (error) {
                     }
@@ -5066,6 +5075,45 @@ export class Message {
 
         msg = CustomCommandMessage.assign(this.data);
         switch (msg.command) {
+            case "getclients":
+                var result = [];
+                if (Config.enable_openflow_amqp && WebSocketServer._remoteclients.length > 0) {
+                    for(var x = 0; x < WebSocketServer._remoteclients.length; x++) {
+                        var cli = WebSocketServer._remoteclients[x];
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                        if(cli.user != null) {
+                            // @ts-ignore
+                            cli.name = cli.user.name;
+                            if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
+                                result.push(cli);
+                            }
+                        } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
+                            result.push(cli);
+                        }
+                    }
+                } else {
+                    for(var x = 0; x < WebSocketServer._clients.length; x++) {
+                        var cli = WebSocketServer._clients[x];
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                        // @ts-ignore
+                        if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                        if(cli.user != null) {
+                            // @ts-ignore
+                            cli.name = cli.user.name;
+                            if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
+                                result.push(cli);
+                            }
+                        } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
+                            result.push(cli);
+                        }
+                    }
+                }
+                msg.result = result;
+                break;
             case "dumpwebsocketclients":
                 if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
                 await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, false, jwt, parent);
@@ -5195,23 +5243,22 @@ export class Message {
                 if(agent.slug == null || agent.slug == "") agent.slug = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
                 agent._type = "agent";
                 agent.lastseen = new Date(new Date().toISOString());
-                // var agentuser = this.tuser;
-                // if(agent.runas != null && agent.runas != "" && this.tuser._id != agent.runas) {
-                //     agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-                // }
-                // if(agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
-                //     if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
-                //         throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agentuser.name}`);
-                //     }
-                //     // @ts-ignore
-                //     agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
-                // }
-
+                if(agent._id == null || agent._id == "") {
+                    var _agent = await Config.db.GetOne<iAgent>({ query: { hostname: agent.hostname, username: agent.username }, collectionname: "agents", jwt }, parent);
+                    if(_agent != null) {
+                        agent._id = _agent._id;
+                        agent.name = _agent.name;
+                    }
+                }
                 if(agent._id != null && agent._id != "") {
                     var _agent = await Config.db.GetOne<iAgent>({ query: { _id: agent._id }, collectionname: "agents", jwt }, parent);
                     if(_agent == null) {
                         if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
-                        _agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+
+                        _agent = await Config.db.GetOne<iAgent>({ query: { hostname: agent.hostname, username: agent.username }, collectionname: "agents", jwt }, parent);
+                        if(_agent == null) {
+                            _agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
+                        }
                     }
                     _agent.lastseen = new Date(new Date().toISOString());
                     if(agent.hostname != null && agent.hostname != "") _agent.hostname = agent.hostname;
@@ -5229,13 +5276,20 @@ export class Message {
                         if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
                             throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agentuser.name}`);
                         }
-                        // @ts-ignore
-                        _agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
                     }
+                    // @ts-ignore
+                    delete _agent.jwt;
 
                     if(_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
                     _agent.runas = agentuser._id
                     _agent.runasname = agentuser.name
+
+                    if(this.clientagent == "assistent") {
+                        _agent.assistent = true;
+                    }
+                    if(this.clientagent == "nodeagent") {
+                        _agent.agent = true;
+                    }
 
                     agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);
                 } else {
@@ -5250,14 +5304,19 @@ export class Message {
                         if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
                             throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agentuser.name}`);
                         }
-                        // @ts-ignore
-                        agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
                     }
+                    // @ts-ignore
+                    delete agent.jwt;
 
                     agent.runas = agentuser._id
                     agent.runasname = agentuser.name
                     agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
                 }
+                if (agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
+                    // @ts-ignore
+                    agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
+                }
+
                 msg.result = agent
                 break;
             case "deletepackage":

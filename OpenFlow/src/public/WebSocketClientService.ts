@@ -52,6 +52,7 @@ export class WebSocketClientService {
 
                 this.ping_clients_interval = data.ping_clients_interval;
                 this.validlicense = data.validlicense;
+                this.grafana_url = data.grafana_url
 
 
                 if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) {
@@ -200,6 +201,7 @@ export class WebSocketClientService {
     public timeseries_collections: string[] = [];
     public ping_clients_interval: number = 10000;
     public validlicense: boolean = false;
+    public grafana_url: string = "";
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();

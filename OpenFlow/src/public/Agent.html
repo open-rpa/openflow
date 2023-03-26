@@ -657,6 +657,7 @@
 
         <div class="input-group-append">
           <a href ng-click="ctrl.searchtext = ctrl.currentusername; ctrl.model.runas=ctrl.currentuser;ctrl.model.runasname=ctrl.currentusername" class="btn">clear</a>
+          <a ng-show="ctrl.model.runas != '' && ctrl.model.runas != null" ng-href="#/User/{{ctrl.model.runas}}" class="btn"><em class="fas fa-user"></em></a>
         </div>
 
     </div>

@@ -24,7 +24,9 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td>{{model.name}}</td>
+      <td>
+        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'">{{model.name}}</a>        
+      </td>
       <td>{{model.state}}</td>
       <td>
         <timesince ng-model="model._created" />

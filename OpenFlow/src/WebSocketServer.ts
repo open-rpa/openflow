@@ -11,11 +11,13 @@ import { Histogram, Counter, Observable } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { WebServer } from "./WebServer";
+import { amqpwrapper } from "./amqpwrapper";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 
 export class WebSocketServer {
     // private static _socketserver: WebSocket.Server;
     public static _clients: WebSocketServerClient[];
+    public static _remoteclients: WebSocketServerClient[];
     public static p_all: Observable;
     public static websocket_queue_count: Observable;
     public static websocket_queue_message_count: Counter;
@@ -42,6 +44,7 @@ export class WebSocketServer {
             });
 
             this._clients = [];
+            this._remoteclients = [];
 
             WebServer.wss.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
                 try {
@@ -165,7 +168,8 @@ export class WebSocketServer {
     }
     public static async DumpClients(parent: Span): Promise<void> {
         try {
-            const jwt = Crypt.rootToken();
+            WebSocketServer._remoteclients = [];
+            
             const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
             const clients: Base[] = [];
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
@@ -194,10 +198,28 @@ export class WebSocketServer {
                 c.name = (c.username + "/" + c.clientagent + "/" + c.id).trim();
                 clients.push(c);
             }
-            Logger.instanse.info("Insert " + clients.length + " clients", parent);
-            await Config.db.InsertMany(clients, "websocketclients", 1, false, jwt, parent)
+
+            if (Config.enable_openflow_amqp) {
+                amqpwrapper.Instance().send("openflow", "", { "command": "notifywebsocketclients", clients }, 20000, null, "", parent, 1);
+            } else {
+            }
+            // Logger.instanse.info("Insert " + clients.length + " clients", parent);
+            // const jwt = Crypt.rootToken();
+            // await Config.db.InsertOrUpdateMany(clients, "websocketclients", "id", true, 1, false, jwt, parent)
         } catch (error) {
             Logger.instanse.error(error, parent);
+        }
+    }
+    public static NotifyClients(message: any, parent: Span): void {
+        try {
+            for (let i = message.clients.length - 1; i >= 0; i--) {
+                const cli: WebSocketServerClient = message.clients[i];
+                this._remoteclients = this._remoteclients.filter(c => c.id != cli.id);
+                this._remoteclients.push(cli);
+            }
+        } catch (error) {
+            Logger.instanse.error(error, parent);
+        } finally {
         }
     }
     private static lastUserUpdate = Date.now();
@@ -320,6 +342,11 @@ export class WebSocketServer {
                 let ot_end: any = Logger.otel.startTimer();
                 var bulkresult = await Config.db.db.collection("users").bulkWrite(bulkUpdates);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_updatemany, { collection: "users" });
+                if (Config.enable_openflow_amqp) {
+                    amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", span, 1);
+                } else {
+                    // WebSocketServer.DumpClients(span);
+                }
             }
         } catch (error) {
             Logger.instanse.error(error, span);

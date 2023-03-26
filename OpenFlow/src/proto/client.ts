@@ -75,7 +75,16 @@ export class flowclient extends client {
       this.doping = config.DoPing;
       if (ws != null) this.ws = ws;
       if (stream != null) this.stream = stream;
-      if (call != null) this.call = call;
+      if (call != null) {
+        this.call = call;
+        try {
+            this.remoteip = call.getPeer()
+            if(this.remoteip != null && this.remoteip != null && this.remoteip.indexOf(":") > 0) {
+                this.remoteip = this.remoteip.split(":")[0];
+            }
+        } catch (error) {            
+        }
+      }
       if (req != null) this.remoteip = remoteip(req);
     } catch (error) {
       err(error);
