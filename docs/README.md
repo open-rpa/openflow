@@ -1,9 +1,14 @@
-# OpenFlow
+# # OpenIAP flow
 
-OpenFlow is basically a couple of [NodeRED](https://nodered.org/) installations and an API on top of a [MongoDB](https://www.mongodb.com/) instance, using [RabbitMQ](https://www.rabbitmq.com/) for scalability. It is designed to supplement digitalization strategies by giving an easy to use, highly scalable and secure platform that supports human workflows, automation of IT systems and things (both Internet of things and  Industry Internet of things/Industry 4.0 ). It also functions as the dashboard and enabler of enterprise features for [OpenRPA](https://github.com/open-rpa/openrpa)
+OpenIAP flow is a security layer that sits on top of an installation of [MongoDB](https://www.mongodb.com/) and [RabbitMQ](https://www.rabbitmq.com/). Its purpose is to orchestrate agents, such as NodeJS, Python, NodeRED, elsa workflow, dotnet, and [OpenRPA](https://github.com/open-rpa/openrpa) agents.
 
-If in doubt, always use docker
-For production environment we recommend moving to kubernetes
+The platform is designed to supplement digitalization strategies by providing an easy-to-use, highly scalable, and secure platform capable of supporting human workflows, IT system automation, and both Internet of Things (IoT) and Industry Internet of Things/Industry 4.0 automation.
+
+If you are installing OpenIAP for the first time, we highly recommend using Docker. You can find the necessary resources and instructions to do so by visiting the OpenIAP Docker Github page: https://github.com/open-rpa/docker.
+
+Using Docker ensures that you have all the required dependencies and configuration in place for seamless set up and deployment of OpenIAP.
+
+Creating your first [agent package](first-agent).
 
 Read more about the [security model here](securitymodel).
 
@@ -14,7 +19,7 @@ Read more about the [protocol](protocol).
 Read more about [size recommendations](requirements).
 
 #### Quick start using docker
-Installing using [docker-compose](dockercompose)
+Installing using [docker-compose](https://github.com/open-rpa/docker)
 
 #### Examples and a few guides
 
