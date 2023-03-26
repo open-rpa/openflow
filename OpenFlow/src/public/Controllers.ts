@@ -8114,6 +8114,16 @@ export class AgentCtrl extends entityCtrl<any> {
                     }
                 }
             }
+            var _package = this.packages.find(x => x.name == this.model.package);
+            if(_package != null) {
+                if(_package.port != null && _package.port != "") {
+                    if(this.model._id == null || this.model._id == "") {
+                        this.model.webserver = true;
+                    }                    
+                    this.model.port = image.port;
+                }
+            }
+
             if(image != null && image.volumes != null && image.volumes.length > 0) {
                 this.model.volumes = image.volumes;
             }
