@@ -72,16 +72,9 @@ export interface i_otel {
     createheapdump(parent: Span): Promise<string>
 }
 
-export interface i_nodered_driver {
+export interface i_agent_driver {
     detect(): Promise<boolean>;
-    EnsureNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, skipcreate: boolean, parent: Span): Promise<void>;
-    GetNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<any[]>;
-    RestartNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<void>;
-    DeleteNoderedInstance(jwt: string, tokenUser: TokenUser, _id: string, name: string, parent: Span): Promise<void>;
-    DeleteNoderedPod(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<void>;
-    GetNoderedInstanceLog(jwt: string, user: TokenUser, _id: string, name: string, podname: string, parent: Span): Promise<string>;
     NodeLabels(parent: Span): Promise<any>;
-
     EnsureInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, parent: Span): Promise<void>;
     GetInstancePods(tokenUser: TokenUser, jwt:string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]>;
     RemoveInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void>;
