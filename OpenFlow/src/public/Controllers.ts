@@ -202,9 +202,9 @@ export class MenuCtrl {
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) return false;
         if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user)) return false;
         if (role == "customer admins" && !NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user.customerid)) {
-            if(this.customer == null) return false;
+            if (this.customer == null) return false;
             const hits = WebSocketClient.instance.user.roles.filter(member => member._id == this.customer.admins);
-            if(hits.length == 1) return true;
+            if (hits.length == 1) return true;
         }
         const hits = WebSocketClient.instance.user.roles.filter(member => member.name == role);
         return (hits.length == 1)
@@ -2823,11 +2823,13 @@ export class RoleCtrl extends entityCtrl<Role> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { $or: [
-                        {name: new RegExp([this.searchtext].join(""), "i")},
-                        {email: new RegExp([this.searchtext].join(""), "i")},
-                        {username: new RegExp([this.searchtext].join(""), "i")}
-                    ]},
+                    {
+                        $or: [
+                            { name: new RegExp([this.searchtext].join(""), "i") },
+                            { email: new RegExp([this.searchtext].join(""), "i") },
+                            { username: new RegExp([this.searchtext].join(""), "i") }
+                        ]
+                    },
                     { _id: { $nin: ids } }
                 ]
             }
@@ -3472,9 +3474,9 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     } else {
                         this.queue_message_timeout = (60 * 1000); // 1 min
                     }
-                    if(data != null && data.error != null) {
+                    if (data != null && data.error != null) {
                         this.errormessage = data.error;
-                    } else if(data != null && data.data != null && data.data.error != null) {
+                    } else if (data != null && data.data != null && data.data.error != null) {
                         this.errormessage = data.data.error;
                     } else {
                         this.errormessage = "";
@@ -3992,8 +3994,7 @@ export class EntityCtrl extends entityCtrl<Base> {
     }
     cached = {}
     getstep(key, obj) {
-        if(this.gettype(obj) == "number")
-        {
+        if (this.gettype(obj) == "number") {
             if (obj.toString().indexOf(".") > -1) {
                 var decimals = obj.toString().split(".")[1].length;
                 this.cached[key] = 1 / Math.pow(10, decimals);
@@ -4224,11 +4225,13 @@ export class EntityCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { $or: [
-                        {name: new RegExp([this.searchtext].join(""), "i")},
-                        {email: new RegExp([this.searchtext].join(""), "i")},
-                        {username: new RegExp([this.searchtext].join(""), "i")}
-                    ]},
+                    {
+                        $or: [
+                            { name: new RegExp([this.searchtext].join(""), "i") },
+                            { email: new RegExp([this.searchtext].join(""), "i") },
+                            { username: new RegExp([this.searchtext].join(""), "i") }
+                        ]
+                    },
                     { _id: { $nin: ids } }
                 ]
             }
@@ -4783,7 +4786,7 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("RobotsCtrl");
-        this.basequery = { };
+        this.basequery = {};
         this.searchfields = [];
         this.collection = "entities";
         this.pagesize = 1;
@@ -4817,9 +4820,9 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         this.userdata.data.ClientsCtrl.show = this.show;
 
 
-        if(this.orderby != null) {
+        if (this.orderby != null) {
             var keys = Object.keys(this.orderby);
-            if(keys.length > 0) {
+            if (keys.length > 0) {
                 var key = keys[0];
                 var asc = this.orderby[key] == 1;
                 this.models.sort((a, b) => {
@@ -5182,11 +5185,13 @@ export class CredentialCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { $or: [
-                        {name: new RegExp([this.searchtext].join(""), "i")},
-                        {email: new RegExp([this.searchtext].join(""), "i")},
-                        {username: new RegExp([this.searchtext].join(""), "i")}
-                    ]},
+                    {
+                        $or: [
+                            { name: new RegExp([this.searchtext].join(""), "i") },
+                            { email: new RegExp([this.searchtext].join(""), "i") },
+                            { username: new RegExp([this.searchtext].join(""), "i") }
+                        ]
+                    },
                     { _id: { $nin: ids } }
                 ]
             }
@@ -5901,7 +5906,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     if ((prod as any).count > 0) {
                         (res as any).newproduct = prod;
                         (prod as any).usedby = this.UsedbyCount(prod);
-                    }                    
+                    }
                     if (prod.customerassign == "metered" && res.name == 'Database Usage') {
 
                         let billabledbusage: number = this.model.dbusage - res.defaultmetadata.dbusage;
@@ -6007,7 +6012,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         let quantity: number = 0;
         assigned.forEach(x => {
             // @ts-ignore
-            if(assigned[0].usedby == null) return 0;
+            if (assigned[0].usedby == null) return 0;
             // @ts-ignore
             quantity = quantity + assigned[0].usedby.length;
         });
@@ -6503,11 +6508,13 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
             query: {
                 $and: [
                     { $or: [{ _type: "user" }, { _type: "role" }] },
-                    { $or: [
-                        {name: new RegExp([this.searchtext].join(""), "i")},
-                        {email: new RegExp([this.searchtext].join(""), "i")},
-                        {username: new RegExp([this.searchtext].join(""), "i")}
-                    ]},
+                    {
+                        $or: [
+                            { name: new RegExp([this.searchtext].join(""), "i") },
+                            { email: new RegExp([this.searchtext].join(""), "i") },
+                            { username: new RegExp([this.searchtext].join(""), "i") }
+                        ]
+                    },
                     { _id: { $nin: ids } }
                 ]
             }
@@ -6632,7 +6639,7 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
                 //     ], true, true, 0);
                 const nodered: Resource = await this.newResource("Agent Instance", "customer", "multiplevariants", "singlevariant", { "runtime_hours": 8, "agentcount": 1, "resources": { "limits": { "memory": "225Mi" } } },
                     [
-                        this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0","multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false, 0),
+                        this.newProduct("Basic Legacy", "prod_HIhT9WksWx9Fxv", "price_1HY8P0C2vUMc6gvhRJrLcLW0", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, false, 0),
                         this.newProduct("Basic (256Mi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, 1),
                         this.newProduct("Plus (512Mi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, 2),
                         this.newProduct("Premium (1Gi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "multiple", "single", null, null, 0, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, 3),
@@ -7018,7 +7025,7 @@ export class WorkitemQueuesCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "workitemqueue" };
         this.collection = "mq";
         this.searchfields = ["name"];
-        this.baseprojection = { name: 1, maxretries: 1, projectid: 1, workflowid: 1, robotqueue: 1, amqpqueue: 1, _createdby:1 };
+        this.baseprojection = { name: 1, maxretries: 1, projectid: 1, workflowid: 1, robotqueue: 1, amqpqueue: 1, _createdby: 1 };
 
         this.postloadData = this.processData;
         if (this.userdata.data.WorkitemQueuesCtrl) {
@@ -7136,7 +7143,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     this.stats = "No items";
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                     await this.loadselects();
-           
+
                 }
             } catch (error) {
                 console.error(error);
@@ -7160,7 +7167,7 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         this.users.unshift({ "_id": "", "name": "", "display": "(no robot)" } as any);
         this.amqpqueues = await NoderedUtil.Query({ collectionname: "mq", query: { "_type": "queue" }, orderby: "name", projection: { "name": 1 }, top: 500 });
         this.amqpqueues.forEach((e: any) => { e.display = e.name });
-        if(this.model) {
+        if (this.model) {
             this.amqpqueues.unshift({ "_id": this.model._id, "name": this.model.name, "display": this.model.name } as any);
         }
         this.amqpqueues.unshift({ "_id": "", "name": "", "display": "(no queue)" } as any);
@@ -7182,23 +7189,23 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         await this.loadselects();
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         var total = 0;
-        if(this.id == null || this.id == "") {
-            if(this.id != null && this.id != "") {
+        if (this.id == null || this.id == "") {
+            if (this.id != null && this.id != "") {
                 total = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id } });
             }
         }
         // this.stats = total + " items";
         // if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        if(total > 0) {
+        if (total > 0) {
             var newitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "new" } });
             var successfulitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "successful" } });
             var faileditems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "failed" } });
             var processingitems = await NoderedUtil.Count({ collectionname: "workitems", query: { "wiqid": this.id, "state": "processing" } });
             this.stats = "";
-            if(newitems > 0) this.stats += "New: " + newitems;
-            if(successfulitems > 0) this.stats += " Successful: " + successfulitems;
-            if(faileditems > 0) this.stats += " Failed: " + faileditems;
-            if(processingitems > 0) this.stats += " Processing: " + processingitems;
+            if (newitems > 0) this.stats += "New: " + newitems;
+            if (successfulitems > 0) this.stats += " Successful: " + successfulitems;
+            if (faileditems > 0) this.stats += " Failed: " + faileditems;
+            if (processingitems > 0) this.stats += " Processing: " + processingitems;
         } else {
             this.stats = "No items";
         }
@@ -7229,8 +7236,8 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.success_wiqid = model.success_wiqid;
                     q.failed_wiq = model.failed_wiq;
                     q.failed_wiqid = model.failed_wiqid;
-                    if((q.robotqueue == null || q.robotqueue == "") && (q.amqpqueue == null || q.amqpqueue == "")) {
-                        q.amqpqueue =model.name;
+                    if ((q.robotqueue == null || q.robotqueue == "") && (q.amqpqueue == null || q.amqpqueue == "")) {
+                        q.amqpqueue = model.name;
                     }
                     _msg.command = 'addworkitemqueue';
                     _msg.data = JSON.stringify(q);
@@ -7434,7 +7441,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
     public exchange: RegisterExchangeResponse = null;
     public paused: boolean = false;
     public host: boolean = false;
-    public agent: boolean = false;    
+    public agent: boolean = false;
     public cls: boolean = false;
     public func: boolean = true;
     public searchstring: string = "";
@@ -7596,12 +7603,12 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("AgentsCtrl");
-        this.basequery = {_type: "agent"};
+        this.basequery = { _type: "agent" };
         this.collection = "agents";
         this.postloadData = this.processdata;
         this.skipcustomerfilter = true;
         this.searchfields = ["name", "slug"];
-        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, webserver:1, runas: 1, _createdby:1, slug: 1 };
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, webserver: 1, runas: 1, _createdby: 1, slug: 1 };
         if (this.userdata.data.AgentsCtrl) {
             this.basequery = this.userdata.data.AgentsCtrl.basequery;
             this.collection = this.userdata.data.AgentsCtrl.collection;
@@ -7618,27 +7625,27 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
     knownpods = [];
     getStatus(model) {
         var instances = this.knownpods.filter(x => (x.metadata.labels && x.metadata.labels.app == model.slug) || (x.metadata.name == model.slug));
-        for(var x = 0; x < instances.length; x++) {
-            var instance =  instances[x]
+        for (var x = 0; x < instances.length; x++) {
+            var instance = instances[x]
             model.status = "unknown"
-            if(instance.status && instance.status.phase) {
+            if (instance.status && instance.status.phase) {
                 model.status = instance.status.phase;
             }
-            if(model.status == "running" || model.status == "Running") {
-                if(instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
+            if (model.status == "running" || model.status == "Running") {
+                if (instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
                     model.status = instance.status.containerStatuses[0].started ? "running" : "stopped " + instance.status.containerStatuses[0].state.waiting.reason;
                 }
             }
-            if(instance.metadata.deletionTimestamp) model.status = "deleting"
+            if (instance.metadata.deletionTimestamp) model.status = "deleting"
         }
-        if(instances.length == 0) {
+        if (instances.length == 0) {
             model.status = "missing"
         }
         // if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    trimimage(image:string) {
-        if(image == null) return "";
-        while(image.indexOf("/") != image.lastIndexOf("/")) {
+    trimimage(image: string) {
+        if (image == null) return "";
+        while (image.indexOf("/") != image.lastIndexOf("/")) {
             image = image.substring(image.indexOf("/") + 1);
         }
         // remove tag too ?
@@ -7658,20 +7665,20 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.AgentsCtrl.skipcustomerfilter = this.skipcustomerfilter;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
-        this.knownpods =  await NoderedUtil.CustomCommand({command:"getagentpods"})
-        for(var i = 0; i < this.models.length; i++) {
+        this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
+        for (var i = 0; i < this.models.length; i++) {
             var model = this.models[i];
             // @ts-ignore
             // model.status = "...";
             await this.getStatus(model)
         }
-        if(this.orderby != null && this.orderby["status"] != null) {
-            if(this.orderby["status"] == 1) {
-                this.models.sort(function (a:any, b:any) {
+        if (this.orderby != null && this.orderby["status"] != null) {
+            if (this.orderby["status"] == 1) {
+                this.models.sort(function (a: any, b: any) {
                     return ('' + a.status).localeCompare(b.status);
                 })
             } else {
-                this.models.sort(function (a:any, b:any) {
+                this.models.sort(function (a: any, b: any) {
                     return ('' + b.status).localeCompare(a.status);
                 })
             }
@@ -7682,25 +7689,25 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         // return "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", model.slug)
         return "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", model.slug)
     }
-    async DeleteAgent(model:any): Promise<void> {
+    async DeleteAgent(model: any): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
-            await NoderedUtil.CustomCommand({command:"deleteagent", id:model._id})
+            await NoderedUtil.CustomCommand({ command: "deleteagent", id: model._id })
             this.loading = false;
             setTimeout(this.loadData.bind(this), 500)
         } catch (error) {
             this.errormessage = error.message ? error.message : error
-            
+
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async StopAgent(model:any): Promise<void> {
+    async StopAgent(model: any): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
-            await NoderedUtil.CustomCommand({command:"stopagent", id:model._id, name:model.slug})
+            await NoderedUtil.CustomCommand({ command: "stopagent", id: model._id, name: model.slug })
             await this.getStatus(model);
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -7708,11 +7715,11 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async StartAgent(model:any): Promise<void> {
+    async StartAgent(model: any): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
-            await NoderedUtil.CustomCommand({command:"startagent", id:model._id, name:model.slug})
+            await NoderedUtil.CustomCommand({ command: "startagent", id: model._id, name: model.slug })
             await this.getStatus(model);
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -7727,7 +7734,7 @@ export class AgentCtrl extends entityCtrl<any> {
     instances: any[] = [];
     instancelogpodname: string = "";
     instancelog: string = "";
-    products: any[] = [{"stripeprice": "", "name": "Free tier"}];
+    products: any[] = [{ "stripeprice": "", "name": "Free tier" }];
     packages: any[] = [];
     allpackages: any[] = [];
     images: any[] = [];
@@ -7755,21 +7762,21 @@ export class AgentCtrl extends entityCtrl<any> {
             this.currentusername = user.name;
             // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
             var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
-            this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: {"_type": "package", "daemon": true } });
-            if(products.length > 0) {
+            this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package", "daemon": true } });
+            if (products.length > 0) {
                 this.resource = products[0];
-                if(this.resource.defaultmetadata) {
-                    if(this.resource.defaultmetadata.agentcount != null && this.resource.defaultmetadata.agentcount != "") {
+                if (this.resource.defaultmetadata) {
+                    if (this.resource.defaultmetadata.agentcount != null && this.resource.defaultmetadata.agentcount != "") {
                         this.agentcount = parseInt(this.resource.defaultmetadata.agentcount);
                     }
-                    if(this.resource.defaultmetadata.runtime_hours != null && this.resource.defaultmetadata.runtime_hours != "") {
+                    if (this.resource.defaultmetadata.runtime_hours != null && this.resource.defaultmetadata.runtime_hours != "") {
                         this.runtime_hours = parseInt(this.resource.defaultmetadata.runtime_hours);
                     }
                 }
                 this.products = this.products.concat(products[0].products);
             }
             this.images = this.WebSocketClientService.agent_images;
-            
+
             if (this.id !== null && this.id !== undefined) {
                 await this.loadData();
             } else {
@@ -7792,27 +7799,27 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     refreshtimer: any;
     async processData(): Promise<void> {
-        if(this.model.stripeprice == null) this.model.stripeprice = "";
+        if (this.model.stripeprice == null) this.model.stripeprice = "";
         this.searchtext = this.model.runasname
         this.ImageUpdated();
         this.loadInstances()
     }
     async getStatus(model) {
-        this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:this.model._id, name:this.model.slug})
+        this.instances = await NoderedUtil.CustomCommand({ command: "getagentpods", id: this.model._id, name: this.model.slug })
         // this.instances =  await NoderedUtil.CustomCommand({command:"getagentpods", id:model._id})
-        for(var x = 0; x < this.instances.length; x++) {
-            var instance =  this.instances[x]
+        for (var x = 0; x < this.instances.length; x++) {
+            var instance = this.instances[x]
             instance.showstatus = "unknown"
-            if(instance.status && instance.status.phase) {
+            if (instance.status && instance.status.phase) {
                 instance.showstatus = instance.status.phase;
             }
-            if(instance.showstatus == "running" || instance.showstatus == "Running") {
-                if(instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
+            if (instance.showstatus == "running" || instance.showstatus == "Running") {
+                if (instance.status != null && instance.status.containerStatuses != null && instance.status.containerStatuses.length > 0) {
                     // instance.showstatus = instance.status.containerStatuses[0].state.running ? "running" : "stopped";
                     instance.showstatus = instance.status.containerStatuses[0].started ? "Running" : "Stopped " + instance.status.containerStatuses[0].state.waiting.reason;
                 }
             }
-            if(instance.metadata.deletionTimestamp) instance.showstatus = "Deleting"
+            if (instance.metadata.deletionTimestamp) instance.showstatus = "Deleting"
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -7821,43 +7828,43 @@ export class AgentCtrl extends entityCtrl<any> {
     PlanUpdated() {
         this.sizewarningtitle = ""
         this.sizewarning = ""
-        if(this.resource == null || this.products == null || this.products.length < 2) return; // no plans, don't care
+        if (this.resource == null || this.products == null || this.products.length < 2) return; // no plans, don't care
         var product = this.products.find(x => x.stripeprice == this.model.stripeprice)
-        if(product.stripeprice == "") product = null
+        if (product.stripeprice == "") product = null
         var ram = product?.metadata?.resources?.limits?.memory;
-        if(ram == null) {
+        if (ram == null) {
             ram = product?.metadata?.resources?.requests?.memory;
         }
-        if(ram == null) {
+        if (ram == null) {
             ram = this.resource?.defaultmetadata?.resources?.limits?.memory;
         }
-        if(ram == null) {
+        if (ram == null) {
             ram = this.resource?.defaultmetadata?.resources?.requests?.memory;
         }
-        
-        if(ram == null) ram = "128Mi";
-        if(ram.indexOf("Mi") > -1) {
+
+        if (ram == null) ram = "128Mi";
+        if (ram.indexOf("Mi") > -1) {
             ram = ram.replace("Mi", "")
             ram = parseInt(ram) / 1024;
-        } else if(ram.indexOf("Gi") > -1) {
+        } else if (ram.indexOf("Gi") > -1) {
             ram = ram.replace("Gi", "")
             ram = parseInt(ram);
         }
-        if(this.model.image == null) return;
-        if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
-            if(product == null || ram < 0.25) {
+        if (this.model.image == null) return;
+        if (this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
+            if (product == null || ram < 0.25) {
                 this.sizewarningtitle = "Not enough ram"
-                if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
+                if (this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
                     this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at least 256Mi ram or higher"
                 } else {
                     this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at least 256Mi ram or higher"
                 }
             }
         }
-        if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
-            if(product == null || ram < 0.25) {
+        if (this.model.image.indexOf("openiap/pychromiumagent") > -1) {
+            if (product == null || ram < 0.25) {
                 this.sizewarningtitle = "Not enough ram"
-                if(this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
+                if (this.WebSocketClientService.stripe_api_key != null && this.WebSocketClientService.stripe_api_key != "") {
                     this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a Payed plan with at least 256Mi ram or higher"
                 } else {
                     this.sizewarning = "This instance will not start, or will run ekstremly slow if not assigned a plan with at least 256Mi ram or higher"
@@ -7872,53 +7879,53 @@ export class AgentCtrl extends entityCtrl<any> {
 
         var image = this.images.find(x => x.image == this.model.image)
         var languages = this.model.languages;
-        if(image != null && image.languages != null && image.languages.length > 0) {
+        if (image != null && image.languages != null && image.languages.length > 0) {
             languages = image.languages;
         }
         var haschromium = false
         var haschrome = false
-        if(image != null && image.chromium == true) {
+        if (image != null && image.chromium == true) {
             haschromium = true
         }
-        if(image != null && image.chrome == true) {
+        if (image != null && image.chrome == true) {
             haschrome = true
         }
-        if(languages == null || languages.length == 0) {
-            this.packages = []; 
+        if (languages == null || languages.length == 0) {
+            this.packages = [];
             console.log("languages empty", this.packages)
         } else {
             console.log("languages", languages[0])
             this.packages = this.allpackages.filter(x => languages.indexOf(x.language) > -1)
             console.log("filtered", this.packages)
-            if(!haschromium && !haschrome) {
+            if (!haschromium && !haschrome) {
                 this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
                 console.log("filtered again", this.packages)
             }
-            if(this.model._id == null || this.model._id == "") {
+            if (this.model._id == null || this.model._id == "") {
                 this.model.package = "";
             }
-            if((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
+            if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
                 this.model.package = this.packages[0]._id;
             }
-            this.packages.unshift({_id: "", name: "None"})
+            this.packages.unshift({ _id: "", name: "None" })
         }
 
-        if(this.model._id != null && this.model._id != "") {
+        if (this.model._id != null && this.model._id != "") {
             this.PlanUpdated()
             return;
         }
         var image = this.images.find(x => x.image == this.model.image)
-        if(this.model.port != null && this.model.port != "") {
+        if (this.model.port != null && this.model.port != "") {
             this.model.webserver = true;
         } else {
             this.model.webserver = (image.port != null && image.port != "");
-        }        
-        if(this.model.image.indexOf("openiap/nodeagent")> -1) {
+        }
+        if (this.model.image.indexOf("openiap/nodeagent") > -1) {
             // "gitrepo": "https://github.com/openiap/nodeworkitemagent.git",
             this.model.environment = {
             }
         }
-        if(this.model.image.indexOf("openiap/noderedagent") > -1) {
+        if (this.model.image.indexOf("openiap/noderedagent") > -1) {
             this.model.environment = {
                 "nodered_id": this.model.slug,
                 "admin_role": "users",
@@ -7928,26 +7935,26 @@ export class AgentCtrl extends entityCtrl<any> {
                 var name = WebSocketClient.instance.user.username.toLowerCase();
                 name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
                 this.model.environment["old_nodered_id"] = name;
-            } catch (error) {                
+            } catch (error) {
             }
         }
-        if(this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
+        if (this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             // "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
             this.model.environment = {
             }
             this.PlanUpdated()
         }
-        if(this.model.image.indexOf("openiap/dotnetagent") > -1) {
+        if (this.model.image.indexOf("openiap/dotnetagent") > -1) {
             // "gitrepo": "https://github.com/openiap/dotnetworkitemagent.git",
             this.model.environment = {
             }
         }
-        if(this.model.image.indexOf("openiap/pyagent") > -1) {
+        if (this.model.image.indexOf("openiap/pyagent") > -1) {
             // "gitrepo": "https://github.com/openiap/pyworkitemagent.git",
             this.model.environment = {
             }
         }
-        if(this.model.image.indexOf("openiap/pychromiumagent") > -1) {
+        if (this.model.image.indexOf("openiap/pychromiumagent") > -1) {
             // "gitrepo3": "https://github.com/openiap/rccworkitemagent.git",
             // "gitrepo2": "https://github.com/openiap/robotframeworkagent.git",
             // "gitrepo": "https://github.com/openiap/taguiagent.git",
@@ -7955,14 +7962,14 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             this.PlanUpdated()
         }
-        if(this.model.image.indexOf("openiap/grafana") > -1) {
+        if (this.model.image.indexOf("openiap/grafana") > -1) {
             this.model.environment = {
                 "GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH": "contains(roles[*], 'users') && 'Admin'"
             }
             this.PlanUpdated()
         }
-        if(this.model.image.indexOf("elsaworkflow") > -1) {
-            var url = window.location.protocol + "//"+  this.WebSocketClientService.agent_domain_schema.replace("$slug$", this.model.slug);
+        if (this.model.image.indexOf("elsaworkflow") > -1) {
+            var url = window.location.protocol + "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", this.model.slug);
             this.model.environment = {
                 "ELSA__SERVER__BASEURL": url
             }
@@ -8003,9 +8010,9 @@ export class AgentCtrl extends entityCtrl<any> {
         'square', 'steep', 'still', 'summer', 'super', 'sweet', 'throbbing', 'tight',
         'tiny', 'twilight', 'wandering', 'weathered', 'white', 'wild', 'winter', 'wispy',
         'withered', 'yellow', 'young'
-      ]
-      
-      Nouns = [
+    ]
+
+    Nouns = [
         'art', 'band', 'bar', 'base', 'bird', 'block', 'boat', 'bonus',
         'bread', 'breeze', 'brook', 'bush', 'butterfly', 'cake', 'cell', 'cherry',
         'cloud', 'credit', 'darkness', 'dawn', 'dew', 'disk', 'dream', 'dust',
@@ -8024,28 +8031,28 @@ export class AgentCtrl extends entityCtrl<any> {
         let token = ''
         for (let i = 0; i < 4; i++) {
             token += this.tokenChars[this.random(0, this.tokenChars.length - 1)]
-        }        
+        }
         return this.Adjectives[this.random(0, this.Adjectives.length - 1)] + "-" +
-        this.Nouns[this.random(0, this.Nouns.length -1 )] + "-" + token;
+            this.Nouns[this.random(0, this.Nouns.length - 1)] + "-" + token;
     }
     async DeleteAgent(): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
             this.instancelog = "";
-            await NoderedUtil.CustomCommand({command:"deleteagent", id:this.model._id, name:this.model.slug})
+            await NoderedUtil.CustomCommand({ command: "deleteagent", id: this.model._id, name: this.model.slug })
         } catch (error) {
             this.errormessage = error.message ? error.message : error
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async DeleteAgentPod(podname:string): Promise<void> {
+    async DeleteAgentPod(podname: string): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
             this.instancelog = "";
-            await NoderedUtil.CustomCommand({command:"deleteagentpod", id:this.model._id, name:podname})
+            await NoderedUtil.CustomCommand({ command: "deleteagentpod", id: this.model._id, name: podname })
             this.loadInstances()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -8058,7 +8065,7 @@ export class AgentCtrl extends entityCtrl<any> {
             this.loading = true;
             this.errormessage = "";
             this.instancelog = "";
-            await NoderedUtil.CustomCommand({command:"stopagent", id:this.model._id, name:this.model.slug})
+            await NoderedUtil.CustomCommand({ command: "stopagent", id: this.model._id, name: this.model.slug })
             this.loadInstances()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -8071,7 +8078,7 @@ export class AgentCtrl extends entityCtrl<any> {
             this.loading = true;
             this.errormessage = "";
             this.instancelog = "";
-            await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+            await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
             this.loadInstances()
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -8079,11 +8086,11 @@ export class AgentCtrl extends entityCtrl<any> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async GetInstanceLog(podname:string): Promise<void> {
+    async GetInstanceLog(podname: string): Promise<void> {
         try {
             this.loading = true;
             this.instancelogpodname = podname;
-            this.instancelog = await NoderedUtil.CustomCommand({command:"getagentlog", id:this.model._id, name:podname})
+            this.instancelog = await NoderedUtil.CustomCommand({ command: "getagentlog", id: this.model._id, name: podname })
             this.errormessage = "";
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -8098,55 +8105,58 @@ export class AgentCtrl extends entityCtrl<any> {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
             var image = this.images.find(x => x.image == this.model.image)
-            if(image != null) {
-                if(this.model.stripeprice == null || this.model.stripeprice == "") {
-                    this.model.webserver = (image.port != null && image.port != "");
-                    if(this.model.webserver == true) {
-                        this.model.port = image.port;
+            if (image != null) {
+                if (this.model.stripeprice == null || this.model.stripeprice == "") {
+                    if (this.model._id == null || this.model._id == "") {
+                        this.model.webserver = (image.port != null && image.port != "");
+                        if (this.model.webserver == true) {
+                            this.model.port = image.port;
+                        }
                     }
-                    
-                // } else if (this.model.port == null || this.model.port == "") {
+                    // } else if (this.model.port == null || this.model.port == "") {
                 } else if (image.port == null || image.port == "") {
-                    this.model.webserver = false;
+                    if (this.model._id == null || this.model._id == "") {
+                        this.model.webserver = false;
+                    }
                 } else {
-                    if(image.port != null && image.port != "") {
+                    if (image.port != null && image.port != "") {
                         this.model.port = image.port;
                     }
                 }
             }
-            var _package = this.packages.find(x => x.name == this.model.package);
-            if(_package != null) {
-                if(_package.port != null && _package.port != "") {
-                    if(this.model._id == null || this.model._id == "") {
+            var _package = this.packages.find(x => x._id == this.model.package);
+            if (_package != null) {
+                if (_package.port != null && _package.port != "") {
+                    if (this.model._id == null || this.model._id == "") {
                         this.model.webserver = true;
-                    }                    
+                    }
                     this.model.port = image.port;
                 }
             }
 
-            if(image != null && image.volumes != null && image.volumes.length > 0) {
+            if (image != null && image.volumes != null && image.volumes.length > 0) {
                 this.model.volumes = image.volumes;
             }
-            if(image != null && image != "") {
+            if (image != null && image != "") {
                 this.model.docker = true;
             }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
-                await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+                await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
             } else {
                 var tmp = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
-                if(this.model) {
+                if (this.model) {
                     this.model = tmp;
                     console.log("insertone", this.model)
                     this.id = this.model._id
                     this.basequery = { _id: this.id };
                     console.log("startagent", this.model.slug)
-                    await NoderedUtil.CustomCommand({command:"startagent", id:this.model._id, name:this.model.slug})
+                    await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
                     console.log("load data")
                 }
             }
             this.loading = false;
-            if(this.model) { this.loadData(); }
+            if (this.model) { this.loadData(); }
         } catch (error) {
             console.error(error);
             this.errormessage = error.message ? error.message : error;
@@ -8224,7 +8234,7 @@ export class AgentCtrl extends entityCtrl<any> {
     }
     async handlefilter(e) {
         this.e = e;
-        
+
         this.searchFilteredList = await NoderedUtil.Query({
             collectionname: "users",
             query: {
@@ -8237,12 +8247,12 @@ export class AgentCtrl extends entityCtrl<any> {
             collectionname: "users",
             query: {
                 _type: "user",
-                "$or" : [
-                    {name: new RegExp([this.searchtext].join(""), "i")},
-                    {email: new RegExp([this.searchtext].join(""), "i")},
-                    {username: new RegExp([this.searchtext].join(""), "i")}
+                "$or": [
+                    { name: new RegExp([this.searchtext].join(""), "i") },
+                    { email: new RegExp([this.searchtext].join(""), "i") },
+                    { username: new RegExp([this.searchtext].join(""), "i") }
                 ]
-                
+
             }
             , orderby: { _type: -1, name: 1 }, top: 5
         }));
@@ -8287,12 +8297,12 @@ export class PackagesCtrl extends entitiesCtrl<Base> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         this.autorefresh = true;
         console.debug("PackagesCtrl");
-        this.basequery = {_type: "package"};
+        this.basequery = { _type: "package" };
         this.collection = "agents";
         this.postloadData = this.processdata;
         this.skipcustomerfilter = true;
         this.searchfields = ["name", "languages"];
-        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, language: 1, _createdby:1 };
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, language: 1, _createdby: 1 };
         if (this.userdata.data.PackagesCtrl) {
             this.basequery = this.userdata.data.PackagesCtrl.basequery;
             this.collection = this.userdata.data.PackagesCtrl.collection;
@@ -8317,16 +8327,16 @@ export class PackagesCtrl extends entitiesCtrl<Base> {
         this.userdata.data.PackagesCtrl.skipcustomerfilter = this.skipcustomerfilter;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async DeletePackage(model:any): Promise<void> {
+    async DeletePackage(model: any): Promise<void> {
         try {
             this.loading = true;
             this.errormessage = "";
-            await NoderedUtil.CustomCommand({command:"deletepackage", id:model._id})
+            await NoderedUtil.CustomCommand({ command: "deletepackage", id: model._id })
             this.loading = false;
             setTimeout(this.loadData.bind(this), 500)
         } catch (error) {
             this.errormessage = error.message ? error.message : error
-            
+
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -8367,7 +8377,7 @@ export class PackageCtrl extends entityCtrl<Base> {
         try {
             await this.Upload()
             // @ts-ignore
-            if(this.model.fileid == null || this.model.fileid == "") {
+            if (this.model.fileid == null || this.model.fileid == "") {
                 throw new Error("File is required")
             }
             if (this.model._id) {
@@ -8390,32 +8400,32 @@ export class PackageCtrl extends entityCtrl<Base> {
     }
     toBase64(file) {
         return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as any);
-        reader.onerror = error => reject(error);
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as any);
+            reader.onerror = error => reject(error);
         });
-    }    
+    }
     async Upload() {
         try {
             const e: any = document.getElementById('fileupload')
             // const buffer = new Uint8Array(await e.files[0].arrayBuffer())
-            if(e.files && e.files.length > 0) {
-                let buffer:string = await this.toBase64(e.files[0])
-                if(buffer != null) {
+            if (e.files && e.files.length > 0) {
+                let buffer: string = await this.toBase64(e.files[0])
+                if (buffer != null) {
                     buffer = buffer.split(",")[1]
-                }                
+                }
                 const mimeType = e.files[0].type
                 const filename = e.files[0].name
                 // @ts-ignore
-                var result = await NoderedUtil.SaveFile({ filename, mimeType,  file: buffer, compressed: false, metadata: { _type: "package" } });
+                var result = await NoderedUtil.SaveFile({ filename, mimeType, file: buffer, compressed: false, metadata: { _type: "package" } });
                 // console.log(result)
                 console.log(result.id)
                 // @ts-ignore
                 this.oldfileid = this.model.fileid;
                 // @ts-ignore
                 this.model.fileid = result.id;
-                e.value= null;
+                e.value = null;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             } else {
                 console.log("no files in form")
