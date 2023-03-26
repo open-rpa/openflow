@@ -4908,7 +4908,8 @@ export class Message {
                 var result = [];
                 if (Config.enable_openflow_amqp && WebSocketServer._remoteclients.length > 0) {
                     for(var x = 0; x < WebSocketServer._remoteclients.length; x++) {
-                        var cli = WebSocketServer._remoteclients[x];
+                        // var cli = WebSocketServer._remoteclients[x];
+                        var cli = Object.assign({}, WebSocketServer._remoteclients[x]);
                         // @ts-ignore
                         if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                         // @ts-ignore
@@ -4922,10 +4923,11 @@ export class Message {
                         } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
                             result.push(cli);
                         }
+                        delete cli.user._acl;
                     }
                 } else {
                     for(var x = 0; x < WebSocketServer._clients.length; x++) {
-                        var cli = WebSocketServer._clients[x];
+                        var cli = Object.assign({}, WebSocketServer._clients[x]);
                         // @ts-ignore
                         if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                         // @ts-ignore
@@ -4939,6 +4941,7 @@ export class Message {
                         } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
                             result.push(cli);
                         }
+                        delete cli.user._acl;
                     }
                 }
                 msg.result = result;

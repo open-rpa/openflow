@@ -7624,7 +7624,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
     }
     knownpods = [];
     getStatus(model) {
-        var instances = this.knownpods.filter(x => (x.metadata.labels && x.metadata.labels.app == model.slug) || (x.metadata.name == model.slug));
+        var instances = this.knownpods.filter(x => (x.metadata.labels && (x.metadata.labels.app == model.slug || x.metadata.labels.slug == model.slug)) || (x.metadata.name == model.slug));
         for (var x = 0; x < instances.length; x++) {
             var instance = instances[x]
             model.status = "unknown"
