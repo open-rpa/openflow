@@ -4117,6 +4117,9 @@ export class Message {
         var wi: Workitem = new Workitem(); wi._type = "workitem";
         wi._id = new ObjectId().toHexString();
         wi._acl = wiq._acl;
+        if (!DatabaseConnection.hasAuthorization(user, wi, Rights.invoke)) {
+            throw new Error("Unknown work item queue or " + this.tuser.username + " is missing invoke rights");
+        }
         wi.wiq = wiq.name;
         wi.wiqid = wiq._id;
         wi.name = msg.name ? msg.name : "New work item";
@@ -4300,6 +4303,9 @@ export class Message {
             let wi: Workitem = new Workitem(); wi._type = "workitem";
             wi._id = new ObjectId().toHexString();
             wi._acl = wiq._acl;
+            if (!DatabaseConnection.hasAuthorization(user, wi, Rights.invoke)) {
+                throw new Error("Unknown work item queue or " + this.tuser.username + " is missing invoke rights");
+            }
             wi.wiq = wiq.name;
             wi.wiqid = wiq._id;
             wi.name = item.name ? item.name : "New work item";
@@ -4439,6 +4445,9 @@ export class Message {
         if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wi.success_wiqid = msg.success_wiqid;
 
         wi._acl = wiq._acl;
+        if (!DatabaseConnection.hasAuthorization(user, wi, Rights.invoke)) {
+            throw new Error("Unknown work item or  " + this.tuser.username + " is missing invoke rights");
+        }
         wi.wiq = wiq.name;
         wi.wiqid = wiq._id;
         if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
@@ -4495,7 +4504,7 @@ export class Message {
                 var exists = wi.files.filter(x => x.name == file.filename);
                 if (exists.length > 0) {
                     try {
-                        await Config.db.DeleteOne(exists[0]._id, "fs.files", false, jwt, parent);
+                        await Config.db.DeleteOne(exists[0]._id, "fs.files", false, rootjwt, parent);
                     } catch (error) {
                         Logger.instanse.error(msg.error, parent);
                     }
@@ -4570,7 +4579,7 @@ export class Message {
                 console.log("Trick queuemonitoringlastrun error " + error.message)
             }
         }
-        wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, jwt, parent);
+        wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, rootjwt, parent);
         msg.result = wi;
         if (oldstate != wi.state && (wi.state == "successful" || wi.state == "failed")) {
             var success_wiq = wi.success_wiq || wiq.success_wiq;
@@ -4626,6 +4635,9 @@ export class Message {
             if (workitems.length > 0) {
                 const UpdateDoc: any = { "$set": {}, "$unset": {} };
                 let _wi = workitems[0];
+                if (!DatabaseConnection.hasAuthorization(this.tuser, _wi, Rights.invoke)) {
+                    throw new Error("Access denied popping workitem " + _wi._id + " " + this.tuser.username + " is missing invoke rights)");
+                }
                 _wi.lastrun = new Date(new Date().toISOString());
 
                 if (NoderedUtil.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
@@ -4644,7 +4656,7 @@ export class Message {
                         "state": workitems[0].state,
                         "userid": workitems[0].userid,
                         "username": workitems[0].username,
-                    }, UpdateDoc, "workitems", 1, true, Crypt.rootToken(), null)
+                    }, UpdateDoc, "workitems", 1, true, rootjwt, null)
 
                     if (NoderedUtil.IsNullEmpty(_wi.retries)) _wi.retries = 0;
                     if (typeof _wi.payload !== 'object') _wi.payload = { "value": _wi.payload };
@@ -4702,20 +4714,23 @@ export class Message {
         if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
         var wi: Workitem = wis[0];
 
+        if (!DatabaseConnection.hasAuthorization(user, wi, Rights.invoke)) {
+            throw new Error("Unknown work item or  " + this.tuser.username + " is missing invoke rights");
+        }
         if (!DatabaseConnection.hasAuthorization(user, wi, Rights.delete)) {
             throw new Error("Unknown work item or access denied");
         }
 
-        var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt }, parent);
+        var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt:rootjwt }, parent);
         for (var i = 0; i < files.length; i++) {
-            await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
+            await Config.db.DeleteOne(files[i]._id, "fs.files", false, rootjwt, parent);
         }
-        var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt }, parent);
+        var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt:rootjwt }, parent);
         for (var i = 0; i < files.length; i++) {
-            await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
+            await Config.db.DeleteOne(files[i]._id, "fs.files", false, rootjwt, parent);
         }
 
-        await Config.db.DeleteOne(wi._id, "workitems", false, jwt, parent);
+        await Config.db.DeleteOne(wi._id, "workitems", false, rootjwt, parent);
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
