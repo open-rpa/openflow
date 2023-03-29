@@ -5118,6 +5118,7 @@ export class Message {
                     if(!NoderedUtil.IsNullEmpty(agent.docker)) _agent.docker = agent.docker;
                     if(!NoderedUtil.IsNullEmpty(agent.assistent)) _agent.assistent = agent.assistent;
                     if(!NoderedUtil.IsNullEmpty(agent.daemon)) _agent.daemon = agent.daemon;
+                    if(!NoderedUtil.IsNullEmpty(agent.languages) && Array.isArray(agent.languages)) _agent.languages = agent.languages;
 
                     var agentuser = this.tuser;
                     if (_agent.runas != null && _agent.runas != "" && this.tuser._id != _agent.runas) {

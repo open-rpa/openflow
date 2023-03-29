@@ -7914,9 +7914,9 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             if (this.model._id == null || this.model._id == "") {
                 this.model.package = "";
-            }
-            if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
-                this.model.package = this.packages[0]._id;
+                if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
+                    this.model.package = this.packages[0]._id;
+                }
             }
             this.packages.unshift({ _id: "", name: "None" })
         }
@@ -8448,4 +8448,145 @@ export class PackageCtrl extends entityCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
+}
+
+export class RunPackageCtrl extends entityCtrl<Base> {
+    e: any = null;
+    languages: string[] = ["nodejs", "python", "dotnet"];
+    oldfileid: string = "";
+    packageid: string = "";
+    package: string = "";
+    agents: any[] = [];
+    packages: any[] = [];
+    allpackages: any[] = [];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("RunPackageCtrl");
+        this.collection = "agents";
+        this.postloadData = this.processData.bind(this);
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.queuename = "";
+            this.packageid = $routeParams.packageid;
+    
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                await this.processData();
+            }
+            this.RegisterQueue();
+        });
+    }
+    async processData() {
+        this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "package" }, top:100 });
+        if (this.id !== null && this.id !== undefined) {
+            this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _id: this.id } });
+            var temp = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", _id: {"$nin": [this.id]}, languages: {"$exists": true} }, top:100 });
+            this.agents = this.agents.concat(temp);
+        } else {
+            this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", languages: {"$exists": true} }, top:100 });
+        }
+        this.AgentUpdated()
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    haschrome: boolean = false;
+    haschromium: boolean = false;
+    queuename: string = "";
+    async AgentUpdated() {
+        this.languages = [];
+        var _a = this.agents.find(x => x._id == this.id);
+        if (_a == null) return;
+        this.languages = _a.languages;
+        this.haschrome = (_a.chrome == true)
+        this.haschromium = (_a.chromium == true)
+
+        this.packages = this.allpackages.filter(x => this.languages.indexOf(x.language) > -1)
+        console.log("filtered", this.packages)
+        if (!this.haschromium && !this.haschrome) {
+            this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
+            console.log("filtered again", this.packages)
+        }
+        if(this.packages.find(x => x._id == this.package) == null) {
+            this.package = "";
+        }
+        if(this.package == "" && this.packages.length > 0) {
+            this.package = this.packages[0]._id;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async submit(): Promise<void> {
+        var _a = this.agents.find(x => x._id == this.id);
+        if (_a == null) return;
+        const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        var payload ={
+            "command": "runpackage",
+            "id": this.package,
+            "stream": true,
+            "queuename": this.queuename
+        }
+        var div = document.createElement("div");
+        div.id = streamid + "_div";
+        div.classList.add("shadow"); div.classList.add("card");
+        var label = document.createElement("label");
+        label.innerText = "Stream " + streamid;
+        div.appendChild(label);
+        var killbutton = document.createElement("button");
+        killbutton.innerText = "Kill";
+        killbutton.id = streamid + "_kill";
+        killbutton.onclick = async () => {
+            try {
+                console.log("kill", streamid)
+                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug, correlationId: streamid })
+            } catch (error) {
+                console.error(error);                
+            }
+        }
+        div.appendChild(killbutton);
+        var pre = document.createElement("pre");
+        pre.id = streamid;
+        div.appendChild(pre);
+        var runs = document.getElementById("runs");
+        runs.prepend(div);
+
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug, correlationId: streamid })
+        console.log("submitted", payload)        
+    }
+    async RegisterQueue() {
+        if(this.queuename != "") return;
+        this.queuename = await NoderedUtil.RegisterQueue({
+            callback: (_data: QueueMessage, ack: any) => {
+                ack();
+                console.debug(_data);
+                if(_data == null) return;
+                var correlationId = _data.correlationId;
+                var data: any = _data;
+                while(data.data != null) data = data.data;
+                var pre = document.getElementById(correlationId);
+                if(pre == null) return;
+                if(data.command == "completed") {
+                    var killbutton = document.getElementById(correlationId + "_kill");
+                    if(killbutton != null) killbutton.remove();
+                    return;
+                }
+                const decoder = new TextDecoder("utf-8");
+                const string = decoder.decode(new Uint8Array(data as any));
+                // pre.innerText += string;
+                pre.innerText = string + pre.innerText;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+            }, closedcallback: (msg) => {
+                this.queuename = "";
+                setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            }
+        });
+        console.debug("registed queue", this.queuename);
+    }
 }
