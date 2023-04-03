@@ -4938,7 +4938,7 @@ export class Message {
                         } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
                             result.push(cli);
                         }
-                        delete cli.user._acl;
+                        if(cli.user != null) delete cli.user._acl;
                     }
                 } else {
                     for(var x = 0; x < WebSocketServer._clients.length; x++) {
@@ -4956,7 +4956,7 @@ export class Message {
                         } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
                             result.push(cli);
                         }
-                        delete cli.user._acl;
+                        if(cli.user != null) delete cli.user._acl;
                     }
                 }
                 msg.result = result;
