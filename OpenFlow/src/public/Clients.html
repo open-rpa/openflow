@@ -78,9 +78,7 @@
       <td>
         <timesince ng-model="model.created" />
       </td>
-      <td>
-        {{ model.remoteip }}
-      </td>
+      <td><a ng-href="https://www.iplocation.net/?query={{model.remoteip}}" target="_blank">{{model.remoteip}}</a></td>
       <td class="text-right">
         <!-- <a href ng-click="ctrl.ShowWorkflows(model)" class="btn">workflows</a>
         <a ng-href ng-click="model._id == ctrl.WebSocketClientService.user._id || ctrl.Impersonate(model)" class="btn"
