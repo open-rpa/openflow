@@ -1417,6 +1417,10 @@ export class Message {
                 cli.clientagent = "browser"
             }
             // @ts-ignore
+            if (cli.clientagent == "RDService" || cli.clientagent == "rdservice") {
+                cli.clientagent = "rdservice"
+            }
+            // @ts-ignore
             if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
                 cli.clientagent = "browser"
             }
@@ -4920,46 +4924,7 @@ export class Message {
         msg = CustomCommandMessage.assign(this.data);
         switch (msg.command) {
             case "getclients":
-                var result = [];
-                if (Config.enable_openflow_amqp && WebSocketServer._remoteclients.length > 0) {
-                    for(var x = 0; x < WebSocketServer._remoteclients.length; x++) {
-                        // var cli = WebSocketServer._remoteclients[x];
-                        var cli = Object.assign({}, WebSocketServer._remoteclients[x]);
-                        // @ts-ignore
-                        if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
-                        // @ts-ignore
-                        if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                        if(cli.user != null) {
-                            // @ts-ignore
-                            cli.name = cli.user.name;
-                            if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
-                                result.push(cli);
-                            }
-                        } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
-                            result.push(cli);
-                        }
-                        if(cli.user != null) delete cli.user._acl;
-                    }
-                } else {
-                    for(var x = 0; x < WebSocketServer._clients.length; x++) {
-                        var cli = Object.assign({}, WebSocketServer._clients[x]);
-                        // @ts-ignore
-                        if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
-                        // @ts-ignore
-                        if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                        if(cli.user != null) {
-                            // @ts-ignore
-                            cli.name = cli.user.name;
-                            if (DatabaseConnection.hasAuthorization(this.tuser, cli.user, Rights.read)) {
-                                result.push(cli);
-                            }
-                        } else if (this.tuser.HasRoleId(WellknownIds.admins)) {
-                            result.push(cli);
-                        }
-                        if(cli.user != null) delete cli.user._acl;
-                    }
-                }
-                msg.result = result;
+                msg.result = WebSocketServer.getclients(this.tuser);
                 break;
             case "dumpwebsocketclients":
                 if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
