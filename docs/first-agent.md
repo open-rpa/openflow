@@ -55,10 +55,13 @@ Click on "Agents" and "Add Agent." Make sure the image is "Agent" and that your 
 # Runnning package in Desktop Assistant
 The Desktop Assistant allow you to run packages in your desktop. This is handy if you need to run code at your local machine within your current desktop. 
 Head to [OpenIAP Desktop Assistant](https://github.com/openiap/assistant/releases) and download the agent that matches your operating system. 
-- .arm64.dmg is for MacOS running on M1 or M2 processors
-- .dmg is for MacOS running on x86 processors
-- .AppImage is for Linux ( right click and allow executing )
-- .exe is for Windows
+- [🪟windows](https://github.com/openiap/assistant/releases/latest/download/assistant-win.exe)
+- [🐧linux](https://github.com/openiap/assistant/releases/latest/download/assistant-linux-x86_64.AppImage)
+- [💻macos M1/M2](https://github.com/openiap/assistant/releases/latest/download/assistant-macos-arm64.dmg)
+- [💻macos x64](https://github.com/openiap/assistant/releases/latest/download/assistant-macos-x64.dmg)
+
+
+
 
 The first time you run it, you will be prompted to select the OpenIAP flow instance you want to be connected to. Make sure the url matches the instance you want to connect to, then click the "Connect" button. This will open your local browser and prompt you to signin to feed a token into the agent. The agent will now login and register it self as an agent in the openiap flow instance. In the browser windows click "Agents" and validate you see your agent listed by "hostname / username". 
 Now go to the agent window and validate you see the agent is signed in and has listed all the packages you have access to, this should include the package we deployed above.
