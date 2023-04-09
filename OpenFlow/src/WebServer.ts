@@ -270,7 +270,8 @@ export class WebServer {
             WebServer.wss = new WebSocket.Server({ server: WebServer.server });
             await protowrap.init();
 
-            config.doDumpMesssages = true;
+            config.doDumpMesssages = false;
+            config.DoDumpToConsole = false;
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -295,6 +296,7 @@ export class WebServer {
         servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, "/ws/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
         servers.push(protowrap.serve("grpc", this.onClientConnected, config.defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
         servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
+        config.DoDumpToConsole = false;
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
     }
     public static async ReceiveFileContent(client: flowclient, rid:string, msg: any) {

@@ -811,7 +811,6 @@ export class Message {
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 throw new Error("queuename or exchange must be given");
             }
-
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
                 const tuser = this.tuser;
                 let allowed: boolean = false;
