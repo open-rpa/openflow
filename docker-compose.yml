@@ -5,13 +5,14 @@ services:
   #   # network_mode: "host"
   #   ports:
   #     - "5000:5000"
-  mongodb:
-    image: "mongo"
-    volumes:
-      - mongodb_data:/data/db
+  # mongodb:
+    # image: "mongo"
+    # restart: unless-stopped
+    # volumes:
+      # - mongodb_data:/data/db
     # network_mode: "host"
-    ports:
-      - "27017:27017"
+    # ports:
+    #   - "27017:27017"
   # traefik:
   #   image: "traefik"
   #   command:
@@ -25,6 +26,7 @@ services:
   #     - "//var/run/docker.sock:/var/run/docker.sock:ro"
   rabbitmq:
     image: "rabbitmq:3-management"
+    restart: unless-stopped
     # network_mode: "host"
     ports:
       - "5672:5672"
