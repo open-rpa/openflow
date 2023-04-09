@@ -7590,6 +7590,7 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
 
 
 export class AgentsCtrl extends entitiesCtrl<Base> {
+    public show: string = "all";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7606,7 +7607,6 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.basequery = { _type: "agent" };
         this.collection = "agents";
         this.postloadData = this.processdata;
-        this.skipcustomerfilter = true;
         this.searchfields = ["name", "slug"];
         this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, webserver: 1, runas: 1, _createdby: 1, slug: 1 };
         if (this.userdata.data.AgentsCtrl) {
@@ -7618,16 +7618,18 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             this.basequeryas = this.userdata.data.AgentsCtrl.basequeryas;
             this.skipcustomerfilter = this.userdata.data.AgentsCtrl.skipcustomerfilter;
         }
+        this.preloadData = this.preLoad.bind(this);
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
     }
     knownpods = [];
+    clients = [];
     getStatus(model) {
-        var instances = this.knownpods.filter(x => (x.metadata.labels && x.metadata.labels.app == model.slug) || (x.metadata.name == model.slug));
+        var instances = this.knownpods.filter(x => (x.metadata.labels && (x.metadata.labels.app == model.slug || x.metadata.labels.slug == model.slug)) || (x.metadata.name == model.slug));
         for (var x = 0; x < instances.length; x++) {
             var instance = instances[x]
-            model.status = "unknown"
+            model.status = "missing"
             if (instance.status && instance.status.phase) {
                 model.status = instance.status.phase;
             }
@@ -7640,6 +7642,28 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         }
         if (instances.length == 0) {
             model.status = "missing"
+        }
+        if(model._id == "64315f316778e8361f8cb7fa")debugger;
+        if(model.status == "missing") {
+            if(model.image == null) {
+                var cli = this.clients.filter(x=> x.user?._id ==model.runas && (x.agent == "nodeagent" || x.agent == "assistant"));
+                if(cli != null && cli.length > 0) {
+                    console.log(cli[0], model);
+                    model.status = "online"
+                }
+            } else if(model.image.indexOf("nodered") > -1) {
+                var cli = this.clients.filter(x=> x.user?._id ==model.runas && x.agent == "nodered");
+                if(cli != null && cli.length > 0) {
+                    console.log(cli[0], model);
+                    model.status = "online"
+                }
+            } else if(model.image.indexOf("agent") > -1) {
+                var cli = this.clients.filter(x=> x.user?._id ==model.runas && (x.agent == "nodeagent" || x.agent == "python") );
+                if(cli != null && cli.length > 0) {
+                    console.log(cli[0], model);
+                    model.status = "online"
+                }
+            }
         }
         // if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -7654,6 +7678,14 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         // }
         return image;
     }
+    preLoad() {
+        if (this.show != "all") {
+            this.basequery = { _type: "agent" };
+            this.basequery[this.show] = true;
+        }else {
+            this.basequery = { _type: "agent" };
+        }
+    }
     async processdata() {
         if (!this.userdata.data.AgentsCtrl) this.userdata.data.AgentsCtrl = {};
         this.userdata.data.AgentsCtrl.basequery = this.basequery;
@@ -7666,6 +7698,9 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
         this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
+        this.clients = await NoderedUtil.CustomCommand({ "command": "getclients" });
+
+        console.log(this.knownpods);
         for (var i = 0; i < this.models.length; i++) {
             var model = this.models[i];
             // @ts-ignore
@@ -7903,9 +7938,9 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             if (this.model._id == null || this.model._id == "") {
                 this.model.package = "";
-            }
-            if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
-                this.model.package = this.packages[0]._id;
+                if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
+                    this.model.package = this.packages[0]._id;
+                }
             }
             this.packages.unshift({ _id: "", name: "None" })
         }
@@ -8437,4 +8472,145 @@ export class PackageCtrl extends entityCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 
+}
+
+export class RunPackageCtrl extends entityCtrl<Base> {
+    e: any = null;
+    languages: string[] = ["nodejs", "python", "dotnet"];
+    oldfileid: string = "";
+    packageid: string = "";
+    package: string = "";
+    agents: any[] = [];
+    packages: any[] = [];
+    allpackages: any[] = [];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("RunPackageCtrl");
+        this.collection = "agents";
+        this.postloadData = this.processData.bind(this);
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.queuename = "";
+            this.packageid = $routeParams.packageid;
+    
+            if (this.id !== null && this.id !== undefined) {
+                await this.loadData();
+            } else {
+                await this.processData();
+            }
+            this.RegisterQueue();
+        });
+    }
+    async processData() {
+        this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "package" }, top:100 });
+        if (this.id !== null && this.id !== undefined) {
+            this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _id: this.id } });
+            var temp = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", _id: {"$nin": [this.id]}, languages: {"$exists": true} }, top:100 });
+            this.agents = this.agents.concat(temp);
+        } else {
+            this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", languages: {"$exists": true} }, top:100 });
+        }
+        this.AgentUpdated()
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    haschrome: boolean = false;
+    haschromium: boolean = false;
+    queuename: string = "";
+    async AgentUpdated() {
+        this.languages = [];
+        var _a = this.agents.find(x => x._id == this.id);
+        if (_a == null) return;
+        this.languages = _a.languages;
+        this.haschrome = (_a.chrome == true)
+        this.haschromium = (_a.chromium == true)
+
+        this.packages = this.allpackages.filter(x => this.languages.indexOf(x.language) > -1)
+        console.log("filtered", this.packages)
+        if (!this.haschromium && !this.haschrome) {
+            this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
+            console.log("filtered again", this.packages)
+        }
+        if(this.packages.find(x => x._id == this.package) == null) {
+            this.package = "";
+        }
+        if(this.package == "" && this.packages.length > 0) {
+            this.package = this.packages[0]._id;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async submit(): Promise<void> {
+        var _a = this.agents.find(x => x._id == this.id);
+        if (_a == null) return;
+        const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        var payload ={
+            "command": "runpackage",
+            "id": this.package,
+            "stream": true,
+            "queuename": this.queuename
+        }
+        var div = document.createElement("div");
+        div.id = streamid + "_div";
+        div.classList.add("shadow"); div.classList.add("card");
+        var label = document.createElement("label");
+        label.innerText = "Stream " + streamid;
+        div.appendChild(label);
+        var killbutton = document.createElement("button");
+        killbutton.innerText = "Kill";
+        killbutton.id = streamid + "_kill";
+        killbutton.onclick = async () => {
+            try {
+                console.log("kill", streamid)
+                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug, correlationId: streamid })
+            } catch (error) {
+                console.error(error);                
+            }
+        }
+        div.appendChild(killbutton);
+        var pre = document.createElement("pre");
+        pre.id = streamid;
+        div.appendChild(pre);
+        var runs = document.getElementById("runs");
+        runs.prepend(div);
+
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug, correlationId: streamid })
+        console.log("submitted", payload)        
+    }
+    async RegisterQueue() {
+        if(this.queuename != "") return;
+        this.queuename = await NoderedUtil.RegisterQueue({
+            callback: (_data: QueueMessage, ack: any) => {
+                ack();
+                console.debug(_data);
+                if(_data == null) return;
+                var correlationId = _data.correlationId;
+                var data: any = _data;
+                while(data.data != null) data = data.data;
+                var pre = document.getElementById(correlationId);
+                if(pre == null) return;
+                if(data.command == "completed") {
+                    var killbutton = document.getElementById(correlationId + "_kill");
+                    if(killbutton != null) killbutton.remove();
+                    return;
+                }
+                const decoder = new TextDecoder("utf-8");
+                const string = decoder.decode(new Uint8Array(data as any));
+                // pre.innerText += string;
+                pre.innerText = string + pre.innerText;
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+            }, closedcallback: (msg) => {
+                this.queuename = "";
+                setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            }
+        });
+        console.debug("registed queue", this.queuename);
+    }
 }

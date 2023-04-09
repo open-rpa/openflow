@@ -1,6 +1,6 @@
 import * as os from "os";
 import { NoderedUtil } from "@openiap/openflow-api";
-import { i_license_file, i_nodered_driver, i_otel } from "./commoninterfaces";
+import { i_license_file, i_agent_driver, i_otel } from "./commoninterfaces";
 import { Config } from "./Config";
 import { dockerdriver } from "./dockerdriver";
 import { DBHelper } from './DBHelper';
@@ -37,7 +37,7 @@ export class Logger {
 
     public static otel: i_otel;
     public static License: i_license_file;
-    public static nodereddriver: i_nodered_driver;
+    public static agentdriver: i_agent_driver;
     public static DBHelper: DBHelper;
     public static log_with_trace: boolean = false;
     public static enabled: any = {}
@@ -410,19 +410,19 @@ export class Logger {
         }
 
 
-        this.nodereddriver = null; // with npm -omit=optional we need to install npm i openid-client
+        this.agentdriver = null; // with npm -omit=optional we need to install npm i openid-client
 
         if (NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"])) {
             try {
-                this.nodereddriver = new dockerdriver();
-                if (!(await this.nodereddriver.detect())) {
-                    this.nodereddriver = null;
+                this.agentdriver = new dockerdriver();
+                if (!(await this.agentdriver.detect())) {
+                    this.agentdriver = null;
                 }
             } catch (error) {
-                this.nodereddriver = null;
+                this.agentdriver = null;
             }
         }
-        if (this.nodereddriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
+        if (this.agentdriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
             let _driver: any = null;
             try {
                 _driver = require("./ee/kubedriver");
@@ -431,28 +431,28 @@ export class Logger {
             }
             try {
                 if (_driver != null) {
-                    this.nodereddriver = new _driver.kubedriver();
+                    this.agentdriver = new _driver.kubedriver();
                 } else {
-                    this.nodereddriver = new dockerdriver();
+                    this.agentdriver = new dockerdriver();
                 }
                 if (_driver != null) {
-                    if (!(await this.nodereddriver.detect())) {
-                        this.nodereddriver = null;
+                    if (!(await this.agentdriver.detect())) {
+                        this.agentdriver = null;
                     }
                 }
             } catch (error) {
-                this.nodereddriver = null;
+                this.agentdriver = null;
                 Logger.instanse.error(error, null);
             }
         }
-        if (this.nodereddriver == null) {
+        if (this.agentdriver == null) {
             try {
-                this.nodereddriver = new dockerdriver();
-                if (!(await this.nodereddriver.detect())) {
-                    this.nodereddriver = null;
+                this.agentdriver = new dockerdriver();
+                if (!(await this.agentdriver.detect())) {
+                    this.agentdriver = null;
                 }
             } catch (error) {
-                this.nodereddriver = null;
+                this.agentdriver = null;
                 Logger.instanse.error(error, null);
             }
         }

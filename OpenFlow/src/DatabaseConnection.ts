@@ -1019,6 +1019,30 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         // @ts-ignore
         arr = await _pipe.toArray();
+        if(collectionname === "users") {
+            var clients = WebSocketServer.getclients(user)
+            for(var i=0; i<arr.length; i++) {
+                if(arr[i]._type == "user") {
+                    var client = clients.find(c => c.user?._id == arr[i]._id);
+                    if(client != null) {
+                        // @ts-ignore
+                        arr[i].lastseen = client.lastheartbeat;
+                    }
+                }
+            }
+        } else if(collectionname === "agents") {
+            // var clients = WebSocketServer.getclients(user)
+            // for(var i=0; i<arr.length; i++) {
+            //     if(arr[i]._type == "agent") {
+            //         var agent: iAgent = arr[i] as any;
+            //         var client = clients.find(c => c.user?._id == agent.runas && (c.clientagent != "openrpa" && c.clientagent != "browser"));
+            //         if(client != null ) {
+            //             // @ts-ignore
+            //             arr[i].lastseen = client.lastheartbeat;
+            //         }
+            //     }
+            // }
+        }
         span?.setAttribute("results", arr.length);
         let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
         if (decrypt) for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }

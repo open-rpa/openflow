@@ -5,7 +5,7 @@ import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
-import { SigninMessage, NoderedUtil, TokenUser, Base } from "@openiap/openflow-api";
+import { SigninMessage, NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Histogram, Counter, Observable } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
@@ -165,6 +165,48 @@ export class WebSocketServer {
             Logger.otel.endSpan(span);
         }
 
+    }
+    public static getclients(user: TokenUser): WebSocketServerClient[] {
+        var result = [];
+        if (Config.enable_openflow_amqp && WebSocketServer._remoteclients.length > 0) {
+            for(var x = 0; x < WebSocketServer._remoteclients.length; x++) {
+                // var cli = WebSocketServer._remoteclients[x];
+                var cli = Object.assign({}, WebSocketServer._remoteclients[x]);
+                // @ts-ignore
+                if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                // @ts-ignore
+                if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                if(cli.user != null) {
+                    // @ts-ignore
+                    cli.name = cli.user.name;
+                    if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
+                        result.push(cli);
+                    }
+                } else if (user.HasRoleId(WellknownIds.admins)) {
+                    result.push(cli);
+                }
+                if(cli.user != null) delete cli.user._acl;
+            }
+        } else {
+            for(var x = 0; x < WebSocketServer._clients.length; x++) {
+                var cli = Object.assign({}, WebSocketServer._clients[x]);
+                // @ts-ignore
+                if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                // @ts-ignore
+                if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                if(cli.user != null) {
+                    // @ts-ignore
+                    cli.name = cli.user.name;
+                    if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
+                        result.push(cli);
+                    }
+                } else if (user.HasRoleId(WellknownIds.admins)) {
+                    result.push(cli);
+                }
+                if(cli.user != null) delete cli.user._acl;
+            }
+        }
+        return result;
     }
     public static async DumpClients(parent: Span): Promise<void> {
         try {

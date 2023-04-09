@@ -7,11 +7,11 @@ To begin, you need to install Visual Studio Code and any language(s) you plan to
 - Download and install [Visual Studio Code](https://code.visualstudio.com/download)
 - Download and install [NodeJS 16+](https://nodejs.org/en/download)
 - Optional: Download and install [python 3.7+](https://www.python.org/downloads/)
-- Optional: Download and install [OpenIAP Desktop Assistant](https://github.com/openiap/assistent/releases)
+- Optional: Download and install [OpenIAP Desktop Assistant](https://github.com/openiap/assistant/releases)
 
 **Note:** When installing, make sure to select the option to add the languages to the path.
 
-Once installed, open Visual Studio Code and go to Extensions (Ctrl+Shift+X). Search for "OpenIAP" and install [OpenIAP assistent](https://marketplace.visualstudio.com/items?itemName=openiap.openiap-assistent)
+Once installed, open Visual Studio Code and go to Extensions (Ctrl+Shift+X). Search for "OpenIAP" and install [OpenIAP assistant](https://marketplace.visualstudio.com/items?itemName=openiap.openiap-assistant)
 Next, open the Palette and search for "Add OpenIAP flow instance", and follow the guide. For this demo, you can accept all the default values. When prompted for a username, just press Enter to login using the browser and create/login to your [app.openiap.io](https://app.openiap.io/#/Login) account.
 
 As always, you can also [use your own locally installed instance](https://github.com/open-rpa/docker).
@@ -54,11 +54,14 @@ Click on "Agents" and "Add Agent." Make sure the image is "Agent" and that your 
 
 # Runnning package in Desktop Assistant
 The Desktop Assistant allow you to run packages in your desktop. This is handy if you need to run code at your local machine within your current desktop. 
-Head to [OpenIAP Desktop Assistant](https://github.com/openiap/assistent/releases) and download the agent that matches your operating system. 
-- .arm64.dmg is for MacOS running on M1 or M2 processors
-- .dmg is for MacOS running on x86 processors
-- .AppImage is for Linux ( right click and allow executing )
-- .exe is for Windows
+Head to [OpenIAP Desktop Assistant](https://github.com/openiap/assistant/releases) and download the agent that matches your operating system. 
+- [🪟windows](https://github.com/openiap/assistant/releases/latest/download/assistant-win.exe)
+- [🐧linux](https://github.com/openiap/assistant/releases/latest/download/assistant-linux-x86_64.AppImage)
+- [💻macos M1/M2](https://github.com/openiap/assistant/releases/latest/download/assistant-macos-arm64.dmg)
+- [💻macos x64](https://github.com/openiap/assistant/releases/latest/download/assistant-macos-x64.dmg)
+
+
+
 
 The first time you run it, you will be prompted to select the OpenIAP flow instance you want to be connected to. Make sure the url matches the instance you want to connect to, then click the "Connect" button. This will open your local browser and prompt you to signin to feed a token into the agent. The agent will now login and register it self as an agent in the openiap flow instance. In the browser windows click "Agents" and validate you see your agent listed by "hostname / username". 
 Now go to the agent window and validate you see the agent is signed in and has listed all the packages you have access to, this should include the package we deployed above.

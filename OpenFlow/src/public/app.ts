@@ -5,7 +5,7 @@ import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,
     WorkflowsCtrl, ReportsCtrl, EditFormCtrl, FormsCtrl, FormCtrl, FilesCtrl, EntitiesCtrl, EntityCtrl, HistoryCtrl, NoderedCtrl,
     hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
-    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl, WebsocketClientsCtrl, ConsoleCtrl, AgentsCtrl, AgentCtrl, PackagesCtrl, PackageCtrl
+    OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl, ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl, WebsocketClientsCtrl, ConsoleCtrl, AgentsCtrl, AgentCtrl, PackagesCtrl, PackageCtrl, RunPackageCtrl
 } from "./Controllers";
 
 require('angular-route');
@@ -154,6 +154,10 @@ module openflow {
                 .when('/Packages', { templateUrl: 'Packages.html', controller: PackagesCtrl, controllerAs: 'ctrl' })
                 .when('/Package', { templateUrl: 'Package.html', controller: PackageCtrl, controllerAs: 'ctrl' })
                 .when('/Package/:id', { templateUrl: 'Package.html', controller: PackageCtrl, controllerAs: 'ctrl' })
+                .when('/RunPackage/:id/:packageid', { templateUrl: 'RunPackage.html', controller: RunPackageCtrl, controllerAs: 'ctrl' })
+                .when('/RunPackage/:id', { templateUrl: 'RunPackage.html', controller: RunPackageCtrl, controllerAs: 'ctrl' })
+                .when('/RunPackage', { templateUrl: 'RunPackage.html', controller: RunPackageCtrl, controllerAs: 'ctrl' })
+                
 
                 .otherwise({ redirectTo: '/main' });
         }

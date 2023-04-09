@@ -26,9 +26,9 @@
     <label for="checkbox-4"><span translate
       lib="web" >browser</span></label>
 
-      <input type="radio" id="checkbox-5" value="assistent" ng-model="ctrl.show" ng-change="ctrl.loading = false; ctrl.page = 0;ctrl.processdata()"> 
+      <input type="radio" id="checkbox-5" value="assistant" ng-model="ctrl.show" ng-change="ctrl.loading = false; ctrl.page = 0;ctrl.processdata()"> 
       <label for="checkbox-5"><span translate
-        lib="web" >assistent</span></label>
+        lib="web" >assistant</span></label>
 
       <input type="radio" id="checkbox-6" value="python" ng-model="ctrl.show" ng-change="ctrl.loading = false; ctrl.page = 0;ctrl.processdata()"> 
       <label for="checkbox-6"><span translate
@@ -78,9 +78,7 @@
       <td>
         <timesince ng-model="model.created" />
       </td>
-      <td>
-        {{ model.remoteip }}
-      </td>
+      <td><a ng-href="https://www.iplocation.net/?query={{model.remoteip}}" target="_blank">{{model.remoteip}}</a></td>
       <td class="text-right">
         <!-- <a href ng-click="ctrl.ShowWorkflows(model)" class="btn">workflows</a>
         <a ng-href ng-click="model._id == ctrl.WebSocketClientService.user._id || ctrl.Impersonate(model)" class="btn"
