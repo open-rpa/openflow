@@ -7624,11 +7624,12 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         });
     }
     knownpods = [];
+    clients = [];
     getStatus(model) {
         var instances = this.knownpods.filter(x => (x.metadata.labels && (x.metadata.labels.app == model.slug || x.metadata.labels.slug == model.slug)) || (x.metadata.name == model.slug));
         for (var x = 0; x < instances.length; x++) {
             var instance = instances[x]
-            model.status = "unknown"
+            model.status = "missing"
             if (instance.status && instance.status.phase) {
                 model.status = instance.status.phase;
             }
@@ -7641,6 +7642,28 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         }
         if (instances.length == 0) {
             model.status = "missing"
+        }
+        if(model._id == "64315f316778e8361f8cb7fa")debugger;
+        if(model.status == "missing") {
+            if(model.image == null) {
+                var cli = this.clients.filter(x=> x.user?._id ==model.runas && (x.agent == "nodeagent" || x.agent == "assistant"));
+                if(cli != null && cli.length > 0) {
+                    console.log(cli[0], model);
+                    model.status = "online"
+                }
+            } else if(model.image.indexOf("nodered") > -1) {
+                var cli = this.clients.filter(x=> x.user?._id ==model.runas && x.agent == "nodered");
+                if(cli != null && cli.length > 0) {
+                    console.log(cli[0], model);
+                    model.status = "online"
+                }
+            } else if(model.image.indexOf("agent") > -1) {
+                var cli = this.clients.filter(x=> x.user?._id ==model.runas && (x.agent == "nodeagent" || x.agent == "python") );
+                if(cli != null && cli.length > 0) {
+                    console.log(cli[0], model);
+                    model.status = "online"
+                }
+            }
         }
         // if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
@@ -7675,6 +7698,8 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
         this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
+        this.clients = await NoderedUtil.CustomCommand({ "command": "getclients" });
+
         console.log(this.knownpods);
         for (var i = 0; i < this.models.length; i++) {
             var model = this.models[i];

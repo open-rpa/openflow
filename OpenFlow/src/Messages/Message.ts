@@ -1413,6 +1413,8 @@ export class Message {
             // @ts-ignore
             if(cli.clientagent == "") cli.clientagent = "unknown"
             // @ts-ignore
+            if(cli.clientagent == "assistent") cli.clientagent = "assistant"
+            // @ts-ignore
             if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
                 cli.clientagent = "browser"
             }
@@ -5081,7 +5083,7 @@ export class Message {
                     if(!NoderedUtil.IsNullEmpty(agent.chrome)) _agent.chrome = agent.chrome;
                     if(!NoderedUtil.IsNullEmpty(agent.chromium)) _agent.chromium = agent.chromium;
                     if(!NoderedUtil.IsNullEmpty(agent.docker)) _agent.docker = agent.docker;
-                    if(!NoderedUtil.IsNullEmpty(agent.assistent)) _agent.assistent = agent.assistent;
+                    if(!NoderedUtil.IsNullEmpty(agent.assistant)) _agent.assistant = agent.assistant;
                     if(!NoderedUtil.IsNullEmpty(agent.daemon)) _agent.daemon = agent.daemon;
                     if(!NoderedUtil.IsNullEmpty(agent.languages) && Array.isArray(agent.languages)) _agent.languages = agent.languages;
 
@@ -5102,8 +5104,8 @@ export class Message {
                     _agent.runas = agentuser._id
                     _agent.runasname = agentuser.name
 
-                    // if(this.clientagent == "assistent") {
-                    //     _agent.assistent = true;
+                    // if(this.clientagent == "assistant") {
+                    //     _agent.assistant = true;
                     // }
                     // if(this.clientagent == "nodeagent") {
                     //     _agent.daemon = true;

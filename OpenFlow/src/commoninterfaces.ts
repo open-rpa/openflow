@@ -133,7 +133,7 @@ export interface iAgent extends iBase {
     chrome: boolean;
     chromium: boolean;
     docker: boolean;
-    assistent: boolean;
+    assistant: boolean;
     daemon: boolean;
 constructor();
 }
