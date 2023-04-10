@@ -128,8 +128,12 @@ export class WebSocketServer {
                     if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
-                        const keys = Object.keys(cli.messageQueue);
-                        res.observe(keys.length, { ...Logger.otel.defaultlabels, clientid: cli.id })
+                        if((cli && cli.messageQueue)) {
+                            const keys = Object.keys(cli.messageQueue);
+                            res.observe(keys.length, { ...Logger.otel.defaultlabels, clientid: cli.id })
+                        } else {
+                            res.observe(0, { ...Logger.otel.defaultlabels, clientid: cli.id })
+                        }
                     }
                 });
                 WebSocketServer.mongodb_watch_count = Logger.otel.meter.createObservableUpDownCounter("mongodb_watch", {
