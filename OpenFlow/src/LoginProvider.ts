@@ -268,9 +268,16 @@ export class LoginProvider {
         app.use("/" + key,
             express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
-            function (req: any, res: any): void {
+            function (req: any, res: any, next: any): void {
                 const span: Span = Logger.otel.startSpanExpress("OpenIDStrategy", req);
                 try {
+                    if(req.user != null) {
+                        // @ts-ignore
+                        if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                            res.redirect("/login");
+                            return next();
+                        }
+                    }
                     const originalUrl: any = req.cookies.originalUrl;
                     res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
@@ -303,9 +310,16 @@ export class LoginProvider {
         app.use("/" + key,
             express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
-            function (req: any, res: any): void {
+            function (req: any, res: any, next: any): void {
                 const span: Span = Logger.otel.startSpanExpress("GoogleStrategy", req);
                 try {
+                    if(req.user != null) {
+                        // @ts-ignore
+                        if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                            res.redirect("/login");
+                            return next();
+                        }
+                    }
                     const originalUrl: any = req.cookies.originalUrl;
                     res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
@@ -408,9 +422,16 @@ export class LoginProvider {
         app.use("/" + key,
             express.urlencoded({ extended: false }),
             passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
-            function (req: any, res: any): void {
+            function (req: express.Request, res: express.Response, next: express.NextFunction): void {
                 const span: Span = Logger.otel.startSpanExpress("SAML" + key, req);
                 try {
+                    if(req.user != null) {
+                        // @ts-ignore
+                        if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                            res.redirect("/login");
+                            return next();
+                        }
+                    }
                     const originalUrl: any = req.cookies.originalUrl;
                     res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
@@ -421,6 +442,7 @@ export class LoginProvider {
                     }
                 } catch (error) {
                     Logger.instanse.error(error, span);
+                    // @ts-ignore
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -1307,11 +1329,24 @@ export class LoginProvider {
             }
             if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl) && tuser.validated) {
                 if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
-                    Logger.instanse.debug("user validated, redirect to " + originalUrl, span);
-                    this.redirect(res, originalUrl);
+                    if(originalUrl != "/login" && originalUrl != "/Login") {
+                        Logger.instanse.debug("user validated, redirect to " + originalUrl, span);
+                        this.redirect(res, originalUrl);
+                    } else {
+                        Logger.instanse.debug("user signed in, redirect to /", span);
+                        this.redirect(res, "/");
+                    }
                     return;
                 } else if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
-                    Logger.instanse.debug("user signed in, redirect to " + originalUrl, span);
+                    if(originalUrl != "/login" && originalUrl != "/Login") {
+                        Logger.instanse.debug("user signed in, redirect to " + originalUrl, span);
+                        this.redirect(res, originalUrl);
+                    } else {
+                        Logger.instanse.debug("user signed in, redirect to /", span);
+                        this.redirect(res, "/");
+                    }
+                    return;
+                    
                     this.redirect(res, originalUrl);
                     return;
                 }

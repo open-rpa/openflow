@@ -1795,7 +1795,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetKubeNodeLabels", parent);
         let msg: GetKubeNodeLabelsMessage;
         try {
-            if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+            if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
             msg = GetKubeNodeLabelsMessage.assign(this.data);
             msg.result = await Logger.agentdriver.NodeLabels(span);
             delete msg.jwt;
@@ -3302,7 +3302,7 @@ export class Message {
                         }
                     }
                 } else {
-                    Logger.instanse.warn("nodereddriver is null, skip agent check", span);
+                    Logger.instanse.warn("agentdriver is null, skip agent check", span);
                 }
             } catch (error) {
                 Logger.instanse.error(error, span);
@@ -4984,7 +4984,7 @@ export class Message {
                 }
                 break;
             case "startagent":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
 
@@ -4995,7 +4995,7 @@ export class Message {
                 await Logger.agentdriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
                 break;
             case "stopagent":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
@@ -5004,7 +5004,7 @@ export class Message {
                 await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, false, parent);
                 break;
             case "deleteagentpod":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
@@ -5013,7 +5013,7 @@ export class Message {
                 await Logger.agentdriver.RemoveInstancePod(this.tuser, this.jwt, agent, msg.name, parent);
                 break;
             case "getagentlog":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
@@ -5022,7 +5022,7 @@ export class Message {
                 msg.result = await Logger.agentdriver.GetInstanceLog(this.tuser, this.jwt, agent, msg.name, parent);
                 break;
             case "getagentpods":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent: iAgent = null;
                 if(!NoderedUtil.IsNullEmpty(msg.id)) {
                     var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
@@ -5033,7 +5033,7 @@ export class Message {
                 msg.result = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, getstats, parent);
                 break;
             case "deleteagent":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.delete)) {
