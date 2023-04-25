@@ -1938,6 +1938,7 @@ export class MainCtrl extends entitiesCtrl<Base> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("MainCtrl");
         this.collection = "workflow_instances"
+        this.skipcustomerfilter = true;
         // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
         // this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
         this.preloadData = () => {
