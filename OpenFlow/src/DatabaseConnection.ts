@@ -3490,23 +3490,33 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 const ot_end = Logger.otel.startTimer();
-                const cursor = await this.db.collection(collectionname).find(_query)
-
-                let deletecounter = 0;
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
-                if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
-                    Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
-                } else {
-                    Logger.instanse.debug("Deleting multiple files in database", span, { collection: collectionname, user: user?.username, ms });
-                }
-                for await (const c of cursor) {
-                    deletecounter++;
-                    const ot_end = Logger.otel.startTimer();
-                    try {
-                        await this._DeleteFile(c._id.toString());
-                    } catch (error) {
+                let deletecounter = 0;
+                if(collectionname == "fs.files" || collectionname == "files"){
+                    const cursor = await this.db.collection(collectionname).find(_query)
+                        if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
+                        Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
+                    } else {
+                        Logger.instanse.debug("Deleting multiple files in database", span, { collection: collectionname, user: user?.username, ms });
                     }
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
+                    for await (const c of cursor) {
+                        deletecounter++;
+                        const ot_end = Logger.otel.startTimer();
+                        try {
+                            await this._DeleteFile(c._id.toString());
+                        } catch (error) {
+                        }
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
+                    }
+                } else {
+                    if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
+                        Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
+                    } else {
+                        Logger.instanse.debug("Deleting multiple files in database", span, { collection: collectionname, user: user?.username, ms });
+                    }
+                    _query = { $and: [query, this.getbasequery(user, [Rights.delete], collectionname)] };
+                    var result = await this.db.collection(collectionname).deleteMany(_query);
+                    deletecounter = result.deletedCount;
                 }
                 Logger.instanse.verbose("deleted " + deletecounter + " files in database", span, { collection: collectionname, user: user?.username, ms, count: deletecounter });
                 return deletecounter;
@@ -3687,14 +3697,17 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     public getbasequery(user: TokenUser | User,  bits: number[], collectionname: string): Object {
         let field = "_acl"; 
+        var bypassquery:any = { _id: { $ne: "bum" } }
         if(DatabaseConnection.usemetadata(collectionname)) {
+            bypassquery = { }
+            bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
             field = DatabaseConnection.metadataname(collectionname) + "._acl";
         }
         if (Config.api_bypass_perm_check) {
-            return { _id: { $ne: "bum" } };
+            return bypassquery;
         }
         if (user._id === WellknownIds.root) {
-            return { _id: { $ne: "bum" } };
+            return bypassquery;
         }
         const isme: any[] = [];
         const q = {};
@@ -3702,7 +3715,7 @@ export class DatabaseConnection extends events.EventEmitter {
             bits[i]--; // bitwize matching is from offset 0, when used on bindata
         }
         var hasadmin = user.roles.find(x => x._id == WellknownIds.admins);
-        if (hasadmin != null) return { _id: { $ne: "bum" } };
+        if (hasadmin != null) return bypassquery;
         if (field.indexOf("metadata") > -1) { // do always ?
             // timeseries does not support $elemMatch on "metadata" fields
             q[field + "._id"] = user._id
@@ -4268,6 +4281,9 @@ export class DatabaseConnection extends events.EventEmitter {
             return true;
         }
         if(collectionname == "fullDocument._acl") return true;
+        if(collectionname == "azureperf")  {
+            console.log(Config.metadata_collections);
+        }
         if(Config.metadata_collections.indexOf(collectionname) > -1) {
             const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
             if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
