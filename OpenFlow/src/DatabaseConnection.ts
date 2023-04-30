@@ -4282,9 +4282,6 @@ export class DatabaseConnection extends events.EventEmitter {
             return true;
         }
         if(collectionname == "fullDocument._acl") return true;
-        if(collectionname == "azureperf")  {
-            console.log(Config.metadata_collections);
-        }
         if(Config.metadata_collections.indexOf(collectionname) > -1) {
             const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
             if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
