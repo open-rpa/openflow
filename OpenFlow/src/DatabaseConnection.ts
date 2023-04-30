@@ -1975,6 +1975,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 DatabaseConnection.traversejsonencode(item);
 
                 if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                    throw new Error("Access denied addig " + item._type + " into " + collectionname);
                     continue;
                 }
                 let name = item.name;
