@@ -8524,7 +8524,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         var _a = this.agents.find(x => x._id == this.id);
         console.log("send message to " + _a.slug )
         const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug, correlationId: streamid,replyto: this.queuename })
+        var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
         console.log(processes);
     }
     haschrome: boolean = false;
