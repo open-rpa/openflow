@@ -960,7 +960,6 @@ export class Message {
             } else {
                 span?.addEvent("ListCollections");
                 msg.result = await Config.db.ListCollections(msg.jwt);
-                msg.result = msg.result.filter(x => x.name.indexOf("system.") === -1);
                 span?.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
