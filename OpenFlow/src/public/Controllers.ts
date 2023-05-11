@@ -8572,7 +8572,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         killbutton.onclick = async () => {
             try {
                 console.log("kill", streamid)
-                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug, correlationId: streamid })
+                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
             } catch (error) {
                 console.error(error);                
             }
@@ -8584,7 +8584,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         var runs = document.getElementById("runs");
         runs.prepend(div);
 
-        await NoderedUtil.Queue({ data: payload, queuename: _a.slug, correlationId: streamid })
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
         console.log("submitted", payload)        
     }
     async submit(): Promise<void> {
@@ -8609,7 +8609,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         killbutton.onclick = async () => {
             try {
                 console.log("kill", streamid)
-                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug, correlationId: streamid })
+                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
             } catch (error) {
                 console.error(error);                
             }
@@ -8621,7 +8621,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         var runs = document.getElementById("runs");
         runs.prepend(div);
 
-        await NoderedUtil.Queue({ data: payload, queuename: _a.slug, correlationId: streamid })
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
         console.log("submitted", payload)        
     }
     async RegisterQueue() {
