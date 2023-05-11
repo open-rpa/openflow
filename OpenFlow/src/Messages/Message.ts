@@ -4132,6 +4132,13 @@ export class Message {
         if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
         wi.priority = msg.priority;
         wi.nextrun = msg.nextrun;
+        // @ts-ignore
+        if(wi.nextrun?.seconds && wi.nextrun?.nanos) {
+            // @ts-ignore
+            const milliseconds = parseInt(wi.nextrun.seconds) * 1000 + Math.floor(wi.nextrun.nanos / 1000000);
+            const date = new Date(milliseconds);
+            wi.nextrun = date;
+        }
         if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
         if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
         wi.failed_wiq = msg.failed_wiq;
@@ -4143,6 +4150,7 @@ export class Message {
         wi.retries = 0;
         wi.files = [];
         wi.lastrun = null;
+        
         if (!wi.nextrun) {
             wi.nextrun = new Date(new Date().toISOString());
             wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
@@ -4320,6 +4328,14 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
             wi.nextrun = item.nextrun;
+            // @ts-ignore
+            if(wi.nextrun?.seconds && wi.nextrun?.nanos) {
+                // @ts-ignore
+                const milliseconds = parseInt(wi.nextrun.seconds) * 1000 + Math.floor(wi.nextrun.nanos / 1000000);
+                const date = new Date(milliseconds);
+                wi.nextrun = date;
+            }
+
             wi.state = "new"
             wi.retries = 0;
             wi.files = [];
@@ -4490,7 +4506,15 @@ export class Message {
                     wi.nextrun = new Date(new Date().toISOString());
                     wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
                     if (!NoderedUtil.IsNullEmpty(msg.nextrun)) {
-                        wi.nextrun = new Date(msg.nextrun);
+                        // @ts-ignore
+                        if(msg.nextrun.seconds && msg.nextrun.nanos) {
+                            // @ts-ignore
+                            const milliseconds = parseInt(msg.nextrun.seconds) * 1000 + Math.floor(msg.nextrun.nanos / 1000000);
+                            const date = new Date(milliseconds);
+                            wi.nextrun = date;
+                        } else {
+                            wi.nextrun = new Date(msg.nextrun);
+                        }                        
                     }
                 } else {
                     wi.state = "failed";
