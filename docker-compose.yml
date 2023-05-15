@@ -1,5 +1,14 @@
 version: "3.3"
 services:
+  rabbitmq:
+    image: "rabbitmq:3.7-management"
+    # environment:
+    #   - RABBITMQ_ERLANG_COOKIE=your_cookie_string_hereyour_cookie_string_here
+    restart: unless-stopped
+    # network_mode: "host"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
   # registry:
   #   image: registry:2
   #   # network_mode: "host"
@@ -24,13 +33,6 @@ services:
   #     - "80:80"
   #   volumes:
   #     - "//var/run/docker.sock:/var/run/docker.sock:ro"
-  rabbitmq:
-    image: "rabbitmq:3-management"
-    restart: unless-stopped
-    # network_mode: "host"
-    ports:
-      - "5672:5672"
-      - "15672:15672"
   # api:
   #   labels:
   #     - "traefik.enable=true"

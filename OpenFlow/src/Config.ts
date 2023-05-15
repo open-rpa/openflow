@@ -28,6 +28,8 @@ export class dbConfig extends Base {
     public amqp_enabled_exchange: boolean;
     public log_with_trace: boolean;
     public log_with_colors: boolean;
+    public enable_openai: boolean;
+    public enable_openaiauth: boolean;
     public log_cache: boolean;
     public log_amqp: boolean;
     public log_login_provider: boolean;
@@ -132,6 +134,11 @@ export class dbConfig extends Base {
 
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
+        Config.enable_openai = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openai) ? conf.enable_openai : Config.getEnv("enable_openai", "false"));
+        Config.enable_openaiauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openaiauth) ? conf.enable_openaiauth : Config.getEnv("enable_openaiauth", "true"));
+        
+        
+
         Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
         Config.log_amqp = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_amqp) ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
         Config.log_login_provider = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_login_provider) ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
@@ -245,6 +252,9 @@ export class Config {
         Config.getversion();
         Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
+        Config.enable_openai = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
+        Config.enable_openaiauth = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
+
         Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
 
         Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "false"));
@@ -500,9 +510,12 @@ export class Config {
     public static unittesting: boolean = false;
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key", "");
+    public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
+    public static enable_openaiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
+    
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
@@ -750,6 +763,11 @@ export class Config {
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 
+    public static externalbaseurl(): string {
+        let result: string = "";
+        result = Config.protocol + "://" + Config.domain + "/";
+        return result;
+    }
     public static baseurl(): string {
         let result: string = "";
         if (Config.tls_crt != '' && Config.tls_key != '') {

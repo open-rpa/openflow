@@ -404,6 +404,12 @@ try {
 } catch (error) {
 
 }
+let OpenAIProxy: any = null;
+try {
+    OpenAIProxy = require("./ee/OpenAIProxy");
+} catch (error) {
+
+}
 
 
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
@@ -439,6 +445,9 @@ var server: http.Server = null;
         server = await WebServer.configure(Config.baseurl(), span);
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
+        }
+        if (OpenAIProxy != null) {
+            const OpenAI = await OpenAIProxy.OpenAIProxy.configure(WebServer.app, span);
         }
         OAuthProvider.configure(WebServer.app, span);
         WebSocketServer.configure(server, span);
