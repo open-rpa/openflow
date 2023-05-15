@@ -5426,7 +5426,19 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (this.models.length > 0) {
             this.keys = Object.keys(this.models[0]);
             for (let i: number = this.keys.length - 1; i >= 0; i--) {
-                if (this.keys[i].startsWith('_') && this.keys[i] != "_type") this.keys.splice(i, 1);
+                if(this.keys[i] == "metadata") {
+                    this.keys.splice(i, 1);
+                    var subkeys = Object.keys(this.models[0]["metadata"]);
+                    for (let n: number = subkeys.length - 1; n >= 0; n--) {
+                        if (!subkeys[n].startsWith('_') && subkeys[n] != "_type" && subkeys[n] != "$$hashKey") {
+                            this.keys.push("metadata." + subkeys[n])
+                        }
+                    }                    
+                } else if (this.keys[i].startsWith('_') && this.keys[i] != "_type" ) {
+                    this.keys.splice(i, 1);
+                } else if (this.keys[i] == "$$hashKey") {
+                    this.keys.splice(i, 1);
+                }
             }
             this.keys.sort();
             this.keys.reverse();
@@ -5442,7 +5454,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         }
         arr.forEach(field => {
             if (field.trim() !== "") {
-                group._id[field] = "$" + field;
+                group._id[field.split(".").join("_")] = "$" + field;
             }
         });
         if (!NoderedUtil.IsNullEmpty(this.searchstring)) {
