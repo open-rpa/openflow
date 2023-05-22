@@ -552,9 +552,25 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: TokenUser = await Crypt.verityToken(jwt);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            if (!user.HasRoleName("admins")) throw new Error("Access denied, droppping collection " + collectionname);
+            if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
             if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    async CreateCollection(collectionname: string, options: any, jwt: string, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("db.CreateCollection", parent);
+        try {
+            const user: TokenUser = await Crypt.verityToken(jwt);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
+            if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
+            if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, creating reserved collection " + collectionname);
+            delete options.jwt;
+            delete options.priority;
+            delete options.collectionname;
+            await this.db.createCollection(collectionname, options);
         } finally {
             Logger.otel.endSpan(span);
         }

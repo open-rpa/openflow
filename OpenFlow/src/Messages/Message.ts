@@ -9,7 +9,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage, CreateCollectionMessage } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -76,6 +76,9 @@ export class Message {
                         break;
                     case "dropcollection":
                         await this.DropCollection(span);
+                        break;
+                    case "createcollection":
+                        await this.CreateCollection(span);
                         break;
                     case "query":
                         await this.Query(span);
@@ -361,6 +364,13 @@ export class Message {
                                 return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
                             } else {
                                 await this.DropCollection(span);
+                            }
+                            break;
+                        case "createcollection":
+                            if (Config.enable_openflow_amqp) {
+                                return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
+                            } else {
+                                await this.CreateCollection(span);
                             }
                             break;
                         case "query":
@@ -1014,6 +1024,20 @@ export class Message {
             msg = DropCollectionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    private async CreateCollection(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.CreateCollection", parent);
+        this.Reply();
+        let msg: CreateCollectionMessage
+        try {
+            msg = CreateCollectionMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            await Config.db.CreateCollection(msg.collectionname, msg, msg.jwt, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } finally {

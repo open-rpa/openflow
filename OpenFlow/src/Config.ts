@@ -30,6 +30,7 @@ export class dbConfig extends Base {
     public log_with_colors: boolean;
     public enable_openai: boolean;
     public enable_openaiauth: boolean;
+    public openai_token: string;
     public log_cache: boolean;
     public log_amqp: boolean;
     public log_login_provider: boolean;
@@ -136,7 +137,7 @@ export class dbConfig extends Base {
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
         Config.enable_openai = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openai) ? conf.enable_openai : Config.getEnv("enable_openai", "false"));
         Config.enable_openaiauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openaiauth) ? conf.enable_openaiauth : Config.getEnv("enable_openaiauth", "true"));
-        
+        Config.openai_token = !NoderedUtil.IsNullEmpty(conf.openai_token) ? conf.openai_token : Config.getEnv("openai_token", "");
         
 
         Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
@@ -254,6 +255,7 @@ export class Config {
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.enable_openai = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
         Config.enable_openaiauth = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
+        Config.openai_token = Config.getEnv("openai_token", "");
 
         Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
 
@@ -512,6 +514,7 @@ export class Config {
     public static license_key: string = Config.getEnv("license_key", "");
     public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
     public static enable_openaiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
+    public static openai_token: string = Config.getEnv("openai_token", "");
     public static version: string = Config.getversion();
     public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
