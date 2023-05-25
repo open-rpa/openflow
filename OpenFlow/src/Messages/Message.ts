@@ -2930,7 +2930,19 @@ export class Message {
             msg = EnsureCustomerMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
-            let user: User = cli.user;
+            let user: TokenUser = User.assign(await Crypt.verityToken(msg.jwt));
+            // @ts-ignore
+            var ensureas = msg.ensureas;
+            if(!NoderedUtil.IsNullEmpty(ensureas)) {
+                var targetuser = await Config.db.getbyid(ensureas, "users", msg.jwt, true, span);
+                if(targetuser == null) {
+                    throw new Error("Access denied creating customer on behalf of " + ensureas);
+                } else if (!DatabaseConnection.hasAuthorization(user, targetuser, Rights.update)) {
+                    throw new Error("Access denied creating customer on behalf of " + targetuser.name);
+                }
+                user = User.assign(targetuser);
+            }
+
             let customer: Customer = null;
             if (msg.customer != null && msg.customer._id != null) {
                 const customers = await Config.db.query<Customer>({ query: { _type: "customer", "_id": msg.customer._id }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
@@ -2938,7 +2950,7 @@ export class Message {
                     customer = customers[0];
                 }
             }
-            if (!cli.user.HasRoleId(WellknownIds.admins)) {
+            if (!user.HasRoleId(WellknownIds.admins)) {
                 delete msg.customer.domains;
             }
             if (customer == null) {
@@ -3168,14 +3180,14 @@ export class Message {
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
-            if (!cli.user.HasRoleId(WellknownIds.admins)) {
-                customeradmins.AddMember(user);
+            if (!user.HasRoleId(WellknownIds.admins)) {
+                customeradmins.AddMember(user as any);
             }
 
             customeradmins.AddMember(global_customer_admins);
             if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
                 const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
-                if (usercustomer != null && !cli.user.HasRoleId(WellknownIds.admins)) {
+                if (usercustomer != null && !user.HasRoleId(WellknownIds.admins)) {
                     const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, true, span);
                     if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
                 }
@@ -3190,7 +3202,7 @@ export class Message {
             Base.removeRight(customerusers, customeradmins._id, [Rights.delete]);
             customerusers.AddMember(customeradmins);
             if (NoderedUtil.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
-                if (!cli.user.HasRoleId(WellknownIds.admins)) customerusers.AddMember(cli.user);
+                if (!user.HasRoleId(WellknownIds.admins)) customerusers.AddMember(cli.user);
             }
             await Logger.DBHelper.Save(customerusers, rootjwt, span);
 
