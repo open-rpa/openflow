@@ -4340,7 +4340,28 @@ export class DatabaseConnection extends events.EventEmitter {
                     DatabaseConnection.timeseries_collections.push(collection.name);
                 }
             }
-            if (!Config.ensure_indexes) return;
+            if (!Config.ensure_indexes) {
+                DatabaseConnection.timeseries_collections = [];
+                DatabaseConnection.collections_with_text_index = [];
+                for (let i = 0; i < collections.length; i++) {
+                    var collection = collections[i];
+                    if (collection.type == "timeseries") {
+                        DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+                        DatabaseConnection.timeseries_collections.push(collection.name);
+                    }
+                    if (collection.type != "collection" && collection.type != "timeseries") continue;
+                    span?.addEvent("Get indexes for " + collection.name);
+                    const indexes = await this.db.collection(collection.name).indexes();
+                    for (let y = 0; y < indexes.length; y++) {
+                        var idx = indexes[y];
+                        if (idx.textIndexVersion && idx.textIndexVersion > 1 && collection.name != "fs.files") {
+                            DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
+                            DatabaseConnection.collections_with_text_index.push(collection.name);
+                        }
+                    }
+                }
+                return;
+            }
 
             for (let i = 0; i < collections.length; i++) {
                 try {
