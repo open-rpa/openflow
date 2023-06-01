@@ -160,6 +160,24 @@ export class OAuthProvider {
                     }
                 )
             }
+            var agent = instance.clients.find(x => x.client_id == "openai");
+            if(agent == null) {
+                // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
+                instance.clients.push({
+                        grants: ['password', 'refresh_token', 'authorization_code'],
+                        defaultrole : "Viewer",
+                        rolemappings : { "admins": "Admin" },
+                        clientId: "openai",client_id: "openai", 
+                        client_secret: "secret",
+                        token_endpoint_auth_method: "client_secret_post",
+                        response_types: ['code', 'id_token', 'code id_token'],
+                        grant_types: ['implicit', 'authorization_code'],
+                        post_logout_redirect_uris: [],
+                        redirect_uris: [],
+                        openflowsignout: true
+                    }
+                )
+            }
             // var grafana = instance.clients.find(x => x.client_id == "grafana");
             // if(grafana == null) {
             //     instance.clients.push({

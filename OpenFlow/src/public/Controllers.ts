@@ -1938,6 +1938,7 @@ export class MainCtrl extends entitiesCtrl<Base> {
         super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
         console.debug("MainCtrl");
         this.collection = "workflow_instances"
+        this.skipcustomerfilter = true;
         // this.basequery = { state: { $ne: "completed" }, $and: [{ form: { $exists: true } }, { form: { "$ne": "none" } }] };
         // this.basequery = { state: { $ne: "completed" }, form: { $exists: true } };
         this.preloadData = () => {
@@ -5425,7 +5426,19 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         if (this.models.length > 0) {
             this.keys = Object.keys(this.models[0]);
             for (let i: number = this.keys.length - 1; i >= 0; i--) {
-                if (this.keys[i].startsWith('_') && this.keys[i] != "_type") this.keys.splice(i, 1);
+                if(this.keys[i] == "metadata") {
+                    this.keys.splice(i, 1);
+                    var subkeys = Object.keys(this.models[0]["metadata"]);
+                    for (let n: number = subkeys.length - 1; n >= 0; n--) {
+                        if (!subkeys[n].startsWith('_') && subkeys[n] != "_type" && subkeys[n] != "$$hashKey") {
+                            this.keys.push("metadata." + subkeys[n])
+                        }
+                    }                    
+                } else if (this.keys[i].startsWith('_') && this.keys[i] != "_type" ) {
+                    this.keys.splice(i, 1);
+                } else if (this.keys[i] == "$$hashKey") {
+                    this.keys.splice(i, 1);
+                }
             }
             this.keys.sort();
             this.keys.reverse();
@@ -5441,7 +5454,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         }
         arr.forEach(field => {
             if (field.trim() !== "") {
-                group._id[field] = "$" + field;
+                group._id[field.split(".").join("_")] = "$" + field;
             }
         });
         if (!NoderedUtil.IsNullEmpty(this.searchstring)) {
@@ -7643,7 +7656,6 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         if (instances.length == 0) {
             model.status = "missing"
         }
-        if(model._id == "64315f316778e8361f8cb7fa")debugger;
         if(model.status == "missing") {
             if(model.image == null) {
                 var cli = this.clients.filter(x=> x.user?._id ==model.runas && (x.agent == "nodeagent" || x.agent == "assistant"));
@@ -8520,6 +8532,12 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         }
         this.AgentUpdated()
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        var _a = this.agents.find(x => x._id == this.id);
+        console.log("send message to " + _a.slug )
+        const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
+        console.log(processes);
     }
     haschrome: boolean = false;
     haschromium: boolean = false;
@@ -8546,6 +8564,41 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    async addprocess(streamid:string): Promise<void> {
+        var _a = this.agents.find(x => x._id == this.id);
+        if (_a == null) return;
+        var payload ={
+            "command": "setstreamid",
+            "id": streamid,
+            "streamqueue": this.queuename
+        }
+        var div = document.createElement("div");
+        div.id = streamid + "_div";
+        div.classList.add("shadow"); div.classList.add("card");
+        var label = document.createElement("label");
+        label.innerText = "Stream " + streamid;
+        div.appendChild(label);
+        var killbutton = document.createElement("button");
+        killbutton.innerText = "Kill";
+        killbutton.id = streamid + "_kill";
+        killbutton.onclick = async () => {
+            try {
+                console.log("kill", streamid)
+                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
+            } catch (error) {
+                console.error(error);                
+            }
+        }
+        div.appendChild(killbutton);
+        var pre = document.createElement("pre");
+        pre.id = streamid;
+        div.appendChild(pre);
+        var runs = document.getElementById("runs");
+        runs.prepend(div);
+
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+        console.log("submitted", payload)        
+    }
     async submit(): Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);
         if (_a == null) return;
@@ -8568,7 +8621,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         killbutton.onclick = async () => {
             try {
                 console.log("kill", streamid)
-                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug, correlationId: streamid })
+                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
             } catch (error) {
                 console.error(error);                
             }
@@ -8580,7 +8633,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         var runs = document.getElementById("runs");
         runs.prepend(div);
 
-        await NoderedUtil.Queue({ data: payload, queuename: _a.slug, correlationId: streamid })
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
         console.log("submitted", payload)        
     }
     async RegisterQueue() {
@@ -8588,22 +8641,34 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         this.queuename = await NoderedUtil.RegisterQueue({
             callback: (_data: QueueMessage, ack: any) => {
                 ack();
-                console.debug(_data);
+                console.log(_data.data)
                 if(_data == null) return;
                 var correlationId = _data.correlationId;
                 var data: any = _data;
-                while(data.data != null) data = data.data;
-                var pre = document.getElementById(correlationId);
-                if(pre == null) return;
-                if(data.command == "completed") {
+                while(data.data != null && data.data != "") data = data.data;
+                if(data.command == "listprocesses") {
+                    console.log("listprocesses !!!")
+                    for(var i = 0; i < data.processes.length; i++) {
+                        console.log("add process " + data.processes[i].id)
+                        this.addprocess(data.processes[i].id);
+                    }
+                }
+                if(data.command != null) {
+                    console.log(data.command + " " + data.completed, data)
+                }
+                if(data.command == "completed" || (data.command == "runpackage" && data.completed == true)) {
                     var killbutton = document.getElementById(correlationId + "_kill");
                     if(killbutton != null) killbutton.remove();
                     return;
                 }
-                const decoder = new TextDecoder("utf-8");
-                const string = decoder.decode(new Uint8Array(data as any));
-                // pre.innerText += string;
-                pre.innerText = string + pre.innerText;
+                if(data.command == null) {
+                    var pre = document.getElementById(correlationId);
+                    if(pre == null) return;
+                    const decoder = new TextDecoder("utf-8");
+                    const string = decoder.decode(new Uint8Array(data as any));
+                    // pre.innerText += string;
+                    pre.innerText = string + pre.innerText;
+                }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
             }, closedcallback: (msg) => {

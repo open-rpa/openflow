@@ -9,7 +9,7 @@ import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
-import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage } from "@openiap/openflow-api";
+import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage, CreateCollectionMessage } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
 import { WebSocketServerClient } from "../WebSocketServerClient";
@@ -76,6 +76,9 @@ export class Message {
                         break;
                     case "dropcollection":
                         await this.DropCollection(span);
+                        break;
+                    case "createcollection":
+                        await this.CreateCollection(span);
                         break;
                     case "query":
                         await this.Query(span);
@@ -361,6 +364,13 @@ export class Message {
                                 return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
                             } else {
                                 await this.DropCollection(span);
+                            }
+                            break;
+                        case "createcollection":
+                            if (Config.enable_openflow_amqp) {
+                                return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
+                            } else {
+                                await this.CreateCollection(span);
                             }
                             break;
                         case "query":
@@ -811,7 +821,6 @@ export class Message {
             } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
                 throw new Error("queuename or exchange must be given");
             }
-
             if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
                 const tuser = this.tuser;
                 let allowed: boolean = false;
@@ -961,7 +970,6 @@ export class Message {
             } else {
                 span?.addEvent("ListCollections");
                 msg.result = await Config.db.ListCollections(msg.jwt);
-                msg.result = msg.result.filter(x => x.name.indexOf("system.") === -1);
                 span?.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
@@ -1016,6 +1024,20 @@ export class Message {
             msg = DropCollectionMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    private async CreateCollection(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.CreateCollection", parent);
+        this.Reply();
+        let msg: CreateCollectionMessage
+        try {
+            msg = CreateCollectionMessage.assign(this.data);
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            await Config.db.CreateCollection(msg.collectionname, msg, msg.jwt, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } finally {
@@ -1796,7 +1818,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetKubeNodeLabels", parent);
         let msg: GetKubeNodeLabelsMessage;
         try {
-            if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+            if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
             msg = GetKubeNodeLabelsMessage.assign(this.data);
             msg.result = await Logger.agentdriver.NodeLabels(span);
             delete msg.jwt;
@@ -2908,7 +2930,19 @@ export class Message {
             msg = EnsureCustomerMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
-            let user: User = cli.user;
+            let user: TokenUser = User.assign(await Crypt.verityToken(msg.jwt));
+            // @ts-ignore
+            var ensureas = msg.ensureas;
+            if(!NoderedUtil.IsNullEmpty(ensureas)) {
+                var targetuser = await Config.db.getbyid(ensureas, "users", msg.jwt, true, span);
+                if(targetuser == null) {
+                    throw new Error("Access denied creating customer on behalf of " + ensureas);
+                } else if (!DatabaseConnection.hasAuthorization(user, targetuser, Rights.update)) {
+                    throw new Error("Access denied creating customer on behalf of " + targetuser.name);
+                }
+                user = User.assign(targetuser);
+            }
+
             let customer: Customer = null;
             if (msg.customer != null && msg.customer._id != null) {
                 const customers = await Config.db.query<Customer>({ query: { _type: "customer", "_id": msg.customer._id }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
@@ -2916,7 +2950,7 @@ export class Message {
                     customer = customers[0];
                 }
             }
-            if (!cli.user.HasRoleId(WellknownIds.admins)) {
+            if (!user.HasRoleId(WellknownIds.admins)) {
                 delete msg.customer.domains;
             }
             if (customer == null) {
@@ -3146,14 +3180,14 @@ export class Message {
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
             // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
-            if (!cli.user.HasRoleId(WellknownIds.admins)) {
-                customeradmins.AddMember(user);
+            if (!user.HasRoleId(WellknownIds.admins)) {
+                customeradmins.AddMember(user as any);
             }
 
             customeradmins.AddMember(global_customer_admins);
             if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
                 const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
-                if (usercustomer != null && !cli.user.HasRoleId(WellknownIds.admins)) {
+                if (usercustomer != null && !user.HasRoleId(WellknownIds.admins)) {
                     const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, true, span);
                     if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
                 }
@@ -3168,7 +3202,7 @@ export class Message {
             Base.removeRight(customerusers, customeradmins._id, [Rights.delete]);
             customerusers.AddMember(customeradmins);
             if (NoderedUtil.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
-                if (!cli.user.HasRoleId(WellknownIds.admins)) customerusers.AddMember(cli.user);
+                if (!user.HasRoleId(WellknownIds.admins)) customerusers.AddMember(cli.user);
             }
             await Logger.DBHelper.Save(customerusers, rootjwt, span);
 
@@ -3303,7 +3337,7 @@ export class Message {
                         }
                     }
                 } else {
-                    Logger.instanse.warn("nodereddriver is null, skip agent check", span);
+                    Logger.instanse.warn("agentdriver is null, skip agent check", span);
                 }
             } catch (error) {
                 Logger.instanse.error(error, span);
@@ -4133,6 +4167,13 @@ export class Message {
         if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
         wi.priority = msg.priority;
         wi.nextrun = msg.nextrun;
+        // @ts-ignore
+        if(wi.nextrun?.seconds && wi.nextrun?.nanos) {
+            // @ts-ignore
+            const milliseconds = parseInt(wi.nextrun.seconds) * 1000 + Math.floor(wi.nextrun.nanos / 1000000);
+            const date = new Date(milliseconds);
+            wi.nextrun = date;
+        }
         if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
         if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
         wi.failed_wiq = msg.failed_wiq;
@@ -4144,6 +4185,7 @@ export class Message {
         wi.retries = 0;
         wi.files = [];
         wi.lastrun = null;
+        
         if (!wi.nextrun) {
             wi.nextrun = new Date(new Date().toISOString());
             wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
@@ -4321,6 +4363,14 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
             wi.nextrun = item.nextrun;
+            // @ts-ignore
+            if(wi.nextrun?.seconds && wi.nextrun?.nanos) {
+                // @ts-ignore
+                const milliseconds = parseInt(wi.nextrun.seconds) * 1000 + Math.floor(wi.nextrun.nanos / 1000000);
+                const date = new Date(milliseconds);
+                wi.nextrun = date;
+            }
+
             wi.state = "new"
             wi.retries = 0;
             wi.files = [];
@@ -4491,7 +4541,15 @@ export class Message {
                     wi.nextrun = new Date(new Date().toISOString());
                     wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
                     if (!NoderedUtil.IsNullEmpty(msg.nextrun)) {
-                        wi.nextrun = new Date(msg.nextrun);
+                        // @ts-ignore
+                        if(msg.nextrun.seconds && msg.nextrun.nanos) {
+                            // @ts-ignore
+                            const milliseconds = parseInt(msg.nextrun.seconds) * 1000 + Math.floor(msg.nextrun.nanos / 1000000);
+                            const date = new Date(milliseconds);
+                            wi.nextrun = date;
+                        } else {
+                            wi.nextrun = new Date(msg.nextrun);
+                        }                        
                     }
                 } else {
                     wi.state = "failed";
@@ -4985,7 +5043,7 @@ export class Message {
                 }
                 break;
             case "startagent":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
 
@@ -4996,7 +5054,7 @@ export class Message {
                 await Logger.agentdriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
                 break;
             case "stopagent":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
@@ -5005,7 +5063,7 @@ export class Message {
                 await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, false, parent);
                 break;
             case "deleteagentpod":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
@@ -5014,7 +5072,7 @@ export class Message {
                 await Logger.agentdriver.RemoveInstancePod(this.tuser, this.jwt, agent, msg.name, parent);
                 break;
             case "getagentlog":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
@@ -5023,7 +5081,7 @@ export class Message {
                 msg.result = await Logger.agentdriver.GetInstanceLog(this.tuser, this.jwt, agent, msg.name, parent);
                 break;
             case "getagentpods":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent: iAgent = null;
                 if(!NoderedUtil.IsNullEmpty(msg.id)) {
                     var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
@@ -5034,7 +5092,7 @@ export class Message {
                 msg.result = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, getstats, parent);
                 break;
             case "deleteagent":
-                if (Logger.agentdriver == null) throw new Error("No nodereddriver is loaded")
+                if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                 if(agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.delete)) {

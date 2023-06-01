@@ -39,10 +39,13 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td><a ng-href="#/Agent/{{model._id}}">{{model.name}}</a></td>
+      <td>
+        <a ng-show="model.image != '' && model.image != null" ng-href="#/Agent/{{model._id}}">{{model.name | limitTo: 20}}</a>
+        <a ng-show="model.image == '' || model.image == null" ng-href="#/RunPackage/{{model._id}}">{{model.name | limitTo: 20}}</a>
+      </td>
       <td>{{ctrl.trimimage(model.image)}}</td>
-      <td>{{model._createdby}}</td>
-      <td>{{model.status}}</td>
+      <td>{{model._createdby | limitTo: 20}}</td>
+      <td>{{model.status | limitTo: 20}}</td>
       <td class="text-right">
         <button ng-click="ctrl.StartAgent(model)" class="btn"  ng-disabled="ctrl.loading==true || (model.status == 'running' || model.status == 'Running') || model.status == '...'"><em
           class="fas fa-play"></em></button>

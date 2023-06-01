@@ -274,13 +274,14 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                     if (sendit) {
-                        if (payload == null) payload = await this.GetOne({ jwt, collectionname, query }, null);
+                        // if (payload == null) payload = await this.GetOne({ jwt, collectionname, query }, null);
+                        payload = {}
                         var sendthis = payload;
                         if (client.clientagent == "openrpa") {
                             sendthis = {
                                 command: "invoke",
                                 workflowid: wiq.workflowid,
-                                data: { "workitem": payload }
+                                data: { }
                             }
                         }
                         if (payload != null) {
@@ -551,9 +552,25 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: TokenUser = await Crypt.verityToken(jwt);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            if (!user.HasRoleName("admins")) throw new Error("Access denied, droppping collection " + collectionname);
+            if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
             if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    async CreateCollection(collectionname: string, options: any, jwt: string, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("db.CreateCollection", parent);
+        try {
+            const user: TokenUser = await Crypt.verityToken(jwt);
+            span?.setAttribute("collection", collectionname);
+            span?.setAttribute("username", user.username);
+            if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
+            if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, creating reserved collection " + collectionname);
+            delete options.jwt;
+            delete options.priority;
+            delete options.collectionname;
+            await this.db.createCollection(collectionname, options);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -1974,6 +1991,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 DatabaseConnection.traversejsonencode(item);
 
                 if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                    throw new Error("Access denied addig " + item._type + " into " + collectionname);
                     continue;
                 }
                 let name = item.name;
@@ -3489,23 +3507,33 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 const ot_end = Logger.otel.startTimer();
-                const cursor = await this.db.collection(collectionname).find(_query)
-
-                let deletecounter = 0;
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
-                if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
-                    Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
-                } else {
-                    Logger.instanse.debug("Deleting multiple files in database", span, { collection: collectionname, user: user?.username, ms });
-                }
-                for await (const c of cursor) {
-                    deletecounter++;
-                    const ot_end = Logger.otel.startTimer();
-                    try {
-                        await this._DeleteFile(c._id.toString());
-                    } catch (error) {
+                let deletecounter = 0;
+                if(collectionname == "fs.files" || collectionname == "files"){
+                    const cursor = await this.db.collection(collectionname).find(_query)
+                        if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
+                        Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
+                    } else {
+                        Logger.instanse.debug("Deleting multiple files in database", span, { collection: collectionname, user: user?.username, ms });
                     }
-                    Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
+                    for await (const c of cursor) {
+                        deletecounter++;
+                        const ot_end = Logger.otel.startTimer();
+                        try {
+                            await this._DeleteFile(c._id.toString());
+                        } catch (error) {
+                        }
+                        Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
+                    }
+                } else {
+                    if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
+                        Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
+                    } else {
+                        Logger.instanse.debug("Deleting multiple files in database", span, { collection: collectionname, user: user?.username, ms });
+                    }
+                    _query = { $and: [query, this.getbasequery(user, [Rights.delete], collectionname)] };
+                    var result = await this.db.collection(collectionname).deleteMany(_query);
+                    deletecounter = result.deletedCount;
                 }
                 Logger.instanse.verbose("deleted " + deletecounter + " files in database", span, { collection: collectionname, user: user?.username, ms, count: deletecounter });
                 return deletecounter;
@@ -3686,14 +3714,17 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     public getbasequery(user: TokenUser | User,  bits: number[], collectionname: string): Object {
         let field = "_acl"; 
+        var bypassquery:any = { _id: { $ne: "bum" } }
         if(DatabaseConnection.usemetadata(collectionname)) {
+            bypassquery = { }
+            bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
             field = DatabaseConnection.metadataname(collectionname) + "._acl";
         }
         if (Config.api_bypass_perm_check) {
-            return { _id: { $ne: "bum" } };
+            return bypassquery;
         }
         if (user._id === WellknownIds.root) {
-            return { _id: { $ne: "bum" } };
+            return bypassquery;
         }
         const isme: any[] = [];
         const q = {};
@@ -3701,7 +3732,7 @@ export class DatabaseConnection extends events.EventEmitter {
             bits[i]--; // bitwize matching is from offset 0, when used on bindata
         }
         var hasadmin = user.roles.find(x => x._id == WellknownIds.admins);
-        if (hasadmin != null) return { _id: { $ne: "bum" } };
+        if (hasadmin != null) return bypassquery;
         if (field.indexOf("metadata") > -1) { // do always ?
             // timeseries does not support $elemMatch on "metadata" fields
             q[field + "._id"] = user._id
@@ -4309,7 +4340,28 @@ export class DatabaseConnection extends events.EventEmitter {
                     DatabaseConnection.timeseries_collections.push(collection.name);
                 }
             }
-            if (!Config.ensure_indexes) return;
+            if (!Config.ensure_indexes) {
+                DatabaseConnection.timeseries_collections = [];
+                DatabaseConnection.collections_with_text_index = [];
+                for (let i = 0; i < collections.length; i++) {
+                    var collection = collections[i];
+                    if (collection.type == "timeseries") {
+                        DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+                        DatabaseConnection.timeseries_collections.push(collection.name);
+                    }
+                    if (collection.type != "collection" && collection.type != "timeseries") continue;
+                    span?.addEvent("Get indexes for " + collection.name);
+                    const indexes = await this.db.collection(collection.name).indexes();
+                    for (let y = 0; y < indexes.length; y++) {
+                        var idx = indexes[y];
+                        if (idx.textIndexVersion && idx.textIndexVersion > 1 && collection.name != "fs.files") {
+                            DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
+                            DatabaseConnection.collections_with_text_index.push(collection.name);
+                        }
+                    }
+                }
+                return;
+            }
 
             for (let i = 0; i < collections.length; i++) {
                 try {

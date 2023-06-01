@@ -31,7 +31,11 @@ import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
-    if (req.originalUrl.indexOf('/oidc') > -1) return next();
+    if (req.originalUrl.indexOf('/oidc') > -1) {
+        Logger.instanse.verbose("SKip validate for " + req.originalUrl, null);
+        // Logger.instanse.info("Ignore for " + req.originalUrl, null);
+        return next();
+    }
     try {
         Logger.instanse.verbose("Validate for " + req.originalUrl, null);
         var e = await WebServer.BaseRateLimiter.consume(WebServer.remoteip(req))
@@ -152,7 +156,7 @@ export class WebServer {
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
 
                 // Request headers you wish to allow
-                res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization, x-jwt-token");
+                res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization, x-jwt-token, openai-conversation-id, openai-ephemeral-user-id");
 
                 // Set to true if you need the website to include cookies in the requests sent
                 // to the API (e.g. in case you use sessions)
@@ -270,7 +274,8 @@ export class WebServer {
             WebServer.wss = new WebSocket.Server({ server: WebServer.server });
             await protowrap.init();
 
-            config.doDumpMesssages = true;
+            config.doDumpMesssages = false;
+            config.DoDumpToConsole = false;
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -295,7 +300,9 @@ export class WebServer {
         servers.push(protowrap.serve("ws", this.onClientConnected, Config.port, "/ws/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
         servers.push(protowrap.serve("grpc", this.onClientConnected, config.defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
         servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
+        config.DoDumpToConsole = false;
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
+        Logger.instanse.info("grpc listening on grpc://" + Config.domain + ":" + config.defaultgrpcport, null);
     }
     public static async ReceiveFileContent(client: flowclient, rid:string, msg: any) {
         return new Promise<string>((resolve, reject) => {

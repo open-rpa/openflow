@@ -747,7 +747,9 @@ export class entitiesCtrl<T> {
                 var temp = await NoderedUtil.Query({ collectionname: this.collection, query, projection: this.baseprojection, orderby, top: this.pagesize, skip: this.pagesize * this.page, queryas: basequeryas });
                 this.models = this.models.concat(temp);
             }
-            if (exactquery != null && this.page == 0 && this.collection != "audit") {
+            var hastext = this.WebSocketClientService.collections_with_text_index.indexOf(this.collection);
+            var ists = this.WebSocketClientService.timeseries_collections.indexOf(this.collection);
+            if (exactquery != null && this.page == 0 && hastext == -1 && ists == -1) {
                 var temp = await NoderedUtil.Query({ collectionname: this.collection, query: exactquery, projection: this.baseprojection, orderby, top: 1, queryas: basequeryas });
                 if (temp.length > 0) {
                     this.models = this.models.filter(x => (x as any)._id != temp[0]._id);
