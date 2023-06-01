@@ -180,7 +180,7 @@ export class WebSocketServer {
                 if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
                 if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                if(cli.user != null) {
+                if(cli.user?._acl != null) { // 
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
@@ -189,7 +189,6 @@ export class WebSocketServer {
                 } else if (user.HasRoleId(WellknownIds.admins)) {
                     result.push(cli);
                 }
-                if(cli.user != null) delete cli.user._acl;
             }
         } else {
             for(var x = 0; x < WebSocketServer._clients.length; x++) {
@@ -198,7 +197,7 @@ export class WebSocketServer {
                 if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
                 if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                if(cli.user != null) {
+                if(cli.user != null) { // cli.user?._acl
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
@@ -207,8 +206,13 @@ export class WebSocketServer {
                 } else if (user.HasRoleId(WellknownIds.admins)) {
                     result.push(cli);
                 }
-                if(cli.user != null) delete cli.user._acl;
             }
+        }
+        var finalresult = [];
+        for(var x = 0; x < result.length; x++) {
+            var u = Object.assign({}, result[x]);
+            delete u._acl;
+            finalresult.push(u);
         }
         return result;
     }
