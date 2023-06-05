@@ -95,6 +95,18 @@ export class dbConfig extends Base {
     public otel_trace_mongodb_update_per_users: boolean;
     public otel_trace_mongodb_delete_per_users: boolean;
 
+    public grpc_keepalive_time_ms: number; 
+    public grpc_keepalive_timeout_ms: number;
+    public grpc_http2_min_ping_interval_without_data_ms: number; 
+    public grpc_max_connection_idle_ms: number;
+    public grpc_max_connection_age_ms: number;
+    public grpc_max_connection_age_grace_ms: number;
+    public grpc_http2_max_pings_without_data: number;
+    public grpc_keepalive_permit_without_calls: number;
+    public grpc_max_receive_message_length: number;
+    public grpc_max_send_message_length: number;
+
+
     public cache_workitem_queues: boolean;
 
     public agent_images: NoderedImage[]
@@ -212,6 +224,19 @@ export class dbConfig extends Base {
         Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_insert_per_users) ? conf.otel_trace_mongodb_insert_per_users : Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
         Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_update_per_users) ? conf.otel_trace_mongodb_update_per_users : Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
         Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_delete_per_users) ? conf.otel_trace_mongodb_delete_per_users : Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
+
+        Config.grpc_keepalive_time_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_keepalive_time_ms) ? conf.grpc_keepalive_time_ms.toString() : Config.getEnv("grpc_keepalive_time_ms", (-1).toString()))
+        Config.grpc_keepalive_timeout_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_keepalive_timeout_ms) ? conf.grpc_keepalive_timeout_ms.toString() : Config.getEnv("grpc_keepalive_timeout_ms", (-1).toString()))
+        Config.grpc_http2_min_ping_interval_without_data_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_http2_min_ping_interval_without_data_ms) ? conf.grpc_http2_min_ping_interval_without_data_ms.toString() : Config.getEnv("grpc_http2_min_ping_interval_without_data_ms", (-1).toString()))
+        Config.grpc_max_connection_idle_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_connection_idle_ms) ? conf.grpc_max_connection_idle_ms.toString() : Config.getEnv("grpc_max_connection_idle_ms", (-1).toString()))
+        Config.grpc_max_connection_age_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_connection_age_ms) ? conf.grpc_max_connection_age_ms.toString() : Config.getEnv("grpc_max_connection_age_ms", (-1).toString()))
+        Config.grpc_max_connection_age_grace_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_connection_age_grace_ms) ? conf.grpc_max_connection_age_grace_ms.toString() : Config.getEnv("grpc_max_connection_age_grace_ms", (-1).toString()))
+        Config.grpc_http2_max_pings_without_data = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_http2_max_pings_without_data) ? conf.grpc_http2_max_pings_without_data.toString() : Config.getEnv("grpc_http2_max_pings_without_data", (-1).toString()))
+        Config.grpc_keepalive_permit_without_calls = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_keepalive_permit_without_calls) ? conf.grpc_keepalive_permit_without_calls.toString() : Config.getEnv("grpc_keepalive_permit_without_calls", (-1).toString()))
+        Config.grpc_max_receive_message_length = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_receive_message_length) ? conf.grpc_max_receive_message_length.toString() : Config.getEnv("grpc_max_receive_message_length", (-1).toString()))
+        Config.grpc_max_send_message_length = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_send_message_length) ? conf.grpc_max_send_message_length.toString() : Config.getEnv("grpc_max_send_message_length", (-1).toString()))
+    
+    
 
         Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
 
@@ -503,7 +528,17 @@ export class Config {
         Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
         Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
 
-
+        Config.grpc_keepalive_time_ms = parseInt(Config.getEnv("grpc_keepalive_time_ms", "-1"));
+        Config.grpc_keepalive_timeout_ms = parseInt(Config.getEnv("grpc_keepalive_timeout_ms", "-1"));
+        Config.grpc_http2_min_ping_interval_without_data_ms = parseInt(Config.getEnv("grpc_http2_min_ping_interval_without_data_ms", "-1"));
+        Config.grpc_max_connection_idle_ms = parseInt(Config.getEnv("grpc_max_connection_idle_ms", "-1"));
+        Config.grpc_max_connection_age_ms = parseInt(Config.getEnv("grpc_max_connection_age_ms", "-1"));
+        Config.grpc_max_connection_age_grace_ms = parseInt(Config.getEnv("grpc_max_connection_age_grace_ms", "-1"));
+        Config.grpc_http2_max_pings_without_data = parseInt(Config.getEnv("grpc_http2_max_pings_without_data", "-1"));
+        Config.grpc_keepalive_permit_without_calls = parseInt(Config.getEnv("grpc_keepalive_permit_without_calls", "-1"));
+        Config.grpc_max_receive_message_length = parseInt(Config.getEnv("grpc_max_receive_message_length", "-1"));
+        Config.grpc_max_send_message_length = parseInt(Config.getEnv("grpc_max_send_message_length", "-1"));
+    
 
         Config.validate_user_form = Config.getEnv("validate_user_form", "");
     }
@@ -763,6 +798,17 @@ export class Config {
     public static otel_trace_mongodb_insert_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
     public static otel_trace_mongodb_update_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
     public static otel_trace_mongodb_delete_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
+
+    public static grpc_keepalive_time_ms = parseInt(Config.getEnv("grpc_keepalive_time_ms", "-1"));
+    public static grpc_keepalive_timeout_ms = parseInt(Config.getEnv("grpc_keepalive_timeout_ms", "-1"));
+    public static grpc_http2_min_ping_interval_without_data_ms = parseInt(Config.getEnv("grpc_http2_min_ping_interval_without_data_ms", "-1"));
+    public static grpc_max_connection_idle_ms = parseInt(Config.getEnv("grpc_max_connection_idle_ms", "-1"));
+    public static grpc_max_connection_age_ms = parseInt(Config.getEnv("grpc_max_connection_age_ms", "-1"));
+    public static grpc_max_connection_age_grace_ms = parseInt(Config.getEnv("grpc_max_connection_age_grace_ms", "-1"));
+    public static grpc_http2_max_pings_without_data = parseInt(Config.getEnv("grpc_http2_max_pings_without_data", "-1"));
+    public static grpc_keepalive_permit_without_calls = parseInt(Config.getEnv("grpc_keepalive_permit_without_calls", "-1"));
+    public static grpc_max_receive_message_length = parseInt(Config.getEnv("grpc_max_receive_message_length", "-1"));
+    public static grpc_max_send_message_length = parseInt(Config.getEnv("grpc_max_send_message_length", "-1"));
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
 
