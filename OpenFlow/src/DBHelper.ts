@@ -343,10 +343,12 @@ export class DBHelper {
     }
     public FindAgentBySlugOrIdWrap(_id, jwt, span) {
         if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+        var agentslug = _id;
+        if(_id.endsWith("agent")) agentslug = _id.substring(0, _id.length - 5 );
         Logger.instanse.debug("Add queue to cache : " + _id, span);
         return Config.db.GetOne<iAgent>({ query: {"_type": "agent", "$or": [
             { _id },
-            { slug: _id }]} , collectionname: "agents", jwt }, span);
+            { slug: _id }, { slug: agentslug } ]} , collectionname: "agents", jwt }, span);
 
     }
     public async FindAgentBySlugOrId(_id: string, jwt: string, parent: Span): Promise<iAgent> {

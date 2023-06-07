@@ -37,11 +37,6 @@ Installing on [kubernetes](kubernetes)
 
 using our [helm-charts](https://github.com/open-rpa/helm-charts/)
 
-#### How to install and manage OpenFlow using npm packages
-Installing using [npm packages](npmopenflow)
-
-Installing remote/local nodereds using [npm packages](npmnodered)
-
 #### How to build and run from source
 build [from source](buildsource)
 

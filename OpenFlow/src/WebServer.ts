@@ -294,6 +294,18 @@ export class WebServer {
                 process.exit(404);
             }
         });
+        if(Config.grpc_keepalive_time_ms > -1) protowrap.grpc_server_options['grpc.keepalive_time_ms'] = Config.grpc_keepalive_time_ms;
+        if(Config.grpc_keepalive_timeout_ms > -1) protowrap.grpc_server_options['grpc.keepalive_timeout_ms'] = Config.grpc_keepalive_timeout_ms;
+        if(Config.grpc_http2_min_ping_interval_without_data_ms > -1) protowrap.grpc_server_options['grpc.http2.min_ping_interval_without_data_ms'] = Config.grpc_http2_min_ping_interval_without_data_ms;
+        if(Config.grpc_max_connection_idle_ms > -1) protowrap.grpc_server_options['grpc.max_connection_idle_ms'] = Config.grpc_max_connection_idle_ms;
+        if(Config.grpc_max_connection_age_ms > -1) protowrap.grpc_server_options['grpc.max_connection_age_ms'] = Config.grpc_max_connection_age_ms;
+        if(Config.grpc_max_connection_age_grace_ms > -1) protowrap.grpc_server_options['grpc.max_connection_age_grace_ms'] = Config.grpc_max_connection_age_grace_ms;
+        if(Config.grpc_http2_max_pings_without_data > -1) protowrap.grpc_server_options['grpc.http2.max_pings_without_data'] = Config.grpc_http2_max_pings_without_data;
+        if(Config.grpc_keepalive_permit_without_calls > -1) protowrap.grpc_server_options['grpc.keepalive_permit_without_calls'] = Config.grpc_keepalive_permit_without_calls;
+        if(Config.grpc_max_receive_message_length > -1) protowrap.grpc_server_options['grpc.max_receive_message_length'] = Config.grpc_max_receive_message_length;
+        if(Config.grpc_max_send_message_length > -1) protowrap.grpc_server_options['grpc.max_send_message_length'] = Config.grpc_max_send_message_length;
+
+      
         var servers = [];
         servers.push(protowrap.serve("pipe", this.onClientConnected, config.defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server, flowclient));
         servers.push(protowrap.serve("socket", this.onClientConnected, config.defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));

@@ -675,6 +675,7 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                     (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
+                if(_user.federationids == null) _user.federationids = [];
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
                 if (exists.length == 0) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
@@ -759,6 +760,7 @@ export class LoginProvider {
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
                 }
             } else {
+                if(_user.federationids == null) _user.federationids = [];
                 var exists = _user.federationids.filter(x => x.id == profile.id && x.issuer == issuer);
                 if (exists.length == 0 || _user.emailvalidated == false) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
@@ -822,6 +824,7 @@ export class LoginProvider {
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
                 }
             } else {
+                if(_user.federationids == null) _user.federationids = [];
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
                 if (exists.length == 0 || _user.emailvalidated == false) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);

@@ -849,6 +849,9 @@ export class Message {
                 }
                 if (!allowed) {
                     let mq = await Logger.DBHelper.FindQueueByName(msg.queuename, rootjwt, parent);
+                    if (mq == null) {
+                        mq = await Logger.DBHelper.FindAgentBySlugOrId(msg.queuename, rootjwt, span) as any;
+                    }
                     if (mq != null) {
                         if (Config.amqp_force_sender_has_invoke) {
                             if (!DatabaseConnection.hasAuthorization(tuser, mq, Rights.invoke)) {
