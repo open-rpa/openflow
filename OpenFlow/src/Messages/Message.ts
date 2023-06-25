@@ -4450,10 +4450,9 @@ export class Message {
             // wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
             additems.push(wi);
         }
-        await Config.db.InsertMany(additems, "workitems", 1, true, jwt, parent);
+        var items = await Config.db.InsertMany(additems, "workitems", 1, true, jwt, parent);
 
-        delete msg.items;
-        msg.items = [];
+        msg.items = items;
 
 
         end = new Date().getTime();
