@@ -275,13 +275,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (sendit) {
                         // if (payload == null) payload = await this.GetOne({ jwt, collectionname, query }, null);
-                        payload = {}
+                        payload = {"wiq": wiq.name, "wiqid": wiq._id}
                         var sendthis = payload;
                         if (client.clientagent == "openrpa") {
                             sendthis = {
                                 command: "invoke",
                                 workflowid: wiq.workflowid,
-                                data: { }
+                                data: { },
+                                "wiq": wiq.name, "wiqid": wiq._id
                             }
                         }
                         if (payload != null) {
