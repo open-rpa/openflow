@@ -8392,7 +8392,7 @@ export class PackagesCtrl extends entitiesCtrl<Base> {
 
 export class PackageCtrl extends entityCtrl<Base> {
     e: any = null;
-    languages: string[] = ["nodejs", "python", "dotnet"];
+    languages: string[] = ["nodejs", "python", "dotnet", "powershell"];
     oldfileid: string = "";
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -8488,7 +8488,7 @@ export class PackageCtrl extends entityCtrl<Base> {
 
 export class RunPackageCtrl extends entityCtrl<Base> {
     e: any = null;
-    languages: string[] = ["nodejs", "python", "dotnet"];
+    languages: string[] = ["nodejs", "python", "dotnet", "powershell"];
     oldfileid: string = "";
     packageid: string = "";
     package: string = "";
