@@ -2,8 +2,8 @@ version: "3.3"
 services:
   rabbitmq:
     image: "rabbitmq:3.7-management"
-    # environment:
-    #   - RABBITMQ_ERLANG_COOKIE=your_cookie_string_hereyour_cookie_string_here
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=your_cookie_string_hereyour_cookie_string_here
     restart: unless-stopped
     # network_mode: "host"
     ports:
