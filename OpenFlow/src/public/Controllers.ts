@@ -7129,6 +7129,9 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
     public users: Base[] = [];
     public amqpqueues: Base[] = [];
     public workitemqueues: Base[] = [];
+    public agents: Base[];
+    public packages: Base[];
+
     public stats: string = "calculating...";
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -7189,6 +7192,14 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         this.workitemqueues.forEach((e: any) => { e.display = e.name });
         // this.workitemqueues.forEach((e: any) => { this.amqpqueues.push(e) });
         this.workitemqueues.unshift({ "_id": "", "name": "", "display": "(no workitem queue)" } as any);
+
+        this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "agent" }, orderby: "name", projection: { "slug": 1, "name": 1 } });
+        console.log(this.agents);
+        this.agents.unshift({ "name": "" } as any)
+        this.packages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package" }, orderby: "name", projection: { "name": 1 } });
+        console.log(this.packages);
+        this.packages.unshift({ "name": "" } as any)
+    
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async processdata() {
@@ -7249,6 +7260,8 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.success_wiqid = model.success_wiqid;
                     q.failed_wiq = model.failed_wiq;
                     q.failed_wiqid = model.failed_wiqid;
+                    // @ts-ignore
+                    q.packageid = model.packageid;
                     if ((q.robotqueue == null || q.robotqueue == "") && (q.amqpqueue == null || q.amqpqueue == "")) {
                         q.amqpqueue = model.name;
                     }
@@ -7271,6 +7284,8 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.success_wiqid = model.success_wiqid;
                     q.failed_wiq = model.failed_wiq;
                     q.failed_wiqid = model.failed_wiqid;
+                    // @ts-ignore
+                    q.packageid = model.packageid;
                     _msg.command = 'updateworkitemqueue';
                     _msg.data = JSON.stringify(q);
                     const result: UpdateWorkitemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkitemQueueMessage>(_msg, 1);
@@ -8137,7 +8152,15 @@ export class AgentCtrl extends entityCtrl<any> {
         try {
             this.loading = true;
             this.instancelogpodname = podname;
-            this.instancelog = await NoderedUtil.CustomCommand({ command: "getagentlog", id: this.model._id, name: podname })
+            var lines:any = await NoderedUtil.CustomCommand({ command: "getagentlog", id: this.model._id, name: podname });
+            if(lines != null) {
+                lines = lines.split("\n") 
+                // reverse lines
+                lines = lines.reverse()
+            } else {
+                lines = [];
+            }
+            this.instancelog = lines.join("\n");            
             this.errormessage = "";
         } catch (error) {
             this.errormessage = error.message ? error.message : error

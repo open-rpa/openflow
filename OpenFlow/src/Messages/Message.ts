@@ -4848,6 +4848,8 @@ export class Message {
         wiq.failed_wiqid = msg.failed_wiqid;
         wiq.success_wiq = msg.success_wiq;
         wiq.success_wiqid = msg.success_wiqid;
+        // @ts-ignore
+        wiq.packageid = msg.packageid;
 
         msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
 
@@ -4912,6 +4914,9 @@ export class Message {
         if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
         if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
         if (msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
+        // @ts-ignore
+        if (!NoderedUtil.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
+
 
         if (msg._acl) wiq._acl = msg._acl;
 
