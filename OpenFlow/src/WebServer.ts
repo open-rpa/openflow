@@ -430,7 +430,13 @@ export class WebServer {
             } else if (command == "download") {
                 if(msg.id && msg.id != "") {
                     reply.command = "downloadreply"
-                    const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
+                    let rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
+                    if(rows.length == 0) {
+                        const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package"}, top:1, collectionname: "agents", jwt: client.jwt }, null);
+                        if(rows2.length > 0) {
+                            rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: Crypt.rootToken() }, null);
+                        }
+                    }                    
                     if(rows.length > 0) {
                         result = rows[0];
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
