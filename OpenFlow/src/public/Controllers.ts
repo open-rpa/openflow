@@ -8689,8 +8689,9 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                     if(pre == null) return;
                     const decoder = new TextDecoder("utf-8");
                     const string = decoder.decode(new Uint8Array(data as any));
-                    // pre.innerText += string;
-                    pre.innerText = string + pre.innerText;
+                    var strings = string.split("\n").reverse();
+
+                    pre.innerText = strings.join("\n") + pre.innerText;
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
