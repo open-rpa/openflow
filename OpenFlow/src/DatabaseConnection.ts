@@ -1681,9 +1681,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (NoderedUtil.IsNullEmpty(agent.slug)) {
                         throw new Error("Slug is required for agents");
                     }
+                    agent.slug = agent.slug.toLowerCase();
                     if (NoderedUtil.IsNullEmpty(agent.runas)) {
                         agent.runas = user._id
                     }
+                    
                     if (!NoderedUtil.IsNullEmpty(agent.runas)) {
                         var agentcount = 1;
                         const resource: Resource = await Config.db.GetResource("Agent Instance", span);
@@ -2076,6 +2078,12 @@ export class DatabaseConnection extends events.EventEmitter {
                                 throw new Error("Access denied");
                             }
                         }
+                        // @ts-ignore
+                        if(NoderedUtil.IsNullEmpty(item.slug)) {
+                            throw new Error("Slug is required for agents");
+                        }
+                        // @ts-ignore
+                        item.slug = item.slug.toLowerCase();
                         if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
                             if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
                                 var customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
@@ -2428,6 +2436,15 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullEmpty(agent.runas)) {
                             agent.runas = user._id
                         }
+                        if(NoderedUtil.IsNullEmpty(agent.slug)) {
+                            throw new Error("Agent slug cannot be empty");
+                        }
+                        agent.slug = agent.slug.toLowerCase();
+                        // @ts-ignore
+                        if (!user.HasRoleName("admins") && agent.slug != original.slug) {
+                            throw new Error("Access denied, changing slug");
+                        }
+
                         if (!NoderedUtil.IsNullEmpty(agent.runas)) {
                             var agentcount = 1;
                             const resource: Resource = await Config.db.GetResource("Agent Instance", span);
