@@ -3576,6 +3576,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (skip_array.indexOf(collectionname) == -1) {
                     if (!collectionname.endsWith("_hist")) addToHist = true;
                 }
+                if(DatabaseConnection.istimeseries(collectionname)) {
+                    addToHist = false;
+                }
 
 
                 Logger.instanse.verbose("quering items to delete from " + collectionname, span, { collection: collectionname, user: user?.username });
