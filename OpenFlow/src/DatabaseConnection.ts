@@ -3739,10 +3739,11 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     public getbasequery(user: TokenUser | User,  bits: number[], collectionname: string): Object {
         let field = "_acl"; 
-        var bypassquery:any = { _id: { $ne: "bum" } }
+        // var bypassquery:any = { _id: { $ne: "bum" } }
+        var bypassquery:any = { }
         if(DatabaseConnection.usemetadata(collectionname)) {
-            bypassquery = { }
-            bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
+            // bypassquery = { }
+            // bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
             field = DatabaseConnection.metadataname(collectionname) + "._acl";
         }
         if (Config.api_bypass_perm_check) {
