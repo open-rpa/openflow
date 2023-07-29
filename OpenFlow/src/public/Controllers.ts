@@ -4910,10 +4910,14 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
             const model: any = this.models[i];
             model.fa = "far fa-question-circle";
             model.fa2 = "";
+            if (model.imagename != null && model.imagename != "") model.fa = 'fab fa-docker';
             if (model.clientagent == 'openrpa') model.fa = 'fas fa-robot';
             if (model.clientagent == 'webapp') model.fa = 'fas fa-globe';
             if (model.clientagent == 'browser') model.fa = 'fas fa-globe';
             if (model.clientagent == 'mobileapp') model.fa = 'fas fa-mobile-alt';
+            if (model.clientagent == 'python') model.fa = 'fab python';
+            if (model.clientagent == 'node') model.fa = 'fab fa-node-js';
+            if (model.clientagent == 'nodeagent') model.fa = 'fab fa-node-js';
             if (model.clientagent == 'nodered') model.fa = 'fab fa-node-js';
             if (model.clientagent == 'getUserFromRequest') model.fa = 'fab fa-node-js';
             if (model.clientagent == 'googleverify') model.fa = 'fab fa-google';
