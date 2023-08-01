@@ -74,6 +74,24 @@
             </select>
         </div>
     </div>
+    <div class="form-group">
+        <label for="state" class="col-sm-2 control-label" translate lib="web">agent</label>
+        <div class="col-sm-4">
+            <select class="form-control" id="country" ng-model="ctrl.model.amqpqueue" required="required"
+                ng-options="(item.slug + 'agent') as item.name for item in ctrl.agents | orderBy: 'display'"
+                ng-disabled="ctrl.loading==true">
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="state" class="col-sm-2 control-label" translate lib="web">package</label>
+        <div class="col-sm-4">
+            <select class="form-control" id="country" ng-model="ctrl.model.packageid" required="required"
+                ng-options="item._id as item.name for item in ctrl.packages | orderBy: 'name'"
+                ng-disabled="ctrl.loading==true">
+            </select>
+        </div>
+    </div>
 
     <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">

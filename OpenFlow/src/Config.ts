@@ -110,6 +110,7 @@ export class dbConfig extends Base {
     public cache_workitem_queues: boolean;
 
     public agent_images: NoderedImage[]
+    public agent_node_selector: string;
 
 
     public async Save(jwt: string, parent: Span): Promise<void> {
@@ -240,6 +241,8 @@ export class dbConfig extends Base {
 
         Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
 
+
+        Config.agent_node_selector = (!NoderedUtil.IsNullEmpty(conf.agent_node_selector) ? conf.agent_node_selector : Config.getEnv("agent_node_selector", ""))
 
         if(!NoderedUtil.IsNullUndefinded(conf.agent_images)) {
             Config.agent_images = conf.agent_images;
@@ -472,6 +475,7 @@ export class Config {
         JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
         ));
         Config.agent_domain_schema = Config.getEnv("agent_domain_schema", "");
+        Config.agent_node_selector = Config.getEnv("agent_node_selector", "");
 
         Config.agent_apiurl = Config.getEnv("agent_apiurl", "");
         Config.agent_oidc_config = Config.getEnv("agent_oidc_config", "");
@@ -741,9 +745,10 @@ export class Config {
     // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
     public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", 
-        JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
+        JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} , {"name":"PowerShell 7.3", "image":"openiap/nodeagent:pwsh", "languages": ["powershell"]} ])
     ));
     public static agent_domain_schema: string = Config.getEnv("agent_domain_schema", "");
+    public static agent_node_selector:string = Config.getEnv("agent_node_selector", "");
 
     public static agent_apiurl: string = Config.getEnv("agent_apiurl", "");
     public static agent_oidc_config: string = Config.getEnv("agent_oidc_config", "");

@@ -4910,10 +4910,14 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
             const model: any = this.models[i];
             model.fa = "far fa-question-circle";
             model.fa2 = "";
+            if (model.imagename != null && model.imagename != "") model.fa = 'fab fa-docker';
             if (model.clientagent == 'openrpa') model.fa = 'fas fa-robot';
             if (model.clientagent == 'webapp') model.fa = 'fas fa-globe';
             if (model.clientagent == 'browser') model.fa = 'fas fa-globe';
             if (model.clientagent == 'mobileapp') model.fa = 'fas fa-mobile-alt';
+            if (model.clientagent == 'python') model.fa = 'fab python';
+            if (model.clientagent == 'node') model.fa = 'fab fa-node-js';
+            if (model.clientagent == 'nodeagent') model.fa = 'fab fa-node-js';
             if (model.clientagent == 'nodered') model.fa = 'fab fa-node-js';
             if (model.clientagent == 'getUserFromRequest') model.fa = 'fab fa-node-js';
             if (model.clientagent == 'googleverify') model.fa = 'fab fa-google';
@@ -7129,6 +7133,9 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
     public users: Base[] = [];
     public amqpqueues: Base[] = [];
     public workitemqueues: Base[] = [];
+    public agents: Base[];
+    public packages: Base[];
+
     public stats: string = "calculating...";
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -7189,6 +7196,14 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         this.workitemqueues.forEach((e: any) => { e.display = e.name });
         // this.workitemqueues.forEach((e: any) => { this.amqpqueues.push(e) });
         this.workitemqueues.unshift({ "_id": "", "name": "", "display": "(no workitem queue)" } as any);
+
+        this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "agent" }, orderby: "name", projection: { "slug": 1, "name": 1 } });
+        console.log(this.agents);
+        this.agents.unshift({ "name": "" } as any)
+        this.packages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package" }, orderby: "name", projection: { "name": 1 } });
+        console.log(this.packages);
+        this.packages.unshift({ "name": "" } as any)
+    
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async processdata() {
@@ -7249,6 +7264,8 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.success_wiqid = model.success_wiqid;
                     q.failed_wiq = model.failed_wiq;
                     q.failed_wiqid = model.failed_wiqid;
+                    // @ts-ignore
+                    q.packageid = model.packageid;
                     if ((q.robotqueue == null || q.robotqueue == "") && (q.amqpqueue == null || q.amqpqueue == "")) {
                         q.amqpqueue = model.name;
                     }
@@ -7271,6 +7288,8 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
                     q.success_wiqid = model.success_wiqid;
                     q.failed_wiq = model.failed_wiq;
                     q.failed_wiqid = model.failed_wiqid;
+                    // @ts-ignore
+                    q.packageid = model.packageid;
                     _msg.command = 'updateworkitemqueue';
                     _msg.data = JSON.stringify(q);
                     const result: UpdateWorkitemQueueMessage = await WebSocketClient.instance.Send<UpdateWorkitemQueueMessage>(_msg, 1);
@@ -8137,7 +8156,15 @@ export class AgentCtrl extends entityCtrl<any> {
         try {
             this.loading = true;
             this.instancelogpodname = podname;
-            this.instancelog = await NoderedUtil.CustomCommand({ command: "getagentlog", id: this.model._id, name: podname })
+            var lines:any = await NoderedUtil.CustomCommand({ command: "getagentlog", id: this.model._id, name: podname });
+            if(lines != null) {
+                lines = lines.split("\n") 
+                // reverse lines
+                lines = lines.reverse()
+            } else {
+                lines = [];
+            }
+            this.instancelog = lines.join("\n");            
             this.errormessage = "";
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -8392,7 +8419,7 @@ export class PackagesCtrl extends entitiesCtrl<Base> {
 
 export class PackageCtrl extends entityCtrl<Base> {
     e: any = null;
-    languages: string[] = ["nodejs", "python", "dotnet"];
+    languages: string[] = ["nodejs", "python", "dotnet", "powershell"];
     oldfileid: string = "";
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -8488,7 +8515,7 @@ export class PackageCtrl extends entityCtrl<Base> {
 
 export class RunPackageCtrl extends entityCtrl<Base> {
     e: any = null;
-    languages: string[] = ["nodejs", "python", "dotnet"];
+    languages: string[] = ["nodejs", "python", "dotnet", "powershell"];
     oldfileid: string = "";
     packageid: string = "";
     package: string = "";
@@ -8666,8 +8693,9 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                     if(pre == null) return;
                     const decoder = new TextDecoder("utf-8");
                     const string = decoder.decode(new Uint8Array(data as any));
-                    // pre.innerText += string;
-                    pre.innerText = string + pre.innerText;
+                    var strings = string.split("\n").reverse();
+
+                    pre.innerText = strings.join("\n") + pre.innerText;
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
 

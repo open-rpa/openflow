@@ -62,18 +62,19 @@
     
     
     <section ng-repeat="ace in ctrl.model._acl" ng-show="ctrl.collection!='files'" id="entitypermissions">
+        <!-- make a look like normal text and not links -->
         <div class="form-inline">
             <label class="col-sm-4 control-label">{{ace.name}}: </label>
             <input ng-disabled="ctrl.loading==true" type="checkbox" ng-checked="ctrl.isBitSet(ace, 1)"
-                ng-click="ctrl.toogleBit(ace, 1)" value="1" id="{{ace._id}}" /> create
+                ng-click="ctrl.toogleBit(ace, 1)" value="1" id="{{ace._id}}" /> <span ng-click="ctrl.toogleBit(ace, 1)">create</span>
             <input ng-disabled="ctrl.loading==true" type="checkbox" ng-checked="ctrl.isBitSet(ace, 2)"
-                ng-click="ctrl.toogleBit(ace, 2)" value="2" id="{{ace._id}}" /> read
+                ng-click="ctrl.toogleBit(ace, 2)" value="2" id="{{ace._id}}" /> <span ng-click="ctrl.toogleBit(ace, 2)">read</span>
             <input ng-disabled="ctrl.loading==true" type="checkbox" ng-checked="ctrl.isBitSet(ace, 3)"
-                ng-click="ctrl.toogleBit(ace, 3)" value="3" id="{{ace._id}}" /> update
+                ng-click="ctrl.toogleBit(ace, 3)" value="3" id="{{ace._id}}" /> <span ng-click="ctrl.toogleBit(ace, 3)">update</span>
             <input ng-disabled="ctrl.loading==true" type="checkbox" ng-checked="ctrl.isBitSet(ace, 4)"
-                ng-click="ctrl.toogleBit(ace, 4)" value="4" id="{{ace._id}}" /> delete
+                ng-click="ctrl.toogleBit(ace, 4)" value="4" id="{{ace._id}}" /> <span ng-click="ctrl.toogleBit(ace, 4)">delete</span>
             <input ng-disabled="ctrl.loading==true" type="checkbox" ng-checked="ctrl.isBitSet(ace, 5)"
-                ng-click="ctrl.toogleBit(ace, 5)" value="5" id="{{ace._id}}" /> invoke
+                ng-click="ctrl.toogleBit(ace, 5)" value="5" id="{{ace._id}}" /> <span ng-click="ctrl.toogleBit(ace, 5)">invoke</span>
             <button type="button" ng-click="ctrl.removeuser(ace._id)" ng-disabled="ctrl.loading" translate
                 lib="web">delete</button>
         </div>

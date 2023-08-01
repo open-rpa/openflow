@@ -430,7 +430,13 @@ export class WebServer {
             } else if (command == "download") {
                 if(msg.id && msg.id != "") {
                     reply.command = "downloadreply"
-                    const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
+                    let rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
+                    if(rows.length == 0) {
+                        const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package"}, top:1, collectionname: "agents", jwt: client.jwt }, null);
+                        if(rows2.length > 0) {
+                            rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: Crypt.rootToken() }, null);
+                        }
+                    }                    
                     if(rows.length > 0) {
                         result = rows[0];
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
@@ -549,7 +555,6 @@ export class WebServer {
                 }
                 if(reply.command == "addworkitemsreply") {
                     reply.command = "pushworkitemsreply";
-                    reply.workitems = result.results;
                 }
                 var res = result.data;
                 if(typeof res == "string") var res = JSON.parse(res);
@@ -569,6 +574,16 @@ export class WebServer {
                         
                     }
                     delete res.result;
+                }
+                if(reply.command == "pushworkitemsreply") {
+                    res.workitems = res.items;
+                    if(res.workitem && res.workitem.errormessage) {
+                        if(typeof res.workitem.errormessage !== "string") {
+                            res.workitem.errormessage = JSON.stringify(res.workitem.errormessage);
+                        }
+                        
+                    }
+                    delete res.items;
                 }
                 if(result.command == "popworkitem") {
                     let includefiles = msg.includefiles || false;
@@ -598,6 +613,14 @@ export class WebServer {
                 if(res.result) res.result = JSON.stringify(res.result);
                 if(res.workitem && !NoderedUtil.IsNullUndefinded(res.workitem.payload) ) {
                     res.workitem.payload = JSON.stringify(res.workitem.payload);
+                }
+                if(res.workitems) {
+                    for(let i = 0; i < res.workitems.length; i++) {
+                        const wi = res.workitems[i];
+                        if(!NoderedUtil.IsNullUndefinded(wi.payload)) {
+                            wi.payload = JSON.stringify(wi.payload);
+                        }
+                    }
                 }
                 if(res.results) res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);

@@ -275,13 +275,18 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (sendit) {
                         // if (payload == null) payload = await this.GetOne({ jwt, collectionname, query }, null);
-                        payload = {}
+                        payload = {
+                            "wiq": wiq.name, 
+                            "wiqid": wiq._id,
+                            "packageid": (wiq as any).packageid,
+                        }
                         var sendthis = payload;
                         if (client.clientagent == "openrpa") {
                             sendthis = {
                                 command: "invoke",
                                 workflowid: wiq.workflowid,
-                                data: { }
+                                data: { },
+                                "wiq": wiq.name, "wiqid": wiq._id, "packageid": (wiq as any).packageid,
                             }
                         }
                         if (payload != null) {
@@ -1676,9 +1681,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (NoderedUtil.IsNullEmpty(agent.slug)) {
                         throw new Error("Slug is required for agents");
                     }
+                    agent.slug = agent.slug.toLowerCase();
                     if (NoderedUtil.IsNullEmpty(agent.runas)) {
                         agent.runas = user._id
                     }
+                    
                     if (!NoderedUtil.IsNullEmpty(agent.runas)) {
                         var agentcount = 1;
                         const resource: Resource = await Config.db.GetResource("Agent Instance", span);
@@ -2071,6 +2078,12 @@ export class DatabaseConnection extends events.EventEmitter {
                                 throw new Error("Access denied");
                             }
                         }
+                        // @ts-ignore
+                        if(NoderedUtil.IsNullEmpty(item.slug)) {
+                            throw new Error("Slug is required for agents");
+                        }
+                        // @ts-ignore
+                        item.slug = item.slug.toLowerCase();
                         if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
                             if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
                                 var customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
@@ -2423,6 +2436,15 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullEmpty(agent.runas)) {
                             agent.runas = user._id
                         }
+                        if(NoderedUtil.IsNullEmpty(agent.slug)) {
+                            throw new Error("Agent slug cannot be empty");
+                        }
+                        agent.slug = agent.slug.toLowerCase();
+                        // @ts-ignore
+                        if (!user.HasRoleName("admins") && agent.slug != original.slug) {
+                            throw new Error("Access denied, changing slug");
+                        }
+
                         if (!NoderedUtil.IsNullEmpty(agent.runas)) {
                             var agentcount = 1;
                             const resource: Resource = await Config.db.GetResource("Agent Instance", span);
@@ -3554,6 +3576,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (skip_array.indexOf(collectionname) == -1) {
                     if (!collectionname.endsWith("_hist")) addToHist = true;
                 }
+                if(DatabaseConnection.istimeseries(collectionname)) {
+                    addToHist = false;
+                }
 
 
                 Logger.instanse.verbose("quering items to delete from " + collectionname, span, { collection: collectionname, user: user?.username });
@@ -3714,10 +3739,11 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     public getbasequery(user: TokenUser | User,  bits: number[], collectionname: string): Object {
         let field = "_acl"; 
-        var bypassquery:any = { _id: { $ne: "bum" } }
+        // var bypassquery:any = { _id: { $ne: "bum" } }
+        var bypassquery:any = { }
         if(DatabaseConnection.usemetadata(collectionname)) {
-            bypassquery = { }
-            bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
+            // bypassquery = { }
+            // bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
             field = DatabaseConnection.metadataname(collectionname) + "._acl";
         }
         if (Config.api_bypass_perm_check) {

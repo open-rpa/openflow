@@ -49,6 +49,7 @@ export class samlauthstrategyoptions {
     public entryPoint: string = "";
     public issuer: string = "";
     public cert: string = null;
+    public disableRequestedAuthnContext: boolean = false;
 
     public audience: any = false;
     public signatureAlgorithm: 'sha1' | 'sha256' | 'sha512' = "sha256";
@@ -347,6 +348,7 @@ export class LoginProvider {
         options.entryPoint = singin_url;
         options.cert = cert;
         options.issuer = issuer;
+        options.disableRequestedAuthnContext = true;
         options.callbackUrl = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
         options.verify = (LoginProvider.samlverify).bind(this);
         options.wantAuthnResponseSigned = false;
