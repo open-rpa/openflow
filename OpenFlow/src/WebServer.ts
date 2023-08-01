@@ -119,8 +119,13 @@ export class WebServer {
             });
             this.app.use("/", express.static(path.join(__dirname, "/public")));
             this.app.use(compression());
+            // this.app.use(express.urlencoded({ extended: true }));
+            // this.app.use(express.json());
+            // this.app.use(express.urlencoded({ extended: true, limit: '50mb', parameterLimit:50000 }));
+            // this.app.use(express.json({limit: '50mb'}));
             this.app.use(express.urlencoded({ extended: true }));
-            this.app.use(express.json());
+            this.app.use(express.json({limit: '150mb'}));
+
             this.app.use(cookieParser());
             this.app.set('trust proxy', 1)
             span?.addEvent("Add cookieSession");
