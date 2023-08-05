@@ -14,18 +14,18 @@
 <table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;">
   <thead class="thead-dark">
     <tr>
-      <th><strong translate lib="web">name</strong></th>
-      <th><strong translate lib="web">state</strong></th>
-      <th><strong translate lib="web">created</strong></th>
-      <th><strong translate lib="web">updated</strong></th>
-      <th><strong translate lib="web">createdby</strong></th>
+      <th><strong translate lib="web" ng-click="ctrl.ToggleOrder('name')">name</strong></th>
+      <th><strong translate lib="web" ng-click="ctrl.ToggleOrder('state')">state</strong></th>
+      <th><strong translate lib="web" ng-click="ctrl.ToggleOrder('_created')">created</strong></th>
+      <th><strong translate lib="web" ng-click="ctrl.ToggleOrder('_modified')">updated</strong></th>
+      <th><strong translate lib="web" ng-click="ctrl.ToggleOrder('_createdby')">createdby</strong></th>
       <th></th>
     </tr>
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
       <td>
-        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'">{{model.name}}</a>        
+        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'">{{model.name | limitTo: 50}}</a>        
       </td>
       <td>{{model.state}}</td>
       <td>
