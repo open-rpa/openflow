@@ -77,7 +77,7 @@
       <div class="px-card py-10 bg-light-lm bg-very-dark-dm rounded-bottom">
         <!-- py-10 = padding-top: 1rem (10px) and padding-bottom: 1rem (10px), bg-light-lm = background-color: var(--gray-color-light) only in light mode, bg-very-dark-dm = background-color: var(--dark-color-dark) only in dark mode, rounded-bottom = rounded corners on the bottom -->
         <p class="font-size-12 m-0"> <!-- font-size-12 = font-size: 1.2rem (12px), m-0 = margin: 0 -->
-        <pre>{{ ctrl.instancelog }}</pre>
+        <pre ng-bind-html="ctrl.instancelog"></pre>
         </p>
       </div>
     </div>

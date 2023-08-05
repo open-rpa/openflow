@@ -184,7 +184,7 @@ export class dockerdriver implements i_agent_driver {
                 "otel_trace_url=" + Config.otel_trace_url,
                 "otel_metric_url=" + Config.otel_metric_url,
                 "TZ=" + agent.tz,
-                "log_with_colors=false",
+                "log_with_colors=true",
                 "oidc_config=" + oidc_config,
                 "oidc_client_id=" + Config.agent_oidc_client_id,
                 "oidc_client_secret=" + Config.agent_oidc_client_secret,

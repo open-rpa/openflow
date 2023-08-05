@@ -1,3 +1,5 @@
+const AU = require('ansi_up');
+const ansi_up = new AU.default;
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
 import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, stripe_base, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, stripe_invoice, Message, Customer, KubeResources, KubeResourceValues, Resource, ResourceVariant, ResourceUsage } from "@openiap/openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
@@ -1289,12 +1291,13 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("RPAWorkflowCtrl");
         this.collection = "openrpa";
         this.messages = "";
@@ -2216,12 +2219,13 @@ export class ProviderCtrl extends entityCtrl<Provider> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("ProviderCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -2523,12 +2527,13 @@ export class UserCtrl extends entityCtrl<TokenUser> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("UserCtrl");
         this.collection = "users";
         this.postloadData = this.processdata;
@@ -2699,12 +2704,13 @@ export class RoleCtrl extends entityCtrl<Role> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("RoleCtrl");
         this.collection = "users";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -3113,12 +3119,13 @@ export class FormResourceCtrl extends entityCtrl<Base> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("FormResourceCtrl");
         this.collection = "forms";
         this.postloadData = this.postload;
@@ -3221,12 +3228,13 @@ export class EditFormCtrl extends entityCtrl<Form> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("EditFormCtrl");
         this.collection = "forms";
         this.basequery = {};
@@ -3397,12 +3405,13 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         this.myid = new Date().toISOString();
         console.debug("FormCtrl");
         this.collection = "workflow";
@@ -3965,12 +3974,13 @@ export class EntityCtrl extends entityCtrl<Base> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("EntityCtrl");
         this.collection = $routeParams.collection;
         this.postloadData = this.processdata;
@@ -5023,12 +5033,13 @@ export class CredentialCtrl extends entityCtrl<Base> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("CredentialCtrl");
         this.collection = "openrpa";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -5273,12 +5284,13 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("OAuthClientCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -5770,12 +5782,13 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("CustomerCtrl");
         this.collection = "users";
         this.postloadData = this.processdata;
@@ -6334,12 +6347,13 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("EntityRestrictionCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -6776,12 +6790,13 @@ export class ResourceCtrl extends entityCtrl<Resource> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("ResourceCtrl");
         this.collection = "config";
         WebSocketClientService.onSignedin((user: TokenUser) => {
@@ -6941,12 +6956,13 @@ export class WorkitemCtrl extends entityCtrl<Workitem> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("WorkitemCtrl");
         this.collection = "workitems";
         this.postloadData = this.processdata;
@@ -7142,12 +7158,13 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("WorkitemQueueCtrl");
         this.collection = "mq";
         this.postloadData = this.processdata;
@@ -7362,12 +7379,13 @@ export class MailHistCtrl extends entityCtrl<Base> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("MailHist");
         this.collection = "mailhist";
         this.postloadData = this.processData;
@@ -7482,12 +7500,13 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("ConsoleCtrl");
         this.collection = "config";
         this.basequery = { "_type": "config" }
@@ -7814,12 +7833,13 @@ export class AgentCtrl extends entityCtrl<any> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("AgentCtrl");
         this.collection = "agents";
         this.postloadData = this.processData;
@@ -8158,13 +8178,14 @@ export class AgentCtrl extends entityCtrl<any> {
             this.instancelogpodname = podname;
             var lines:any = await NoderedUtil.CustomCommand({ command: "getagentlog", id: this.model._id, name: podname });
             if(lines != null) {
+                lines = ansi_up.ansi_to_html(lines);
                 lines = lines.split("\n") 
                 // reverse lines
                 lines = lines.reverse()
             } else {
                 lines = [];
             }
-            this.instancelog = lines.join("\n");            
+            this.instancelog = this.$sce.trustAsHtml(lines.join("\n"));
             this.errormessage = "";
         } catch (error) {
             this.errormessage = error.message ? error.message : error
@@ -8426,12 +8447,13 @@ export class PackageCtrl extends entityCtrl<Base> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("PackageCtrl");
         this.collection = "agents";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -8522,17 +8544,19 @@ export class RunPackageCtrl extends entityCtrl<Base> {
     agents: any[] = [];
     packages: any[] = [];
     allpackages: any[] = [];
+
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        super($rootScope, $scope, $location, $routeParams, $sce, $interval, WebSocketClientService, api, userdata);
         console.debug("RunPackageCtrl");
         this.collection = "agents";
         this.postloadData = this.processData.bind(this);
@@ -8692,10 +8716,12 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                     var pre = document.getElementById(correlationId);
                     if(pre == null) return;
                     const decoder = new TextDecoder("utf-8");
-                    const string = decoder.decode(new Uint8Array(data as any));
+                    const _string = decoder.decode(new Uint8Array(data as any));
+                    const string = ansi_up.ansi_to_html(_string);
                     var strings = string.split("\n").reverse();
 
-                    pre.innerText = strings.join("\n") + pre.innerText;
+                    pre.innerHTML = strings.join("<br/>") + pre.innerHTML;
+                    // pre.innerText = strings.join("\n") + pre.innerText;
                 }
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
