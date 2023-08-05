@@ -5,13 +5,13 @@ services:
     environment:
       - RABBITMQ_ERLANG_COOKIE=your_cookie_string_hereyour_cookie_string_here
     restart: unless-stopped
-    # network_mode: "host"
+    ## network_mode: "host"
     ports:
       - "5672:5672"
       - "15672:15672"
   # registry:
   #   image: registry:2
-  #   # network_mode: "host"
+  #   ## network_mode: "host"
   #   ports:
   #     - "5000:5000"
   # mongodb:
