@@ -8655,7 +8655,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async addprocess(streamid:string): Promise<void> {
+    async addprocess(streamid:string, schedulename:string = undefined): Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);
         if (_a == null) return;
         var payload ={
@@ -8668,6 +8668,9 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         div.classList.add("shadow"); div.classList.add("card");
         var label = document.createElement("label");
         label.innerText = "Stream " + streamid;
+        if(schedulename != null) {
+            label.innerText = schedulename + " (#" + streamid + ")";
+        }
         div.appendChild(label);
         var killbutton = document.createElement("button");
         killbutton.innerText = "Kill";
@@ -8741,7 +8744,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                     console.log("listprocesses !!!")
                     for(var i = 0; i < data.processes.length; i++) {
                         console.log("add process " + data.processes[i].id)
-                        this.addprocess(data.processes[i].id);
+                        this.addprocess(data.processes[i].id, data.processes[i].schedulename);
                     }
                 }
                 if(data.command != null) {
