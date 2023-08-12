@@ -918,11 +918,17 @@ export class Message {
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
+                if(msg.queuename != null && msg.queuename != "" && amqpwrapper.bad_queues.indexOf(msg.queuename) > -1) {
+                    throw new Error("bad queue: " + msg.queuename + " correlationId: " + msg.correlationId);
+                } 
                 await amqpwrapper.Instance().send(msg.exchangename, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey, span);
             } else {
                 // if (msg.queuename === msg.replyto) {
                 //     throw new Error("Cannot send reply to self queuename: " + msg.queuename + " correlationId: " + msg.correlationId);
                 // }
+                if(msg.queuename != null && msg.queuename != "" && amqpwrapper.bad_queues.indexOf(msg.queuename) > -1) {
+                    throw new Error("bad queue: " + msg.queuename + " correlationId: " + msg.correlationId);
+                } 
                 const sendthis = msg.data;
                 await amqpwrapper.Instance().sendWithReplyTo(msg.exchangename, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey, span);
             }

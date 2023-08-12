@@ -638,15 +638,6 @@
         </optgroup>
       </select>
     </div>
-    <div class="input-group col-sm-8" ng-show="ctrl.packages && ctrl.packages.length > 0 && (ctrl.model.maxpackages == null || ctrl.model.maxpackages == 1)">
-      <div class="input-group-prepend">
-        <span class="input-group-text" translate lib="web">package</span>
-      </div>
-      <select id="package" ng-model="ctrl.model.package" ng-disabled="ctrl.loading==true" class="form-control"
-        ng-options="item._id as item.name for item in ctrl.packages">
-      </select>
-
-    </div>
     <div class="input-group col-sm-8" ng-show="menuctrl.hasrole('admins') || menuctrl.hasrole('customer admins')">
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">runas</span>
@@ -680,8 +671,87 @@
           lib="web">Save</button>
       </div>
     </div>
-
   </form>
+</div>
+
+
+<div class="w-800 mw-full" ng-repeat="schedule in ctrl.model.schedules">
+  <div class="card p-0">
+    <div class="content">
+      <div class="input-group col-sm-8">
+        <div class="input-group-prepend">
+          <span class="input-group-text" translate lib="web">name</span>
+        </div>
+        <input ng-model="schedule.name" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
+      </div>
+
+      <div class="input-group col-sm-8">
+        <div class="input-group-prepend">
+          <span class="input-group-text" translate lib="web">enabled</span>
+        </div>
+        <div class="custom-checkbox">
+          <input type="checkbox" id="schedule-{{$index}}-enabled" value="{{schedule.enabled}}" ng-model="schedule.enabled"
+            ng-disabled="ctrl.loading==true">
+          <label for="schedule-{{$index}}-enabled" translate lib="web"></label>
+        </div>
+      </div>
+
+      <!-- -->
+      <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)" >
+        <div class="input-group-prepend">
+          <span class="input-group-text" translate lib="web">cron</span>
+        </div>
+        <input type="text" ng-model="schedule.cron" ng-disabled="ctrl.loading==true" class="form-control" />
+      </div>
+
+      <div class="input-group col-sm-8">
+        <div class="input-group-prepend">
+          <span class="input-group-text" translate lib="web">environment</span>
+        </div>
+        <textarea json-text class='form-control' rows='10' data-min-rows='10'
+          ng-model="schedule.env"></textarea>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="button" ng-disabled="ctrl.loading==true" class="ml-auto btn btn-danger" translate
+          ng-click="ctrl.removepackage(schedule)" lib="web">Remove schedule</button>
+          </div>
+      </div>
+  
+    </div>
+  </div>
+</div>
+
+<div class="w-800 mw-full" ng-show="ctrl.packages && ctrl.packages.length > 0">
+  <div class="card p-0">
+    <div class="px-card py-10 border-bottom">
+      <h2 class="card-title font-size-18 m-0">
+        Add schedule of package
+      </h2>
+    </div>
+    <div class="content">
+      <div class="input-group col-sm-8">
+        <div class="input-group-prepend">
+          <span class="input-group-text" translate lib="web">package</span>
+        </div>
+        <select id="package" ng-model="ctrl.newpackage" ng-disabled="ctrl.loading==true" class="form-control"
+          ng-options="item as item.name for item in ctrl.packages">
+        </select>
+        
+        <button type="button" ng-disabled="ctrl.loading==true && ctrl.newpackage==''" class="ml-auto btn btn-success" translate
+        ng-click="ctrl.addpackage(ctrl.newpackage._id)" lib="web">Add schedule</button>
+      </div>
+
+      <div class="input-group col-sm-8" ng-show="ctrl.newpackage.daemon != true && ctrl.newpackage._id != ''">
+        <div class="input-group-prepend">
+          <span class="input-group-text" translate lib="web">cron</span>
+        </div>
+        <input type="text" ng-model="ctrl.newcron" ng-disabled="ctrl.loading==true" class="form-control" />
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <br />
