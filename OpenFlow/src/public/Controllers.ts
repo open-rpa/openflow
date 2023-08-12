@@ -7893,11 +7893,11 @@ export class AgentCtrl extends entityCtrl<any> {
     async processData(): Promise<void> {
         if (this.model.stripeprice == null) this.model.stripeprice = "";
         if ( this.model.schedules == null) this.model.schedules = [];
-        if(this.model.packageid != null && this.model.packageid != ""){
-            var p = this.allpackages.find(x=>x._id == this.model.packageid)
-            this.model.packageid = "";
+        if(this.model.package != null && this.model.package != ""){
+            var p = this.allpackages.find(x=>x._id == this.model.package)
+            delete this.model.package;
             if(p != null) {
-                this.model.schedules.push({"_id": this.model.packageid, "name": this.model.packagename, "cron": "", "enabled": true})
+                this.model.schedules.push({"packageid": p._id, "name": p.name, "cron": "", "enabled": true, "env": {}})
             }            
         } 
         this.searchtext = this.model.runasname
@@ -8223,6 +8223,7 @@ export class AgentCtrl extends entityCtrl<any> {
             packageid: this.newpackage._id,
             enabled: true,
             cron,
+            "env": {}
         })
     }
     removepackage(schedule) {
@@ -8274,7 +8275,9 @@ export class AgentCtrl extends entityCtrl<any> {
             }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
-                await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
+                if(this.instances.length == 0 && this.model.image != null && this.model.image != "") {
+                    await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
+                }
             } else {
                 var tmp = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
                 if (this.model) {
