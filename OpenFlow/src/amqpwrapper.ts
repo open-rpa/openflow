@@ -226,6 +226,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
         done();
     }
+    static bad_queues: string[] = [];
     async reply_queue_return(e1) {
         try {
             let msg = e1.content.toString();
@@ -244,6 +245,14 @@ export class amqpwrapper extends events.EventEmitter {
                 try {
                     msg = JSON.parse((msg as any));
                 } catch (error) {
+                }
+            }
+            if(routingKey != null && routingKey != "") {
+                if(amqpwrapper.bad_queues.length > 100) {
+                    amqpwrapper.bad_queues.shift();
+                }
+                if(amqpwrapper.bad_queues.indexOf(routingKey) == -1) {
+                    amqpwrapper.bad_queues.push(routingKey);
                 }
             }
             if (!NoderedUtil.IsNullEmpty(replyTo)) {
@@ -322,6 +331,9 @@ export class amqpwrapper extends events.EventEmitter {
                 this.queues.push(q);
                 q.queue = q.ok.queue;
                 q.queuename = queuename;
+                if(amqpwrapper.bad_queues.indexOf(q.queue) != -1) {
+                    amqpwrapper.bad_queues.splice(amqpwrapper.bad_queues.indexOf(q.queue), 1);
+                }
                 const consumeresult = await this.channel.consume(q.ok.queue, (msg) => {
                     this.OnMessage(q, msg, q.callback);
                 }, { noAck: false });
@@ -354,6 +366,9 @@ export class amqpwrapper extends events.EventEmitter {
                 q.queue = await this.AddQueueConsumer(user, "", AssertQueueOptions, jwt, q.callback, span);
                 if (q.queue) {
                     this.channel.bindQueue(q.queue.queue, q.exchange, q.routingkey);
+                    if(amqpwrapper.bad_queues.indexOf(q.queue.queue) != -1) {
+                        amqpwrapper.bad_queues.splice(amqpwrapper.bad_queues.indexOf(q.queue.queue), 1);
+                    }
                     Logger.instanse.debug("[" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue, span);
                 }
             }
