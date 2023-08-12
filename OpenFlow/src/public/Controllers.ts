@@ -8714,7 +8714,11 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                 }
                 if(data.command == null) {
                     var pre = document.getElementById(correlationId);
-                    if(pre == null) return;
+                    if(pre == null) {
+                        this.addprocess(correlationId);
+                        pre = document.getElementById(correlationId);
+                    }
+                    // if(pre == null) return;
                     const decoder = new TextDecoder("utf-8");
                     const _string = decoder.decode(new Uint8Array(data as any));
                     const string = ansi_up.ansi_to_html(_string);
