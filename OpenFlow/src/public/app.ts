@@ -14,6 +14,8 @@ require('@fortawesome/fontawesome-free');
 require('chart.js');
 require('angular-chart.js');
 
+const AU = require('ansi_up');
+
 // require('./formio.full.js');
 // var css = require('./app.css');
 
@@ -30,7 +32,7 @@ module openflow {
     //     ChartJsProvider.setOptions('Line', { responsive: true });
     // })
     //
-    const webApp: any = angular.module("webApp", ['ngRoute', 'chart.js', 'ngLocalize', 'ngLocalize.Config'])
+    const webApp: any = angular.module("webApp", ['ngSanitize', 'ngRoute', 'chart.js', 'ngLocalize', 'ngLocalize.Config'])
         .controller("MenuCtrl", MenuCtrl)
         .controller("Providers", ProvidersCtrl)
         .directive("timesince", timesince.factory())

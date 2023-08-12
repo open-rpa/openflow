@@ -874,6 +874,7 @@ export class entityCtrl<T> {
         "$scope",
         "$location",
         "$routeParams",
+        "$sce",
         "$interval",
         "WebSocketClientService",
         "api",
@@ -884,10 +885,11 @@ export class entityCtrl<T> {
         public $scope: ng.IScope,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
+        public $sce: ng.ISCEService,
         public $interval: ng.IIntervalService,
         public WebSocketClientService: WebSocketClientService,
         public api: api,
-        public userdata: userdata
+        public userdata: userdata,
     ) {
         this.id = $routeParams.id;
         this.basequery = { _id: this.id };

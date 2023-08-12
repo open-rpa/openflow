@@ -50,6 +50,7 @@
     "@types/amqplib": "^0.10.0",
     "@types/node": "^18.11.9",
     "amqplib": "^0.10.3",
+    "ansi_up": "^5.2.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.1",
     "cache-manager": "^4.1.0",

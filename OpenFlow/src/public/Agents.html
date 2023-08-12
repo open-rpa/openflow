@@ -32,6 +32,8 @@
     <tr>
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><strong translate lib="web">name</strong></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('image')"><strong translate lib="web">image</strong></th>
+      <th scope="col" ng-click="ctrl.ToggleOrder('os')"><strong translate lib="web">os</strong></th>      
+      <th scope="col" ng-click="ctrl.ToggleOrder('arch')"><strong translate lib="web">arch</strong></th>      
       <th scope="col" ng-click="ctrl.ToggleOrder('_createdby')"><strong translate lib="web">createdby</strong></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('status')"><strong translate lib="web">status</strong></th>
       <th class="text-right"></th>
@@ -44,6 +46,8 @@
         <a ng-show="model.image == '' || model.image == null" ng-href="#/RunPackage/{{model._id}}">{{model.name | limitTo: 20}}</a>
       </td>
       <td>{{ctrl.trimimage(model.image)}}</td>
+      <td>{{model.os | limitTo: 20}}</td>
+      <td>{{model.arch | limitTo: 20}}</td>
       <td>{{model._createdby | limitTo: 20}}</td>
       <td>{{model.status | limitTo: 20}}</td>
       <td class="text-right">

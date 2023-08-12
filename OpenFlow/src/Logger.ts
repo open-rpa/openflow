@@ -235,6 +235,7 @@ export class Logger {
         this.json(obj, span);
     }
     public verbose(message: string, span: Span, options?: any) {
+        if(!Config.log_verbose) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);

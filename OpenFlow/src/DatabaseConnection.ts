@@ -2016,18 +2016,18 @@ export class DatabaseConnection extends events.EventEmitter {
                         Base.addRight(item, user._id, user.name, [Rights.full_control]);
                     }
                     item = this.ensureResource(item, collectionname);
-                    // Logger.instanse.silly("Adding " + item._type + " " + name + " to database", span, { collection: collectionname, user: user.username });
-                    // if (!DatabaseConnection.hasAuthorization(user, item, Rights.create)) { throw new Error("Access denied, no authorization to InsertOne " + item._type + " " + name + " to database"); }
-                } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
-
+                // } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) { 
+                } else if (DatabaseConnection.istimeseries(collectionname)) { 
                     if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                         item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                     }
-                    if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
-                        Base.addRight(item, user._id, user.name, [Rights.full_control]);
-                        item = this.ensureResource(item, collectionname);
+                    if(DatabaseConnection.usemetadata(collectionname)) {
+                        if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
+                            Base.addRight(item, user._id, user.name, [Rights.full_control]);
+                            item = this.ensureResource(item, collectionname);
+                        }
                     }
-                } else {                    
+                } else { // fs.files ?
                     if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                         item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                     }
@@ -2208,11 +2208,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
                 } else {
-                    let metadata = DatabaseConnection.metadataname(collectionname);
-                    item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
-                    if (item._type === "role" && collectionname === "users") {
-                        item[metadata] = await this.Cleanmembers(item[metadata] as any, null, false, span);
-                    }
+                    // skip clean acl, to expensive
+                    // let metadata = DatabaseConnection.metadataname(collectionname);
+                    // item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
+                    // if (item._type === "role" && collectionname === "users") {
+                    //     item[metadata] = await this.Cleanmembers(item[metadata] as any, null, false, span);
+                    // }
                 }
                 
 
@@ -4324,10 +4325,14 @@ export class DatabaseConnection extends events.EventEmitter {
             return true;
         }
         if(collectionname == "fullDocument._acl") return true;
-        if(Config.metadata_collections.indexOf(collectionname) > -1) {
-            const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
-            if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
-        }
+        // old way
+        // if(Config.metadata_collections.indexOf(collectionname) > -1) {
+        //     const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
+        //     if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
+        // }
+        const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
+        if(metadataname == "metadata") return true;
+        // if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
         return false;
     }
     static metadataname(collectionname: string) {
