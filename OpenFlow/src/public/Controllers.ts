@@ -8218,13 +8218,20 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.newpackage._id == "") return;
         var cron = this.newcron;
         if(this.newpackage.daemon == true) cron = "";
-        this.model.schedules.push({
+        var nameexists = this.model.schedules.find(x => x.name == this.newpackage.name)
+        const schedule = {
             name: this.newpackage.name,
             packageid: this.newpackage._id,
             enabled: true,
             cron,
             "env": {}
-        })
+        }
+        if(nameexists != null) {
+            schedule.name = this.newpackage.name + "_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+            return;
+        }
+        this.model.schedules.push(schedule)
+        this.newcron = "* * * * *"
     }
     removepackage(schedule) {
         var index = this.model.schedules.indexOf(schedule);
@@ -8273,6 +8280,15 @@ export class AgentCtrl extends entityCtrl<any> {
             if (image != null && image != "") {
                 this.model.docker = true;
             }
+            if(this.model.schedules == null) this.model.schedules = [];
+            var schedulenames = this.model.schedules.map(x => x.name);
+            // does schedulenames has doubles?
+            var doubles = schedulenames.filter((item, index) => schedulenames.indexOf(item) != index)
+            if(doubles.length > 0) {
+                this.errormessage = "Schedule names must be unique"
+                return;
+            }
+
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
                 if(this.instances.length == 0 && this.model.image != null && this.model.image != "") {
@@ -8655,9 +8671,12 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async addprocess(streamid:string): Promise<void> {
+    async addprocess(streamid:string, schedulename:string = undefined): Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);
         if (_a == null) return;
+        var pretest = document.getElementById(streamid);
+        if(pretest != null) return;
+
         var payload ={
             "command": "setstreamid",
             "id": streamid,
@@ -8668,6 +8687,9 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         div.classList.add("shadow"); div.classList.add("card");
         var label = document.createElement("label");
         label.innerText = "Stream " + streamid;
+        if(schedulename != null) {
+            label.innerText = schedulename + " (#" + streamid + ")";
+        }
         div.appendChild(label);
         var killbutton = document.createElement("button");
         killbutton.innerText = "Kill";
@@ -8741,7 +8763,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                     console.log("listprocesses !!!")
                     for(var i = 0; i < data.processes.length; i++) {
                         console.log("add process " + data.processes[i].id)
-                        this.addprocess(data.processes[i].id);
+                        this.addprocess(data.processes[i].id, data.processes[i].schedulename);
                     }
                 }
                 if(data.command != null) {
