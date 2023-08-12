@@ -7828,6 +7828,8 @@ export class AgentCtrl extends entityCtrl<any> {
     runtime_hours: number = 0;
     currentuser: string = "";
     currentusername: string = "";
+    newpackage: any = {"_id": "", "name": "none", "daemon": false};
+    newcron: string = "* * * * *"
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7848,7 +7850,11 @@ export class AgentCtrl extends entityCtrl<any> {
             this.currentusername = user.name;
             // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
             var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
-            this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package", "daemon": true } });
+            // this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package", "daemon": true } });
+            this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package" } });
+            if(this.allpackages.length > 0){
+                this.newpackage = this.allpackages[0];
+            }
             if (products.length > 0) {
                 this.resource = products[0];
                 if (this.resource.defaultmetadata) {
@@ -7886,6 +7892,14 @@ export class AgentCtrl extends entityCtrl<any> {
     refreshtimer: any;
     async processData(): Promise<void> {
         if (this.model.stripeprice == null) this.model.stripeprice = "";
+        if ( this.model.schedules == null) this.model.schedules = [];
+        if(this.model.packageid != null && this.model.packageid != ""){
+            var p = this.allpackages.find(x=>x._id == this.model.packageid)
+            this.model.packageid = "";
+            if(p != null) {
+                this.model.schedules.push({"_id": this.model.packageid, "name": this.model.packagename, "cron": "", "enabled": true})
+            }            
+        } 
         this.searchtext = this.model.runasname
         this.ImageUpdated();
         this.loadInstances()
@@ -8193,6 +8207,29 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    isdaemon(packageid) {
+        var p = this.allpackages.find(x => x._id == packageid)
+        if(p == null) return false;
+        return p.daemon;
+    }
+    addpackage() {
+        if(this.newpackage == null) return;
+        if(this.newpackage._id == "") return;
+        var cron = this.newcron;
+        if(this.newpackage.daemon == true) cron = "";
+        this.model.schedules.push({
+            name: this.newpackage.name,
+            packageid: this.newpackage._id,
+            enabled: true,
+            cron,
+        })
+    }
+    removepackage(schedule) {
+        var index = this.model.schedules.indexOf(schedule);
+        if (index > -1) {
+            this.model.schedules.splice(index, 1);
+        }
     }
     async submit(): Promise<void> {
         try {
