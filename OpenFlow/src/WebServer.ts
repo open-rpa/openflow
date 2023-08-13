@@ -453,10 +453,10 @@ export class WebServer {
                             id: result._id.toString()})).finish()})
 
                     } else {
-                        throw new Error("Access denied")
+                        throw new Error("Access denied, downloading " + msg.id)
                     }
                 } else {
-                    throw new Error("Access denied")
+                    throw new Error("Access denied (No id)")
                     // var filename = msg.filename;
                     // await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
                     // msg.filename = path.basename(filename);
