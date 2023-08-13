@@ -169,7 +169,6 @@ export class dockerdriver implements i_agent_driver {
             const Env = [
                 "jwt=" + agentjwt,
                 "agentid=" + agent._id,
-                "packageid=" + agent.package,
                 "apiurl=" + apiurl,
                 "grpcapiurl=" + grpcapiurl,
                 "wsapiurl=" + wsapiurl,
@@ -193,6 +192,10 @@ export class dockerdriver implements i_agent_driver {
                 "oidc_authorization_endpoint=" + Config.agent_oidc_authorization_endpoint,
                 "oidc_token_endpoint=" + Config.agent_oidc_token_endpoint,
             ]
+            let packageid = agent.package || "";
+            if(packageid != "") {
+                Env.push("packageid=" + packageid);
+            }
             if(agent.environment != null) {
                 var keys = Object.keys(agent.environment);
                 for(var i = 0; i < keys.length; i++) {
