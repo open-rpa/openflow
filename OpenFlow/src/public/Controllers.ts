@@ -8002,10 +8002,10 @@ export class AgentCtrl extends entityCtrl<any> {
                 console.log("filtered again", this.packages)
             }
             if (this.model._id == null || this.model._id == "") {
-                this.model.package = "";
-                if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
-                    this.model.package = this.packages[0]._id;
-                }
+                // this.model.package = "";
+                // if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
+                //     this.model.package = this.packages[0]._id;
+                // }
             }
             this.packages.unshift({ _id: "", name: "None" })
         }
@@ -8663,12 +8663,12 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
             console.log("filtered again", this.packages)
         }
-        if(this.packages.find(x => x._id == this.package) == null) {
-            this.package = "";
-        }
-        if(this.package == "" && this.packages.length > 0) {
-            this.package = this.packages[0]._id;
-        }
+        // if(this.packages.find(x => x._id == this.package) == null) {
+        //     this.package = "";
+        // }
+        // if(this.package == "" && this.packages.length > 0) {
+        //     this.package = this.packages[0]._id;
+        // }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async addprocess(streamid:string, schedulename:string = undefined): Promise<void> {

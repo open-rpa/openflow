@@ -769,7 +769,10 @@ export class DBHelper {
     }
     private async AgentUpdate(_id: string, slug: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear queue cache : " + slug + " " + _id, span);
-        if (!NoderedUtil.IsNullEmpty(slug)) await this.DeleteKey(("agent_" + slug).toString(), watch, false, span);
+        if (!NoderedUtil.IsNullEmpty(slug)) {
+            await this.DeleteKey(("agent_" + slug).toString(), watch, false, span);
+            await this.DeleteKey(("agent_" + slug + "agent").toString(), watch, false, span);
+        }
         if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("agent_" + _id).toString(), watch, false, span);
     }
     private async QueueUpdate(_id: string, name: string, watch: boolean, span: Span) {
