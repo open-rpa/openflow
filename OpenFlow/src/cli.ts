@@ -119,7 +119,6 @@ async function doit() {
                         fs.copyFileSync(filename, target);
 
                         let parsedFile = envfile.parse(fs.readFileSync(target));
-                        parsedFile.logpath = process.cwd();
                         fs.writeFileSync(target, envfile.stringify(parsedFile));
 
                     } else {

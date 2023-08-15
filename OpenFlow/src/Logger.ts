@@ -335,25 +335,6 @@ export class Logger {
     static async configure(skipotel: boolean, skiplic: boolean): Promise<void> {
         Logger.DBHelper = new DBHelper();
         Logger.reload()
-
-        const filename = path.join(Config.logpath, "openflow.log");
-        const options: any = {
-            file: {
-                level: "debug",
-                filename: filename,
-                handleExceptions: false,
-                json: true,
-                maxsize: 5242880, // 5MB
-                maxFiles: 5,
-                colorize: false,
-            },
-            console: {
-                level: "debug",
-                handleExceptions: false,
-                json: false,
-                colorize: true
-            },
-        };
         Logger.instanse = new Logger();
         let _lic_require: any = null;
         try {

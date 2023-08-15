@@ -279,7 +279,6 @@ export class Config {
     }
     public static reload(): void {
         Config.getversion();
-        Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.enable_openai = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
         Config.enable_openaiauth = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
@@ -555,7 +554,6 @@ export class Config {
     public static enable_openaiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
     public static openai_token: string = Config.getEnv("openai_token", "");
     public static version: string = Config.getversion();
-    public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
     
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
