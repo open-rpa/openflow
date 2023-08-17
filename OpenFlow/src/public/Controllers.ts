@@ -7751,7 +7751,6 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
         this.clients = await NoderedUtil.CustomCommand({ "command": "getclients" });
 
-        console.log(this.knownpods);
         for (var i = 0; i < this.models.length; i++) {
             var model = this.models[i];
             // @ts-ignore
@@ -8644,8 +8643,19 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         var _a = this.agents.find(x => x._id == this.id);
         console.log("send message to " + _a.slug )
         const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
-        console.log(processes);
+        try {
+            var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
+            this.$scope.$on('$destroy', () => {
+                console.debug("removing streamid from " + _a.slug + "agent")
+                NoderedUtil.Queue({ data: {"command": "removecommandstreamid"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename }).catch((error) => {
+                    console.error(error);
+                }).then(() => {
+                    console.debug("removed streamid from " + _a.slug + "agent")
+                });
+            });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error            
+        }
     }
     haschrome: boolean = false;
     haschromium: boolean = false;
