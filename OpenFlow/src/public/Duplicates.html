@@ -22,6 +22,9 @@
     <div class="input-group unframed-addons">
       <input ng-model="ctrl.uniqeness" ng-change="ctrl.loadData()" class="form-control input-md"
         ng-model-options="{debounce: 400}" placeholder="group by fields seperated by comma" />
+        <input type="checkbox" ng-model="ctrl.includeonecounnt"
+        ng-click="ctrl.loadData()" /><span ng-click="ctrl.includeonecounnt = !ctrl.includeonecounnt; ctrl.loadData()">include 1's</span>
+
       <p class="col-md-1 lead"></p>
       <div class="text-right">
         <i class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></i>

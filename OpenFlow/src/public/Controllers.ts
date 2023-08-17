@@ -5382,6 +5382,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     public collections: any;
     public model: Base;
     public uniqeness: string;
+    public includeonecounnt: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -5485,7 +5486,9 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             }
         }
         aggregates.push({ "$group": group });
-        aggregates.push({ "$match": { "count": { "$gte": 2 } } });
+        if(this.includeonecounnt != true) {
+            aggregates.push({ "$match": { "count": { "$gte": 2 } } });
+        }
         aggregates.push({ "$limit": 100 });
         if (!NoderedUtil.IsNullUndefinded(this.orderby) && Object.keys(this.orderby).length > 0) aggregates.push({ "$sort": this.orderby })
         try {
