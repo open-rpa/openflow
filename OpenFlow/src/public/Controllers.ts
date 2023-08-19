@@ -8628,7 +8628,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             } else {
                 await this.processData();
             }
-            this.RegisterQueue();
         });
     }
     async processData() {
@@ -8640,6 +8639,8 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         } else {
             this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", languages: {"$exists": true} }, top:100 });
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        await this.RegisterQueue();
         this.AgentUpdated()
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
@@ -8705,6 +8706,19 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             label.innerText = schedulename + " (#" + streamid + ")";
         }
         div.appendChild(label);
+        const togglebutton = document.createElement("button");
+        togglebutton.id = "toggle" + streamid;
+        togglebutton.innerText = "toggle";
+        togglebutton.onclick = function () {
+            pre.classList.toggle('collapsed');
+            pre.classList.toggle('expanded');
+            if (pre.classList.contains('collapsed')) {
+                pre.style.height = '100px'; // height for 4 lines
+            } else {
+                pre.style.height = 'auto'; // show everything
+            }
+        }
+        div.appendChild(togglebutton);
         var killbutton = document.createElement("button");
         killbutton.innerText = "Kill";
         killbutton.id = streamid + "_kill";
@@ -8719,6 +8733,9 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         div.appendChild(killbutton);
         var pre = document.createElement("pre");
         pre.id = streamid;
+        pre.classList.toggle('collapsed');
+        // pre.classList.toggle('expanded');
+        // pre.style.display = pre.classList.contains('collapsed') ? 'block' : 'none';
         div.appendChild(pre);
         var runs = document.getElementById("runs");
         runs.prepend(div);
@@ -8742,6 +8759,18 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         var label = document.createElement("label");
         label.innerText = "Stream " + streamid;
         div.appendChild(label);
+        const togglebutton = document.createElement("button");
+        togglebutton.id = "toggle" + streamid;
+        togglebutton.innerText = "toggle";
+        togglebutton.onclick = function () {
+            pre.classList.toggle('collapsed');
+            pre.classList.toggle('expanded');
+            if (pre.classList.contains('collapsed')) {
+                pre.style.height = '100px'; // height for 4 lines
+            } else {
+                pre.style.height = 'auto'; // show everything
+            }
+        }
         var killbutton = document.createElement("button");
         killbutton.innerText = "Kill";
         killbutton.id = streamid + "_kill";
@@ -8754,7 +8783,11 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             }
         }
         div.appendChild(killbutton);
+        div.appendChild(togglebutton);
         var pre = document.createElement("pre");
+        pre.classList.toggle('collapsed');
+        // pre.classList.toggle('expanded');
+        // pre.style.display = pre.classList.contains('collapsed') ? 'block' : 'none';
         pre.id = streamid;
         div.appendChild(pre);
         var runs = document.getElementById("runs");
@@ -8811,5 +8844,8 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             }
         });
         console.debug("registed queue", this.queuename);
+        var _a = this.agents.find(x => x._id == this.id);
+        await NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent" });
+        console.debug("Added streamid to command streams for " + _a.slug + "agent")
     }
 }

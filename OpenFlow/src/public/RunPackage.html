@@ -12,6 +12,31 @@
     color: white;
     cursor: pointer;
   }
+pre {
+  white-space: pre-wrap;
+}
+
+pre.collapsed {
+    height: 100px; /* height for 4 lines */
+    overflow: hidden;
+}
+
+pre.expanded {
+    height: auto;
+    overflow: auto;
+}  
+  /* pre {
+    white-space: pre-wrap;
+
+  }
+  pre.collapsed {
+    height: 100px;
+    overflow: hidden;
+  }
+  pre.expanded {
+    height: auto;
+    overflow: auto;
+  } */
 </style>
 
 <pre ng-show="ErrorMessage!=null">{{ ErrorMessage }}</pre>
