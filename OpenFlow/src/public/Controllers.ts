@@ -8603,7 +8603,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
     agents: any[] = [];
     packages: any[] = [];
     allpackages: any[] = [];
-
+    re_addcommandstream: any = null;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -8649,7 +8649,16 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         try {
             var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
+
+            this.re_addcommandstream = this.$interval(() => {
+                NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename }).catch((error) => {
+                    console.error(error);
+                }).then(() => {
+                    console.debug("Keep " + this.queuename + " in commandqueue on " + _a.slug + "agent")
+                });
+            }, 10000);
             this.$scope.$on('$destroy', () => {
+                this.$interval.cancel(this.re_addcommandstream);
                 console.debug("removing streamid from " + _a.slug + "agent")
                 NoderedUtil.Queue({ data: {"command": "removecommandstreamid"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename }).catch((error) => {
                     console.error(error);
@@ -8753,46 +8762,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             "stream": true,
             "queuename": this.queuename
         }
-        var div = document.createElement("div");
-        div.id = streamid + "_div";
-        div.classList.add("shadow"); div.classList.add("card");
-        var label = document.createElement("label");
-        label.innerText = "Stream " + streamid;
-        div.appendChild(label);
-        const togglebutton = document.createElement("button");
-        togglebutton.id = "toggle" + streamid;
-        togglebutton.innerText = "toggle";
-        togglebutton.onclick = function () {
-            pre.classList.toggle('collapsed');
-            pre.classList.toggle('expanded');
-            if (pre.classList.contains('collapsed')) {
-                pre.style.height = '100px'; // height for 4 lines
-            } else {
-                pre.style.height = 'auto'; // show everything
-            }
-        }
-        var killbutton = document.createElement("button");
-        killbutton.innerText = "Kill";
-        killbutton.id = streamid + "_kill";
-        killbutton.onclick = async () => {
-            try {
-                console.log("kill", streamid)
-                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
-            } catch (error) {
-                console.error(error);                
-            }
-        }
-        div.appendChild(killbutton);
-        div.appendChild(togglebutton);
-        var pre = document.createElement("pre");
-        pre.classList.toggle('collapsed');
-        // pre.classList.toggle('expanded');
-        // pre.style.display = pre.classList.contains('collapsed') ? 'block' : 'none';
-        pre.id = streamid;
-        div.appendChild(pre);
-        var runs = document.getElementById("runs");
-        runs.prepend(div);
-
         await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
         console.log("submitted", payload)        
     }
