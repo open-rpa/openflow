@@ -7882,6 +7882,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.model.image = this.images[0].image;
                 // @ts-ignore
                 this.model.slug = this.model.name; this.model.stripeprice = ""
+                this.model.schedules = [];
                 this.ImageUpdated()
                 this.loading = false;
                 this.model.runas = user._id;
