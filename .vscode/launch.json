@@ -2,15 +2,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "node",
-            "request": "attach",
-            "name": "Attach to localhost",
-            "address": "localhost",
-            "port": 5858,
-            "localRoot": "${workspaceFolder}/dist",
-            "remoteRoot": "/data"
-        },
-        {
             "args": [],
             "cwd": "${workspaceRoot}",
             "envFile": "${workspaceFolder}/config/.env",
@@ -20,9 +11,9 @@
                 "**/node_modules/@openiap/**/*",
             ],
             "outputCapture": "std",
-            "preLaunchTask": "openflow-tsc-watch",
             "program": "${workspaceRoot}/OpenFlow/src/index.ts",
             "request": "launch",
+            "preLaunchTask": "tsc: watch - OpenFlow/tsconfig.json",
             "runtimeArgs": [
             ],
             "runtimeExecutable": null,
@@ -34,6 +25,16 @@
                 "!**/node_modules/**",
                 "**/node_modules/@openiap/**",
             ]
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to localhost",
+            "preLaunchTask": "tsc: watch - OpenFlow/tsconfig.json",
+            "address": "localhost",
+            "port": 5858,
+            "localRoot": "${workspaceFolder}/dist",
+            "remoteRoot": "/data"
         }
     ]
 }
