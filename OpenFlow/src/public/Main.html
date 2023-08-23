@@ -1,3 +1,16 @@
+<style>
+/*   
+   table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+    }
+    td:first-child {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    } */
+</style>
 <div class="row">
   <h1 translate lib="web">sitename</h1>
   <p class="col-md-5 lead"></p>
@@ -5,7 +18,7 @@
 </div>
 
 
-<div class="text-right">
+<div class="text-right table">
   <input type="checkbox" id="checkbox-1" ng-model="ctrl.showcompleted" ng-change="ctrl.Search()">
   <label for="checkbox-1"><span translate lib="web">completed</span></label>
 </div>
@@ -24,8 +37,8 @@
   </thead>
   <tbody>
     <tr ng-repeat="model in ctrl.models">
-      <td>
-        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'">{{model.name | limitTo: 50}}</a>        
+      <td class="overflow-hidden">
+        <a ng-href="#/Form/{{model.workflow}}/{{model._id}}" ng-hide="ctrl.loading==true || model.form == 'none'">{{model.name}}</a>
       </td>
       <td>{{model.state}}</td>
       <td>
