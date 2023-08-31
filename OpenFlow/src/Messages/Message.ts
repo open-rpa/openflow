@@ -598,8 +598,14 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 resolve(this);
             } catch (error) {
-                reject(error);
-                Logger.instanse.error(error, span, Logger.parsecli(cli));
+                // reject(error);
+                this.Reply("error");
+                this.data = "{\"message\": \"" + error.message + "\"}";
+                if(error.message.indexOf("Not signed in, and missing jwt") > -1) {
+                    Logger.instanse.error(error.message, span, Logger.parsecli(cli));
+                } else {
+                    Logger.instanse.error(error, span, Logger.parsecli(cli));
+                }                
             } finally {
                 Logger.otel.endSpan(span);
             }
