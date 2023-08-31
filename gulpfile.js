@@ -25,7 +25,6 @@ const publicdestination = "./dist/public";
 const mapfile = path.join(__dirname, publicdestination, 'bundle.js.map')
 let version = "0.0.1";
 if (fs.existsSync("../package.json")) {
-    // read ../package.json and set version to version from package.json
     var p = require("../package.json");
     version = p.version;    
 } else if (fs.existsSync("package.json")) {
