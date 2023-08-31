@@ -399,6 +399,8 @@ export class Logger {
                 this.agentdriver = new dockerdriver();
                 if (!(await this.agentdriver.detect())) {
                     this.agentdriver = null;
+                } else {
+                    Logger.instanse.info("Docker driver detected and loaded", null);
                 }
             } catch (error) {
                 this.agentdriver = null;
@@ -420,6 +422,8 @@ export class Logger {
                 if (_driver != null) {
                     if (!(await this.agentdriver.detect())) {
                         this.agentdriver = null;
+                    } else {
+                        Logger.instanse.info("kubernetes driver detected and loaded", null);
                     }
                 }
             } catch (error) {
@@ -432,6 +436,9 @@ export class Logger {
                 this.agentdriver = new dockerdriver();
                 if (!(await this.agentdriver.detect())) {
                     this.agentdriver = null;
+                    Logger.instanse.warn("No docker driver detected", null);
+                } else {
+                    Logger.instanse.info("Docker driver detected and loaded", null);
                 }
             } catch (error) {
                 this.agentdriver = null;
