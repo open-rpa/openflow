@@ -1652,7 +1652,23 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if(!NoderedUtil.IsNullEmpty(runas)) {
-                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                    if(!NoderedUtil.IsNullEmpty(runas)) {
+                        let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
+                        if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
+                            if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                            } else {
+                                customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
+                                if(customer != null) {
+                                    Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
+                                    Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                                } else {
+                                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                                }
+                            }
+                            
+                        }
+                    }
                 }
 
                 // @ts-ignore
@@ -2071,7 +2087,24 @@ export class DatabaseConnection extends events.EventEmitter {
                         // @ts-ignore
                         var runasname = item.runasname;
                         if(!NoderedUtil.IsNullEmpty(runas)) {
-                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                            if(!NoderedUtil.IsNullEmpty(runas)) {
+                                let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
+                                if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
+                                    if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                        Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                                    } else {
+                                        customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
+                                        if(customer != null) {
+                                            Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
+                                            Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                                        } else {
+                                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                                        }
+                                    }
+                                    
+                                }
+                            }
+        
                         }
         
                         // @ts-ignore
@@ -2397,7 +2430,21 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                     if(!NoderedUtil.IsNullEmpty(runas)) {
-                        Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                        let runasuser = await this.getbyid<User>(runas, "users", q.jwt, true, span);
+                        if (!DatabaseConnection.hasAuthorization(runasuser as any, q.item, Rights.update)) {
+                            if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                            } else {
+                                customer = await this.getbyid<Customer>(runasuser.customerid, "users", q.jwt, true, span);
+                                if(customer != null) {
+                                    Base.addRight(q.item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
+                                    Base.addRight(q.item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                                } else {
+                                    Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                                }
+                            }
+                            
+                        }
                     }
                     // @ts-ignore
                     var fileid = q.item.fileid;
