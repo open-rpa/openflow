@@ -262,11 +262,17 @@ export class dbConfig extends Base {
 export class Config {
     public static dbConfig: dbConfig;
     public static getversion(): string {
-        let versionfile: string = path.join(__dirname, "VERSION");
-        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
-        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "VERSION")
-        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "..", "VERSION")
-        Config.version = (fs.existsSync(versionfile) ? fs.readFileSync(versionfile, "utf8") : "0.0.1");
+        let packagefile: string = path.join(__dirname, "package.json");
+        if (!fs.existsSync(packagefile)) packagefile = path.join(__dirname, "..", "package.json")
+        if (!fs.existsSync(packagefile)) packagefile = path.join(__dirname, "..", "..", "package.json")
+        if (!fs.existsSync(packagefile)) packagefile = path.join(__dirname, "..", "..", "..", "package.json")
+
+        let version = "0.0.1"
+        if (fs.existsSync(packagefile)) {
+            let packagejson = JSON.parse(fs.readFileSync(packagefile, "utf8"));
+            version = packagejson.version;
+        }        
+        Config.version = version;
         return Config.version;
     }
     public static disablelogging(): void {
