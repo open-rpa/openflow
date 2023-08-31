@@ -653,7 +653,14 @@ export class WebSocketServerClient {
         if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         const q2 = await this.Send<QueueMessage>(m, span);
-        if ((q2 as any).command == "error") throw new Error(q2.data);
+        if ((q2 as any).command == "error") {
+            if(q2.data && q2.data.indexOf && q2.data.indexOf("Sorry, I'm bussy") > -1) {
+                // Logger.instanse.silly(q2.data, span);
+                // noob
+            } else {
+                throw new Error(q2.data);
+            }
+        }
         return q2.data;
     }
     async UnWatch(id: string, jwt: string): Promise<void> {
