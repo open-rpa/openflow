@@ -24,11 +24,15 @@ const OpenFlowPublicFiles = [
 const publicdestination = "./dist/public";
 const mapfile = path.join(__dirname, publicdestination, 'bundle.js.map')
 let version = "0.0.1";
-if (fs.existsSync("../VERSION")) {
-    version = fs.readFileSync("../VERSION", "utf8");
-} else if (fs.existsSync("VERSION")) {
-    version = fs.readFileSync("VERSION", "utf8");
+if (fs.existsSync("../package.json")) {
+    // read ../package.json and set version to version from package.json
+    var p = require("../package.json");
+    version = p.version;    
+} else if (fs.existsSync("package.json")) {
+    var p = require("./package.json");
+    version = p.version;    
 }
+console.log("version: " + version);
 gulp.task("copyfiles1", function () {
     console.log("copyfiles1")
     const openflow = gulp.src(OpenFlowPublicFiles).pipe(gulp.dest(publicdestination));
