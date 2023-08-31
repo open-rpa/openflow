@@ -1,11 +1,11 @@
 version: "3.3"
 services:
   rabbitmq:
-    image: "rabbitmq:3.7-management"
+    image: "rabbitmq"
     environment:
       - RABBITMQ_ERLANG_COOKIE=your_cookie_string_hereyour_cookie_string_here
     restart: unless-stopped
-    ## network_mode: "host"
+    # network_mode: "host"
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -15,13 +15,13 @@ services:
   #   ports:
   #     - "5000:5000"
   # mongodb:
-    # image: "mongo"
-    # restart: unless-stopped
-    # volumes:
-      # - mongodb_data:/data/db
-    # network_mode: "host"
-    # ports:
-    #   - "27017:27017"
+  #   image: "mongo"
+  #   restart: unless-stopped
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   # network_mode: "host"
+  #   ports:
+  #     - "27017:27017"
   # traefik:
   #   image: "traefik"
   #   command:
