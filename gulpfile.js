@@ -38,7 +38,7 @@ gulp.task("copyfiles1", function () {
 
     const copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(publicdestination + '/OpenFlow/src/public'));
     const copyproto = gulp.src('./proto/**/*.*').pipe(gulp.dest('./dist/proto/proto'));
-    return merge(openflow, version1, copyspurce, copyproto);
+    return merge(openflow, copyspurce, copyproto);
 });
 gulp.task("setwatch", async function () {
     minify = false;
