@@ -1,5 +1,6 @@
-const AU = require('ansi_up');
-const ansi_up = new AU.default;
+import AnsiUp from 'ansi_up';
+const ansi_up = new AnsiUp();
+
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
 import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, stripe_base, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, stripe_invoice, Message, Customer, KubeResources, KubeResourceValues, Resource, ResourceVariant, ResourceUsage } from "@openiap/openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
