@@ -270,7 +270,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
 
-        await Config.db.ensureindexes(span);
+        Config.db.ensureindexes(span).then(() => { }).catch((error) => Logger.instanse.error(error, span));
 
         if (Config.auto_hourly_housekeeping) {
             const crypto = require('crypto');
@@ -313,7 +313,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 }
             }, randomNum2 * 1000);
         }
-        await Config.db.ParseTimeseries(span);
+        await Config.db.UpdateCollections(span);
         return true;
     } catch (error) {
         Logger.instanse.error(error, span);
