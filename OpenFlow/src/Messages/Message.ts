@@ -6,7 +6,7 @@ import { Config } from "../Config";
 import { Audit, tokenType, clientType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
+import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter, CollectionInfo } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage, CreateCollectionMessage } from "@openiap/openflow-api";
@@ -2018,22 +2018,6 @@ export class Message {
             Logger.otel.endSpan(span);
         }
     }
-    private async filescount(files: FindCursor<GridFSFile>): Promise<number> {
-        return new Promise<number>(async (resolve, reject) => {
-            files.count((error, result) => {
-                if (error) return reject(error);
-                resolve(result);
-            });
-        });
-    }
-    private async filesnext(files: FindCursor<GridFSFile>): Promise<GridFSFile> {
-        return new Promise<GridFSFile>(async (resolve, reject) => {
-            files.next((error, result) => {
-                if (error) return reject(error);
-                resolve(result);
-            });
-        });
-    }
     private async UpdateFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: UpdateFileMessage
@@ -2045,9 +2029,9 @@ export class Message {
         const q: Filter<GridFSFile> = {};
         q._id = safeObjectID(msg.id);
         const files = bucket.find(q);
-        const count = await this.filescount(files);
+        const count = await Config.db.db.collection<any>("fs.files").countDocuments(q);
         if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
-        const file = await this.filesnext(files);
+        const file = await files.next();
         msg.metadata._createdby = file.metadata._createdby;
         msg.metadata._createdbyid = file.metadata._createdbyid;
         msg.metadata._created = file.metadata._created;
@@ -2234,7 +2218,7 @@ export class Message {
                             if (customer.subscriptionid == usage.subid) {
                                 const UpdateDoc: any = { "$set": {} };
                                 UpdateDoc.$set["subscriptionid"] = null;
-                                await Config.db.db.collection("users").updateMany({ "_id": customer._id }, UpdateDoc);
+                                await Config.db.db.collection<any>("users").updateMany({ "_id": customer._id }, UpdateDoc);
                             }
                         } else {
                             const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
@@ -3414,7 +3398,7 @@ export class Message {
 
 
 
-        let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
+        let collections = await Config.db.db.listCollections<CollectionInfo>().toArray();
         try {
             let audit = collections.find(x => x.name == "audit");
             let audit_old = collections.find(x => x.name == "audit_old");
@@ -3423,10 +3407,10 @@ export class Message {
                 audit = null;
             }
             if (audit == null) {
-                audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "userid", granularity: "minutes" } });
+                audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "userid", granularity: "minutes" } }) as any;
                 // audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "metadata", granularity: "minutes" } });
             }
-            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
+            collections = await await Config.db.db.listCollections<CollectionInfo>().toArray();
             audit = collections.find(x => x.name == "audit");
             audit_old = collections.find(x => x.name == "audit_old");
             if (Config.migrate_audit_to_ts && Config.force_audit_ts && audit != null && audit_old != null && audit.type == "timeseries") {
@@ -3486,11 +3470,11 @@ export class Message {
                 dbusage = null;
             }
             if (dbusage == null) {
-                dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
+                dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } }) as any;
                 // dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
             }
 
-            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
+            collections = await Config.db.db.listCollections<CollectionInfo>().toArray();;
             dbusage = collections.find(x => x.name == "dbusage");
             dbusage_old = collections.find(x => x.name == "dbusage_old");
             if (Config.force_dbusage_ts && dbusage != null && dbusage_old != null && dbusage.type == "timeseries") {
@@ -3776,7 +3760,7 @@ export class Message {
                         ]
                     }
 
-                    await Config.db.ParseTimeseries(span);
+                    await Config.db.UpdateCollections(span);
                     const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
                     try {
                         if (!DatabaseConnection.istimeseries("dbusage")) {
