@@ -21,6 +21,7 @@ import { QueueClient } from "../QueueClient";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, CustomCommandMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { WebServer } from "../WebServer";
 import { iAgent } from "../commoninterfaces";
+import { trace, context } from '@opentelemetry/api';
 const pako = require('pako');
 const got = require("got");
 
@@ -274,6 +275,7 @@ export class Message {
         return true;
     }
     public async Process(cli: WebSocketServerClient): Promise<any> {
+        let activeSpan2 = trace.getSpan(context.active());
         return new Promise<any>(async (resolve, reject) => {
             if (cli.devnull) return resolve(null);
             let span: Span = undefined;
@@ -3311,7 +3313,7 @@ export class Message {
         this.tuser = User.assign(Crypt.rootUser());
         let rootuser = this.tuser;
         const jwt: string = Crypt.rootToken();
-        const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
+        const span: Span = Logger.otel.startSubSpan("message.Housekeeping", parent);
         try {
             try {
                 if(Logger.agentdriver != null) {

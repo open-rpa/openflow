@@ -524,7 +524,7 @@ export class WebSocketServerClient {
                         const singleresult: Message = Message.frommessage(first, first.data);
                         singleresult.priority = first.priority;
                         if (singleresult.command != "ping" && singleresult.command != "pong") {
-                            singleresult.Process(this).then(msg=> {
+                            singleresult.Process(this).then( (msg:any) => {
                                 if(msg==null) return;
                                 if(msg.command == "error" && !msg.error && msg.data) {
                                     msg.data = JSON.parse(msg.data);

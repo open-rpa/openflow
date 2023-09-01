@@ -24,9 +24,11 @@ import { flowclient } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse } from "@openiap/nodeapi";
+import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse, openiap, apiinstrumentation } from "@openiap/nodeapi";
 const { info, warn, err } = config;
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
+import { trace, context } from '@opentelemetry/api';
+
 
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -443,7 +445,7 @@ export class WebServer {
                         }
                     }                    
                     if(rows.length > 0) {
-                        result = rows[0];
+                        let result = rows[0] as any;
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
                         result = rows[0];
                         reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadResponse",
@@ -541,7 +543,19 @@ export class WebServer {
                     msg.clientversion = msg.version;
                 }
                 var _msg = Message.fromjson({ ...message, data: msg });
-                var result = await _msg.Process(client as any);
+                let result:any = await apiinstrumentation.With<Message>("process", message.traceid, message.spanid, undefined, async (span)=> {
+                    if(message.traceid != null && message.traceid != "") {
+                        var b = true;
+                        console.log("RCV traceid " + message.traceid + " spanid " + message.spanid);
+                        _msg.traceId = message.traceid;
+                        _msg.spanId = message.spanid;
+                    }
+                    if(span != null) {
+                        let activeSpan2 = trace.getSpan(context.active());
+                        var b = true;
+                    }
+                    return _msg.Process(client as any);
+                });
                 if(message.rid != null && message.rid != "" && result.command == "error") {
                     return null;
                 }
