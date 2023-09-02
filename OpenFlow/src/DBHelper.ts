@@ -98,9 +98,9 @@ export class DBHelper {
 
                 }
                 if (keys != null) {
-                    res.observe(keys.length, { ...Logger.otel.defaultlabels, type: Config.cache_store_type })
+                    res.observe(keys.length, { type: Config.cache_store_type })
                 } else {
-                    res.observe(0, { ...Logger.otel.defaultlabels, type: Config.cache_store_type })
+                    res.observe(0, { type: Config.cache_store_type })
                 }
             })
         }

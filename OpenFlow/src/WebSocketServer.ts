@@ -93,9 +93,9 @@ export class WebSocketServer {
                     keys = Object.keys(p_all);
                     keys.forEach(key => {
                         if (p_all[key] > 0) {
-                            res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
+                            res.observe(p_all[key], {  agent: key })
                         } else {
-                            res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
+                            res.observe(null, { agent: key })
                         }                        
                     });
                 });
@@ -106,7 +106,7 @@ export class WebSocketServer {
                     if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
-                        res.observe(cli._queues.length, { ...Logger.otel.defaultlabels, clientid: cli.id })
+                        res.observe(cli._queues.length, { clientid: cli.id })
                     }
                 });
                 WebSocketServer.websocket_queue_message_count = Logger.otel.meter.createCounter("openflow_websocket_queue_message", {

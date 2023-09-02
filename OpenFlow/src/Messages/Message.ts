@@ -32,7 +32,7 @@ async function handleError(cli: WebSocketServerClient, error: Error, span: Span)
             return;
         }
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors))
-            WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
+            WebSocketServer.websocket_errors.add(1);
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
         Logger.instanse.error(error, span, Logger.parsecli(cli));
     } catch (error) {
@@ -1799,6 +1799,7 @@ export class Message {
             if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
             if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
             msg.enable_analytics = Config.enable_analytics;
+            msg.enable_detailed_analytic = Config.enable_detailed_analytic;            
             this.data = JSON.stringify(msg);
             // hrend = process.hrtime(hrstart)
         } finally {

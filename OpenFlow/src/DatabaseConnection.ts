@@ -109,7 +109,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 // @ts-ignore
                 var value = this.cli?.s?.activeSessions?.size;
                 if (!value) value = 0;
-                res.observe(value, { ...Logger.otel.defaultlabels });
+                res.observe(value);
             });
 
         }

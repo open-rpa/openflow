@@ -215,7 +215,7 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (this.replyqueue) {
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
-                    WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: this.replyqueue.queue });
+                    WebSocketServer.websocket_queue_message_count.add(1, {  queuename: this.replyqueue.queue });
                 if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
                     this.activecalls[options.correlationId].resolve(msg);
                     delete this.activecalls[options.correlationId];
@@ -465,7 +465,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.channel.publish("", queue, Buffer.from(data), options);
             await this.channel.waitForConfirms();
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
-                WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: queue });
+                WebSocketServer.websocket_queue_message_count.add(1, { queuename: queue });
         } else {
             if (NoderedUtil.IsNullEmpty(routingkey)) routingkey = "";
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
@@ -509,7 +509,7 @@ export class amqpwrapper extends events.EventEmitter {
             await this.channel.waitForConfirms();
 
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
-                WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: queue });
+                WebSocketServer.websocket_queue_message_count.add(1, { queuename: queue });
         } else {
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
