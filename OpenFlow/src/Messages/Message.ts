@@ -5215,7 +5215,12 @@ export class Message {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
                 }
                 if(pack.fileid != null && pack.fileid != "") {
-                    await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                    const rootjwt = Crypt.rootToken();
+                    let query = { _id: pack.fileid };
+                    const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
+                    if(item != null) {
+                        await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                    }
                 }
                 await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;

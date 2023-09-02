@@ -3790,6 +3790,9 @@ export class DatabaseConnection extends events.EventEmitter {
         let field = "_acl"; 
         // var bypassquery:any = { _id: { $ne: "bum" } }
         var bypassquery:any = { }
+        if(collectionname == "files" || collectionname == "fs.files") {
+            bypassquery = {"_id": {"$exists": true}};
+        }
         if(DatabaseConnection.usemetadata(collectionname)) {
             // bypassquery = { }
             // bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
