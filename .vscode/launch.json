@@ -20,6 +20,8 @@
             "sourceMaps": true,
             "stopOnEntry": false,
             "type": "node",
+            "env": {
+            },
             "resolveSourceMapLocations": [
                 "${workspaceFolder}/**",
                 "!**/node_modules/**",
