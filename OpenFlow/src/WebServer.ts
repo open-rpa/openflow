@@ -545,14 +545,8 @@ export class WebServer {
                 var _msg = Message.fromjson({ ...message, data: msg });
                 let result:any = await apiinstrumentation.With<Message>("process", message.traceid, message.spanid, undefined, async (span)=> {
                     if(message.traceid != null && message.traceid != "") {
-                        var b = true;
-                        console.log("RCV traceid " + message.traceid + " spanid " + message.spanid);
                         _msg.traceId = message.traceid;
                         _msg.spanId = message.spanid;
-                    }
-                    if(span != null) {
-                        let activeSpan2 = trace.getSpan(context.active());
-                        var b = true;
                     }
                     return _msg.Process(client as any);
                 });

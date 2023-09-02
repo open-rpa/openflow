@@ -275,7 +275,6 @@ export class Message {
         return true;
     }
     public async Process(cli: WebSocketServerClient): Promise<any> {
-        let activeSpan2 = trace.getSpan(context.active());
         return new Promise<any>(async (resolve, reject) => {
             if (cli.devnull) return resolve(null);
             let span: Span = undefined;
@@ -601,13 +600,20 @@ export class Message {
                 resolve(this);
             } catch (error) {
                 // reject(error);
-                this.Reply("error");
+                if(this.replyto == null || this.replyto == "") {
+                    this.Reply("error");
+                } else {
+                    this.command = "error";                    
+                }
                 this.data = "{\"message\": \"" + error.message + "\"}";
                 if(error.message.indexOf("Not signed in, and missing jwt") > -1) {
                     Logger.instanse.error(error.message, span, Logger.parsecli(cli));
                 } else {
                     Logger.instanse.error(error, span, Logger.parsecli(cli));
-                }                
+                }
+                delete this.jwt;
+                delete this.tuser;
+                resolve(this);
             } finally {
                 Logger.otel.endSpan(span);
             }

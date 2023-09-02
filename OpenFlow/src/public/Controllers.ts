@@ -8182,7 +8182,6 @@ export class PackagesCtrl extends entitiesCtrl<Base> {
             setTimeout(this.loadData.bind(this), 500)
         } catch (error) {
             this.errormessage = error.message ? error.message : error
-
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
