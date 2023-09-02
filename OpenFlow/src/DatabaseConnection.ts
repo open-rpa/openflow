@@ -2450,15 +2450,20 @@ export class DatabaseConnection extends events.EventEmitter {
                     var fileid = q.item.fileid;
                     if (q.item._type == "package" && fileid != "" && fileid != null) {
                         var f = await this.getbyid<any>(fileid, "fs.files", q.jwt, true, span);
-                        if (f == null) throw new Error("File " + fileid + " not found");
-                        // is f.metadata._acl different from q.item._acl ?
-                        f.metadata._acl = q.item._acl;
-                        await this._UpdateOne( null, f, "fs.files", 1, false, q.jwt, span);
-                        if(original != null) {
-                            // @ts-ignore
-                            var oldfileid = original.fileid;                            
-                            if(oldfileid != fileid && oldfileid != null && oldfileid != "") {
-                                await this.DeleteOne(oldfileid, "fs.files", false, q.jwt, span);
+                        // if (f == null) throw new Error("File " + fileid + " not found");
+                        if(f != null) {
+                            // is f.metadata._acl different from q.item._acl ?
+                            f.metadata._acl = q.item._acl;
+                            await this._UpdateOne(null, f, "fs.files", 1, false, q.jwt, span);
+                            if (original != null) {
+                                // @ts-ignore
+                                var oldfileid = original.fileid;
+                                if (oldfileid != fileid && oldfileid != null && oldfileid != "") {
+                                    try {
+                                        await this.DeleteOne(oldfileid, "fs.files", false, q.jwt, span);
+                                    } catch (error) {                                        
+                                    }
+                                }
                             }
                         }
 
@@ -3291,6 +3296,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const _id = new ObjectId(id);
                 const bucket = new GridFSBucket(this.db);
                 await bucket.delete(_id);
+                resolve();
             } catch (err) {
                 reject(err);
             }
