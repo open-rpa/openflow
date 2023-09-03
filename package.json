@@ -88,6 +88,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "passport-openidconnect": "^0.1.1",
+    "pidusage": "^3.0.2",
     "pm2": "^5.2.2",
     "rate-limiter-flexible": "^2.4.1",
     "readline-sync": "^1.4.10",
