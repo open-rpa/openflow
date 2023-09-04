@@ -549,6 +549,9 @@ export class DatabaseConnection extends events.EventEmitter {
         // let result = await this.db.listCollections<CollectionInfo>().toArray();
         // result = result.filter(x => x.name.indexOf("system.") === -1);
         await Crypt.verityToken(jwt);
+        if(DatabaseConnection.collections == null) {
+            await this.UpdateCollections(null);
+        }
         return [...DatabaseConnection.collections];
     }
     async DropCollection(collectionname: string, jwt: string, parent: Span): Promise<void> {

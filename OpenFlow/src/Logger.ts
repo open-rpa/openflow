@@ -216,6 +216,7 @@ export class Logger {
         this.json(obj, span);
     }
     public debug(message: string, span: Span, options?: any) {
+        if(Config.log_debug == false) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -255,6 +256,7 @@ export class Logger {
         this.json(obj, span);
     }
     public silly(message: string, span: Span, options?: any) {
+        if(Config.log_silly == false) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
