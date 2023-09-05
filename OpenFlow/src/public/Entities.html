@@ -61,7 +61,7 @@ style="width: 100%;" aria-label="List items in seletected collection">
     <tr ng-repeat="model in ctrl.models">
       <td class="text-truncate"><a style="color: inherit; text-decoration: inherit;" 
         ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}">{{model.name}}</a></td>
-      <td><span translate lib="web">{{model.type || model._type}}</span></td>
+      <td><span translate lib="web">{{model._type}}</span></td>
       <td class="text-truncate">{{model._createdby}}</td>
       <td class="text-truncate">
         <timesince ng-model="model._created" />
