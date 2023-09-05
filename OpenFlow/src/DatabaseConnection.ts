@@ -189,9 +189,8 @@ export class DatabaseConnection extends events.EventEmitter {
         Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
         if (Config.supports_watch) {
             this.UpdateCollections(span);
-            // let collections = await this.db.listCollections<CollectionInfo>().toArray();
-            // collections = collections.filter(x => x.name.indexOf("system.") === -1);
-            let collections = [...DatabaseConnection.collections];
+            let collections = await this.db.listCollections<CollectionInfo>().toArray();
+            collections = collections.filter(x => x.name.indexOf("system.") === -1);
             if (this.registerGlobalWatches) {
                 for (var c = 0; c < collections.length; c++) {
                     if (collections[c].type != "collection") continue;
@@ -546,13 +545,11 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     async ListCollections(jwt: string): Promise<CollectionInfo[]> {
-        // let result = await this.db.listCollections<CollectionInfo>().toArray();
-        // result = result.filter(x => x.name.indexOf("system.") === -1);
         await Crypt.verityToken(jwt);
-        if(DatabaseConnection.collections == null) {
-            await this.UpdateCollections(null);
-        }
-        return [...DatabaseConnection.collections];
+        let result = await this.db.listCollections<CollectionInfo>().toArray();
+        result = result.filter(x => x.name.indexOf("system.") === -1);
+        result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        return result;
     }
     async DropCollection(collectionname: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
@@ -3390,7 +3387,8 @@ export class DatabaseConnection extends events.EventEmitter {
                             // let query = { "$or": queries };
                             // if (queries.length > 0) {
                             // let collections = await this.db.listCollections<CollectionInfo>().toArray();
-                            let collections = [...DatabaseConnection.collections];
+                            let collections = await this.db.listCollections<CollectionInfo>().toArray();
+                            collections = collections.filter(x => x.name.indexOf("system.") === -1);
                             collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
                                 && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
                                 && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
@@ -3454,8 +3452,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         let skip_collections = [];
                         if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
 
-                        // let collections = await this.db.listCollections<CollectionInfo>().toArray();
-                        let collections = [...DatabaseConnection.collections];
+                        let collections = await this.db.listCollections<CollectionInfo>().toArray();
                         collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
                             && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
                             && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
@@ -4346,11 +4343,13 @@ export class DatabaseConnection extends events.EventEmitter {
     async UpdateCollections(span: Span) {
         Logger.instanse.debug("Update collections list", span);
         span?.addEvent("Get collections");
-        DatabaseConnection.collections = (await this.db.listCollections<CollectionInfo>().toArray()).filter(x => x.name.indexOf("system.") === -1);
-        DatabaseConnection.collections.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-        let tscollections = DatabaseConnection.collections.filter(x => x.type == "timeseries");
+        let collections = await this.db.listCollections<CollectionInfo>().toArray();
+        collections = collections.filter(x => x.name.indexOf("system.") === -1);
+
+        collections.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        let tscollections = collections.filter(x => x.type == "timeseries");
         
-        DatabaseConnection.timeseries_collections = DatabaseConnection.collections.map(x => x.name);
+        DatabaseConnection.timeseries_collections = collections.map(x => x.name);
         DatabaseConnection.timeseries_collections_metadata = {};
         for (let i = 0; i < tscollections.length; i++) {
             var collection = tscollections[i];
@@ -4360,7 +4359,6 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         }
         DatabaseConnection.collections_with_text_index = [];
-        let collections = [...DatabaseConnection.collections];
         for (let i = 0; i < collections.length; i++) {
             var collection = collections[i];
             if (collection.type != "collection" && collection.type != "timeseries") continue;
@@ -4413,7 +4411,7 @@ export class DatabaseConnection extends events.EventEmitter {
         return timefield;
     }
     public static collections_with_text_index: string[] = [];
-    public static collections: CollectionInfo[] = [];
+    // public static collections: CollectionInfo[] = [];
     public static timeseries_collections: string[] = [];
     public static timeseries_collections_metadata: any = {};
     public static timeseries_collections_time: any = {};
@@ -4427,7 +4425,8 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!Config.ensure_indexes) {
                 return;
             }
-            let collections = [...DatabaseConnection.collections];
+            let collections = await this.db.listCollections<CollectionInfo>().toArray();
+            collections = collections.filter(x => x.name.indexOf("system.") === -1);
             for (let i = 0; i < collections.length; i++) {
                 try {
                     const collection = collections[i];
