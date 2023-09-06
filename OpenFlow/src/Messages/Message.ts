@@ -5224,6 +5224,12 @@ export class Message {
                 }
                 await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;
+            case "createindex":
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                var name = msg.name || data.name;
+                msg.result = await Config.db.createIndex(data.collection || data.collectionname, name, data.index, data.options, parent);
             default:
                 msg.error = "Unknown custom command";
         }

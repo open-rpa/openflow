@@ -4312,7 +4312,7 @@ export class DatabaseConnection extends events.EventEmitter {
             try {
                 Logger.instanse.info("Adding index " + name + " to " + collectionname, span, { collection: collectionname });
                 if (NoderedUtil.IsNullUndefinded(options)) options = {};
-                options["name"] = name;
+                if (!NoderedUtil.IsNullEmpty(name)) options["name"] = name;                
                 var indexname = await this.db.collection(collectionname).createIndex(keypath, options);
                 resolve(indexname);
             } catch (error) {
