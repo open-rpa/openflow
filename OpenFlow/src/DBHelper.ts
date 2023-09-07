@@ -1,8 +1,7 @@
 import { Crypt } from "./Crypt";
 import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue, Resource, ResourceUsage } from "@openiap/openflow-api";
 import { Config } from "./Config";
-import { Span } from "@opentelemetry/api";
-import { Observable } from '@opentelemetry/api-metrics';
+import { Span, Observable } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 import { WebSocketServerClient } from "./WebSocketServerClient";

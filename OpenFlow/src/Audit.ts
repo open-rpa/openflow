@@ -1,10 +1,9 @@
 import { Config } from "./Config";
 import { TokenUser, Base, Rights, NoderedUtil, WorkitemQueue } from "@openiap/openflow-api";
 import { Crypt } from "./Crypt";
-import { Span } from "@opentelemetry/api";
+import { Span, UpDownCounter } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { UpDownCounter } from "@opentelemetry/api-metrics";
+
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";

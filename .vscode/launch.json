@@ -21,6 +21,7 @@
             "stopOnEntry": false,
             "type": "node",
             "env": {
+                "otel_log_level": "info"
             },
             "resolveSourceMapLocations": [
                 "${workspaceFolder}/**",

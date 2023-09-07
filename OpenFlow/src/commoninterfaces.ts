@@ -1,5 +1,4 @@
-import { Meter, Histogram } from '@opentelemetry/api-metrics';
-import { HrTime, Span } from "@opentelemetry/api";
+import { HrTime, Span, Meter, Histogram } from "@opentelemetry/api";
 import { Ace, TokenUser } from "@openiap/openflow-api";
 import * as express from "express";
 

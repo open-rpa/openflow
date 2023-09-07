@@ -3,11 +3,9 @@ import * as http from "http";
 import * as WebSocket from "ws";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
-import { Message } from "./Messages/Message";
 import { Config } from "./Config";
-import { SigninMessage, NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
-import { Span } from "@opentelemetry/api";
-import { Histogram, Counter, Observable } from "@opentelemetry/api-metrics"
+import { NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
+import { Span, Histogram, Counter, Observable } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { WebServer } from "./WebServer";
@@ -95,7 +93,7 @@ export class WebSocketServer {
                         if (p_all[key] > 0) {
                             res.observe(p_all[key], {  agent: key })
                         } else {
-                            res.observe(null, { agent: key })
+                            res.observe(0, { agent: key })
                         }                        
                     });
                 });
