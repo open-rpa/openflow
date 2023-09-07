@@ -326,6 +326,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (next.updateDescription.updatedFields.hasOwnProperty("_webheartbeat")) return;
                 if (next.updateDescription.updatedFields.hasOwnProperty("_noderedheartbeat")) return;
                 if (next.updateDescription.updatedFields.hasOwnProperty("_powershellheartbeat")) return;
+                if (next.updateDescription.updatedFields.hasOwnProperty("clientagent") &&
+                next.updateDescription.updatedFields.hasOwnProperty("clientversion")) return;
+                if (next.updateDescription.updatedFields.hasOwnProperty("clientversion") &&
+                next.updateDescription.updatedFields.hasOwnProperty("remoteip")) return;
             }
             var item = next.fullDocument;
             var _type = "";
@@ -4349,7 +4353,7 @@ export class DatabaseConnection extends events.EventEmitter {
         collections.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
         let tscollections = collections.filter(x => x.type == "timeseries");
         
-        DatabaseConnection.timeseries_collections = collections.map(x => x.name);
+        DatabaseConnection.timeseries_collections = tscollections.map(x => x.name);
         DatabaseConnection.timeseries_collections_metadata = {};
         for (let i = 0; i < tscollections.length; i++) {
             var collection = tscollections[i];
