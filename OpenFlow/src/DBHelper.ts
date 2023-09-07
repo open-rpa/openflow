@@ -20,8 +20,12 @@ export class DBHelper {
 
     public memoryCache: any;
     public mongoCache: any;
+    public static cache_enabled: boolean = false;
     public async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
+
+        const ttl = (Config.cache_store_ttl_seconds * 1000);
+        const max = Config.cache_store_max;
 
         this.mongoCache = cacheManager.caching({
             store: mongoStore,
@@ -45,8 +49,7 @@ export class DBHelper {
                 password: Config.cache_store_redis_password,
                 ignoreCacheErrors: true,
                 db: 0,
-                ttl: Config.cache_store_ttl_seconds,
-                max: Config.cache_store_max
+                ttl, max
             })
             // listen for redis connection error event
             var redisClient = this.memoryCache.store.getClient();
@@ -60,8 +63,7 @@ export class DBHelper {
         this.memoryCache = cacheManager.caching({
             store: 'memory',
             ignoreCacheErrors: true,
-            max: Config.cache_store_max,
-            ttl: Config.cache_store_ttl_seconds
+            ttl, max
         });
         this.ensureotel();
     }
@@ -107,6 +109,7 @@ export class DBHelper {
     }
     public async CheckCache(collectionname: string, item: Base, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
         await this.init();
+        if(DBHelper.cache_enabled == false) return;
         if (watch && collectionname == "users" && item._id == WellknownIds.root) return;
         if (collectionname == "config" && item._type == "resource") {
             this.ResourceUpdate(item, watch, frombroadcast, span);
@@ -728,6 +731,7 @@ export class DBHelper {
     }
     private async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean, span: Span) {
         if (NoderedUtil.IsNullUndefinded(userrole)) return;
+        if(userrole._id == WellknownIds.root) return;
         if (!this._doClear(watch, span)) return;
         if (userrole._type == "user") {
             Logger.instanse.debug("Remove user from cache : " + userrole._id, span);
@@ -791,7 +795,7 @@ export class DBHelper {
         if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
     public GetQueuesWrap(span: Span) {
-        Logger.instanse.debug("Add pushable queues", span);
+        Logger.instanse.debug("Add queues", span);
         return Config.db.query<WorkitemQueue>({
             query: { _type: "workitemqueue"}
             , top:1000, collectionname: "mq", jwt: Crypt.rootToken()
@@ -809,7 +813,7 @@ export class DBHelper {
         }
     }
     public GetPushableQueuesWrap(span: Span) {
-        Logger.instanse.debug("Add pushable queues", span);
+        if (Config.cache_workitem_queues) Logger.instanse.debug("Add pushable queues", span);
         return Config.db.query<WorkitemQueue>({
             query: {
                 "$or": [
@@ -830,7 +834,7 @@ export class DBHelper {
         }
     }
     public GetPendingWorkitemsCountWrap(wiqid: string, span: Span) {
-        Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
+        if (Config.cache_workitem_queues) Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
         // TODO: skip nextrun ? or accept neextrun will always be based of cache TTL or substract the TTL ?
         const query = { "wiqid": wiqid, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
         return Config.db.count({
