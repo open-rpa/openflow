@@ -23,7 +23,7 @@ export class DBHelper {
     public async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
 
-        const ttl = (Config.cache_store_ttl_seconds * 1000);
+        const ttl = (Config.cache_store_ttl_seconds);
         const max = Config.cache_store_max;
 
         this.mongoCache = cacheManager.caching({

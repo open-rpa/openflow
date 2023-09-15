@@ -15,6 +15,7 @@
             "request": "launch",
             "preLaunchTask": "tsc: watch - OpenFlow/tsconfig.json",
             "runtimeArgs": [
+                "--inspect"
             ],
             "runtimeExecutable": null,
             "sourceMaps": true,

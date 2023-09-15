@@ -31,7 +31,6 @@
   "homepage": "https://github.com/open-rpa/openflow",
   "funding": "https://github.com/sponsors/skadefro",
   "bin": {
-    "openflow-cli": "./dist/cli.js",
     "openflow-lic": "./dist/cli-lic.js"
   },
   "optionalDependencies": {
@@ -43,9 +42,8 @@
     "@node-saml/passport-saml": "^4.0.1",
     "@openiap/nodeapi": "^0.0.21",
     "@openiap/openflow-api": "^2.1.11",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.41.2",
-    "@opentelemetry/host-metrics": "^0.33.1",
-    "@opentelemetry/sdk-node": "^0.41.2",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.43.0",
+    "@opentelemetry/sdk-node": "^0.43.0",
     "@skadefro/cache-manager-mongodb": "^0.3.2",
     "@types/amqplib": "^0.10.0",
     "@types/node": "^18.11.9",
@@ -87,7 +85,6 @@
     "passport-local": "^1.0.0",
     "passport-openidconnect": "^0.1.1",
     "pidusage": "^3.0.2",
-    "pm2": "^5.2.2",
     "rate-limiter-flexible": "^2.4.1",
     "readline-sync": "^1.4.10",
     "request": "^2.88.2",
@@ -95,6 +92,7 @@
     "samlp": "^6.0.2",
     "swagger-autogen": "^2.23.1",
     "swagger-ui-express": "^4.6.3",
+    "systeminformation": "^5.21.5",
     "web-push": "^3.5.0",
     "ws": "^8.11.0",
     "xml2js": "^0.4.23"
