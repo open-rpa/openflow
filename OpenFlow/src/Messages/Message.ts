@@ -87,6 +87,9 @@ export class Message {
                     case "count":
                         await this.Count(span);
                         break;
+                    case "distinct":
+                        await this.Distinct(span);
+                        break;
                     case "getdocumentversion":
                         await this.GetDocumentVersion(span);
                         break;
@@ -388,6 +391,13 @@ export class Message {
                                 return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
                             } else {
                                 await this.Count(span);
+                            }
+                            break;
+                        case "distinct":
+                            if (Config.enable_openflow_amqp) {
+                                return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
+                            } else {
+                                await this.Distinct(span);
                             }
                             break;
                         case "getdocumentversion":
@@ -967,8 +977,8 @@ export class Message {
             Logger.instanse.error(new Error("Received message with no command"), null);
             return;
         }
-        this.Reply("error");
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
+        this.Reply("error");
         Logger.instanse.error(`UnknownCommand ${this.command}`, null);
     }
     private static collectionCache: any = {};
@@ -1103,6 +1113,32 @@ export class Message {
             } else {
                 const { query, collectionname, jwt, queryas } = msg;
                 msg.result = await Config.db.count({ query, collectionname, jwt, queryas }, span);
+            }
+            delete msg.query;
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    private async Distinct(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.Distinct", parent);
+        this.Reply();
+        let msg: DistinctMessage = this.data as any;
+        try {
+            // @ts-ignore
+            if (typeof this.data === 'string' || this.data instanceof String) {
+                // @ts-ignore
+                msg = JSON.stringify(this.data);
+            }
+            
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                await handleError(null, new Error("Access denied, not signed in"), span);
+                msg.error = "Access denied, not signed in";
+            } else {
+                const { query, field, collectionname, jwt, queryas } = msg;
+                msg.results = await Config.db.distinct({ query, field, collectionname, jwt, queryas }, span);
             }
             delete msg.query;
             delete msg.jwt;
@@ -5244,4 +5280,13 @@ export class JSONfn {
             return (typeof value === 'function') ? value.toString() : value;
         });
     }
+}
+export declare class DistinctMessage {
+    error: string;
+    jwt: string;
+    query: any;
+    field: string;
+    collectionname: string;
+    results: any[];
+    queryas: string;
 }

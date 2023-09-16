@@ -1165,6 +1165,83 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return result;
     }
+    async distinct(options: DistinctOptions, span: Span): Promise<string[]> {
+        let { query, collectionname, field, jwt, queryas } = Object.assign({
+        }, options);
+        let _query: Object = {};
+        await this.connect(span);
+        if (query !== null && query !== undefined) {
+            span?.addEvent("parse query");
+            let json: any = query;
+            if (typeof json !== 'string' && !(json instanceof String)) {
+                json = JSON.stringify(json, (key, value) => {
+                    if (value instanceof RegExp)
+                        return ("__REGEXP " + value.toString());
+                    else
+                        return value;
+                });
+            }
+            query = JSON.parse(json, (key, value) => {
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
+                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
+            if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
+        }
+        if (NoderedUtil.IsNullUndefinded(query)) {
+            throw new Error("Query is mandatory");
+        }
+        const keys: string[] = Object.keys(query);
+        for (let key of keys) {
+            if (key === "_id") {
+                const id: string = query._id;
+                const safeid = safeObjectID(id);
+                if (safeid !== null && safeid !== undefined) {
+                    delete query._id;
+                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                }
+            }
+        }
+        span?.addEvent("verityToken");
+        const user: TokenUser = await Crypt.verityToken(jwt);
+
+        span?.addEvent("getbasequery");
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (DatabaseConnection.usemetadata(collectionname)) {
+            let impersonationquery;
+            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
+            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
+            } else {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
+            }
+        } else {
+            let impersonationquery: any;
+            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
+            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
+            } else {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
+            }
+        }
+        span?.setAttribute("collection", collectionname);
+        span?.setAttribute("username", user.username);
+        const ot_end = Logger.otel.startTimer();
+        // @ts-ignore
+        let result = await this.db.collection(collectionname).distinct(field, _query);
+        span?.setAttribute("results", result);
+        let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
+        if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
+            Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: result });
+        } else {
+            Logger.instanse.debug("count gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result });
+        }
+        return result;
+    }
     async GetLatestDocumentVersion<T extends Base>(options: GetLatestDocumentVersionOptions, span: Span): Promise<T> {
         let { collectionname, id, jwt, decrypt } = Object.assign({
             decrypt: true
@@ -4720,3 +4797,11 @@ export class DatabaseConnection extends events.EventEmitter {
     }
 }
 
+
+export declare type DistinctOptions = {
+    jwt: string;
+    query: any;
+    field: string;
+    collectionname: string;
+    queryas: string;
+};
