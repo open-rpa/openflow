@@ -18,3 +18,4 @@ package-lock.json
 .cache-require-paths.json
 *.heapsnapshot
 /proto
+.clinic

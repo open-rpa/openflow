@@ -19,3 +19,4 @@ crash.log
 *.heapsnapshot
 .npmignore
 .gitignore
+.clinic

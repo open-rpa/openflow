@@ -15,3 +15,4 @@ sonar-project.properties
 crash.log
 .cache-require-paths.json
 .devcontainer.old
+.clinic

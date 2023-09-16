@@ -14,7 +14,10 @@
     "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d",
     "updateapilocal": "npm uninstall @openiap/nodeapi && npm i ../nodeapi",
     "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
-    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi"
+    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
+    "doctor": "NO_INSIGHT=true clinic doctor -- node -r dotenv/config dist/index.js dotenv_config_path=config/.env dotenv_config_debug=true",
+    "flame": "NO_INSIGHT=true clinic flame -- node -r dotenv/config dist/index.js dotenv_config_path=config/.env dotenv_config_debug=true",
+    "bubbleprof": "NO_INSIGHT=true clinic bubbleprof -- node -r dotenv/config dist/index.js dotenv_config_path=config/.env dotenv_config_debug=true"
   },
   "repository": {
     "type": "git",
@@ -110,6 +113,7 @@
     "browserify": "^17.0.0",
     "browserify-css": "^0.15.0",
     "chart.js": "^2.9.4",
+    "clinic": "^13.0.0",
     "dotenv": "^16.0.3",
     "exorcist": "^2.0.0",
     "formBuilder": "^3.8.3",

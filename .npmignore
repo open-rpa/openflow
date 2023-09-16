@@ -37,3 +37,4 @@ register.js
 docker-package.json
 .dockerignore
 *.heapsnapshot
+.clinic
