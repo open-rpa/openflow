@@ -255,6 +255,7 @@ export class Logger {
         this.json(obj, span);
     }
     public silly(message: string, span: Span, options?: any) {
+        if(!Config.log_silly) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -374,7 +375,7 @@ export class Logger {
                     startSpan: () => fakespan,
                     startSubSpan: () => fakespan,
                 startSpanExpress: () => fakespan,
-                GetTraceSpanId(span: Span): () => [string, string] { return () => ["", ""]; },
+                GetTraceSpanId(span: Span): [string, string] { return ["", ""]; },
                     endSpan: () => undefined,
                     startTimer: () => undefined,
                     endTimer: () => undefined,

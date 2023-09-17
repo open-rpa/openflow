@@ -180,6 +180,7 @@ export class dockerdriver implements i_agent_driver {
                 "HTTPS_PROXY=" + Config.HTTPS_PROXY,
                 "NO_PROXY=" + Config.NO_PROXY,
                 "enable_analytics=" + Config.enable_analytics.toString(),
+                "enable_detailed_analytic=" + Config.enable_detailed_analytic.toString(),
                 "otel_trace_url=" + Config.otel_trace_url,
                 "otel_metric_url=" + Config.otel_metric_url,
                 "TZ=" + agent.tz,

@@ -65,4 +65,4 @@ import { OAuthProvider } from '../OpenFlow/src/OAuthProvider';
         assert.ok(cbcdecrypted == "teststring", "Failed decrypting string using gcm encryption");
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/Crypt.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/Crypt.test.ts'

@@ -23,6 +23,7 @@ export class dbConfig extends Base {
     public skip_history_collections: string;
     public history_delta_count: number;
     public allow_skiphistory: boolean;
+    public max_memory_restart_mb: number;
 
     public allow_personal_nodered: boolean;
     public amqp_enabled_exchange: boolean;
@@ -145,6 +146,7 @@ export class dbConfig extends Base {
         Config.skip_history_collections = (!NoderedUtil.IsNullEmpty(conf.skip_history_collections) ? conf.skip_history_collections : Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances"))
         Config.history_delta_count = parseInt(!NoderedUtil.IsNullEmpty(conf.history_delta_count) ? conf.history_delta_count.toString() : Config.getEnv("history_delta_count", "1000"));
         Config.allow_skiphistory = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.allow_skiphistory) ? conf.allow_skiphistory : Config.getEnv("allow_skiphistory", "false"));
+        Config.max_memory_restart_mb = parseInt(!NoderedUtil.IsNullEmpty(conf.max_memory_restart_mb) ? conf.max_memory_restart_mb.toString() : Config.getEnv("max_memory_restart_mb", "0"));
 
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
@@ -462,6 +464,7 @@ export class Config {
         Config.skip_history_collections = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
         Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
         Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
+        Config.max_memory_restart_mb = parseInt(Config.getEnv("max_memory_restart_mb", "0"));
 
         Config.saml_issuer = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
         Config.aes_secret = Config.getEnv("aes_secret", "");
@@ -516,6 +519,7 @@ export class Config {
         Config.otel_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
         Config.otel_measure_onlineuser = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+        Config.enable_detailed_analytic = Config.parseBoolean(Config.getEnv("enable_detailed_analytic", "false"));
 
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
         Config.otel_warn_log = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
@@ -732,6 +736,7 @@ export class Config {
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
     public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count", "1000"));
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
+    public static max_memory_restart_mb: number = parseInt(Config.getEnv("max_memory_restart_mb", "0"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
     public static aes_secret: string = Config.getEnv("aes_secret", "");
@@ -789,6 +794,7 @@ export class Config {
     public static otel_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
     public static otel_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+    public static enable_detailed_analytic: boolean = Config.parseBoolean(Config.getEnv("enable_detailed_analytic", "false"));
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
     public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
     public static otel_err_log: boolean = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));

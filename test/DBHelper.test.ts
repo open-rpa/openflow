@@ -114,4 +114,4 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         await assert.rejects(Logger.DBHelper.EnsureRole(null, null, null, null));
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/DBHelper.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/DBHelper.test.ts'

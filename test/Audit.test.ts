@@ -41,5 +41,5 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     }
 
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/Audit.test.ts'
-// cls | ts-mocha --paths -p test/tsconfig.json 'test/Audit.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/Audit.test.ts'
+// clear && ts-mocha --paths -p test/tsconfig.json 'test/Audit.test.ts'

@@ -50,4 +50,4 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
 
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/Auth.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/Auth.test.ts'

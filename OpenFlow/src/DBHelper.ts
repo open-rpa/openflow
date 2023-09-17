@@ -23,6 +23,9 @@ export class DBHelper {
     public async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
 
+        const ttl = (Config.cache_store_ttl_seconds);
+        const max = Config.cache_store_max;
+
         this.mongoCache = cacheManager.caching({
             store: mongoStore,
             uri: Config.mongodb_url,
@@ -44,9 +47,7 @@ export class DBHelper {
                 port: Config.cache_store_redis_port,
                 password: Config.cache_store_redis_password,
                 ignoreCacheErrors: true,
-                db: 0,
-                ttl: Config.cache_store_ttl_seconds,
-                max: Config.cache_store_max
+                db: 0, ttl, max
             })
             // listen for redis connection error event
             var redisClient = this.memoryCache.store.getClient();
@@ -59,9 +60,7 @@ export class DBHelper {
         }
         this.memoryCache = cacheManager.caching({
             store: 'memory',
-            ignoreCacheErrors: true,
-            max: Config.cache_store_max,
-            ttl: Config.cache_store_ttl_seconds
+            ignoreCacheErrors: true, max, ttl
         });
         this.ensureotel();
     }
@@ -991,7 +990,7 @@ export class DBHelper {
         }
     }
     public GetIPBlockListWrap(span) {
-        return Config.db.query<Base>({ query: { _type: "ipblock" }, projection: { "ips": 1 }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
+        return Config.db.query<Base>({ query: { _type: "ipblock" }, projection: { "ips": 1 }, top: 1, collectionname: "config", jwt: Crypt.rootToken() }, span);;
     }
     public async GetIPBlockList(parent: Span): Promise<Base[]> {
         await this.init();

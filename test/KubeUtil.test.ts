@@ -70,4 +70,4 @@ import { KubeUtil } from '../OpenFlow/src/ee/KubeUtil';
         assert.ok(list.body.items.length > 0)
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/KubeUtil.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/KubeUtil.test.ts'

@@ -187,16 +187,14 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error(error, span);
         }
         Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
-        if (Config.supports_watch) {
+        if (Config.supports_watch && this.registerGlobalWatches) {
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
-
-            if (this.registerGlobalWatches) {
-                for (var c = 0; c < collections.length; c++) {
-                    if (collections[c].type != "collection") continue;
-                    if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
-                    this.registerGlobalWatch(collections[c].name, span);
-                }
+            for (var c = 0; c < collections.length; c++) {
+                if(["agents", "config", "mq", "nodered", "openrpa", "users", "workflow", "workitems"].indexOf(collections[c].name) == -1) continue;
+                if (collections[c].type != "collection") continue;
+                if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
+                this.registerGlobalWatch(collections[c].name, span);
             }
         }
         this.ensureQueueMonitoring();
@@ -320,12 +318,22 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             var _id = next.documentKey._id;
             if (next.operationType == 'update' && collectionname == "users") {
-                if (next.updateDescription.updatedFields.hasOwnProperty("_heartbeat")) return;
-                if (next.updateDescription.updatedFields.hasOwnProperty("lastseen")) return;
-                if (next.updateDescription.updatedFields.hasOwnProperty("_rpaheartbeat")) return;
-                if (next.updateDescription.updatedFields.hasOwnProperty("_webheartbeat")) return;
-                if (next.updateDescription.updatedFields.hasOwnProperty("_noderedheartbeat")) return;
-                if (next.updateDescription.updatedFields.hasOwnProperty("_powershellheartbeat")) return;
+                // update document
+                if(next.updateDescription != null && next.updateDescription.updatedFields != null) {
+                    // var keys = Object.keys(next.updateDescription.updatedFields);
+                    if (next.updateDescription.updatedFields.hasOwnProperty("_heartbeat")) return;
+                    if (next.updateDescription.updatedFields.hasOwnProperty("lastseen")) return;
+                    if (next.updateDescription.updatedFields.hasOwnProperty("_rpaheartbeat")) return;
+                    if (next.updateDescription.updatedFields.hasOwnProperty("_webheartbeat")) return;
+                    if (next.updateDescription.updatedFields.hasOwnProperty("_noderedheartbeat")) return;
+                    if (next.updateDescription.updatedFields.hasOwnProperty("_powershellheartbeat")) return;
+                    // if (next.updateDescription.updatedFields.hasOwnProperty("clientagent") &&
+                    //     next.updateDescription.updatedFields.hasOwnProperty("clientversion")) return;
+                    if (next.updateDescription.updatedFields.hasOwnProperty("remoteip") &&
+                        next.updateDescription.updatedFields.hasOwnProperty("clientversion")) return;
+                    if (next.updateDescription.updatedFields.hasOwnProperty("clientagent")) return;
+    
+                }
             }
             var item = next.fullDocument;
             var _type = "";
@@ -1162,6 +1170,83 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return result;
     }
+    async distinct(options: DistinctOptions, span: Span): Promise<string[]> {
+        let { query, collectionname, field, jwt, queryas } = Object.assign({
+        }, options);
+        let _query: Object = {};
+        await this.connect(span);
+        if (query !== null && query !== undefined) {
+            span?.addEvent("parse query");
+            let json: any = query;
+            if (typeof json !== 'string' && !(json instanceof String)) {
+                json = JSON.stringify(json, (key, value) => {
+                    if (value instanceof RegExp)
+                        return ("__REGEXP " + value.toString());
+                    else
+                        return value;
+                });
+            }
+            query = JSON.parse(json, (key, value) => {
+                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    return new Date(value); // isostring, so cast to js date
+                } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
+                    const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
+                    return new RegExp(m[1], m[2] || "");
+                } else
+                    return value; // leave any other value as-is
+            });
+            if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
+        }
+        if (NoderedUtil.IsNullUndefinded(query)) {
+            throw new Error("Query is mandatory");
+        }
+        const keys: string[] = Object.keys(query);
+        for (let key of keys) {
+            if (key === "_id") {
+                const id: string = query._id;
+                const safeid = safeObjectID(id);
+                if (safeid !== null && safeid !== undefined) {
+                    delete query._id;
+                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                }
+            }
+        }
+        span?.addEvent("verityToken");
+        const user: TokenUser = await Crypt.verityToken(jwt);
+
+        span?.addEvent("getbasequery");
+        if (collectionname === "files") { collectionname = "fs.files"; }
+        if (DatabaseConnection.usemetadata(collectionname)) {
+            let impersonationquery;
+            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
+            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
+            } else {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
+            }
+        } else {
+            let impersonationquery: any;
+            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
+            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
+            } else {
+                _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
+            }
+        }
+        span?.setAttribute("collection", collectionname);
+        span?.setAttribute("username", user.username);
+        const ot_end = Logger.otel.startTimer();
+        // @ts-ignore
+        let result = await this.db.collection(collectionname).distinct(field, _query);
+        span?.setAttribute("results", result);
+        let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
+        if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
+            Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: result });
+        } else {
+            Logger.instanse.debug("count gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result });
+        }
+        return result;
+    }
     async GetLatestDocumentVersion<T extends Base>(options: GetLatestDocumentVersionOptions, span: Span): Promise<T> {
         let { collectionname, id, jwt, decrypt } = Object.assign({
             decrypt: true
@@ -1650,7 +1735,21 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if(!NoderedUtil.IsNullEmpty(runas)) {
-                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                    let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
+                    if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
+                        if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                        } else {
+                            customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
+                            if(customer != null) {
+                                Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
+                                Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                            } else {
+                                Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                            }
+                        }
+                        
+                    }
                 }
 
                 // @ts-ignore
@@ -2069,7 +2168,21 @@ export class DatabaseConnection extends events.EventEmitter {
                         // @ts-ignore
                         var runasname = item.runasname;
                         if(!NoderedUtil.IsNullEmpty(runas)) {
-                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                            let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
+                            if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
+                                if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                                } else {
+                                    customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
+                                    if(customer != null) {
+                                        Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
+                                        Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                                    } else {
+                                        Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                                    }
+                                }
+                                
+                            }
                         }
         
                         // @ts-ignore
@@ -2395,21 +2508,40 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                     if(!NoderedUtil.IsNullEmpty(runas)) {
-                        Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                        let runasuser = await this.getbyid<User>(runas, "users", q.jwt, true, span);
+                        if (!DatabaseConnection.hasAuthorization(runasuser as any, q.item, Rights.update)) {
+                            if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                            } else {
+                                customer = await this.getbyid<Customer>(runasuser.customerid, "users", q.jwt, true, span);
+                                if(customer != null) {
+                                    Base.addRight(q.item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
+                                    Base.addRight(q.item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                                } else {
+                                    Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                                }
+                            }
+                            
+                        }
                     }
                     // @ts-ignore
                     var fileid = q.item.fileid;
                     if (q.item._type == "package" && fileid != "" && fileid != null) {
                         var f = await this.getbyid<any>(fileid, "fs.files", q.jwt, true, span);
-                        if (f == null) throw new Error("File " + fileid + " not found");
-                        // is f.metadata._acl different from q.item._acl ?
-                        f.metadata._acl = q.item._acl;
-                        await this._UpdateOne( null, f, "fs.files", 1, false, q.jwt, span);
-                        if(original != null) {
-                            // @ts-ignore
-                            var oldfileid = original.fileid;                            
-                            if(oldfileid != fileid && oldfileid != null && oldfileid != "") {
-                                await this.DeleteOne(oldfileid, "fs.files", false, q.jwt, span);
+                        // if (f == null) throw new Error("File " + fileid + " not found");
+                        if(f != null) {
+                            // is f.metadata._acl different from q.item._acl ?
+                            f.metadata._acl = q.item._acl;
+                            await this._UpdateOne(null, f, "fs.files", 1, false, q.jwt, span);
+                            if (original != null) {
+                                // @ts-ignore
+                                var oldfileid = original.fileid;
+                                if (oldfileid != fileid && oldfileid != null && oldfileid != "") {
+                                    try {
+                                        await this.DeleteOne(oldfileid, "fs.files", false, q.jwt, span);
+                                    } catch (error) {                                        
+                                    }
+                                }
                             }
                         }
 
@@ -4706,3 +4838,10 @@ export class DatabaseConnection extends events.EventEmitter {
     }
 }
 
+export declare type DistinctOptions = {
+    jwt: string;
+    query: any;
+    field: string;
+    collectionname: string;
+    queryas: string;
+};

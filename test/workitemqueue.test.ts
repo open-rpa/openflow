@@ -190,4 +190,4 @@ import { Logger } from '../OpenFlow/src/Logger';
 
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/workitemqueue.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/workitemqueue.test.ts'

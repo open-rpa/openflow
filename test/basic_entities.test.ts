@@ -127,4 +127,4 @@ import { Logger } from '../OpenFlow/src/Logger';
     //     assert.strictEqual(items.length, 0, "Failed cleaning up");
     // }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/basic_entities.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/basic_entities.test.ts'

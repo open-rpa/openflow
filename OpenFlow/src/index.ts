@@ -270,8 +270,6 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
 
-        await Config.db.ensureindexes(span);
-
         if (Config.auto_hourly_housekeeping) {
             const crypto = require('crypto');
             const randomNum = crypto.randomInt(1, 100);

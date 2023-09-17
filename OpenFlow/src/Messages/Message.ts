@@ -86,6 +86,9 @@ export class Message {
                     case "count":
                         await this.Count(span);
                         break;
+                    case "distinct":
+                        await this.Distinct(span);
+                        break;
                     case "getdocumentversion":
                         await this.GetDocumentVersion(span);
                         break;
@@ -389,6 +392,13 @@ export class Message {
                                 await this.Count(span);
                             }
                             break;
+                        case "distinct":
+                            if (Config.enable_openflow_amqp) {
+                                return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
+                            } else {
+                                await this.Distinct(span);
+                            }
+                            break;
                         case "getdocumentversion":
                             this.clientagent = cli.clientagent;
                             this.clientversion = cli.clientversion;
@@ -598,8 +608,24 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 resolve(this);
             } catch (error) {
-                reject(error);
-                Logger.instanse.error(error, span, Logger.parsecli(cli));
+                // reject(error);
+                // Logger.instanse.error(error, span, Logger.parsecli(cli));
+
+                if(this.replyto == null || this.replyto == "") {
+                    this.Reply("error");
+                } else {
+                    this.command = "error";                    
+                }
+                this.data = "{\"message\": \"" + error.message + "\"}";
+                if(error.message.indexOf("Not signed in, and missing jwt") > -1) {
+                    Logger.instanse.error(error.message, span, Logger.parsecli(cli));
+                } else {
+                    Logger.instanse.error(error, span, Logger.parsecli(cli));
+                }
+                delete this.jwt;
+                delete this.tuser;
+                resolve(this);
+                
             } finally {
                 Logger.otel.endSpan(span);
             }
@@ -953,8 +979,8 @@ export class Message {
             Logger.instanse.error(new Error("Received message with no command"), null);
             return;
         }
-        this.Reply("error");
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
+        this.Reply("error");
         Logger.instanse.error(`UnknownCommand ${this.command}`, null);
     }
     private static collectionCache: any = {};
@@ -1076,6 +1102,32 @@ export class Message {
         }
         
     }
+    private async Distinct(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.Distinct", parent);
+        this.Reply();
+        let msg: DistinctMessage = this.data as any;
+        try {
+            // @ts-ignore
+            if (typeof this.data === 'string' || this.data instanceof String) {
+                // @ts-ignore
+                msg = JSON.stringify(this.data);
+            }
+            
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                await handleError(null, new Error("Access denied, not signed in"), span);
+                msg.error = "Access denied, not signed in";
+            } else {
+                const { query, field, collectionname, jwt, queryas } = msg;
+                msg.results = await Config.db.distinct({ query, field, collectionname, jwt, queryas }, span);
+            }
+            delete msg.query;
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }     
     private async Count(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Count", parent);
         this.Reply();
@@ -1442,19 +1494,19 @@ export class Message {
                 if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.version)) cli.clientversion = msg.version;
             }
             // @ts-ignore
-            if(cli.clientagent == "") cli.clientagent = "unknown"
+            if(cli?.clientagent == "") cli.clientagent = "unknown"
             // @ts-ignore
-            if(cli.clientagent == "assistent") cli.clientagent = "assistant"
+            if(cli?.clientagent == "assistent") cli.clientagent = "assistant"
             // @ts-ignore
-            if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+            if (cli?.clientagent == "webapp" || cli?.clientagent == "aiotwebapp") {
                 cli.clientagent = "browser"
             }
             // @ts-ignore
-            if (cli.clientagent == "RDService" || cli.clientagent == "rdservice") {
+            if (cli?.clientagent == "RDService" || cli?.clientagent == "rdservice") {
                 cli.clientagent = "rdservice"
             }
             // @ts-ignore
-            if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+            if (cli?.clientagent == "webapp" || cli?.clientagent == "aiotwebapp") {
                 cli.clientagent = "browser"
             }
 
@@ -3323,6 +3375,12 @@ export class Message {
         const jwt: string = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
+            try {
+                Logger.instanse.info("Ensure Indexes", span);
+                await Config.db.ensureindexes(span);
+            } catch (error) {
+                
+            }
             try {
                 if(Logger.agentdriver != null) {
                     try {
@@ -5217,10 +5275,21 @@ export class Message {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
                 }
                 if(pack.fileid != null && pack.fileid != "") {
-                    await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                    const rootjwt = Crypt.rootToken();
+                    let query = { _id: pack.fileid };
+                    const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
+                    if(item != null) {
+                        await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                    }
                 }
                 await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;
+            case "createindex":
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                var name = msg.name || data.name;
+                msg.result = await Config.db.createIndex(data.collection || data.collectionname, name, data.index, data.options, parent);
             default:
                 msg.error = "Unknown custom command";
         }
@@ -5235,4 +5304,13 @@ export class JSONfn {
             return (typeof value === 'function') ? value.toString() : value;
         });
     }
+}
+export declare class DistinctMessage {
+    error: string;
+    jwt: string;
+    query: any;
+    field: string;
+    collectionname: string;
+    results: any[];
+    queryas: string;
 }

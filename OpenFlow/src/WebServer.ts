@@ -24,9 +24,11 @@ import { flowclient } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse } from "@openiap/nodeapi";
+import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse, Workitem } from "@openiap/nodeapi";
 const { info, warn, err } = config;
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
+import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp";
+
 
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -579,6 +581,30 @@ export class WebServer {
                         
                     }
                     delete res.result;
+                    if(res.workitem != null) {
+                        const wi: Workitem = res.workitem;
+                        if(wi.lastrun != null) {
+                            const timeMS = new Date(wi.lastrun);
+                            var dt = Timestamp.create();
+                            // @ts-ignore
+                            dt.seconds = timeMS / 1000;
+                            // @ts-ignore
+                            dt.nanos = (timeMS % 1000) * 1e6;
+                            // @ts-ignore
+                            wi.lastrun = dt;
+                        }
+                        if(wi.nextrun != null) {
+                            const timeMS = new Date(wi.nextrun);
+                            var dt = Timestamp.create();
+                            // @ts-ignore
+                            dt.seconds = timeMS / 1000;
+                            // @ts-ignore
+                            dt.nanos = (timeMS % 1000) * 1e6;
+                            // @ts-ignore
+                            wi.nextrun = dt;
+                        }
+                    }
+
                 }
                 if(reply.command == "pushworkitemsreply") {
                     res.workitems = res.items;
@@ -627,7 +653,7 @@ export class WebServer {
                         }
                     }
                 }
-                if(res.results) res.results = JSON.stringify(res.results);
+                if(res.results && reply.command != "distinctreply") res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 // reply.data = QueueMessageResponse.encode(QueueMessageResponse.create(res)).finish()
                 reply.data = protowrap.pack(reply.command, res);
