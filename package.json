@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.5.1",
+  "version": "1.5.0",
   "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -12,12 +12,8 @@
     "latest": "gulp latest",
     "rebuild": "docker-compose up registry -d && docker-compose build && docker-compose push --ignore-push-failures  && docker-compose up -d",
     "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d",
-    "updateapilocal": "npm uninstall @openiap/nodeapi && npm i ../nodeapi",
     "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
-    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
-    "doctor": "NO_INSIGHT=true clinic doctor -- node -r dotenv/config dist/index.js dotenv_config_path=config/.env dotenv_config_debug=true",
-    "flame": "NO_INSIGHT=true clinic flame -- node -r dotenv/config dist/index.js dotenv_config_path=config/.env dotenv_config_debug=true",
-    "bubbleprof": "NO_INSIGHT=true clinic bubbleprof -- node -r dotenv/config dist/index.js dotenv_config_path=config/.env dotenv_config_debug=true"
+    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi"
   },
   "repository": {
     "type": "git",
@@ -34,6 +30,7 @@
   "homepage": "https://github.com/open-rpa/openflow",
   "funding": "https://github.com/sponsors/skadefro",
   "bin": {
+    "openflow-cli": "./dist/cli.js",
     "openflow-lic": "./dist/cli-lic.js"
   },
   "optionalDependencies": {
@@ -43,10 +40,12 @@
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "0.17.1",
     "@node-saml/passport-saml": "^4.0.1",
-    "@openiap/nodeapi": "^0.0.25",
+    "@openiap/nodeapi": "^0.0.17",
     "@openiap/openflow-api": "^2.1.11",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.43.0",
-    "@opentelemetry/sdk-node": "^0.43.0",
+    "@opentelemetry/api-metrics": "^0.33.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.34.0",
+    "@opentelemetry/sdk-metrics-base": "^0.31.0",
+    "@opentelemetry/sdk-node": "^0.34.0",
     "@skadefro/cache-manager-mongodb": "^0.3.2",
     "@types/amqplib": "^0.10.0",
     "@types/node": "^18.11.9",
@@ -74,7 +73,7 @@
     "jsonpath-plus": "^7.2.0",
     "jsonwebtoken": "^8.5.1",
     "mimetype": "0.0.8",
-    "mongodb": "^5.8.1",
+    "mongodb": "^4.11.0",
     "multer": "^1.4.2",
     "multer-gridfs-storage": "^5.0.2",
     "nodemailer": "^6.8.0",
@@ -87,7 +86,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "passport-openidconnect": "^0.1.1",
-    "pidusage": "^3.0.2",
+    "pm2": "^5.2.2",
     "rate-limiter-flexible": "^2.4.1",
     "readline-sync": "^1.4.10",
     "request": "^2.88.2",
@@ -95,7 +94,6 @@
     "samlp": "^6.0.2",
     "swagger-autogen": "^2.23.1",
     "swagger-ui-express": "^4.6.3",
-    "systeminformation": "^5.21.5",
     "web-push": "^3.5.0",
     "ws": "^8.11.0",
     "xml2js": "^0.4.23"
@@ -113,7 +111,6 @@
     "browserify": "^17.0.0",
     "browserify-css": "^0.15.0",
     "chart.js": "^2.9.4",
-    "clinic": "^13.0.0",
     "dotenv": "^16.0.3",
     "exorcist": "^2.0.0",
     "formBuilder": "^3.8.3",

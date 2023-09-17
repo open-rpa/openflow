@@ -1,9 +1,10 @@
 import { Config } from "./Config";
 import { TokenUser, Base, Rights, NoderedUtil, WorkitemQueue } from "@openiap/openflow-api";
 import { Crypt } from "./Crypt";
-import { Span, UpDownCounter } from "@opentelemetry/api";
+import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
-
+import { DatabaseConnection } from "./DatabaseConnection";
+import { UpDownCounter } from "@opentelemetry/api-metrics";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
@@ -22,7 +23,7 @@ export class Audit {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginSuccess", parent);
         try {
             Audit.ensure_openflow_logins();
-            Audit.openflow_logins?.add(1, { result: "success", clientagent });
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "success", clientagent });
             const log: Singin = new Singin();
             Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
             log.remoteip = remoteip;
@@ -47,7 +48,7 @@ export class Audit {
         const span: Span = Logger.otel.startSubSpan("Audit.ImpersonateSuccess", parent);
         try {
             Audit.ensure_openflow_logins();
-            Audit.openflow_logins?.add(1, { result: "impersonate", clientagent });
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "impersonate", clientagent });
             const log: Singin = new Singin();
             Base.addRight(log, user._id, user.name, [Rights.read]);
             Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -74,7 +75,7 @@ export class Audit {
         const span: Span = Logger.otel.startSubSpan("Audit.ImpersonateFailed", parent);
         try {
             Audit.ensure_openflow_logins();
-            Audit.openflow_logins?.add(1, { result: "impersonatefailed", clientagent });
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "impersonatefailed", clientagent });
             const log: Singin = new Singin();
             Base.addRight(log, user._id, user.name, [Rights.read]);
             Base.addRight(log, impostor._id, impostor.name, [Rights.read]);
@@ -100,7 +101,7 @@ export class Audit {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginFailed", parent);
         try {
             Audit.ensure_openflow_logins();
-            Audit.openflow_logins?.add(1, {  result: "failed", clientagent });
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "failed", clientagent });
             const log: Singin = new Singin();
             log.remoteip = remoteip;
             log.ip = Audit.dot2num(log.remoteip);
@@ -123,7 +124,7 @@ export class Audit {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginSuccess", parent);
         try {
             Audit.ensure_openflow_logins();
-            Audit.openflow_logins?.add(1, {  result: "success" });
+            Audit.openflow_logins?.add(1, { ...Logger.otel.defaultlabels, result: "success" });
             const log: auditWorkitem = new auditWorkitem();
             Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
             log.success = true;

@@ -5,7 +5,6 @@ import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Logger } from "./Logger";
 import { Message } from "./Messages/Message";
-import { apiinstrumentation } from "@openiap/nodeapi";
 export class QueueClient {
     static async configure(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("QueueClient.configure", parent);
@@ -40,12 +39,12 @@ export class QueueClient {
             try {
                 msg.priority = options.priority;
                 if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
-                    await apiinstrumentation.With<void>("OpenFlow Queue Process Message", msg.traceId, msg.spanId, undefined, async (span)=> {
-                        Logger.instanse.debug("Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId, span);
-                        await msg.QueueProcess(options, span);
-                        ack();
-                        await amqpwrapper.Instance().send(options.exchangename, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey, span);
-                    });
+
+                    span = Logger.otel.startSpan("OpenFlow Queue Process Message", msg.traceId, msg.spanId);
+                    Logger.instanse.debug("Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId, span);
+                    await msg.QueueProcess(options, span);
+                    ack();
+                    await amqpwrapper.Instance().send(options.exchangename, options.replyTo, msg, Config.openflow_amqp_expiration, options.correlationId, options.routingKey, span);
                 } else {
                     ack(false);
                     Logger.instanse.debug("[queue][ack] No replyto !!!!", span);

@@ -524,7 +524,7 @@ export class WebSocketServerClient {
                         const singleresult: Message = Message.frommessage(first, first.data);
                         singleresult.priority = first.priority;
                         if (singleresult.command != "ping" && singleresult.command != "pong") {
-                            singleresult.Process(this).then( (msg:any) => {
+                            singleresult.Process(this).then(msg=> {
                                 if(msg==null) return;
                                 if(msg.command == "error" && !msg.error && msg.data) {
                                     msg.data = JSON.parse(msg.data);
@@ -653,14 +653,7 @@ export class WebSocketServerClient {
         if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         const q2 = await this.Send<QueueMessage>(m, span);
-        if ((q2 as any).command == "error") {
-            if(q2.data && q2.data.indexOf && q2.data.indexOf("Sorry, I'm bussy") > -1) {
-                // Logger.instanse.silly(q2.data, span);
-                // noob
-            } else {
-                throw new Error(q2.data);
-            }
-        }
+        if ((q2 as any).command == "error") throw new Error(q2.data);
         return q2.data;
     }
     async UnWatch(id: string, jwt: string): Promise<void> {

@@ -18,7 +18,6 @@ import { OAuthProvider } from "./OAuthProvider";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient";
 import { Message } from "./Messages/Message";
-import { DBHelper } from "./DBHelper";
 clog("Done loading imports");
 let amqp: amqpwrapper = null;
 async function initamqp(parent: Span) {
@@ -75,7 +74,6 @@ async function initDatabase(parent: Span): Promise<boolean> {
         const jwt: string = Crypt.rootToken();
         const rootuser = Crypt.rootUser();
         Config.dbConfig = await dbConfig.Load(jwt, span);
-        DBHelper.cache_enabled = false;
 
         const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
@@ -272,7 +270,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
 
-        Config.db.ensureindexes(span).then(() => { }).catch((error) => Logger.instanse.error(error, span));
+        await Config.db.ensureindexes(span);
 
         if (Config.auto_hourly_housekeeping) {
             const crypto = require('crypto');
@@ -315,8 +313,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 }
             }, randomNum2 * 1000);
         }
-        await Config.db.UpdateCollections(span);
-        DBHelper.cache_enabled = true;
+        await Config.db.ParseTimeseries(span);
         return true;
     } catch (error) {
         Logger.instanse.error(error, span);

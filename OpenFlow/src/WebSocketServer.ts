@@ -3,9 +3,11 @@ import * as http from "http";
 import * as WebSocket from "ws";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
+import { Message } from "./Messages/Message";
 import { Config } from "./Config";
-import { NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
-import { Span, Histogram, Counter, Observable } from "@opentelemetry/api";
+import { SigninMessage, NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
+import { Span } from "@opentelemetry/api";
+import { Histogram, Counter, Observable } from "@opentelemetry/api-metrics"
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { WebServer } from "./WebServer";
@@ -91,9 +93,9 @@ export class WebSocketServer {
                     keys = Object.keys(p_all);
                     keys.forEach(key => {
                         if (p_all[key] > 0) {
-                            res.observe(p_all[key], {  agent: key })
+                            res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
                         } else {
-                            res.observe(0, { agent: key })
+                            res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
                         }                        
                     });
                 });
@@ -104,7 +106,7 @@ export class WebSocketServer {
                     if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
-                        res.observe(cli._queues.length, { clientid: cli.id })
+                        res.observe(cli._queues.length, { ...Logger.otel.defaultlabels, clientid: cli.id })
                     }
                 });
                 WebSocketServer.websocket_queue_message_count = Logger.otel.meter.createCounter("openflow_websocket_queue_message", {

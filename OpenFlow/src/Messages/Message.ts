@@ -6,7 +6,7 @@ import { Config } from "../Config";
 import { Audit, tokenType, clientType } from "../Audit";
 import { LoginProvider } from "../LoginProvider";
 import { Readable, Stream } from "stream";
-import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter, CollectionInfo } from "mongodb";
+import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
 import * as path from "path";
 import { DatabaseConnection } from "../DatabaseConnection";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage, CreateCollectionMessage } from "@openiap/openflow-api";
@@ -21,7 +21,6 @@ import { QueueClient } from "../QueueClient";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, CustomCommandMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { WebServer } from "../WebServer";
 import { iAgent } from "../commoninterfaces";
-import { trace, context } from '@opentelemetry/api';
 const pako = require('pako');
 const got = require("got");
 
@@ -32,7 +31,7 @@ async function handleError(cli: WebSocketServerClient, error: Error, span: Span)
             return;
         }
         if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors))
-            WebSocketServer.websocket_errors.add(1);
+            WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
         Logger.instanse.error(error, span, Logger.parsecli(cli));
     } catch (error) {
@@ -86,9 +85,6 @@ export class Message {
                         break;
                     case "count":
                         await this.Count(span);
-                        break;
-                    case "distinct":
-                        await this.Distinct(span);
                         break;
                     case "getdocumentversion":
                         await this.GetDocumentVersion(span);
@@ -393,13 +389,6 @@ export class Message {
                                 await this.Count(span);
                             }
                             break;
-                        case "distinct":
-                            if (Config.enable_openflow_amqp) {
-                                return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
-                            } else {
-                                await this.Distinct(span);
-                            }
-                            break;
                         case "getdocumentversion":
                             this.clientagent = cli.clientagent;
                             this.clientversion = cli.clientversion;
@@ -609,21 +598,8 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 resolve(this);
             } catch (error) {
-                // reject(error);
-                if(this.replyto == null || this.replyto == "") {
-                    this.Reply("error");
-                } else {
-                    this.command = "error";                    
-                }
-                this.data = "{\"message\": \"" + error.message + "\"}";
-                if(error.message.indexOf("Not signed in, and missing jwt") > -1) {
-                    Logger.instanse.error(error.message, span, Logger.parsecli(cli));
-                } else {
-                    Logger.instanse.error(error, span, Logger.parsecli(cli));
-                }
-                delete this.jwt;
-                delete this.tuser;
-                resolve(this);
+                reject(error);
+                Logger.instanse.error(error, span, Logger.parsecli(cli));
             } finally {
                 Logger.otel.endSpan(span);
             }
@@ -977,8 +953,8 @@ export class Message {
             Logger.instanse.error(new Error("Received message with no command"), null);
             return;
         }
-        this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
         this.Reply("error");
+        this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
         Logger.instanse.error(`UnknownCommand ${this.command}`, null);
     }
     private static collectionCache: any = {};
@@ -1113,32 +1089,6 @@ export class Message {
             } else {
                 const { query, collectionname, jwt, queryas } = msg;
                 msg.result = await Config.db.count({ query, collectionname, jwt, queryas }, span);
-            }
-            delete msg.query;
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-    }
-    private async Distinct(parent: Span): Promise<void> {
-        const span: Span = Logger.otel.startSubSpan("message.Distinct", parent);
-        this.Reply();
-        let msg: DistinctMessage = this.data as any;
-        try {
-            // @ts-ignore
-            if (typeof this.data === 'string' || this.data instanceof String) {
-                // @ts-ignore
-                msg = JSON.stringify(this.data);
-            }
-            
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
-                await handleError(null, new Error("Access denied, not signed in"), span);
-                msg.error = "Access denied, not signed in";
-            } else {
-                const { query, field, collectionname, jwt, queryas } = msg;
-                msg.results = await Config.db.distinct({ query, field, collectionname, jwt, queryas }, span);
             }
             delete msg.query;
             delete msg.jwt;
@@ -2068,6 +2018,22 @@ export class Message {
             Logger.otel.endSpan(span);
         }
     }
+    private async filescount(files: FindCursor<GridFSFile>): Promise<number> {
+        return new Promise<number>(async (resolve, reject) => {
+            files.count((error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            });
+        });
+    }
+    private async filesnext(files: FindCursor<GridFSFile>): Promise<GridFSFile> {
+        return new Promise<GridFSFile>(async (resolve, reject) => {
+            files.next((error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            });
+        });
+    }
     private async UpdateFile(cli: WebSocketServerClient): Promise<void> {
         this.Reply();
         let msg: UpdateFileMessage
@@ -2079,9 +2045,9 @@ export class Message {
         const q: Filter<GridFSFile> = {};
         q._id = safeObjectID(msg.id);
         const files = bucket.find(q);
-        const count = await Config.db.db.collection<any>("fs.files").countDocuments(q);
+        const count = await this.filescount(files);
         if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
-        const file = await files.next();
+        const file = await this.filesnext(files);
         msg.metadata._createdby = file.metadata._createdby;
         msg.metadata._createdbyid = file.metadata._createdbyid;
         msg.metadata._created = file.metadata._created;
@@ -2268,7 +2234,7 @@ export class Message {
                             if (customer.subscriptionid == usage.subid) {
                                 const UpdateDoc: any = { "$set": {} };
                                 UpdateDoc.$set["subscriptionid"] = null;
-                                await Config.db.db.collection<any>("users").updateMany({ "_id": customer._id }, UpdateDoc);
+                                await Config.db.db.collection("users").updateMany({ "_id": customer._id }, UpdateDoc);
                             }
                         } else {
                             const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
@@ -3355,7 +3321,7 @@ export class Message {
         this.tuser = User.assign(Crypt.rootUser());
         let rootuser = this.tuser;
         const jwt: string = Crypt.rootToken();
-        const span: Span = Logger.otel.startSubSpan("message.Housekeeping", parent);
+        const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             try {
                 if(Logger.agentdriver != null) {
@@ -3448,7 +3414,7 @@ export class Message {
 
 
 
-        let collections = await Config.db.db.listCollections<CollectionInfo>().toArray();
+        let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
         try {
             let audit = collections.find(x => x.name == "audit");
             let audit_old = collections.find(x => x.name == "audit_old");
@@ -3457,10 +3423,10 @@ export class Message {
                 audit = null;
             }
             if (audit == null) {
-                audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "userid", granularity: "minutes" } }) as any;
+                audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "userid", granularity: "minutes" } });
                 // audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "metadata", granularity: "minutes" } });
             }
-            collections = await await Config.db.db.listCollections<CollectionInfo>().toArray();
+            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
             audit = collections.find(x => x.name == "audit");
             audit_old = collections.find(x => x.name == "audit_old");
             if (Config.migrate_audit_to_ts && Config.force_audit_ts && audit != null && audit_old != null && audit.type == "timeseries") {
@@ -3520,11 +3486,11 @@ export class Message {
                 dbusage = null;
             }
             if (dbusage == null) {
-                dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } }) as any;
+                dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
                 // dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
             }
 
-            collections = await Config.db.db.listCollections<CollectionInfo>().toArray();;
+            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
             dbusage = collections.find(x => x.name == "dbusage");
             dbusage_old = collections.find(x => x.name == "dbusage_old");
             if (Config.force_dbusage_ts && dbusage != null && dbusage_old != null && dbusage.type == "timeseries") {
@@ -3810,7 +3776,7 @@ export class Message {
                         ]
                     }
 
-                    await Config.db.UpdateCollections(span);
+                    await Config.db.ParseTimeseries(span);
                     const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
                     try {
                         if (!DatabaseConnection.istimeseries("dbusage")) {
@@ -5251,21 +5217,10 @@ export class Message {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
                 }
                 if(pack.fileid != null && pack.fileid != "") {
-                    const rootjwt = Crypt.rootToken();
-                    let query = { _id: pack.fileid };
-                    const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
-                    if(item != null) {
-                        await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
-                    }
+                    await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
                 }
                 await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;
-            case "createindex":
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
-                // @ts-ignore
-                var data = JSON.parse(msg.data);
-                var name = msg.name || data.name;
-                msg.result = await Config.db.createIndex(data.collection || data.collectionname, name, data.index, data.options, parent);
             default:
                 msg.error = "Unknown custom command";
         }
@@ -5280,13 +5235,4 @@ export class JSONfn {
             return (typeof value === 'function') ? value.toString() : value;
         });
     }
-}
-export declare class DistinctMessage {
-    error: string;
-    jwt: string;
-    query: any;
-    field: string;
-    collectionname: string;
-    results: any[];
-    queryas: string;
 }

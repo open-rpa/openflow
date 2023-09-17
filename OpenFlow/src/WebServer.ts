@@ -24,12 +24,9 @@ import { flowclient } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse, openiap, apiinstrumentation, Workitem } from "@openiap/nodeapi";
+import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse } from "@openiap/nodeapi";
 const { info, warn, err } = config;
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
-import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp";
-import { trace, context } from '@opentelemetry/api';
-
 
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -446,7 +443,7 @@ export class WebServer {
                         }
                     }                    
                     if(rows.length > 0) {
-                        let result = rows[0] as any;
+                        result = rows[0];
                         await WebServer.sendFileContent(client, reply.rid, msg.id)
                         result = rows[0];
                         reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadResponse",
@@ -544,13 +541,7 @@ export class WebServer {
                     msg.clientversion = msg.version;
                 }
                 var _msg = Message.fromjson({ ...message, data: msg });
-                let result:any = await apiinstrumentation.With<Message>("process", message.traceid, message.spanid, undefined, async (span)=> {
-                    if(message.traceid != null && message.traceid != "") {
-                        _msg.traceId = message.traceid;
-                        _msg.spanId = message.spanid;
-                    }
-                    return _msg.Process(client as any);
-                });
+                var result = await _msg.Process(client as any);
                 if(message.rid != null && message.rid != "" && result.command == "error") {
                     return null;
                 }
@@ -585,32 +576,9 @@ export class WebServer {
                         if(typeof res.workitem.errormessage !== "string") {
                             res.workitem.errormessage = JSON.stringify(res.workitem.errormessage);
                         }
+                        
                     }
-                    if(res.workitem != null) {
-                        const wi: Workitem = res.workitem;
-                        if(wi.lastrun != null) {
-                            const timeMS = new Date(wi.lastrun);
-                            var dt = Timestamp.create();
-                            // @ts-ignore
-                            dt.seconds = timeMS / 1000;
-                            // @ts-ignore
-                            dt.nanos = (timeMS % 1000) * 1e6;
-                            // @ts-ignore
-                            wi.lastrun = dt;
-                        }
-                        if(wi.nextrun != null) {
-                            const timeMS = new Date(wi.nextrun);
-                            var dt = Timestamp.create();
-                            // @ts-ignore
-                            dt.seconds = timeMS / 1000;
-                            // @ts-ignore
-                            dt.nanos = (timeMS % 1000) * 1e6;
-                            // @ts-ignore
-                            wi.nextrun = dt;
-                        }
-                        var b = true;    
-                    }
-                delete res.result;
+                    delete res.result;
                 }
                 if(reply.command == "pushworkitemsreply") {
                     res.workitems = res.items;
@@ -659,7 +627,7 @@ export class WebServer {
                         }
                     }
                 }
-                if(res.results && reply.command != "distinctreply") res.results = JSON.stringify(res.results);
+                if(res.results) res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 // reply.data = QueueMessageResponse.encode(QueueMessageResponse.create(res)).finish()
                 reply.data = protowrap.pack(reply.command, res);

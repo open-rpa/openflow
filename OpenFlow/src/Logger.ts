@@ -216,7 +216,6 @@ export class Logger {
         this.json(obj, span);
     }
     public debug(message: string, span: Span, options?: any) {
-        // if(Config.log_debug == false) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -256,7 +255,6 @@ export class Logger {
         this.json(obj, span);
     }
     public silly(message: string, span: Span, options?: any) {
-        if(Config.log_silly == false) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -401,8 +399,6 @@ export class Logger {
                 this.agentdriver = new dockerdriver();
                 if (!(await this.agentdriver.detect())) {
                     this.agentdriver = null;
-                } else {
-                    Logger.instanse.info("Docker driver detected and loaded", null);
                 }
             } catch (error) {
                 this.agentdriver = null;
@@ -424,8 +420,6 @@ export class Logger {
                 if (_driver != null) {
                     if (!(await this.agentdriver.detect())) {
                         this.agentdriver = null;
-                    } else {
-                        Logger.instanse.info("kubernetes driver detected and loaded", null);
                     }
                 }
             } catch (error) {
@@ -438,9 +432,6 @@ export class Logger {
                 this.agentdriver = new dockerdriver();
                 if (!(await this.agentdriver.detect())) {
                     this.agentdriver = null;
-                    Logger.instanse.warn("No docker driver detected", null);
-                } else {
-                    Logger.instanse.info("Docker driver detected and loaded", null);
                 }
             } catch (error) {
                 this.agentdriver = null;
