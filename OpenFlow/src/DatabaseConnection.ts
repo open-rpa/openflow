@@ -188,7 +188,8 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
         if (Config.supports_watch && this.registerGlobalWatches) {
-            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+            // let collections = await DatabaseConnection.toArray(this.db.listCollections());
+            let collections = await Logger.DBHelper.GetCollections(span);
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
             for (var c = 0; c < collections.length; c++) {
                 if(["agents", "config", "mq", "nodered", "openrpa", "users", "workflow", "workitems"].indexOf(collections[c].name) == -1) continue;
@@ -553,7 +554,8 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     async ListCollections(jwt: string): Promise<any[]> {
-        let result = await DatabaseConnection.toArray(this.db.listCollections());
+        // let result = await DatabaseConnection.toArray(this.db.listCollections());
+        let result = await Logger.DBHelper.GetCollections(null);
         result = result.filter(x => x.name.indexOf("system.") === -1);
         result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
         await Crypt.verityToken(jwt);
@@ -568,6 +570,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
             if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
+            await Logger.DBHelper.ClearGetCollections();
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -584,6 +587,7 @@ export class DatabaseConnection extends events.EventEmitter {
             delete options.priority;
             delete options.collectionname;
             await this.db.createCollection(collectionname, options);
+            await Logger.DBHelper.ClearGetCollections();
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -3466,7 +3470,8 @@ export class DatabaseConnection extends events.EventEmitter {
                             // }
                             // let query = { "$or": queries };
                             // if (queries.length > 0) {
-                            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                            // let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                            let collections = await Logger.DBHelper.GetCollections(span);
                             collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
                                 && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
                                 && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
@@ -3530,7 +3535,8 @@ export class DatabaseConnection extends events.EventEmitter {
                         let skip_collections = [];
                         if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
 
-                        let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                        // let collections = await DatabaseConnection.toArray(this.db.listCollections());
+                        let collections = await Logger.DBHelper.GetCollections(span);
                         collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
                             && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
                             && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
@@ -4430,7 +4436,8 @@ export class DatabaseConnection extends events.EventEmitter {
     async ParseTimeseries(span: Span) {
         Logger.instanse.debug("Parse timeseries collections", span);
         span?.addEvent("Get collections");
-        let collections = await DatabaseConnection.toArray(this.db.listCollections());
+        // let collections = await DatabaseConnection.toArray(this.db.listCollections());
+        let collections = await Logger.DBHelper.GetCollections(span);
         collections = collections.filter(x => x.name.indexOf("system.") === -1);
         collections = collections.filter(x => x.type == "timeseries");
 

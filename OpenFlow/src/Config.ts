@@ -32,6 +32,15 @@ export class dbConfig extends Base {
     public enable_openai: boolean;
     public enable_openaiauth: boolean;
     public openai_token: string;
+
+    public cache_store_type: string;
+    public cache_store_max: number;
+    public cache_store_ttl_seconds;
+    public cache_store_redis_host;
+    public cache_store_redis_port;
+    public cache_store_redis_password;
+    public cache_workitem_queues;
+
     public log_cache: boolean;
     public log_amqp: boolean;
     public log_login_provider: boolean;
@@ -108,8 +117,6 @@ export class dbConfig extends Base {
     public grpc_max_send_message_length: number;
 
 
-    public cache_workitem_queues: boolean;
-
     public agent_images: NoderedImage[]
     public agent_node_selector: string;
 
@@ -154,6 +161,13 @@ export class dbConfig extends Base {
         Config.enable_openaiauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openaiauth) ? conf.enable_openaiauth : Config.getEnv("enable_openaiauth", "true"));
         Config.openai_token = !NoderedUtil.IsNullEmpty(conf.openai_token) ? conf.openai_token : Config.getEnv("openai_token", "");
         
+        Config.cache_store_type = !NoderedUtil.IsNullEmpty(conf.cache_store_type) ? conf.cache_store_type : Config.getEnv("cache_store_type", "memory");
+        Config.cache_store_max = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_max) ? conf.cache_store_max.toString() : Config.getEnv("cache_store_max", "1000"));
+        Config.cache_store_ttl_seconds = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_ttl_seconds) ? conf.cache_store_ttl_seconds.toString() : Config.getEnv("cache_store_ttl_seconds", "300"));
+        Config.cache_store_redis_host = !NoderedUtil.IsNullEmpty(conf.cache_store_redis_host) ? conf.cache_store_redis_host : Config.getEnv("cache_store_redis_host", "");
+        Config.cache_store_redis_port = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_redis_port) ? conf.cache_store_redis_port.toString() : Config.getEnv("cache_store_redis_port", "6379"));
+        Config.cache_store_redis_password = !NoderedUtil.IsNullEmpty(conf.cache_store_redis_password) ? conf.cache_store_redis_password : Config.getEnv("cache_store_redis_password", "");
+        Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
 
         Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
         Config.log_amqp = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_amqp) ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
@@ -240,9 +254,6 @@ export class dbConfig extends Base {
         Config.grpc_max_send_message_length = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_send_message_length) ? conf.grpc_max_send_message_length.toString() : Config.getEnv("grpc_max_send_message_length", (-1).toString()))
     
     
-
-        Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
-
 
         Config.agent_node_selector = (!NoderedUtil.IsNullEmpty(conf.agent_node_selector) ? conf.agent_node_selector : Config.getEnv("agent_node_selector", ""))
 
@@ -389,11 +400,10 @@ export class Config {
 
         Config.cache_store_type = Config.getEnv("cache_store_type", "memory");
         Config.cache_store_max = parseInt(Config.getEnv("cache_store_max", "1000"));
-        Config.cache_store_ttl_seconds = parseInt(Config.getEnv("cache_store_ttl_seconds", "3600"));
+        Config.cache_store_ttl_seconds = parseInt(Config.getEnv("cache_store_ttl_seconds", "300"));
         Config.cache_store_redis_host = Config.getEnv("cache_store_redis_host", "");
         Config.cache_store_redis_port = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
         Config.cache_store_redis_password = Config.getEnv("cache_store_redis_password", "");
-
         Config.cache_workitem_queues = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
 
         Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "480"));
@@ -565,7 +575,15 @@ export class Config {
     public static openai_token: string = Config.getEnv("openai_token", "");
     public static version: string = Config.getversion();
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
-    
+
+    public static cache_store_type: string = Config.getEnv("cache_store_type", "memory");
+    public static cache_store_max: number = parseInt(Config.getEnv("cache_store_max", "1000"));
+    public static cache_store_ttl_seconds: number = parseInt(Config.getEnv("cache_store_ttl_seconds", "300"));
+    public static cache_store_redis_host: string = Config.getEnv("cache_store_redis_host", "");
+    public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
+    public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
+    public static cache_workitem_queues: boolean = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
+
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
@@ -656,14 +674,6 @@ export class Config {
     public static tls_key: string = Config.getEnv("tls_key", "");
     public static tls_ca: string = Config.getEnv("tls_ca", "");
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
-
-    public static cache_store_type: string = Config.getEnv("cache_store_type", "memory");
-    public static cache_store_max: number = parseInt(Config.getEnv("cache_store_max", "1000"));
-    public static cache_store_ttl_seconds: number = parseInt(Config.getEnv("cache_store_ttl_seconds", "3600"));
-    public static cache_store_redis_host: string = Config.getEnv("cache_store_redis_host", "");
-    public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
-    public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
-    public static cache_workitem_queues: boolean = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
 
     public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "480")); // 8 hours
     public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "480")); // 8 hours

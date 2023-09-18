@@ -12,6 +12,7 @@ import { TokenRequest } from "./TokenRequest";
 import { amqpwrapper } from "./amqpwrapper";
 import { EntityRestriction } from "./EntityRestriction";
 import { iAgent } from "./commoninterfaces";
+import { CollectionInfo } from "mongodb";
 // var cacheManager = require('cache-manager');
 var redisStore = require('cache-manager-ioredis');
 var mongoStore = require('@skadefro/cache-manager-mongodb');
@@ -801,7 +802,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetQueues", parent);
         try {
             if (!Config.cache_workitem_queues) return await this.GetQueuesWrap(span);
-            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetQueuesWrap(span) });
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetQueuesWrap(span) }, { ttl: Config.workitem_queue_monitoring_interval / 1000 });
             return items;
         } finally {
             Logger.otel.endSpan(span);
@@ -822,7 +823,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
         try {
             if (!Config.cache_workitem_queues) return await this.GetPushableQueuesWrap(span);
-            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) });
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) }, { ttl: Config.workitem_queue_monitoring_interval / 1000 });
             return items;
         } finally {
             Logger.otel.endSpan(span);
@@ -842,7 +843,7 @@ export class DBHelper {
         try {
             if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
             var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
-            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); });
+            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); }, { ttl: Config.workitem_queue_monitoring_interval / 1000 });
             return count;
         } finally {
             Logger.otel.endSpan(span);
@@ -1006,4 +1007,34 @@ export class DBHelper {
     private async ClearIPBlockList() {
         await this.memoryCache.del("ipblock");
     }
+
+    public GetCollectionsWrap(span) {
+        return DBHelper.toArray(Config.db.db.listCollections());
+    }
+    public async GetCollections(parent: Span): Promise<CollectionInfo[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetCollections", parent);
+        try {
+            let items = await this.memoryCache.wrap("collections", () => { return this.GetCollectionsWrap(span) });
+            if (NoderedUtil.IsNullUndefinded(items)) items = [];
+            return items;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async ClearGetCollections() {
+        await this.memoryCache.del("collections");
+    }
+    static toArray(iterator): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            iterator.toArray((err, res) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(res);
+                }
+            });
+        });
+    }
+
 }
