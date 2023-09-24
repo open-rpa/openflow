@@ -128,6 +128,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     await Config.db.db.collection("mq").updateOne({ "_id": u._id }, { "$set": { "name": u.name.toLowerCase() } });
                 }
             }
+            cursor.close();
         }
 
 

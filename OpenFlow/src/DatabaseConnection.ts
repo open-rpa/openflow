@@ -294,6 +294,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 client.Queue(JSON.stringify(sendthis), queueid, {} as any, null).catch(e=> {
                                     Logger.instanse.error(e, null);
                                 });
+                                await new Promise(resolve => setTimeout(resolve, 1000));
                             } catch (error) {
                             }
                         } else {
@@ -771,7 +772,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         item.members.splice(i, 1);
                     } else {
                         const ot_end = Logger.otel.startTimer();
-                        const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+                        const cursor = this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1);
+                        const arr = await cursor.toArray();
+                        cursor.close();
                         let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", Crypt.rootUser(), "query"));
                         if (Config.log_database_queries && ms >= Config.log_database_queries_ms)
                             Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms, count: arr.length, collection: "users" });
@@ -820,7 +823,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 const ace = removed[i];
                 if (NoderedUtil.IsNullUndefinded(ace)) continue;
                 const ot_end = Logger.otel.startTimer();
-                const arr = await this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1).toArray();
+                const cursor = this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1);
+                const arr = await cursor.toArray();
+                cursor.close();
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", Crypt.rootUser(), "query"));
                 if (Config.log_database_queries && ms >= Config.log_database_queries_ms) Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms: ms, count: arr.length, collection: "users" });
                 if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
@@ -1053,6 +1058,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         // @ts-ignore
         arr = await _pipe.toArray();
+        _pipe.close();
         if(collectionname === "users") {
             var clients = WebSocketServer.getclients(user)
             for(var i=0; i<arr.length; i++) {
@@ -1428,8 +1434,10 @@ export class DatabaseConnection extends events.EventEmitter {
         options.hint = myhint;
         try {
             const ot_end = Logger.otel.startTimer();
+            const cursor = this.db.collection(collectionname).aggregate(aggregates, options);
             // @ts-ignore
-            const items: T[] = await this.db.collection(collectionname).aggregate(aggregates, options).toArray();
+            const items: T[] = await cursor.toArray();
+            cursor.close();
             span?.setAttribute("results", items.length);
 
             let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
@@ -1490,73 +1498,6 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         }
         return await this.db.collection(collectionname).watch(aggregates, { fullDocument: 'updateLookup' });
-    }
-    /**
-     * Do MongoDB map reduce
-     * @param  {any} aggregates
-     * @param  {string} collectionname
-     * @param  {string} jwt
-     * @returns Promise
-     */
-    async MapReduce<T>(map: mapFunc, reduce: reduceFunc, finalize: finalizeFunc, query: any, out: string | any, collectionname: string, scope: any, jwt: string): Promise<T[]> {
-        await this.connect();
-        throw new Error("MapReduce is no longer supported")
-
-        // if (query !== null && query !== undefined) {
-        //     let json: any = query;
-        //     if (typeof json !== 'string' && !(json instanceof String)) {
-        //         json = JSON.stringify(json, (key, value) => {
-        //             if (value instanceof RegExp)
-        //                 return ("__REGEXP " + value.toString());
-        //             else
-        //                 return value;
-        //         });
-        //     }
-        //     query = JSON.parse(json, (key, value) => {
-        //         if (typeof value === 'string' && value.match(isoDatePattern)) {
-        //             return new Date(value); // isostring, so cast to js date
-        //         } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
-        //             const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
-        //             return new RegExp(m[1], m[2] || "");
-        //         } else
-        //             return value; // leave any other value as-is
-        //     });
-        // }
-        // const user: TokenUser = await Crypt.verityToken(jwt);
-        // let q: any;
-        // if (query !== null && query !== undefined) {
-        //     q = { $and: [query, this.getbasequery(user, "_acl", [Rights.read])] };
-        // } else {
-        //     q = this.getbasequery(user, "_acl", [Rights.read]);
-        // }
-
-        // if (finalize != null && finalize != undefined) {
-        //     try {
-        //         if (((finalize as any) as string).trim() === "") { (finalize as any) = null; }
-        //     } catch (error) {
-        //     }
-        // }
-        // let inline: boolean = false;
-        // const opt: MapReduceOptions = { query: q, out: { replace: "map_temp_res" }, finalize: finalize };
-
-        // let outcol: string = "map_temp_res";
-        // if (out === null || out === undefined || out === "") {
-        //     opt.out = { replace: outcol };
-        // } else if (typeof out === 'string' || out instanceof String) {
-        //     outcol = (out as string);
-        //     opt.out = { replace: outcol };
-        // } else {
-        //     opt.out = out;
-        //     if (out.hasOwnProperty("inline")) { inline = true; }
-        // }
-        // opt.scope = scope;
-        //     if (inline) {
-        //         opt.out = { inline: 1 };
-        //         return await this.db.collection(collectionname).mapReduce(map, reduce, opt);;
-        //     } else {
-        //         await this.db.collection(collectionname).mapReduce(map, reduce, opt);
-        //         return [];
-        //     }
     }
     /**
      * Create a new document in the database
@@ -3416,7 +3357,9 @@ export class DatabaseConnection extends events.EventEmitter {
             if (DatabaseConnection.usemetadata(collectionname)) {
                 _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, [Rights.delete], collectionname)] };
                 const ot_end = Logger.otel.startTimer();
-                const arr = await this.db.collection(collectionname).find(_query).toArray();
+                const cursor = this.db.collection(collectionname).find(_query);
+                const arr = await cursor.toArray();
+                cursor.close();
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
                 if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
                     Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: arr.length });
@@ -3436,7 +3379,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             Logger.instanse.verbose("[" + user.username + "][" + collectionname + "] Deleting " + id + " in database", span, { collection: collectionname, user: user?.username });
-            const docs = await this.db.collection(collectionname).find(_query).toArray();
+            const cursor = this.db.collection(collectionname).find(_query);
+            const docs = await cursor.toArray();
+            cursor.close();
             for (let i = 0; i < docs.length; i++) {
                 if (!DatabaseConnection.hasAuthorization(user, docs[0] as any, Rights.delete)) {
                     throw new Error(`[${user.name}] Access denied, missing delete permission`);
@@ -3444,13 +3389,19 @@ export class DatabaseConnection extends events.EventEmitter {
                 // @ts-ignore
                 let doc: Customer = docs[i];
                 if (collectionname == "users" && doc._type == "user") {
-                    const usagedocs = await this.db.collection("config").find({ "userid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
+                    const subcursor = this.db.collection("config").find({ "userid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } });
+                    const usagedocs = await subcursor.toArray();
+                    subcursor.close();
                     if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete user with active resourceusage");
                 }
                 if (collectionname == "users" && doc._type == "customer") {
-                    const usagedocs = await this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } }).toArray();
+                    const subcursor = this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } });
+                    const usagedocs = await subcursor.toArray();
+                    subcursor.close();
                     if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
-                    let userdocs = await this.db.collection("users").find({ "customerid": doc._id }).toArray();
+                    const subsubcursor = this.db.collection("users").find({ "customerid": doc._id });
+                    let userdocs = await subsubcursor.toArray();
+                    subsubcursor.close();
                     if (doc.userid != user._id) {
                         if (userdocs.length > 0 && !Config.cleanup_on_delete_customer && !recursive) {
                             // @ts-ignore
@@ -3527,7 +3478,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "users" && doc._type == "user") {
                     const names: string[] = [];
                     names.push(doc.name + "noderedadmins"); names.push(doc.name + "noderedusers"); names.push(doc.name + "nodered api users")
-                    const subdocs = await this.db.collection("users").find({ "name": { "$in": names }, "_type": "role" }).toArray();
+                    const cursor = this.db.collection("users").find({ "name": { "$in": names }, "_type": "role" });
+                    const subdocs = await cursor.toArray();
+                    cursor.close();
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "users", false, jwt, span);
                     }
@@ -3557,7 +3510,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 if (collectionname == "users" && doc._type == "customer") {
-                    const subdocs = await this.db.collection("config").find({ "customerid": doc._id }).toArray();
+                    const cursor = this.db.collection("config").find({ "customerid": doc._id });
+                    const subdocs = await cursor.toArray();
+                    cursor.close();
                     for (var r of subdocs) {
                         this.DeleteOne(r._id, "config", false, jwt, span);
                     }
@@ -3686,6 +3641,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
                     }
+                    cursor.close();
                 } else {
                     if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
                         Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
@@ -3771,6 +3727,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                 }
+                cursor.close();
                 // @ts-ignore
                 var insertCount = bulkInsert.length;
                 // @ts-ignore

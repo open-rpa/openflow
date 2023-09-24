@@ -494,9 +494,6 @@ export class Message {
                         case "signin":
                             await this.Signin(cli, span);
                             break;
-                        case "mapreduce":
-                            await this.MapReduce(cli);
-                            break;
                         case "refreshtoken":
                             break;
                         case "error":
@@ -1402,23 +1399,6 @@ export class Message {
             Logger.otel.endSpan(span);
         }
     }
-    private async MapReduce(cli: WebSocketServerClient): Promise<void> {
-        this.Reply();
-        let msg: MapReduceMessage
-        try {
-            msg = MapReduceMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
-            delete msg.map;
-            delete msg.reduce;
-            delete msg.finalize;
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } finally {
-        }
-        // cli?.Send(this);
-    }
     public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string, parent: Span): Promise<TokenUser> {
         const span: Span = Logger.otel.startSubSpan("message.DoSignin", parent);
         let tuser: TokenUser;
@@ -2100,6 +2080,7 @@ export class Message {
         const count = await this.filescount(files);
         if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
         const file = await this.filesnext(files);
+        files.close();
         msg.metadata._createdby = file.metadata._createdby;
         msg.metadata._createdbyid = file.metadata._createdbyid;
         msg.metadata._created = file.metadata._created;

@@ -790,24 +790,6 @@ export class DBHelper {
         await this.DeleteKey("pushablequeues", watch, false, span);
         if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
-    public GetQueuesWrap(span: Span) {
-        Logger.instanse.debug("Add pushable queues", span);
-        return Config.db.query<WorkitemQueue>({
-            query: { _type: "workitemqueue"}
-            , top:1000, collectionname: "mq", jwt: Crypt.rootToken()
-        }, span);
-    }
-    public async GetQueues(parent: Span): Promise<WorkitemQueue[]> {
-        await this.init();
-        const span: Span = Logger.otel.startSubSpan("dbhelper.GetQueues", parent);
-        try {
-            if (!Config.cache_workitem_queues) return await this.GetQueuesWrap(span);
-            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetQueuesWrap(span) }, { ttl: Config.workitem_queue_monitoring_interval / 1000 });
-            return items;
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-    }
     public GetPushableQueuesWrap(span: Span) {
         Logger.instanse.debug("Add pushable queues", span);
         return Config.db.query<WorkitemQueue>({
@@ -823,14 +805,14 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
         try {
             if (!Config.cache_workitem_queues) return await this.GetPushableQueuesWrap(span);
-            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) }, { ttl: Config.workitem_queue_monitoring_interval / 1000 });
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) }); // , { ttl: Config.workitem_queue_monitoring_interval / 1000 }
             return items;
         } finally {
             Logger.otel.endSpan(span);
         }
     }
     public GetPendingWorkitemsCountWrap(wiqid: string, span: Span) {
-        Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
+        // Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
         // TODO: skip nextrun ? or accept neextrun will always be based of cache TTL or substract the TTL ?
         const query = { "wiqid": wiqid, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
         return Config.db.count({
@@ -841,9 +823,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
         try {
-            if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
+            //if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
+            return await this.GetPendingWorkitemsCountWrap(wiqid, span);
             var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
-            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); }, { ttl: Config.workitem_queue_monitoring_interval / 1000 });
+            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); }); // , { ttl: Config.workitem_queue_monitoring_interval / 1000 }
             return count;
         } finally {
             Logger.otel.endSpan(span);
