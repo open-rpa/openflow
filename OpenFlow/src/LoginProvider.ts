@@ -1122,67 +1122,71 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
         }
     }
+    static async config(): Promise<any> {
+        let _url = Config.basewsurl();
+        if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
+        if (!_url.endsWith("/")) _url += "/";
+        let nodered_domain_schema = Config.nodered_domain_schema;
+        if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
+            nodered_domain_schema = "$nodered_id$." + Config.domain;
+        }
+        let agent_domain_schema = Config.agent_domain_schema;
+        if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
+            agent_domain_schema = "$slug$." + Config.domain;
+        }
+        
+        let forceddomains = [];
+        var providers = await Logger.DBHelper.GetProviders(null);
+        for (let i = 0; i < providers.length; i++) {
+            var provider: any = providers[i];
+            if (provider.forceddomains && Array.isArray(provider.forceddomains)) {
+                forceddomains = forceddomains.concat(provider.forceddomains);
+            }
+        }
+        const res2 = {
+            wshost: _url,
+            wsurl: _url,
+            domain: Config.domain,
+            auto_create_users: Config.auto_create_users,
+            allow_personal_nodered: Config.allow_personal_nodered,
+            auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
+            auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
+            namespace: Config.namespace,
+            nodered_domain_schema: nodered_domain_schema,
+            agent_domain_schema: agent_domain_schema,
+            websocket_package_size: Config.websocket_package_size,
+            version: Config.version,
+            stripe_api_key: Config.stripe_api_key,
+            getting_started_url: Config.getting_started_url,
+            validate_user_form: Config.validate_user_form,
+            validate_emails: Config.validate_emails,
+            forgot_pass_emails: Config.forgot_pass_emails,
+            supports_watch: Config.supports_watch,
+            nodered_images: Config.nodered_images,
+            agent_images: Config.agent_images,
+            amqp_enabled_exchange: Config.amqp_enabled_exchange,
+            multi_tenant: Config.multi_tenant,
+            enable_entity_restriction: Config.enable_entity_restriction,
+            enable_web_tours: Config.enable_web_tours,
+            enable_nodered_tours: Config.enable_nodered_tours,
+            collections_with_text_index: DatabaseConnection.collections_with_text_index,
+            timeseries_collections: DatabaseConnection.timeseries_collections,
+            ping_clients_interval: Config.ping_clients_interval,
+            validlicense: Logger.License.validlicense,
+            forceddomains: forceddomains,
+            grafana_url: Config.grafana_url
+        }
+        return res2;
+    }
     static async get_config(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.config", req);
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-            let _url = Config.basewsurl();
-            if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
-            if (!_url.endsWith("/")) _url += "/";
             if (req.user) {
                 const user: TokenUser = TokenUser.From(req.user);
                 span?.setAttribute("username", user.username);
             }
-            let nodered_domain_schema = Config.nodered_domain_schema;
-            if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
-                nodered_domain_schema = "$nodered_id$." + Config.domain;
-            }
-            let agent_domain_schema = Config.agent_domain_schema;
-            if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
-                agent_domain_schema = "$slug$." + Config.domain;
-            }
-            
-            let forceddomains = [];
-            var providers = await Logger.DBHelper.GetProviders(null);
-            for (let i = 0; i < providers.length; i++) {
-                var provider: any = providers[i];
-                if (provider.forceddomains && Array.isArray(provider.forceddomains)) {
-                    forceddomains = forceddomains.concat(provider.forceddomains);
-                }
-            }
-            const res2 = {
-                wshost: _url,
-                wsurl: _url,
-                domain: Config.domain,
-                auto_create_users: Config.auto_create_users,
-                allow_personal_nodered: Config.allow_personal_nodered,
-                auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
-                auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
-                namespace: Config.namespace,
-                nodered_domain_schema: nodered_domain_schema,
-                agent_domain_schema: agent_domain_schema,
-                websocket_package_size: Config.websocket_package_size,
-                version: Config.version,
-                stripe_api_key: Config.stripe_api_key,
-                getting_started_url: Config.getting_started_url,
-                validate_user_form: Config.validate_user_form,
-                validate_emails: Config.validate_emails,
-                forgot_pass_emails: Config.forgot_pass_emails,
-                supports_watch: Config.supports_watch,
-                nodered_images: Config.nodered_images,
-                agent_images: Config.agent_images,
-                amqp_enabled_exchange: Config.amqp_enabled_exchange,
-                multi_tenant: Config.multi_tenant,
-                enable_entity_restriction: Config.enable_entity_restriction,
-                enable_web_tours: Config.enable_web_tours,
-                enable_nodered_tours: Config.enable_nodered_tours,
-                collections_with_text_index: DatabaseConnection.collections_with_text_index,
-                timeseries_collections: DatabaseConnection.timeseries_collections,
-                ping_clients_interval: Config.ping_clients_interval,
-                validlicense: Logger.License.validlicense,
-                forceddomains: forceddomains,
-                grafana_url: Config.grafana_url
-            }
+            const res2 = await LoginProvider.config();
             Logger.instanse.debug("Return configuration settings", span);
             res.end(JSON.stringify(res2));
         } catch (error) {

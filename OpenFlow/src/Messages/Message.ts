@@ -1816,6 +1816,7 @@ export class Message {
                     throw new Error("User  " + msg.user.username + " is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
+            // openrpa settings
             msg.websocket_package_size = Config.websocket_package_size;
             msg.openflow_uniqueid = Config.openflow_uniqueid;
             if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;

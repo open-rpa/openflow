@@ -547,15 +547,10 @@ export class WebServer {
                 if(message.rid != null && message.rid != "" && result.command == "error") {
                     return null;
                 }
-                if(message.command == "signin") {
-                    if(msg.ping != null) {
-                        client.doping = msg.ping;
-                    }
-                }
                 reply.command = result.command + "reply"
-                if(reply.command == "errorreply") reply.command = "error";
-                if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
-                if(reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
+                if (reply.command == "errorreply") reply.command = "error";
+                if (reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
+                if (reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
                 if(reply.command == "addworkitemreply") {
                     reply.command = "pushworkitemreply";
                     reply.workitem = result.result;
@@ -563,9 +558,25 @@ export class WebServer {
                 if(reply.command == "addworkitemsreply") {
                     reply.command = "pushworkitemsreply";
                 }
-                var res = result.data;
-                if(typeof res == "string") var res = JSON.parse(res);
+                let res = result.data;
+                if(typeof res == "string") res = JSON.parse(res);
                 delete res.password;
+                if (message.command == "signin") {
+                    if (msg.ping != null) {
+                        client.doping = msg.ping;
+                    }
+                    res.config = await LoginProvider.config();
+                    if(res.config == null) res.config = {};
+                    res.config.openflow_uniqueid = Config.openflow_uniqueid;
+                    if (Config.otel_trace_interval > 0) res.config.otel_trace_interval = Config.otel_trace_interval;
+                    if (Config.otel_metric_interval > 0) res.config.otel_metric_interval = Config.otel_metric_interval;
+                    res.config.enable_analytics = Config.enable_analytics;
+                    res.config.otel_trace_url = Config.otel_trace_url;
+                    res.config.otel_metric_url = Config.otel_metric_url;
+                    res.config.otel_trace_interval = Config.otel_trace_interval;
+                    res.config.otel_metric_interval = Config.otel_metric_interval;
+                    res.config = JSON.stringify(res.config);
+                }
                 if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
                     if(res.results == null && res.result != null) {
                         res.results = res.result;
