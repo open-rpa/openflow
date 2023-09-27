@@ -6,8 +6,7 @@ import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
 import { SigninMessage, NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
-import { Span } from "@opentelemetry/api";
-import { Histogram, Counter, Observable } from "@opentelemetry/api-metrics"
+import { Span, Histogram, Counter, Observable } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { WebServer } from "./WebServer";

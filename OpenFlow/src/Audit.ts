@@ -4,7 +4,7 @@ import { Crypt } from "./Crypt";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
-import { UpDownCounter } from "@opentelemetry/api-metrics";
+import { UpDownCounter } from "@opentelemetry/api";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
