@@ -9,6 +9,12 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+  redis:
+    image: redis
+    command: >
+      --requirepass pass!word2
+    ports:
+      - "6379:6379"
   # registry:
   #   image: registry:2
   #   ## network_mode: "host"
