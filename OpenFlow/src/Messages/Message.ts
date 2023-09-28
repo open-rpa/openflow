@@ -3382,7 +3382,11 @@ export class Message {
                             } else {
                                 Logger.instanse.info("HouseKeeping ensure " + agent.name, span);
                             }
-                            await Logger.agentdriver.EnsureInstance(rootuser, jwt, agent, span);
+                            try {
+                                await Logger.agentdriver.EnsureInstance(rootuser, jwt, agent, span);
+                            } catch (error) {
+                                Logger.instanse.error(error, span);                                
+                            }
                         }
                     }
                 } else {
