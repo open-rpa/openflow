@@ -12,13 +12,18 @@ export interface i_license_file {
     template_v1: string;
     template_v2: string;
     license_public_key: string;
-    privateKey: string;
     validlicense: boolean;
     licenserror: string;
     data: i_license_data;
     ofid(force: boolean): any;
     validate(): void;
     shutdown(): void;
+    /**
+     *  Generate license file
+     *
+     * @param options
+    */
+    generate2(options: any): any;
     /**
      *  Generate license file
      *

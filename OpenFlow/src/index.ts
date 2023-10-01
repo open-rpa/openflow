@@ -4,7 +4,6 @@ function clog(message) {
     console.log(dts + " " + message);
 }
 clog("Starting @openiap/openflow");
-require('cache-require-paths');
 import { Logger } from "./Logger";
 import * as http from "http";
 import { WebServer } from "./WebServer";

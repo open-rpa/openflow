@@ -5596,6 +5596,10 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     public UserResources: Resource[];
     public UserAssigned: ResourceUsage[];
     public support: ResourceUsage[] = [];
+    public domain: string = "";
+    public licenses: ResourceUsage[] = [];
+    public licensekey: string = "";
+    public licensekeydecoded: string = "";
     async processdata() {
         try {
             if (this.model._type != "customer") {
@@ -5658,11 +5662,16 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             console.debug("Assigned", this.Assigned);
             console.debug("UserAssigned", this.UserAssigned);
             this.support = [];
+            this.licenses = [];
             for (let a of this.Assigned) {
-                if (a.product.metadata.supportplan) {
+                if (a.product.metadata.supportplan && a.siid != null) {
                     this.support.push(a);
                 }
+                if ( a.product.name == "Premium License" && a.siid != null) {
+                    this.licenses.push(a);
+                }
             }
+            
         } catch (error) {
             this.errormessage = error;
         }
@@ -5852,6 +5861,30 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             }
         } catch (error) {
             this.loading = false;
+            this.errormessage = error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async IssueLicense(domain: string, months: string) {
+        try {
+            this.errormessage = "";
+            this.loading = true;
+            if (domain == null || domain == "") return;
+            const payload: any = { "email": this.model.email, domain };
+            if(months != null && months != "") {
+                payload["months"] = months;
+            }
+            this.domain = domain;
+            const res:string = await NoderedUtil.CustomCommand({ command: "issuelicense", data: payload });
+            console.log(res);
+            // @ts-ignore
+            this.licensekey = res;
+            this.licensekeydecoded = atob(res);
+            this.loading = false;
+            // this.loadData();
+        } catch (error) {
+            this.loading = false;
+            console.error(error);
             this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }

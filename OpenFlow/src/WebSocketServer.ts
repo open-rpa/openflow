@@ -94,7 +94,7 @@ export class WebSocketServer {
                         if (p_all[key] > 0) {
                             res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
                         } else {
-                            res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
+                            // res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
                         }
                     });
                 });

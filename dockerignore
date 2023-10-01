@@ -13,7 +13,6 @@ docker-package.json
 sonar-scanner.properties
 sonar-project.properties
 crash.log
-.cache-require-paths.json
 .devcontainer.old
 .dockerignore
 *.heapsnapshot

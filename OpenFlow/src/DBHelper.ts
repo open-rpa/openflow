@@ -6,75 +6,81 @@ import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { LoginProvider, Provider } from "./LoginProvider";
-import * as cacheManager from "cache-manager";
+import { caching } from 'cache-manager';
 import { TokenRequest } from "./TokenRequest";
 import { amqpwrapper } from "./amqpwrapper";
 import { EntityRestriction } from "./EntityRestriction";
 import { iAgent } from "./commoninterfaces";
 import { CollectionInfo } from "mongodb";
-// var cacheManager = require('cache-manager');
-var redisStore = require('cache-manager-ioredis');
-var mongoStore = require('@skadefro/cache-manager-mongodb');
+import { redisStore } from 'cache-manager-ioredis-yet'
 
 export class DBHelper {
 
     public memoryCache: any;
-    public mongoCache: any;
+    // public mongoCache: any;
     public async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
 
-        const ttl = (Config.cache_store_ttl_seconds);
+        const ttl = (Config.cache_store_ttl_seconds) * 1000;
         const max = Config.cache_store_max;
 
-        this.mongoCache = cacheManager.caching({
-            store: mongoStore,
-            uri: Config.mongodb_url,
-            options: {
-                collection: "_cache",
-                compression: false,
-                poolSize: 5
-            }
-        });
+        // this.mongoCache = await caching(mongoStore, {
+        //     uri: Config.mongodb_url,
+        //     options: {
+        //         collection: "_cache",
+        //         compression: false,
+        //         poolSize: 5
+        //     }
+        // });
 
-        if (Config.cache_store_type == "mongodb") {
-            this.memoryCache = this.mongoCache;
-            this.ensureotel();
-            return;
-        } else if (Config.cache_store_type == "redis") {
-            this.memoryCache = cacheManager.caching({
-                store: redisStore,
+        // if (Config.cache_store_type == "mongodb") {
+        //     this.memoryCache = this.mongoCache;
+        //     this.ensureotel();
+        //     return;
+        // } else 
+        if (Config.cache_store_type == "redis") {
+
+            this.memoryCache = await caching(redisStore, {
                 host: Config.cache_store_redis_host,
                 port: Config.cache_store_redis_port,
                 password: Config.cache_store_redis_password,
-                ignoreCacheErrors: true,
-                db: 0, ttl, max
+                db: 0, ttl,
+                isCacheable: (val: unknown) => {
+                    return true
+                }
             })
             // listen for redis connection error event
-            var redisClient = this.memoryCache.store.getClient();
-            redisClient.on('error', (error) => {
-                Logger.instanse.error(error, null);
-            });
-
+            // var redisClient = this.memoryCache.store.getClient();
+            // redisClient.on('error', (error) => {
+            //     Logger.instanse.error(error, null);
+            // });
             this.ensureotel();
             return;
         }
-        this.memoryCache = cacheManager.caching({
-            store: 'memory',
-            ignoreCacheErrors: true, max, ttl
-        });
+        this.memoryCache = await caching('memory', { max, ttl });
         this.ensureotel();
     }
     public async clearCache(reason: string, span: Span) {
         await this.init();
         var keys: string[];
         if (Config.cache_store_type == "redis") {
-            keys = await this.memoryCache.keys('*');
+            if(this.memoryCache.keys) {
+                keys = await this.memoryCache.keys('*');
+            } else {
+                keys = await this.memoryCache.store.keys('*');
+            }
         } else {
-            keys = await this.memoryCache.keys();
+            if(this.memoryCache.keys) {
+                keys = await this.memoryCache.keys();
+            } else {
+                keys = await this.memoryCache.store.keys();
+            }
         }
         for (var i = 0; i < keys.length; i++) {
             if (keys[i] && !keys[i].startsWith("requesttoken")) {
                 this.memoryCache.del(keys[i]);
+            } else {
+                console.log("not deleting " + keys[i]);
             }
         }
         Logger.instanse.debug("clearCache called with reason: " + reason, span);
@@ -278,11 +284,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
             if (NoderedUtil.IsNullEmpty(key)) return null;
-            if (Config.cache_store_type == "redis") {
-                return await this.memoryCache.get("requesttoken" + key);
-            } else {
-                return await this.mongoCache.get("requesttoken" + key);
-            }
+            return await this.memoryCache.get("requesttoken" + key);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -291,11 +293,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.AddRequestTokenID", parent);
         try {
-            if (Config.cache_store_type == "redis") {
-                return await this.memoryCache.set("requesttoken" + key, data);
-            } else {
-                return await this.mongoCache.set("requesttoken" + key, data);
-            }
+            return await this.memoryCache.set("requesttoken" + key, data);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -304,11 +302,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.RemoveRequestTokenID", parent);
         try {
-            if (Config.cache_store_type == "redis") {
-                return await this.memoryCache.del("requesttoken" + key);
-            } else {
-                return await this.mongoCache.del("requesttoken" + key);
-            }
+            return await this.memoryCache.del("requesttoken" + key);
         } finally {
             Logger.otel.endSpan(span);
         }

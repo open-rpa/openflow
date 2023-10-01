@@ -3450,14 +3450,8 @@ export class Message {
             // }
         } catch (error) {
         }
-        try {
-            await Config.db.ensureindexes(span);
-        } catch (error) {
-        }
 
-
-
-
+        Logger.instanse.info("Begin validating prefered timeseries collections", span);
         let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
         try {
             let audit = collections.find(x => x.name == "audit");
@@ -4155,6 +4149,8 @@ export class Message {
                 } else {
                     Logger.instanse.error(error, span);
                 }
+            } finally {
+                Logger.instanse.info("Completed housekeeping", span);
             }
         }
         Logger.otel.endSpan(span);
@@ -5276,6 +5272,38 @@ export class Message {
                 var data = JSON.parse(msg.data);
                 var name = msg.name || data.name;
                 msg.result = await Config.db.createIndex(data.collection || data.collectionname, name, data.index, data.options, parent);
+                break;
+            case "issuelicense":
+                let _lic_require: any = null;
+                try {
+                    _lic_require = require("../ee/license-file");
+                } catch (error) {
+                }
+                if (_lic_require == null) {
+                    throw new Error("License module not found");
+                }
+                Logger.License = new _lic_require.LicenseFile();
+                // @ts-ignore
+                var data = msg.data;
+                try {
+                    data = JSON.parse(data);
+                } catch (error) {                    
+                }
+                if(data == null || data == "") throw new Error("No data found");
+                var domain = data.domain;
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                    delete data.months;
+                }
+                var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage"}, collectionname: "config", jwt }, parent);
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                    if(exists == null) throw new Error("Access denied");
+                }
+                if(data.months == null || data.months == "") {
+                    if(exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
+                }
+                //  throw new Error("Access denied");
+                msg.result = Logger.License.generate2(data);
+                break;            
             default:
                 msg.error = "Unknown custom command";
         }
