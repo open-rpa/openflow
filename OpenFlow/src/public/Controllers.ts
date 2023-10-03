@@ -7759,12 +7759,12 @@ export class AgentCtrl extends entityCtrl<any> {
                 "admin_role": "users",
                 "api_role": ""
             }
-            try {
-                var name = WebSocketClient.instance.user.username.toLowerCase();
-                name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
-                this.model.environment["old_nodered_id"] = name;
-            } catch (error) {
-            }
+            // try {
+            //     var name = WebSocketClient.instance.user.username.toLowerCase();
+            //     name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
+            //     this.model.environment["old_nodered_id"] = name;
+            // } catch (error) {
+            // }
         }
         if (this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             // "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
