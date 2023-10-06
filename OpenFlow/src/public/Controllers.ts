@@ -7951,6 +7951,8 @@ export class AgentCtrl extends entityCtrl<any> {
             name: this.newpackage.name,
             packageid: this.newpackage._id,
             enabled: true,
+            allowConcurrentRuns: true,
+            terminateIfRunning: false,
             cron,
             "env": {}
         }

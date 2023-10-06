@@ -1,20 +1,20 @@
 version: "3.3"
 services:
-  # rabbitmq:
-  #   image: "rabbitmq"
-  #   environment:
-  #     - RABBITMQ_ERLANG_COOKIE=your_cookie_string_hereyour_cookie_string_here
-  #   restart: unless-stopped
-  #   # network_mode: "host"
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"
-  redis:
-    image: redis
-    command: >
-      --requirepass pass!word2
+  rabbitmq:
+    image: "rabbitmq"
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=your_cookie_string_hereyour_cookie_string_here
+    restart: unless-stopped
+    # network_mode: "host"
     ports:
-      - "6379:6379"
+      - "5672:5672"
+      - "15672:15672"
+  # redis:
+  #   image: redis
+  #   command: >
+  #     --requirepass pass!word2
+  #   ports:
+  #     - "6379:6379"
   # registry:
   #   image: registry:2
   #   ## network_mode: "host"

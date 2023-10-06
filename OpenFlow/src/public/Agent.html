@@ -686,6 +686,13 @@
       <input ng-model="schedule.name" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
     </div>
 
+    <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">cron</span>
+      </div>
+      <input type="text" ng-model="schedule.cron" ng-disabled="ctrl.loading==true" class="form-control" />
+    </div>
+    
     <div class="input-group col-sm-8">
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">enabled</span>
@@ -697,7 +704,7 @@
       </div>
     </div>
 
-    <div class="input-group col-sm-8">
+    <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">terminateIfRunning</span>
       </div>
@@ -708,7 +715,7 @@
       </div>
     </div>
 
-    <div class="input-group col-sm-8">
+    <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">allowConcurrentRuns</span>
       </div>
