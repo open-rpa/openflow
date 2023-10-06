@@ -4563,7 +4563,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = "application";
         }
         if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
-        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
+        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority; // old api
+        // @ts-ignore
+        if (!NoderedUtil.IsNullEmpty(msg.priority)) wi.priority = msg.priority; // new api
         if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
         var oldstate = wi.state;
