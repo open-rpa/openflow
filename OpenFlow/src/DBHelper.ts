@@ -57,7 +57,11 @@ export class DBHelper {
             this.ensureotel();
             return;
         }
-        this.memoryCache = await caching('memory', { max, ttl });
+        this.memoryCache = await caching('memory', { max, ttl,
+            isCacheable: (val: unknown) => {
+                return true
+            }
+            });
         this.ensureotel();
     }
     public async clearCache(reason: string, span: Span) {
