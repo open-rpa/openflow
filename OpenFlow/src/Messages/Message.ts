@@ -1172,7 +1172,9 @@ export class Message {
         let msg: AggregateMessage
         msg = AggregateMessage.assign(this.data);
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-        msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
+        // @ts-ignore
+        var queryas = msg.queryas;
+        msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, queryas, span);
         if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
         delete msg.aggregates;
         delete msg.jwt;

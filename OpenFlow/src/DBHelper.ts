@@ -571,7 +571,7 @@ export class DBHelper {
                 }
             }
         ]
-        return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
+        return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, null, span);
     }
     public DecorateWithRolesAllRolesWrap(span: Span) {
         Logger.instanse.debug("Add all roles", span);

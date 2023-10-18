@@ -1368,7 +1368,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt
      * @returns Promise
      */
-    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, parent: Span): Promise<T[]> {
+    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, queryas:string, parent: Span): Promise<T[]> {
         const span: Span = Logger.otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
@@ -1416,11 +1416,29 @@ export class DatabaseConnection extends events.EventEmitter {
         const aggregatesjson = JSON.stringify(aggregates)
         span?.addEvent("getbasequery");
         let base: object;
+
         if (DatabaseConnection.usemetadata(collectionname)) {
-            base = this.getbasequery(user, [Rights.read], collectionname);
+            let impersonationquery;
+            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
+            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                base = { $and: [ this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
+            } else {
+                base = this.getbasequery(user, [Rights.read], collectionname);
+            }
         } else {
-            base = this.getbasequery(user, [Rights.read], collectionname);
+            let impersonationquery: any;
+            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
+            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                base = { $and: [this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
+            } else {
+                base = this.getbasequery(user, [Rights.read], collectionname);
+            }
         }
+        // if (DatabaseConnection.usemetadata(collectionname)) {
+        //     base = this.getbasequery(user, [Rights.read], collectionname);
+        // } else {
+        //     base = this.getbasequery(user, [Rights.read], collectionname);
+        // }
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
