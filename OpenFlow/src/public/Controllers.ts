@@ -5183,7 +5183,12 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         aggregates.push({ "$limit": 100 });
         if (!NoderedUtil.IsNullUndefinded(this.orderby) && Object.keys(this.orderby).length > 0) aggregates.push({ "$sort": this.orderby })
         try {
-            this.models = await NoderedUtil.Aggregate({ collectionname: this.collection, aggregates });
+            var queryas = this.basequeryas;
+            if (this.WebSocketClientService.multi_tenant && !NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                queryas = this.WebSocketClientService.customer._id;
+            }
+            // @ts-ignore
+            this.models = await NoderedUtil.Aggregate({ collectionname: this.collection, aggregates, queryas });
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
