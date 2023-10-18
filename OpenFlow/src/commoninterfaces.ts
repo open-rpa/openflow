@@ -109,7 +109,8 @@ export interface iAgentVolume {
     mountpath: string;
     storageclass: string;
     driver: string;
-    size: string
+    size: string;
+    subPath: string;
 }
 export interface iAgent extends iBase {
     slug: string;
