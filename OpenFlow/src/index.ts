@@ -383,11 +383,13 @@ async function handle(signal, value) {
         setTimeout(() => {
             process.exit(128 + value);
         }, 1000);
-        server.close((err) => {
-            Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
-            Logger.instanse.error(err, null);
-            process.exit(128 + value);
-        })
+        if(server != null && server.close) {
+            server.close((err) => {
+                Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
+                Logger.instanse.error(err, null);
+                process.exit(128 + value);
+            })
+        }
     } catch (error) {
         Logger.instanse.error(error, null);
         Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
