@@ -2218,6 +2218,8 @@ export class Message {
             if (usage == null) throw new Error("Unknown usage or Access Denied");
             const customer: Customer = await Config.db.getbyid(usage.customerid, "users", jwt, true, span);
             if (customer == null) throw new Error("Unknown usage or Access Denied (customer)");
+            // @ts-ignore
+            if(usage.mode == "one_time") throw new Error("Cannot cancel a one time purchase");
             let user: TokenUser;
             if (!NoderedUtil.IsNullEmpty(usage.userid)) {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
@@ -2312,6 +2314,20 @@ export class Message {
                     msg.error = error.response.body;
                     error = new Error(msg.error)
                 }
+                try {
+                    var e = JSON.parse(msg.error);
+                    if(e.message) {
+                        msg.error = e.message;
+                        error = new Error(msg.error)
+                    } else if(e.error && e.error.message) {
+                        msg.error = e.error.message;
+                        error = new Error(msg.error)
+                    }
+                    
+                } catch (error) {
+
+                }
+
             }
             throw error
         } finally {
@@ -2466,7 +2482,14 @@ export class Message {
 
             }
 
-            msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+            try {
+                msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+            } catch (error) {
+                if(error.message.indexOf("code 404") > -1) {
+                    throw new Error("No pending invoice found");
+                }
+                throw new Error("Error getting invoice: " + error.message+ "\nIf error persist contact billing support");
+            }
 
             if (msg.invoice.lines.has_more) {
                 payload.limit = 100;
@@ -2481,15 +2504,22 @@ export class Message {
             }
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
+        } catch (_error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-                if (error.response && error.response.body) {
-                    msg.error = error.response.body;
-                    error = new Error(msg.error)
+            const errormessage = (_error.message ? _error.message : _error);
+            let error = new Error("Unknown error");
+            try {
+                msg.error = errormessage as any;
+                if (_error.response && _error.response.body) {
+                    if(_error.response.body.indexOf("{") == -1) {
+                        msg.error = _error.response.body;
+                        msg.error.replace(/[^a-zA-Z0-9 ]/g, "")
+                    }
                 }
+                error = new Error(msg.error);
+            } catch (error) {
             }
+            console.error(error);
             throw error
         } finally {
             Logger.otel.endSpan(span);
@@ -2515,6 +2545,17 @@ export class Message {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                    try {
+                        var e = JSON.parse(msg.error);
+                        if(e.message) {
+                            msg.error = e.message;
+                        } else if(e.error && e.error.message) {
+                            msg.error = e.error.message;
+                        }
+                        
+                    } catch (error) {
+
+                    }
                     error = new Error(msg.error)
                 }
             }
@@ -2556,6 +2597,9 @@ export class Message {
             // }
             const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, true, span);
             if (resource == null) throw new Error("Unknown resource or Access Denied");
+            console.log("stripeprice", stripeprice);
+            console.log("resource", resource.products.map(x=>x.stripeprice));
+            console.log("count", resource.products.filter(x => x.stripeprice == stripeprice).length);
             if (resource.products.filter(x => x.stripeprice == stripeprice).length != 1) throw new Error("Unknown resource product");
             const product: ResourceVariant = resource.products.filter(x => x.stripeprice == stripeprice)[0];
 
@@ -2649,11 +2693,21 @@ export class Message {
             // Add requested quantity, now we have our target count
             _quantity += quantity;
 
-            if (NoderedUtil.IsNullEmpty(usage.subid)) {
-                usage.quantity = quantity;
-            } else {
-                usage.quantity += quantity;
+            const stripe_product = await this.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
+            if(stripe_product==null) throw new Error("Unknown product");
+            if(stripe_product.active == false) throw new Error("Product is not active");
+            const stripe_price = await this.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
+            if(stripe_price==null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
+            if(stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
+
+            if((stripe_price as any).type != "one_time"){
+                if (NoderedUtil.IsNullEmpty(usage.subid)) {
+                    usage.quantity = quantity;
+                } else {
+                    usage.quantity += quantity;
+                }
             }
+
             usage.customerid = customer._id;
             if (user != null) {
                 usage.userid = user._id;
@@ -2661,7 +2715,13 @@ export class Message {
             } else {
                 usage.name = usage.resource + " / " + product.name + " for " + customer.name;
             }
-            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout) {
+
+
+            var s = usage.siid;
+            // @ts-ignore
+            usage.mode = (stripe_price as any).type
+
+            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
                 let tax_rates = [];
                 // if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
                 // customer.country = customer.country.toUpperCase();
@@ -2677,7 +2737,8 @@ export class Message {
 
                 // https://stripe.com/docs/payments/checkout/taxes
                 Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
-                if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout) {
+
+                if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
                     if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                         // Create fake subscription id
                         usage.siid = NoderedUtil.GetUniqueIdentifier();
@@ -2697,11 +2758,12 @@ export class Message {
                     if (!skipSession) {
                         const baseurl = Config.baseurl() + "#/Customer/" + customer._id;
 
-
+                        var mode = "subscription";
+                        if((stripe_price as any).type == "one_time") mode = "payment";
                         const payload: any = {
                             client_reference_id: usage._id,
                             success_url: baseurl + "/refresh", cancel_url: baseurl + "/refresh",
-                            payment_method_types: ["card"], mode: "subscription",
+                            payment_method_types: ["card"], mode,
                             tax_id_collection: { enabled: true }, // Allow customer to addd tax id
                             automatic_tax: { enabled: true },     // Let stripe add the correct tax
                             line_items: []
@@ -2720,7 +2782,9 @@ export class Message {
                         }
 
                         let line_item: any = { price: product.stripeprice, tax_rates };
-                        if ((resource.target == "user" && product.userassign != "metered") ||
+                        if((stripe_price as any).type == "one_time") {
+                            line_item.quantity = 1
+                        } else if ((resource.target == "user" && product.userassign != "metered") ||
                             (resource.target == "customer" && product.customerassign != "metered")) {
                             line_item.quantity = _quantity
                         }
@@ -2735,11 +2799,16 @@ export class Message {
                             }
                             payload.line_items.push(line_item);
                         }
+                        console.log(JSON.stringify(payload, null, 2));
                         if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                             checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
                             // @ts-ignore
                             customer.sessionid = checkout.id;
+                            // @ts-ignore
+                            usage.sessionid = checkout.id;
+
                             await Config.db._UpdateOne(null, customer, "users", 3, true, rootjwt, span);
+                            await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
                         } else {
                             // Create fake subscription id
                             usage.siid = NoderedUtil.GetUniqueIdentifier();
@@ -2765,6 +2834,7 @@ export class Message {
                     }
                 }
             } else {
+                // (stripe_price as any).type == "one_time"
                 const payload: any = {};
                 // Update quantity if not metered
                 if ((resource.target == "user" && product.userassign != "metered") ||
@@ -3062,6 +3132,20 @@ export class Message {
             let sessionid = customer.sessionid
             if (!NoderedUtil.IsNullEmpty(sessionid)) {
                 var session = await this.Stripe<stripe_base>("GET", "checkout.sessions", sessionid, null, null);
+
+                var onetime = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "mode": "one_time", "sessionid": sessionid }, top: 1, collectionname: "config", jwt: msg.jwt }, span);
+                if (onetime.length > 0) {
+                    const usage = onetime[0];
+                    if((session as any).payment_status == "paid") {
+                        if(usage.quantity == null) usage.quantity = 0;
+                        usage.quantity ++;
+                        // add fake siid, since this is a onetime purche and does not have a subscription item
+                        usage.siid = NoderedUtil.GetUniqueIdentifier();
+                        // @ts-ignore
+                        delete usage.sessionid;
+                        await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                    }
+                }
                 // @ts-ignore
                 if (session != null && !NoderedUtil.IsNullEmpty(session.customer)) {
                     // @ts-ignore
@@ -3069,6 +3153,7 @@ export class Message {
                     // @ts-ignore
                     delete customer.sessionid;
                 }
+
             }
 
             // if (msg.customer.vatnumber) {
@@ -3095,7 +3180,10 @@ export class Message {
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                         Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
                         for (let usage of total_usage) {
-                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                            // @ts-ignore
+                            if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                            }
                         }
                     }
 
@@ -3132,8 +3220,11 @@ export class Message {
                                 usage.subid = sub.id;
                                 await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
                             } else {
-                                // Clean up old buy attempts
-                                await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                // @ts-ignore
+                                if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                    // Clean up old buy attempts
+                                    await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                }
                             }
                         }
                     } else {
@@ -3143,7 +3234,11 @@ export class Message {
                             const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                             Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
                             for (let usage of total_usage) {
-                                await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                // @ts-ignore
+                                if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                    await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                }
+                                
                             }
                         }
                     }
@@ -3192,7 +3287,10 @@ export class Message {
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
                     for (let usage of total_usage) {
-                        await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                        // @ts-ignore
+                        if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                        }
                     }
                 }
             }

@@ -8,6 +8,8 @@
     ng-show="ctrl.WebSocketClientService.customer == null && menuctrl.WebSocketClientService.stripe_api_key && menuctrl.WebSocketClientService.stripe_api_key != ''">
     <div class="col-sm-7">
         To enable multitenancy (multiple users and roles) fill out company name and click save.<br>
+        <small><strong>If users and roles does not appear in the side menu after clicking save, please reload your browser</strong></small>
+
     </div>
 </div>
 <!-- <div class="row"
@@ -111,27 +113,16 @@
         <h4>Buy/manage company plans</h4><br><br>
     </div>
 </div>
-<div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'" ng-show="ctrl.ShowPlans() && ctrl.Resources.length > 0">
-    <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'"
-        ng-show="Resource.customerassign == 'multiplevariants'">
-        <div class="col">{{Product.name}}</div>
-        <div class="col">
-            {{ Product.count }}
-            <span ng-show="Product.usedby && Product.usedby > 0" > / {{Product.usedby}} used</spamn></spa>
-        </div>
+<!-- add light gray background to even rows -->
+<style>
+    bg-light:nth-child(even) {
+        background-color: #f8f9fa !important;
+    }
+</style>
+<div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'" ng-show="ctrl.ShowPlans() && ctrl.Resources.length > 0"
+    >
 
-        <div class="col">
-
-            <a href ng-click="ctrl.AddPlan(Resource, Product)" class="btn" role="button"
-                ng-disabled="ctrl.loading==true" ng-show="Product.count == 0 || Product.customerassign == 'multiple'">
-                <em class="fas fa-money-bill-wave"></em></a>
-            <a href ng-click="ctrl.RemovePlan(Resource, Product)" class="btn" role="button" ng-show="Product.count > 0"
-                ng-disabled="ctrl.loading==true">
-                <em class="fas fa-trash"></em></a>
-
-        </div>
-    </div>
-    <div class="row" ng-show="Resource.customerassign == 'singlevariant'">
+    <div class="row" ng-show="Resource.customerassign == 'singlevariant'" ng-class="{'bg-light': $odd}">
         <div class="col">
             {{Resource.name}} :
             <format-bytes ng-model="ctrl.model.dbusage" decimal=0 ng-show="Resource.name == 'Database Usage'" />
@@ -163,6 +154,33 @@
         </div>
     </div>
 </div>
+<div ng-repeat="Resource in ctrl.Resources | orderBy: 'order'" ng-show="ctrl.ShowPlans() && ctrl.Resources.length > 0"
+    >
+    <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'"
+        ng-class="{'bg-warning': Product.count > 0, 'bg-light': $even}"
+        ng-show="Resource.customerassign == 'multiplevariants'">
+        <div class="col">{{Product.name}}</div>
+        <div class="col">
+
+        </div>
+        <div class="col">
+            {{ Product.count }}
+            <span ng-show="Product.usedby && Product.usedby > 0" > / {{Product.usedby}} used</spamn></spa>
+        </div>
+
+        <div class="col">
+
+            <a href ng-click="ctrl.AddPlan(Resource, Product)" class="btn" role="button"
+                ng-disabled="ctrl.loading==true" ng-show="Product.count == 0 || Product.customerassign == 'multiple'">
+                <em class="fas fa-money-bill-wave"></em></a>
+            <a href ng-click="ctrl.RemovePlan(Resource, Product)" class="btn" role="button" ng-show="Product.count > 0"
+                ng-disabled="ctrl.loading==true">
+                <em class="fas fa-trash"></em></a>
+
+        </div>
+    </div>
+</div>
+
 
 <div ng-if="ctrl.licenses.length > 0">
     <h4>Issue new license for </h4>
@@ -190,7 +208,9 @@
 
 
 <div ng-repeat="Resource in ctrl.UserResources | orderBy: 'order'" ng-show="ctrl.ShowPlans()">
-    <strong>{{Resource.name}}</strong>
+    <div ng-show="Product.count > 0">
+        <strong>{{Resource.name}}</strong>
+    </div>
     <div class="row" ng-repeat="Product in Resource.products | orderBy: 'order'" ng-show="Product.count > 0">
         <div class="col">{{Product.name}}</div>
         <div class="col">{{ Product.count }}</div>
@@ -244,4 +264,9 @@
             </div>
         </div>
     </div>
+</div>
+<div>
+    <br />
+    <br />
+    <br />
 </div>

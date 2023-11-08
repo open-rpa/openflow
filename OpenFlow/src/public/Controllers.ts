@@ -2353,8 +2353,8 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             this.errormessage = "";
             this.user = user;
             this.proration = false;
-            var title = document.getElementById("title");
-            title.scrollIntoView();
+            // var title = document.getElementById("title");
+            // title.scrollIntoView();
             this.ToggleModal()
             this.Resources = await NoderedUtil.Query({
                 collectionname: "config", query: { "_type": "resource", "target": "user", "allowdirectassign": true },
@@ -5636,6 +5636,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 res.products = res.products.filter(x => x.allowdirectassign == true);
                 for (var prod of res.products) {
                     (prod as any).count = this.AssignCount(prod);
+                    
                     if ((prod as any).count > 0) {
                         (res as any).newproduct = prod;
                         (prod as any).usedby = this.UsedbyCount(prod);
@@ -5730,8 +5731,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.errormessage = error.message ? error.message : error;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             try {
-                await NoderedUtil.EnsureCustomer({ customer: this.model });
-                this.loadData();
+                // await NoderedUtil.EnsureCustomer({ customer: this.model });
+                // this.loadData();
             } catch (error) {
             }
         }
