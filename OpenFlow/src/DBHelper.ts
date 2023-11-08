@@ -98,10 +98,14 @@ export class DBHelper {
             this.item_cache?.addCallback(async (res) => {
                 var keys: any = null;
                 try {
-                    if (Config.cache_store_type == "redis") {
+                    if (Config.cache_store_type == "redis" && this.memoryCache && this.memoryCache.keys) {
                         keys = await this.memoryCache.keys('*');
-                    } else {
-                        keys = await this.memoryCache.keys();
+                    } else if(this.memoryCache && this.memoryCache.keys) {
+                        if(this.memoryCache.keys.get) {
+                            keys = await this.memoryCache.keys.get();
+                        } else {
+                            keys = await this.memoryCache.keys();
+                        }
                     }
                 } catch (error) {
 
