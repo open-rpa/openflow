@@ -112,12 +112,20 @@ export interface iAgentVolume {
     size: string;
     subPath: string;
 }
+export interface iAgentPort {
+    name: string;
+    port: number;
+    protocol: "TCP" | "UDP" | "H2C" | "HTTP";
+    targetport: number;
+    nodeport: number;
+}
 export interface iAgent extends iBase {
     slug: string;
     tz: string;
     image: string;
     port: number;
     volumes: iAgentVolume[];
+    ports: iAgentPort[];
     agentid: string;
     webserver: boolean;
     sleep: boolean;
