@@ -1698,6 +1698,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if(!NoderedUtil.IsNullEmpty(runas)) {
                     let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
+                    runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
+
                     if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
                         if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
                             Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
@@ -2131,6 +2133,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         var runasname = item.runasname;
                         if(!NoderedUtil.IsNullEmpty(runas)) {
                             let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
+                            runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
                             if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
                                 if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
                                     Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
@@ -2471,6 +2474,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if(!NoderedUtil.IsNullEmpty(runas)) {
                         let runasuser = await this.getbyid<User>(runas, "users", q.jwt, true, span);
+                        runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
                         if (!DatabaseConnection.hasAuthorization(runasuser as any, q.item, Rights.update)) {
                             if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
                                 Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
@@ -3415,7 +3419,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const subcursor = this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } });
                     const usagedocs = await subcursor.toArray();
                     subcursor.close();
-                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
+                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage (" + usagedocs[0].name + ")");
                     const subsubcursor = this.db.collection("users").find({ "customerid": doc._id });
                     let userdocs = await subsubcursor.toArray();
                     subsubcursor.close();
