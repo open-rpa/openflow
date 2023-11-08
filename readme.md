@@ -10,7 +10,8 @@ Example and documentation at [docs.openiap.io](https://docs.openiap.io)
 docker OpenFlow: [![openiap/openflow](https://img.shields.io/docker/pulls/openiap/openflow?style=social)](https://hub.docker.com/r/openiap/openflow)\
 docker Node-Red: [![openiap/nodered](https://img.shields.io/docker/pulls/openiap/nodered?style=social)](https://hub.docker.com/r/openiap/nodered)\
 npm OpenFlow: ![@openiap/openflow](https://badges.weareopensource.me:/npm/dt/@openiap/openflow?style=social)\
-npm OpenFlow API: ![@openiap/openflow-api](https://badges.weareopensource.me:/npm/dt/@openiap/openflow-api?style=social)\
+npm OpenFlow API v2: ![@openiap/openflow-api](https://badges.weareopensource.me:/npm/dt/@openiap/nodeapi?style=social)\
+npm OpenFlow API v1: ![@openiap/openflow-api](https://badges.weareopensource.me:/npm/dt/@openiap/openflow-api?style=social)\
 npm Node-Red: ![@openiap/nodered](https://badges.weareopensource.me:/npm/dt/@openiap/nodered?style=social)
 
 ## **community help**
