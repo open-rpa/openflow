@@ -78,6 +78,10 @@ tr:nth-child(even){background-color: #f2f2f2}
         ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()" value="1" id="ctrl.model.log_otel" /><span ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()">otel</span>
         <input type="checkbox" ng-checked="ctrl.model.log_blocked_ips"
         ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()" value="1" id="ctrl.model.log_blocked_ips" /><span ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()">blocked_ips</span>
+
+        <input type="checkbox" ng-checked="ctrl.model.log_openapi"
+        ng-click="ctrl.model.log_openapi = !ctrl.model.log_openapi; ctrl.submit()" value="1" id="ctrl.model.log_openapi" /><span ng-click="ctrl.model.log_openapi = !ctrl.model.log_openapi; ctrl.submit()">open-api</span>
+
         <br /><input type="checkbox" ng-checked="ctrl.model.log_database_queries"
         ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()" value="1" id="ctrl.model.log_database_queries" /><span ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()">database queries</span>
         <input type="number" ng-model="ctrl.model.log_database_queries_ms" ng-blur="ctrl.submit()" min="0" max="240000" />ms

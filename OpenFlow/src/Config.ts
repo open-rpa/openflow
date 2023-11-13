@@ -30,6 +30,7 @@ export class dbConfig extends Base {
     public log_with_trace: boolean;
     public log_with_colors: boolean;
     public enable_openai: boolean;
+    public enable_openapi: boolean;
     public enable_openaiauth: boolean;
     public openai_token: string;
 
@@ -43,6 +44,7 @@ export class dbConfig extends Base {
 
     public log_cache: boolean;
     public log_amqp: boolean;
+    public log_openapi: boolean;
     public log_login_provider: boolean;
     public log_websocket: boolean;
     public log_oauth: boolean;
@@ -158,6 +160,7 @@ export class dbConfig extends Base {
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
         Config.enable_openai = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openai) ? conf.enable_openai : Config.getEnv("enable_openai", "false"));
+        Config.enable_openapi = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openapi) ? conf.enable_openapi : Config.getEnv("enable_openapi", "true"));
         Config.enable_openaiauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openaiauth) ? conf.enable_openaiauth : Config.getEnv("enable_openaiauth", "true"));
         Config.openai_token = !NoderedUtil.IsNullEmpty(conf.openai_token) ? conf.openai_token : Config.getEnv("openai_token", "");
         
@@ -171,6 +174,8 @@ export class dbConfig extends Base {
 
         Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
         Config.log_amqp = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_amqp) ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
+        Config.log_openapi = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_openapi) ? conf.log_openapi : Config.getEnv("log_openapi", "false"));
+        
         Config.log_login_provider = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_login_provider) ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
         Config.log_websocket = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_websocket) ? conf.log_websocket : Config.getEnv("log_websocket", "false"));
         Config.log_oauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_oauth) ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
@@ -291,6 +296,8 @@ export class Config {
     public static disablelogging(): void {
         Config.log_cache = false;
         Config.log_amqp = false;
+        Config.log_openapi = false;
+        
         Config.log_login_provider = false;
         Config.log_websocket = false;
         Config.log_oauth = false;
@@ -300,6 +307,7 @@ export class Config {
         Config.getversion();
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.enable_openai = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
+        Config.enable_openapi = Config.parseBoolean(Config.getEnv("enable_openapi", "true"));
         Config.enable_openaiauth = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
         Config.openai_token = Config.getEnv("openai_token", "");
 
@@ -307,6 +315,7 @@ export class Config {
 
         Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "false"));
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
+        Config.log_openapi = Config.parseBoolean(Config.getEnv("log_openapi", "false"));        
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
         Config.log_websocket = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
         Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
@@ -571,6 +580,7 @@ export class Config {
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key", "");
     public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
+    public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi", "true"));    
     public static enable_openaiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
     public static openai_token: string = Config.getEnv("openai_token", "");
     public static version: string = Config.getversion();
@@ -586,6 +596,7 @@ export class Config {
 
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
+    public static log_openapi: boolean = Config.parseBoolean(Config.getEnv("log_openapi", "false"));    
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
     public static log_with_trace: boolean = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
     public static log_websocket: boolean = Config.parseBoolean(Config.getEnv("log_websocket", "false"));

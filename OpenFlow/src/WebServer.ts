@@ -561,6 +561,14 @@ export class WebServer {
                 let res = result.data;
                 if(typeof res == "string") res = JSON.parse(res);
                 delete res.password;
+                if(reply.command == "addworkitemqueuereply") {
+                    res.workitemqueue = res.result;
+                    delete res.result;
+                }
+                if(reply.command == "updateworkitemqueuereply") {
+                    res.workitemqueue = res.result;
+                    delete res.result;
+                }
                 if (message.command == "signin") {
                     if (msg.ping != null) {
                         client.doping = msg.ping;
