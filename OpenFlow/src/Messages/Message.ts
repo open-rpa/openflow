@@ -3454,7 +3454,6 @@ export class Message {
         Message.lastHouseKeeping = new Date();
         this.tuser = User.assign(Crypt.rootUser());
         let rootuser = this.tuser;
-        const jwt: string = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             try {
@@ -3471,8 +3470,10 @@ export class Message {
                     } catch (error) {
                         Logger.instanse.error(error, span);
                     }
+                    const jwt: string = Crypt.rootToken();
                     var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true }, jwt }, span);
                     Logger.instanse.info("HouseKeeping ensure " + agents.length + " agents", span);
+                    
                     for (let i = 0; i < agents.length; i++) {
                         const agent = agents[i];
                         var pods = await Logger.agentdriver.GetInstancePods(rootuser, jwt, agent, false, span);
@@ -3498,6 +3499,7 @@ export class Message {
 
 
             try {
+                const jwt: string = Crypt.rootToken();
                 Logger.instanse.info("Begin validating builtin roles", span);
                 for(var i = 0; i < Config.db.WellknownIdsArray.length; i++) {
                     const item: Role = await Config.db.GetOne<Role>({ 
@@ -3834,6 +3836,7 @@ export class Message {
                 const usemetadata = DatabaseConnection.usemetadata("dbusage");
                 const user = Crypt.rootUser();
                 const tuser = TokenUser.From(user);
+                const jwt: string = Crypt.rootToken();
                 let collections = await Config.db.ListCollections(jwt);
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
                 let totalusage = 0;
@@ -4956,6 +4959,8 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
         msg = AddWorkitemQueueMessage.assign(this.data);
+        // @ts-ignore
+        if(this.data.workitemqueue != null) msg = this.data.workitemqueue;
         if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
         if (NoderedUtil.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
         if (NoderedUtil.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
@@ -4990,6 +4995,7 @@ export class Message {
         wiq.projectid = msg.projectid;
         wiq.amqpqueue = msg.amqpqueue;
         wiq.maxretries = msg.maxretries;
+        if(wiq.maxretries < 1) wiq.maxretries = 3;
         wiq.retrydelay = msg.retrydelay;
         wiq.initialdelay = msg.initialdelay;
         wiq.failed_wiq = msg.failed_wiq;
@@ -4998,7 +5004,7 @@ export class Message {
         wiq.success_wiqid = msg.success_wiqid;
         // @ts-ignore
         wiq.packageid = msg.packageid;
-
+        msg = JSON.parse(JSON.stringify(msg));
         msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
 
         if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
@@ -5032,6 +5038,13 @@ export class Message {
         let msg: UpdateWorkitemQueueMessage;
         const jwt = this.jwt;
         msg = UpdateWorkitemQueueMessage.assign(this.data);
+        // @ts-ignore
+        if(this.data.workitemqueue != null) {
+            // @ts-ignore
+            msg = this.data.workitemqueue;
+            // @ts-ignore
+            msg.purge = this.data.purge;
+        }
 
         if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
@@ -5067,6 +5080,7 @@ export class Message {
 
 
         if (msg._acl) wiq._acl = msg._acl;
+        msg = JSON.parse(JSON.stringify(msg));
 
         msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
 
@@ -5091,6 +5105,10 @@ export class Message {
         let msg: DeleteWorkitemQueueMessage;
         const jwt = this.jwt;
         msg = DeleteWorkitemQueueMessage.assign(this.data);
+        // @ts-ignore
+        if (!NoderedUtil.IsNullEmpty(msg.wiq)) msg.name = msg.wiq;
+        // @ts-ignore
+        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) msg._id = msg.wiqid;
         if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
         var wiq = new WorkitemQueue();
