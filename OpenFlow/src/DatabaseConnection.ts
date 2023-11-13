@@ -249,16 +249,21 @@ export class DatabaseConnection extends events.EventEmitter {
                 var payload = null;
                 // const payload = await this.GetOne({ jwt, collectionname, query }, null);
                 // if (payload == null) continue;
-                var queueid = "";
+                // var queueid = "";
+                let queueids = [];
                 if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
                     if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
-                        queueid = wiq.robotqueue.toLowerCase();
+                        let queueid = wiq.robotqueue.toLowerCase();
+                        queueids.push(queueid);
                     }
                 }
                 if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
-                    queueid = wiq.amqpqueue.toLowerCase();
+                    let queueid = wiq.amqpqueue.toLowerCase();
+                    if(queueids.indexOf(queueid) == -1) {
+                        queueids.push(queueid);
+                    }                    
                 }
-                if (NoderedUtil.IsNullEmpty(queueid)) { continue;}
+                if (queueids.length == 0) { continue;}
                 for (var _cid = 0; _cid < WebSocketServer._clients.length; _cid++) {
                     const client = WebSocketServer._clients[_cid];
                     if (NoderedUtil.IsNullUndefinded(client.user)) continue;
@@ -266,7 +271,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     var sendit = false;
                     for (var q = 0; client._queues.length > q; q++) {
                         var queue = client._queues[q];
-                        if (queue.queuename == queueid) {
+                        if (queueids.indexOf(queue.queuename?.toLocaleLowerCase()) > -1) {
                             sendit = true;
                             break;
                         }
@@ -290,9 +295,11 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (payload != null) {
                             Logger.instanse.debug("Send workitem payload '" + payload.name + "' to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null, { workflowid: wiq.workflowid, wi: payload._id, name: payload.name });
                             try {
-                                client.Queue(JSON.stringify(sendthis), queueid, {} as any, null).catch(e=> {
-                                    Logger.instanse.error(e, null);
-                                });
+                                for(let _y = 0; _y < queueids.length; _y++) {
+                                    client.Queue(JSON.stringify(sendthis), queueids[_y], {} as any, null).catch(e=> {
+                                        Logger.instanse.error(e, null);
+                                    });
+                                }
                                 await new Promise(resolve => setTimeout(resolve, 1000));
                             } catch (error) {
                             }
@@ -1175,7 +1182,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
             Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: result });
         } else {
-            Logger.instanse.debug("count gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result });
+            Logger.instanse.verbose("count gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result });
         }
         return result;
     }
@@ -1250,9 +1257,9 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.setAttribute("results", result);
         let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_count, DatabaseConnection.otel_label(collectionname, user, "count"));
         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
-            Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: result });
+            Logger.instanse.debug("distinct gave " + result + " results for query " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: result });
         } else {
-            Logger.instanse.debug("count gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result });
+            Logger.instanse.debug("distinct gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result });
         }
         return result;
     }
