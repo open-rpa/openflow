@@ -677,32 +677,54 @@
 
 <div class="w-800 mw-full" ng-repeat="schedule in ctrl.model.schedules">
   <div class="card p-0">
-    <div class="content">
-      <div class="input-group col-sm-8">
-        <div class="input-group-prepend">
-          <span class="input-group-text" translate lib="web">name</span>
-        </div>
-        <input ng-model="schedule.name" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
+    <!-- <div class="content">
+    </div> -->
+    <div class="input-group col-sm-8">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">name</span>
       </div>
+      <input ng-model="schedule.name" class="form-control" ng-disabled="ctrl.loading==true" required="required" />
+    </div>
 
-      <div class="input-group col-sm-8">
-        <div class="input-group-prepend">
-          <span class="input-group-text" translate lib="web">enabled</span>
-        </div>
-        <div class="custom-checkbox">
-          <input type="checkbox" id="schedule-{{$index}}-enabled" value="{{schedule.enabled}}" ng-model="schedule.enabled"
-            ng-disabled="ctrl.loading==true">
-          <label for="schedule-{{$index}}-enabled" translate lib="web"></label>
-        </div>
+    <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">cron</span>
       </div>
+      <input type="text" ng-model="schedule.cron" ng-disabled="ctrl.loading==true" class="form-control" />
+    </div>
+    
+    <div class="input-group col-sm-8">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">enabled</span>
+      </div>
+      <div class="custom-checkbox">
+        <input type="checkbox" id="schedule-{{$index}}-enabled" value="{{schedule.enabled}}" ng-model="schedule.enabled"
+          ng-disabled="ctrl.loading==true">
+        <label for="schedule-{{$index}}-enabled" translate lib="web"></label>
+      </div>
+    </div>
 
-      <!-- -->
-      <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)" >
-        <div class="input-group-prepend">
-          <span class="input-group-text" translate lib="web">cron</span>
-        </div>
-        <input type="text" ng-model="schedule.cron" ng-disabled="ctrl.loading==true" class="form-control" />
+    <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">terminateIfRunning</span>
       </div>
+      <div class="custom-checkbox">
+        <input type="checkbox" id="schedule-{{$index}}-terminateIfRunning" value="{{schedule.terminateIfRunning}}" ng-model="schedule.terminateIfRunning"
+          ng-disabled="ctrl.loading==true">
+        <label for="schedule-{{$index}}-terminateIfRunning" translate lib="web"></label>
+      </div>
+    </div>
+
+    <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">allowConcurrentRuns</span>
+      </div>
+      <div class="custom-checkbox">
+        <input type="checkbox" id="schedule-{{$index}}-allowConcurrentRuns" value="{{schedule.allowConcurrentRuns}}" ng-model="schedule.allowConcurrentRuns"
+          ng-disabled="ctrl.loading==true">
+        <label for="schedule-{{$index}}-allowConcurrentRuns" translate lib="web"></label>
+      </div>
+    </div>
 
       <div class="input-group col-sm-8">
         <div class="input-group-prepend">

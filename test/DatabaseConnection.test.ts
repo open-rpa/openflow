@@ -218,4 +218,4 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         await Config.db.createIndex("entities", "test_index", { "_id": 1 }, null, null);
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/DatabaseConnection.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/DatabaseConnection.test.ts'

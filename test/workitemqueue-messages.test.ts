@@ -41,7 +41,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.GetWorkitemQueue(null);
         q = JSON.parse(msg.data);
         return q.result;
@@ -69,7 +69,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         q.file = fs.readFileSync(filepath, { encoding: 'base64' });
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.SaveFile(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -90,7 +90,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         q.file = Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString('base64');
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.SaveFile(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -129,7 +129,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.wiqid = wiq._id; q.wiq = wiq.name;
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.PopWorkitem(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -147,7 +147,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q._id = wi._id;
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.DeleteWorkitem(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -169,7 +169,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
             q.files.push(f);
         }
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.UpdateWorkitem(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -201,7 +201,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
             q.files.push(f2);
         }
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.AddWorkitem(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -217,7 +217,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.AddWorkitemQueue(null, null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -231,7 +231,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.UpdateWorkitemQueue(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -246,7 +246,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         q.name = name ? name : "test queue";
         q.purge = true;
         msg.data = JSON.stringify(q);
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.DeleteWorkitemQueue(null);
         q = JSON.parse(msg.data);
         assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
@@ -254,4 +254,4 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     }
 
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/workitemqueue-messages.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/workitemqueue-messages.test.ts'

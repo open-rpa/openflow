@@ -65,7 +65,7 @@ import { Auth } from '../OpenFlow/src/Auth';
         assert.throws(() => { Config.parseBoolean({}) }, Error, "parseBoolean did not fail on illegal arguement");
     }
     @test async 'parse_federation_metadata'() {
-        var metadata = await Config.parse_federation_metadata("https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml");
+        var metadata = await Config.parse_federation_metadata(null, "https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml");
         assert.ok(!NoderedUtil.IsNullEmpty(metadata.identityProviderUrl))
         assert.ok(!NoderedUtil.IsNullEmpty(metadata.entryPoint))
         assert.ok(!NoderedUtil.IsNullEmpty(metadata.logoutUrl))
@@ -73,4 +73,4 @@ import { Auth } from '../OpenFlow/src/Auth';
         assert.ok(metadata.cert.length > 0);
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/Config.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/Config.test.ts'

@@ -4,11 +4,11 @@ import { Crypt } from "./Crypt";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
-import { UpDownCounter } from "@opentelemetry/api-metrics";
+import { UpDownCounter } from "@opentelemetry/api";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
-export type clientAgent = "node" | "browser" | "rdservice" | "nodered" | "openrpa" | "powershell" | "python" | "java" | "csharp" | "go" | "unknown";
+export type clientAgent = "node" | "browser" | "rdservice" | "nodered" | "openrpa" | "powershell" | "python" | "java" | "csharp" | "go" | "test" | "unknown";
 export class Audit {
     public static openflow_logins: UpDownCounter = null;
     public static ensure_openflow_logins() {

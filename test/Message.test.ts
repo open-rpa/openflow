@@ -31,36 +31,26 @@ import { Logger } from '../OpenFlow/src/Logger';
     @test async 'Unselect customer as root'() {
         var q = new SelectCustomerMessage();
         var msg = new Message(); msg.jwt = this.rootToken;
-        await msg.EnsureJWT(null)
-        await msg.SelectCustomer(null);
-        q = JSON.parse(msg.data);
-        assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
-        assert.ok(!NoderedUtil.IsNullEmpty(q.error), "Expected a fail, when unselecting customer as root");
+        await msg.EnsureJWT(null, false)
+        assert.rejects(msg.SelectCustomer(null), "Builtin entities cannot select a company")
     }
     @test async 'select customer as root'() {
         var q = new SelectCustomerMessage(); q.customerid = "60b683e12382b05d20762f09";
         var msg = new Message(); msg.jwt = this.rootToken;
-        await msg.EnsureJWT(null)
-        await msg.SelectCustomer(null);
-        q = JSON.parse(msg.data);
-        assert.ok(!NoderedUtil.IsNullUndefinded(q), "msg data missing");
-        assert.ok(!NoderedUtil.IsNullEmpty(q.error), "Expected a fail, when selecting a customer as root");
+        await msg.EnsureJWT(null, false)
+        assert.rejects(msg.SelectCustomer(null), "Builtin entities cannot select a company")
     }
     @test async 'Unselect customer as testuser'() {
         var q = new SelectCustomerMessage();
         var msg = new Message(); msg.jwt = this.userToken;
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.SelectCustomer(null);
-        q = JSON.parse(msg.data);
-        assert.ok(q && !q.error, q.error);
     }
     @test async 'select customer as testuser'() {
         var q = new SelectCustomerMessage(); q.customerid = "60b683e12382b05d20762f09";
         var msg = new Message(); msg.jwt = this.userToken;
-        await msg.EnsureJWT(null)
+        await msg.EnsureJWT(null, false)
         await msg.SelectCustomer(null);
-        q = JSON.parse(msg.data);
-        assert.ok(q && !q.error, q.error);
     }
     // @test async 'signin with username and password'() {
     //     var q = new SigninMessage(); q.username = "testuser"; q.password = "testuser"
@@ -70,4 +60,4 @@ import { Logger } from '../OpenFlow/src/Logger';
     //     assert.ok(q && !q.error, q.error);
     // }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/Message.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/Message.test.ts'

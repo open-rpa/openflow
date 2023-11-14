@@ -24,9 +24,11 @@ import { flowclient } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse } from "@openiap/nodeapi";
+import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse, Workitem } from "@openiap/nodeapi";
 const { info, warn, err } = config;
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
+import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp";
+
 
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -545,15 +547,10 @@ export class WebServer {
                 if(message.rid != null && message.rid != "" && result.command == "error") {
                     return null;
                 }
-                if(message.command == "signin") {
-                    if(msg.ping != null) {
-                        client.doping = msg.ping;
-                    }
-                }
                 reply.command = result.command + "reply"
-                if(reply.command == "errorreply") reply.command = "error";
-                if(reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
-                if(reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
+                if (reply.command == "errorreply") reply.command = "error";
+                if (reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
+                if (reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
                 if(reply.command == "addworkitemreply") {
                     reply.command = "pushworkitemreply";
                     reply.workitem = result.result;
@@ -561,9 +558,33 @@ export class WebServer {
                 if(reply.command == "addworkitemsreply") {
                     reply.command = "pushworkitemsreply";
                 }
-                var res = result.data;
-                if(typeof res == "string") var res = JSON.parse(res);
+                let res = result.data;
+                if(typeof res == "string") res = JSON.parse(res);
                 delete res.password;
+                if(reply.command == "addworkitemqueuereply") {
+                    res.workitemqueue = res.result;
+                    delete res.result;
+                }
+                if(reply.command == "updateworkitemqueuereply") {
+                    res.workitemqueue = res.result;
+                    delete res.result;
+                }
+                if (message.command == "signin") {
+                    if (msg.ping != null) {
+                        client.doping = msg.ping;
+                    }
+                    res.config = await LoginProvider.config();
+                    if(res.config == null) res.config = {};
+                    res.config.openflow_uniqueid = Config.openflow_uniqueid;
+                    if (Config.otel_trace_interval > 0) res.config.otel_trace_interval = Config.otel_trace_interval;
+                    if (Config.otel_metric_interval > 0) res.config.otel_metric_interval = Config.otel_metric_interval;
+                    res.config.enable_analytics = Config.enable_analytics;
+                    res.config.otel_trace_url = Config.otel_trace_url;
+                    res.config.otel_metric_url = Config.otel_metric_url;
+                    res.config.otel_trace_interval = Config.otel_trace_interval;
+                    res.config.otel_metric_interval = Config.otel_metric_interval;
+                    res.config = JSON.stringify(res.config);
+                }
                 if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
                     if(res.results == null && res.result != null) {
                         res.results = res.result;
@@ -579,6 +600,30 @@ export class WebServer {
                         
                     }
                     delete res.result;
+                    if(res.workitem != null) {
+                        const wi: Workitem = res.workitem;
+                        if(wi.lastrun != null) {
+                            const timeMS = new Date(wi.lastrun);
+                            var dt = Timestamp.create();
+                            // @ts-ignore
+                            dt.seconds = timeMS / 1000;
+                            // @ts-ignore
+                            dt.nanos = (timeMS % 1000) * 1e6;
+                            // @ts-ignore
+                            wi.lastrun = dt;
+                        }
+                        if(wi.nextrun != null) {
+                            const timeMS = new Date(wi.nextrun);
+                            var dt = Timestamp.create();
+                            // @ts-ignore
+                            dt.seconds = timeMS / 1000;
+                            // @ts-ignore
+                            dt.nanos = (timeMS % 1000) * 1e6;
+                            // @ts-ignore
+                            wi.nextrun = dt;
+                        }
+                    }
+
                 }
                 if(reply.command == "pushworkitemsreply") {
                     res.workitems = res.items;
@@ -627,7 +672,7 @@ export class WebServer {
                         }
                     }
                 }
-                if(res.results) res.results = JSON.stringify(res.results);
+                if(res.results && reply.command != "distinctreply") res.results = JSON.stringify(res.results);
                 if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 // reply.data = QueueMessageResponse.encode(QueueMessageResponse.create(res)).finish()
                 reply.data = protowrap.pack(reply.command, res);

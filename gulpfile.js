@@ -25,19 +25,20 @@ const NodeREDHTMLFiles = ["./OpenFlowNodeRED/src/nodered/nodes/**/*.html", "./Op
 const publicdestination = "./dist/public";
 const mapfile = path.join(__dirname, publicdestination, 'bundle.js.map')
 let version = "0.0.1";
-if (fs.existsSync("../VERSION")) {
-    version = fs.readFileSync("../VERSION", "utf8");
-} else if (fs.existsSync("VERSION")) {
-    version = fs.readFileSync("VERSION", "utf8");
+if (fs.existsSync("../package.json")) {
+    var p = require("../package.json");
+    version = p.version;    
+} else if (fs.existsSync("package.json")) {
+    var p = require("./package.json");
+    version = p.version;    
 }
 gulp.task("copyfiles1", function () {
     console.log("copyfiles1")
     const openflow = gulp.src(OpenFlowPublicFiles).pipe(gulp.dest(publicdestination));
-    const version1 = gulp.src('./VERSION').pipe(gulp.dest("./dist"));
 
     const copyspurce = gulp.src('./OpenFlow/src/public/**/*.ts').pipe(gulp.dest(publicdestination + '/OpenFlow/src/public'));
     const copyproto = gulp.src('./proto/**/*.*').pipe(gulp.dest('./dist/proto/proto'));
-    return merge(openflow, version1, copyspurce, copyproto);
+    return merge(openflow, copyspurce, copyproto);
 });
 gulp.task("setwatch", async function () {
     minify = false;
@@ -45,15 +46,15 @@ gulp.task("setwatch", async function () {
 });
 gulp.task("dowatch", function () {
     console.log("watch")
-    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowPublicFiles).
-        concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts')
+    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowPublicFiles)
+        .concat('./OpenFlow/src/public/**/*.ts')
         .concat('./OpenFlow/src/proto/**/*.*')
         , gulp.series("browserify", "copyfiles1"));
 });
 gulp.task("filewatch", function () {
     console.log("watch")
-    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowPublicFiles).
-        concat('./VERSION').concat('./OpenFlow/src/public/**/*.ts')
+    return gulp.watch(NodeREDHTMLFiles.concat(OpenFlowPublicFiles)
+        .concat('./OpenFlow/src/public/**/*.ts')
         .concat('./OpenFlow/src/proto/**/*.*')
         , gulp.series( "copyfiles1"));
 });

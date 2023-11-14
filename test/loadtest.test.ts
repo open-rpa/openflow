@@ -73,25 +73,29 @@ import { Logger } from '../OpenFlow/src/Logger';
                 }
             }, 1000 * randomNum)
         } catch (error) {
-            console.error("unknwon error", error);
-            // console.error(error.message ? error.message : error);
+            var e = error;
+            if(error == null) {
+                console.error("unknown error, is pc.openiap.io running ?");
+            } else {
+                console.error("unknown error", error);
+            }            
         }
     }
 
     @timeout(6000000)
     @test
     async 'crud connection load test'() {
-        await this.createandconnect(0);
-        var Promises: Promise<any>[] = [];
-        for (var i = 0; i < 200; i++) {
-            Promises.push(this.createandconnect(i));
-            if (i && i % 10 == 0) {
-                await Promise.all(Promises.map(p => p.catch(e => e)))
-                Promises = [];
-            }
-        }
-        await this.sleep(1000 * 60 * 30);
+        // await this.createandconnect(0);
+        // var Promises: Promise<any>[] = [];
+        // for (var i = 0; i < 200; i++) {
+        //     Promises.push(this.createandconnect(i));
+        //     if (i && i % 10 == 0) {
+        //         await Promise.all(Promises.map(p => p.catch(e => e)))
+        //         Promises = [];
+        //     }
+        // }
+        // await this.sleep(1000 * 60 * 30);
     }
 }
 // cd \code\openflow | node_modules\.bin\_mocha 'test/**/loadtest.test.ts'
-// cls | ./node_modules/.bin/_mocha 'test/**/loadtest.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/loadtest.test.ts'

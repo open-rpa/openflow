@@ -74,10 +74,10 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
     async 'personalqueuetest'() {
         var q = await this.amqp.AddQueueConsumer(this.testUser, this.testUser._id, null, this.rootToken, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
-                if (msg == "hi mom, i miss you") {
-                    msg = "hi";
+                if (msg.indexOf("hi mom, i miss you") > -1) {
+                    msg = JSON.stringify({"test": "hi"});
                 } else {
-                    msg = "unknown message";
+                    msg = JSON.stringify({"test": "unknown message"});
                 }
                 await this.amqp.send(options.exchangename, options.replyTo, msg, 1500, options.correlationId, options.routingKey, null, 1);
             }
@@ -85,11 +85,11 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         }, null);
         assert.ok(!NoderedUtil.IsNullUndefinded(q));
         assert.ok(!NoderedUtil.IsNullEmpty(q.queuename));
-        var reply = await this.amqp.sendWithReply(null, this.testUser._id, "hi mom, i miss you", 300, null, null, null);
-        assert.strictEqual(reply, "hi");
+        var reply = await this.amqp.sendWithReply(null, this.testUser._id, {"test": "hi mom, i miss you"}, 300, null, null, null);
+        assert.notStrictEqual (reply.indexOf("hi"), -1);
         await this.amqp.RemoveQueueConsumer(this.testUser, q, null);
-        reply = await this.amqp.sendWithReply("", "bogusName", "hi mom, i miss you", 300, null, null, null);
-        assert.strictEqual(reply, "timeout");
+        reply = await this.amqp.sendWithReply("", "bogusName", {"test": "hi mom, i miss you"}, 300, null, null, null);
+        assert.notStrictEqual (reply.indexOf("timeout"), -1);
 
         // why does this die ? after sending to bogusName
         // reply = await this.amqp.sendWithReply(null, this.testUser._id, "hi mom, i miss you", 300, null, null);
@@ -101,10 +101,10 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         const exchangename = "demotestexchange";
         var q = await this.amqp.AddExchangeConsumer(this.testUser, exchangename, "direct", "", null, this.rootToken, true, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
-                if (msg == "hi mom, i miss you") {
-                    msg = "hi";
+                if (msg.indexOf("hi mom, i miss you") > -1) {
+                    msg = JSON.stringify({"test": "hi"});
                 } else {
-                    msg = "unknown message";
+                    msg = JSON.stringify({"test": "unknown message"});
                 }
                 await this.amqp.send("", options.replyTo, msg, 1500, options.correlationId, "", null, 1);
             }
@@ -112,15 +112,15 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         }, null);
         // Give rabbitmq a little room
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        var reply = await this.amqp.sendWithReply(exchangename, "", "hi mom, i miss you", 300, null, null, null);
-        assert.strictEqual(reply, "hi");
-        var reply = await this.amqp.sendWithReply(exchangename, "", "hi dad, i miss you", 300, null, null, null);
-        assert.strictEqual(reply, "unknown message");
-        var reply = await this.amqp.sendWithReply(exchangename, "", "hi mom, i miss you", 300, null, null, null);
-        assert.strictEqual(reply, "hi");
+        var reply = await this.amqp.sendWithReply(exchangename, "", {"test": "hi mom, i miss you"}, 300, null, null, null);
+        assert.notStrictEqual (reply.indexOf("hi"), -1);
+        var reply = await this.amqp.sendWithReply(exchangename, "", {"test": "hi dad, i miss you"}, 300, null, null, null);
+        assert.notStrictEqual (reply.indexOf("unknown message"), -1);
+        var reply = await this.amqp.sendWithReply(exchangename, "", {"test": "hi mom, i miss you"}, 300, null, null, null);
+        assert.notStrictEqual (reply.indexOf("hi"), -1);
         await this.amqp.RemoveQueueConsumer(this.testUser, q.queue, null);
         await assert.rejects(this.amqp.RemoveQueueConsumer(this.testUser, null, null));
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/amqp.test.ts'
-// cls | ts-mocha --paths -p test/tsconfig.json 'test/amqp.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/amqp.test.ts'
+// clear && ts-mocha --paths -p test/tsconfig.json 'test/amqp.test.ts'

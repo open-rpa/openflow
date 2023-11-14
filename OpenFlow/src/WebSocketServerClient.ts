@@ -527,7 +527,7 @@ export class WebSocketServerClient {
                             singleresult.Process(this).then(msg=> {
                                 if(msg==null) return;
                                 if(msg.command == "error" && !msg.error && msg.data) {
-                                    msg.data = JSON.parse(msg.data);
+                                    msg.data = JSON.parse(msg.data.replace(/\n/g, "\\n"));
                                     msg.data.error = msg.data.message;
                                     msg.data = JSON.stringify(msg.data);
                                     // msg.error =  msg.data; // backward compaility

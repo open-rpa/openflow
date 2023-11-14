@@ -47,6 +47,7 @@
         <div class="col-sm-4">
             <input ng-model="ctrl.model.remoteip" class="form-control input-md"
                 ng-disabled="ctrl.loading==true" />
+                <a ng-href="https://www.iplocation.net/?query={{ctrl.model.remoteip}}" target="_blank">iplocation</a>
         </div>
     </div>
     <div class="form-group" ng-show="menuctrl.hasrole('admins') && (ctrl.model.dblocked == true || ctrl.model.dblocked == false)">

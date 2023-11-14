@@ -35,4 +35,4 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     // }
 
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/run-cli.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/run-cli.test.ts'

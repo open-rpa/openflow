@@ -1,5 +1,6 @@
-const AU = require('ansi_up');
-const ansi_up = new AU.default;
+import AnsiUp from 'ansi_up';
+const ansi_up = new AnsiUp();
+
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
 import { TokenUser, QueueMessage, SigninMessage, Ace, NoderedUser, stripe_base, Base, NoderedUtil, WebSocketClient, Role, NoderedConfig, stripe_invoice, Message, Customer, KubeResources, KubeResourceValues, Resource, ResourceVariant, ResourceUsage } from "@openiap/openflow-api";
 import { RPAWorkflow, Provider, Form, WorkflowInstance, Workflow, unattendedclient } from "./Entities";
@@ -2352,8 +2353,8 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
             this.errormessage = "";
             this.user = user;
             this.proration = false;
-            var title = document.getElementById("title");
-            title.scrollIntoView();
+            // var title = document.getElementById("title");
+            // title.scrollIntoView();
             this.ToggleModal()
             this.Resources = await NoderedUtil.Query({
                 collectionname: "config", query: { "_type": "resource", "target": "user", "allowdirectassign": true },
@@ -4435,316 +4436,6 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
-export class NoderedCtrl {
-    public static $inject = [
-        "$scope",
-        "$location",
-        "$routeParams",
-        "WebSocketClientService",
-        "api"
-    ];
-    public messages: string = "";
-    public errormessage: string = "";
-    public queuename: string = "webtest";
-    public noderedurl: string = "";
-    public instance: any = null;
-    public instances: any[] = null;
-    public instancestatus: string = "";
-    public instancelog: string = "";
-    public name: string = "";
-    public instancename: string = "";
-    public userid: string = "";
-    public user: NoderedUser = null;
-    public limitsmemory: string = "";
-    public loading: boolean = false;
-    public labels: any = {};
-    public keys: string[] = [];
-    public labelkeys: string[] = [];
-    public label: any = null;
-    public newkey: string = "";
-    public newvalue: string = "";
-    constructor(
-        public $scope: ng.IScope,
-        public $location: ng.ILocationService,
-        public $routeParams: ng.route.IRouteParamsService,
-        public WebSocketClientService: WebSocketClientService,
-        public api: api
-    ) {
-        console.debug("NoderedCtrl");
-        WebSocketClientService.onSignedin(async (user: TokenUser) => {
-            this.loading = true;
-            this.userid = $routeParams.id;
-            if (this.userid == null || this.userid == undefined || this.userid == "") {
-                this.name = WebSocketClient.instance.user.username;
-                this.userid = WebSocketClient.instance.user._id;
-                const users: NoderedUser[] = await NoderedUtil.Query({ collectionname: "users", query: { _id: this.userid }, top: 1 });
-                if (users.length == 0) {
-                    this.instancestatus = "Unknown id! " + this.userid;
-                    this.errormessage = "Unknown id! " + this.userid;
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                    return;
-                }
-
-                this.user = NoderedUser.assign(users[0]);
-                this.name = users[0].username;
-            } else {
-                const users: NoderedUser[] = await NoderedUtil.Query({ collectionname: "users", query: { _id: this.userid }, top: 1 });
-                if (users.length == 0) {
-                    this.instancestatus = "Unknown id! " + this.userid;
-                    this.errormessage = "Unknown id! " + this.userid;
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                    return;
-                }
-                this.user = NoderedUser.assign(users[0]);
-                this.name = users[0].username;
-            }
-            // ctrl.user.nodered.nodered_image_name = ctrl.user.nodered.nodered_image_name || menuctrl.WebSocketClientService.nodered_images[0].name
-
-            if (this.user.nodered == null) this.user.nodered = {} as any;
-            if ((this.user.nodered as any).monaco == null) (this.user.nodered as any).monaco = false;
-            if ((this.user.nodered as any).tours == null) (this.user.nodered as any).tours = WebSocketClientService.enable_nodered_tours;
-            if (this.user.nodered.function_external_modules == null) this.user.nodered.function_external_modules = true;
-
-            this.user.nodered.nodered_image_name = this.user.nodered.nodered_image_name || WebSocketClientService.nodered_images[0].name;
-            if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
-                this.limitsmemory = this.user.nodered.resources.limits.memory;
-            }
-            if (this.user.nodered != null && (this.user.nodered as any).nodeselector != null) {
-                // this.label = JSON.stringify((this.user.nodered as any).nodeselector);
-                this.label = (this.user.nodered as any).nodeselector;
-                this.labelkeys = Object.keys(this.label);
-            }
-            this.name = this.name.toLowerCase();
-            this.name = this.name.replace(/([^a-z0-9]+){1,63}/gi, "");
-            this.noderedurl = "//" + WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.name);
-            this.GetNoderedInstance();
-            this.labels = await NoderedUtil.GetKubeNodeLabels({});
-            if (this.labels != null) this.keys = Object.keys(this.labels);
-            this.loading = false;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-
-        });
-    }
-    async save() {
-        try {
-            this.errormessage = "";
-            if (this.limitsmemory != "") {
-                if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
-                if (this.user.nodered.resources == null) this.user.nodered.resources = new KubeResources();
-                if (this.user.nodered.resources.limits == null) this.user.nodered.resources.limits = new KubeResourceValues();
-                if (this.user.nodered.resources.limits.memory != this.limitsmemory) {
-                    this.user.nodered.resources.limits.memory = this.limitsmemory;
-                }
-            } else {
-                if (this.user.nodered != null && this.user.nodered.resources != null && this.user.nodered.resources.limits != null) {
-                    if (this.limitsmemory != this.user.nodered.resources.limits.memory) {
-                        this.user.nodered.resources.limits.memory = this.limitsmemory;
-                    }
-                }
-            }
-            if (this.label) {
-                const keys = Object.keys(this.label);
-                if (keys.length == 0) this.label = null;
-            }
-            if (this.label) {
-                if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
-                (this.user.nodered as any).nodeselector = this.label;
-            } else {
-                if (this.user.nodered == null) this.user.nodered = new NoderedConfig();
-                delete (this.user.nodered as any).nodeselector;
-            }
-            this.loading = true;
-            this.messages = 'Updating ' + this.user.name + "\n" + this.messages;
-            if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            await NoderedUtil.UpdateOne({ collectionname: "users", item: this.user });
-            this.loading = false;
-            this.messages = 'update complete\n' + this.messages;
-            this.EnsureNoderedInstance();
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-        }
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    public refreshtimer: NodeJS.Timeout = null;
-    async GetNoderedInstance() {
-        try {
-            this.errormessage = "";
-            this.instancestatus = "fetching status";
-
-            this.instances = await NoderedUtil.GetNoderedInstance({ _id: this.userid });
-            if (this.instances != null && this.instances.length > 0) {
-                this.instance = this.instances[0];
-            }
-            if (this.instance !== null && this.instance !== undefined) {
-                if (this.instance.metadata.deletionTimestamp !== undefined) {
-                    this.instancestatus = "pending deletion (" + this.instance.status.phase + ")";
-                } else {
-                    this.instancestatus = this.instance.status.phase;
-                }
-            } else {
-                this.instancestatus = "non existent";
-                // this.messages = "GetNoderedInstance completed, status unknown/non existent" + "\n" + this.messages;
-            }
-            let reload: boolean = false;
-            if (this.instances) {
-                this.instances.forEach(instance => {
-                    if (this.instance.metadata.deletionTimestamp != null) reload = true;
-                    if (instance.status.phase == "deleting" || instance.status.phase == "Pending") reload = true;
-                    if (instance.metrics && instance.metrics.memory) {
-                        if (instance.metrics.memory.endsWith("Ki")) {
-                            let memory: any = parseInt(instance.metrics.memory.replace("Ki", ""));
-                            memory = Math.floor(memory / 1024) + "Mi";
-                            instance.metrics.memory = memory;
-                        }
-                        if (instance.metrics.cpu.endsWith("n")) { // nanocores or nanoCPU
-                            let cpu: any = parseInt(instance.metrics.cpu.replace("n", ""));
-                            cpu = Math.floor(cpu / (1024 * 1024)) + "m";  // 1000m = 1 vcpu
-                            instance.metrics.cpu = cpu;
-                        }
-                    }
-                });
-            } else {
-                console.warn("GetNoderedInstance return null, did we disconnect from the openflow websocket?");
-            }
-
-            // this.messages = "GetNoderedInstance completed, status " + this.instancestatus + "\n" + this.messages;
-
-            reload = true;
-            if (reload) {
-                if (!this.refreshtimer) {
-                    this.refreshtimer = setTimeout(() => {
-                        this.refreshtimer = null;
-                        var path = this.$location.path();
-                        if (path == null && path == undefined) { console.debug("getnodered, path is null"); return false; }
-                        if (!path.toLowerCase().startsWith("/nodered")) { console.debug("getnodered, path is no longer /Nodered"); return false; }
-                        this.GetNoderedInstance();
-                    }, 2000);
-                }
-            }
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            this.instancestatus = "";
-            console.error(error);
-        }
-        this.loading = false;
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async GetNoderedInstanceLog(instancename: string) {
-        try {
-            this.errormessage = "";
-            this.instancestatus = "fetching log";
-            console.debug("GetNoderedInstanceLog:");
-            this.instancelog = await NoderedUtil.GetNoderedInstanceLog({ _id: this.userid, instancename });
-            this.instancelog = this.instancelog.split("\n").reverse().join("\n");
-            this.messages = "GetNoderedInstanceLog completed\n" + this.messages;
-            this.instancestatus = "";
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            this.instancestatus = "";
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async EnsureNoderedInstance() {
-        try {
-            this.errormessage = "";
-            await NoderedUtil.EnsureNoderedInstance({ _id: this.userid });
-            this.messages = "EnsureNoderedInstance completed" + "\n" + this.messages;
-            this.GetNoderedInstance();
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async DeleteNoderedInstance() {
-        try {
-            this.errormessage = "";
-            await NoderedUtil.DeleteNoderedInstance({ _id: this.userid });
-            this.messages = "DeleteNoderedInstance completed" + "\n" + this.messages;
-            this.GetNoderedInstance();
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async DeleteNoderedPod(instancename: string) {
-        try {
-            this.errormessage = "";
-            await NoderedUtil.DeleteNoderedPod({ _id: this.userid, instancename });
-            this.messages = "DeleteNoderedPod completed" + "\n" + this.messages;
-            this.GetNoderedInstance();
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async RestartNoderedInstance() {
-        try {
-            this.errormessage = "";
-            await NoderedUtil.RestartNoderedInstance({ _id: this.userid });
-            this.messages = "RestartNoderedInstance completed" + "\n" + this.messages;
-            this.GetNoderedInstance();
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async StartNoderedInstance() {
-        try {
-            this.errormessage = "";
-            await NoderedUtil.StartNoderedInstance({ _id: this.userid });
-            this.messages = "StartNoderedInstance completed" + "\n" + this.messages;
-            this.GetNoderedInstance();
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    async StopNoderedInstance() {
-        try {
-            this.errormessage = "";
-            await NoderedUtil.StopNoderedInstance({ _id: this.userid });
-            this.messages = "StopNoderedInstance completed" + "\n" + this.messages;
-            this.GetNoderedInstance();
-        } catch (error) {
-            this.errormessage = error.message ? error.message : error;
-            this.messages = error + "\n" + this.messages;
-            console.error(error);
-        }
-        if (!this.$scope.$$phase) { this.$scope.$apply(); }
-    }
-    addkey() {
-        if (this.label == null) this.label = {};
-        var _label: any[] = this.labels[this.newkey];
-        this.label[this.newkey] = _label[0];
-        if (this.newvalue != null) this.label[this.newkey] = this.newvalue;
-        this.labelkeys = Object.keys(this.label);
-    }
-    removekey(key) {
-        if (key == null) key = this.newkey;
-        if (this.label == null) this.label = {};
-        var _label: any[] = this.labels[key];
-        delete this.label[key];
-        this.labelkeys = Object.keys(this.label);
-    }
-    newkeyselected() {
-        if (this.label == null || this.label[this.newkey] == null) this.newvalue = this.labels[this.newkey][0];
-        if (this.label != null && this.label[this.newkey] != null) this.newvalue = this.label[this.newkey];
-    }
-}
 export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
     constructor(
         public $rootScope: ng.IRootScopeService,
@@ -5382,6 +5073,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     public collections: any;
     public model: Base;
     public uniqeness: string;
+    public includeonecounnt: boolean = false;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -5485,11 +5177,18 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
             }
         }
         aggregates.push({ "$group": group });
-        aggregates.push({ "$match": { "count": { "$gte": 2 } } });
+        if(this.includeonecounnt != true) {
+            aggregates.push({ "$match": { "count": { "$gte": 2 } } });
+        }
         aggregates.push({ "$limit": 100 });
         if (!NoderedUtil.IsNullUndefinded(this.orderby) && Object.keys(this.orderby).length > 0) aggregates.push({ "$sort": this.orderby })
         try {
-            this.models = await NoderedUtil.Aggregate({ collectionname: this.collection, aggregates });
+            var queryas = this.basequeryas;
+            if (this.WebSocketClientService.multi_tenant && !NoderedUtil.IsNullUndefinded(this.WebSocketClientService.customer) && !this.skipcustomerfilter) {
+                queryas = this.WebSocketClientService.customer._id;
+            }
+            // @ts-ignore
+            this.models = await NoderedUtil.Aggregate({ collectionname: this.collection, aggregates, queryas });
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
@@ -5902,6 +5601,10 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     public UserResources: Resource[];
     public UserAssigned: ResourceUsage[];
     public support: ResourceUsage[] = [];
+    public domain: string = "";
+    public licenses: ResourceUsage[] = [];
+    public licensekey: string = "";
+    public licensekeydecoded: string = "";
     async processdata() {
         try {
             if (this.model._type != "customer") {
@@ -5933,6 +5636,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 res.products = res.products.filter(x => x.allowdirectassign == true);
                 for (var prod of res.products) {
                     (prod as any).count = this.AssignCount(prod);
+                    
                     if ((prod as any).count > 0) {
                         (res as any).newproduct = prod;
                         (prod as any).usedby = this.UsedbyCount(prod);
@@ -5964,11 +5668,16 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             console.debug("Assigned", this.Assigned);
             console.debug("UserAssigned", this.UserAssigned);
             this.support = [];
+            this.licenses = [];
             for (let a of this.Assigned) {
-                if (a.product.metadata.supportplan) {
+                if (a.product.metadata.supportplan && a.siid != null) {
                     this.support.push(a);
                 }
+                if ( a.product.name == "Premium License" && a.siid != null) {
+                    this.licenses.push(a);
+                }
             }
+            
         } catch (error) {
             this.errormessage = error;
         }
@@ -6022,8 +5731,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.errormessage = error.message ? error.message : error;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             try {
-                await NoderedUtil.EnsureCustomer({ customer: this.model });
-                this.loadData();
+                // await NoderedUtil.EnsureCustomer({ customer: this.model });
+                // this.loadData();
             } catch (error) {
             }
         }
@@ -6158,6 +5867,30 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             }
         } catch (error) {
             this.loading = false;
+            this.errormessage = error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async IssueLicense(domain: string, months: string) {
+        try {
+            this.errormessage = "";
+            this.loading = true;
+            if (domain == null || domain == "") return;
+            const payload: any = { "email": this.model.email, domain };
+            if(months != null && months != "") {
+                payload["months"] = months;
+            }
+            this.domain = domain;
+            const res:string = await NoderedUtil.CustomCommand({ command: "issuelicense", data: payload });
+            console.log(res);
+            // @ts-ignore
+            this.licensekey = res;
+            this.licensekeydecoded = atob(res);
+            this.loading = false;
+            // this.loadData();
+        } catch (error) {
+            this.loading = false;
+            console.error(error);
             this.errormessage = error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -7659,6 +7392,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.collection = "agents";
         this.postloadData = this.processdata;
         this.searchfields = ["name", "slug"];
+        this.orderby = { "_modified": -1 }
         this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, webserver: 1, runas: 1, _createdby: 1, slug: 1, arch: 1, os:1 };
         if (this.userdata.data.AgentsCtrl) {
             this.basequery = this.userdata.data.AgentsCtrl.basequery;
@@ -7750,7 +7484,6 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
         this.clients = await NoderedUtil.CustomCommand({ "command": "getclients" });
 
-        console.log(this.knownpods);
         for (var i = 0; i < this.models.length; i++) {
             var model = this.models[i];
             // @ts-ignore
@@ -7879,6 +7612,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.model.image = this.images[0].image;
                 // @ts-ignore
                 this.model.slug = this.model.name; this.model.stripeprice = ""
+                this.model.schedules = [];
                 this.ImageUpdated()
                 this.loading = false;
                 this.model.runas = user._id;
@@ -8031,12 +7765,12 @@ export class AgentCtrl extends entityCtrl<any> {
                 "admin_role": "users",
                 "api_role": ""
             }
-            try {
-                var name = WebSocketClient.instance.user.username.toLowerCase();
-                name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
-                this.model.environment["old_nodered_id"] = name;
-            } catch (error) {
-            }
+            // try {
+            //     var name = WebSocketClient.instance.user.username.toLowerCase();
+            //     name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
+            //     this.model.environment["old_nodered_id"] = name;
+            // } catch (error) {
+            // }
         }
         if (this.model.image.indexOf("openiap/nodechromiumagent") > -1) {
             // "gitrepo": "https://github.com/openiap/nodepuppeteeragent.git",
@@ -8223,6 +7957,8 @@ export class AgentCtrl extends entityCtrl<any> {
             name: this.newpackage.name,
             packageid: this.newpackage._id,
             enabled: true,
+            allowConcurrentRuns: true,
+            terminateIfRunning: false,
             cron,
             "env": {}
         }
@@ -8600,7 +8336,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
     agents: any[] = [];
     packages: any[] = [];
     allpackages: any[] = [];
-
+    re_addcommandstream: any = null;
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -8625,7 +8361,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             } else {
                 await this.processData();
             }
-            this.RegisterQueue();
         });
     }
     async processData() {
@@ -8637,14 +8372,36 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         } else {
             this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", languages: {"$exists": true} }, top:100 });
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        await this.RegisterQueue();
         this.AgentUpdated()
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
         var _a = this.agents.find(x => x._id == this.id);
         console.log("send message to " + _a.slug )
         const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
-        console.log(processes);
+        try {
+            var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
+
+            this.re_addcommandstream = this.$interval(() => {
+                NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename }).catch((error) => {
+                    console.error(error);
+                }).then(() => {
+                    console.debug("Keep " + this.queuename + " in commandqueue on " + _a.slug + "agent")
+                });
+            }, 10000);
+            this.$scope.$on('$destroy', () => {
+                this.$interval.cancel(this.re_addcommandstream);
+                console.debug("removing streamid from " + _a.slug + "agent")
+                NoderedUtil.Queue({ data: {"command": "removecommandstreamid"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename }).catch((error) => {
+                    console.error(error);
+                }).then(() => {
+                    console.debug("removed streamid from " + _a.slug + "agent")
+                });
+            });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error            
+        }
     }
     haschrome: boolean = false;
     haschromium: boolean = false;
@@ -8691,6 +8448,19 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             label.innerText = schedulename + " (#" + streamid + ")";
         }
         div.appendChild(label);
+        const togglebutton = document.createElement("button");
+        togglebutton.id = "toggle" + streamid;
+        togglebutton.innerText = "toggle";
+        togglebutton.onclick = function () {
+            pre.classList.toggle('collapsed');
+            pre.classList.toggle('expanded');
+            if (pre.classList.contains('collapsed')) {
+                pre.style.height = '100px'; // height for 4 lines
+            } else {
+                pre.style.height = 'auto'; // show everything
+            }
+        }
+        div.appendChild(togglebutton);
         var killbutton = document.createElement("button");
         killbutton.innerText = "Kill";
         killbutton.id = streamid + "_kill";
@@ -8705,6 +8475,9 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         div.appendChild(killbutton);
         var pre = document.createElement("pre");
         pre.id = streamid;
+        pre.classList.toggle('collapsed');
+        // pre.classList.toggle('expanded');
+        // pre.style.display = pre.classList.contains('collapsed') ? 'block' : 'none';
         div.appendChild(pre);
         var runs = document.getElementById("runs");
         runs.prepend(div);
@@ -8722,30 +8495,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             "stream": true,
             "queuename": this.queuename
         }
-        var div = document.createElement("div");
-        div.id = streamid + "_div";
-        div.classList.add("shadow"); div.classList.add("card");
-        var label = document.createElement("label");
-        label.innerText = "Stream " + streamid;
-        div.appendChild(label);
-        var killbutton = document.createElement("button");
-        killbutton.innerText = "Kill";
-        killbutton.id = streamid + "_kill";
-        killbutton.onclick = async () => {
-            try {
-                console.log("kill", streamid)
-                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
-            } catch (error) {
-                console.error(error);                
-            }
-        }
-        div.appendChild(killbutton);
-        var pre = document.createElement("pre");
-        pre.id = streamid;
-        div.appendChild(pre);
-        var runs = document.getElementById("runs");
-        runs.prepend(div);
-
         await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
         console.log("submitted", payload)        
     }
@@ -8797,5 +8546,8 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             }
         });
         console.debug("registed queue", this.queuename);
+        var _a = this.agents.find(x => x._id == this.id);
+        await NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent" });
+        console.debug("Added streamid to command streams for " + _a.slug + "agent")
     }
 }

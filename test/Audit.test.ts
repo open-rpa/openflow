@@ -31,15 +31,15 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     @test async 'reload'() {
         const tuser: TokenUser = TokenUser.From(this.testUser);
         const troot: TokenUser = TokenUser.From(Crypt.rootUser());
-        await Audit.LoginSuccess(tuser, "local", "local", "127.0.0.1", "openflow", Config.version, null);
-        await Audit.LoginFailed("testuser", "local", "local", "127.0.0.1", "openflow", Config.version, null);
-        await Audit.ImpersonateSuccess(tuser, troot, "openflow", Config.version, null);
-        await Audit.ImpersonateFailed(tuser, troot, "openflow", Config.version, null);
+        await Audit.LoginSuccess(tuser, "local", "local", "127.0.0.1", "test", Config.version, null);
+        await Audit.LoginFailed("testuser", "local", "local", "127.0.0.1", "test", Config.version, null);
+        await Audit.ImpersonateSuccess(tuser, troot, "test", Config.version, null);
+        await Audit.ImpersonateFailed(tuser, troot, "test", Config.version, null);
         await Audit.NoderedAction(tuser, true, "testuser", "createdeployment", "openiap/nodered", "testuser", null);
         await Audit.NoderedAction(tuser, true, "testuser", "deletedeployment", "openiap/nodered:latest", "testuser", null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
     }
 
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/Audit.test.ts'
-// cls | ts-mocha --paths -p test/tsconfig.json 'test/Audit.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/Audit.test.ts'
+// clear && ts-mocha --paths -p test/tsconfig.json 'test/Audit.test.ts'

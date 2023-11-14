@@ -32,8 +32,8 @@ crash.log
 .nyrc.json
 dockerignore
 register.js
-.cache-require-paths.json
 .devcontainer.old
 docker-package.json
 .dockerignore
 *.heapsnapshot
+.clinic

@@ -81,4 +81,4 @@ import { i_license_data } from '../OpenFlow/src/commoninterfaces';
         assert.notStrictEqual(ofid, ofid2);
     }
 }
-// cls | ./node_modules/.bin/_mocha 'test/**/Logger.test.ts'
+// clear && ./node_modules/.bin/_mocha 'test/**/Logger.test.ts'

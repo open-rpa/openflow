@@ -23,16 +23,28 @@ export class dbConfig extends Base {
     public skip_history_collections: string;
     public history_delta_count: number;
     public allow_skiphistory: boolean;
+    public max_memory_restart_mb: number;
 
     public allow_personal_nodered: boolean;
     public amqp_enabled_exchange: boolean;
     public log_with_trace: boolean;
     public log_with_colors: boolean;
     public enable_openai: boolean;
+    public enable_openapi: boolean;
     public enable_openaiauth: boolean;
     public openai_token: string;
+
+    public cache_store_type: string;
+    public cache_store_max: number;
+    public cache_store_ttl_seconds;
+    public cache_store_redis_host;
+    public cache_store_redis_port;
+    public cache_store_redis_password;
+    public cache_workitem_queues;
+
     public log_cache: boolean;
     public log_amqp: boolean;
+    public log_openapi: boolean;
     public log_login_provider: boolean;
     public log_websocket: boolean;
     public log_oauth: boolean;
@@ -107,8 +119,6 @@ export class dbConfig extends Base {
     public grpc_max_send_message_length: number;
 
 
-    public cache_workitem_queues: boolean;
-
     public agent_images: NoderedImage[]
     public agent_node_selector: string;
 
@@ -145,16 +155,27 @@ export class dbConfig extends Base {
         Config.skip_history_collections = (!NoderedUtil.IsNullEmpty(conf.skip_history_collections) ? conf.skip_history_collections : Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances"))
         Config.history_delta_count = parseInt(!NoderedUtil.IsNullEmpty(conf.history_delta_count) ? conf.history_delta_count.toString() : Config.getEnv("history_delta_count", "1000"));
         Config.allow_skiphistory = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.allow_skiphistory) ? conf.allow_skiphistory : Config.getEnv("allow_skiphistory", "false"));
+        Config.max_memory_restart_mb = parseInt(!NoderedUtil.IsNullEmpty(conf.max_memory_restart_mb) ? conf.max_memory_restart_mb.toString() : Config.getEnv("max_memory_restart_mb", "0"));
 
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
         Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
         Config.enable_openai = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openai) ? conf.enable_openai : Config.getEnv("enable_openai", "false"));
+        Config.enable_openapi = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openapi) ? conf.enable_openapi : Config.getEnv("enable_openapi", "true"));
         Config.enable_openaiauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openaiauth) ? conf.enable_openaiauth : Config.getEnv("enable_openaiauth", "true"));
         Config.openai_token = !NoderedUtil.IsNullEmpty(conf.openai_token) ? conf.openai_token : Config.getEnv("openai_token", "");
         
+        Config.cache_store_type = !NoderedUtil.IsNullEmpty(conf.cache_store_type) ? conf.cache_store_type : Config.getEnv("cache_store_type", "memory");
+        Config.cache_store_max = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_max) ? conf.cache_store_max.toString() : Config.getEnv("cache_store_max", "1000"));
+        Config.cache_store_ttl_seconds = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_ttl_seconds) ? conf.cache_store_ttl_seconds.toString() : Config.getEnv("cache_store_ttl_seconds", "300"));
+        Config.cache_store_redis_host = !NoderedUtil.IsNullEmpty(conf.cache_store_redis_host) ? conf.cache_store_redis_host : Config.getEnv("cache_store_redis_host", "");
+        Config.cache_store_redis_port = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_redis_port) ? conf.cache_store_redis_port.toString() : Config.getEnv("cache_store_redis_port", "6379"));
+        Config.cache_store_redis_password = !NoderedUtil.IsNullEmpty(conf.cache_store_redis_password) ? conf.cache_store_redis_password : Config.getEnv("cache_store_redis_password", "");
+        Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
 
         Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
         Config.log_amqp = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_amqp) ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
+        Config.log_openapi = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_openapi) ? conf.log_openapi : Config.getEnv("log_openapi", "false"));
+        
         Config.log_login_provider = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_login_provider) ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
         Config.log_websocket = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_websocket) ? conf.log_websocket : Config.getEnv("log_websocket", "false"));
         Config.log_oauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_oauth) ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
@@ -239,9 +260,6 @@ export class dbConfig extends Base {
     
     
 
-        Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
-
-
         Config.agent_node_selector = (!NoderedUtil.IsNullEmpty(conf.agent_node_selector) ? conf.agent_node_selector : Config.getEnv("agent_node_selector", ""))
 
         if(!NoderedUtil.IsNullUndefinded(conf.agent_images)) {
@@ -262,16 +280,24 @@ export class dbConfig extends Base {
 export class Config {
     public static dbConfig: dbConfig;
     public static getversion(): string {
-        let versionfile: string = path.join(__dirname, "VERSION");
-        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "VERSION")
-        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "VERSION")
-        if (!fs.existsSync(versionfile)) versionfile = path.join(__dirname, "..", "..", "..", "VERSION")
-        Config.version = (fs.existsSync(versionfile) ? fs.readFileSync(versionfile, "utf8") : "0.0.1");
+        let packagefile: string = path.join(__dirname, "package.json");
+        if (!fs.existsSync(packagefile)) packagefile = path.join(__dirname, "..", "package.json")
+        if (!fs.existsSync(packagefile)) packagefile = path.join(__dirname, "..", "..", "package.json")
+        if (!fs.existsSync(packagefile)) packagefile = path.join(__dirname, "..", "..", "..", "package.json")
+
+        let version = "0.0.1"
+        if (fs.existsSync(packagefile)) {
+            let packagejson = JSON.parse(fs.readFileSync(packagefile, "utf8"));
+            version = packagejson.version;
+        }        
+        Config.version = version;
         return Config.version;
     }
     public static disablelogging(): void {
         Config.log_cache = false;
         Config.log_amqp = false;
+        Config.log_openapi = false;
+        
         Config.log_login_provider = false;
         Config.log_websocket = false;
         Config.log_oauth = false;
@@ -279,9 +305,9 @@ export class Config {
     }
     public static reload(): void {
         Config.getversion();
-        Config.logpath = Config.getEnv("logpath", __dirname);
         Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
         Config.enable_openai = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
+        Config.enable_openapi = Config.parseBoolean(Config.getEnv("enable_openapi", "true"));
         Config.enable_openaiauth = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
         Config.openai_token = Config.getEnv("openai_token", "");
 
@@ -289,6 +315,7 @@ export class Config {
 
         Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "false"));
         Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
+        Config.log_openapi = Config.parseBoolean(Config.getEnv("log_openapi", "false"));        
         Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
         Config.log_websocket = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
         Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
@@ -382,11 +409,10 @@ export class Config {
 
         Config.cache_store_type = Config.getEnv("cache_store_type", "memory");
         Config.cache_store_max = parseInt(Config.getEnv("cache_store_max", "1000"));
-        Config.cache_store_ttl_seconds = parseInt(Config.getEnv("cache_store_ttl_seconds", "3600"));
+        Config.cache_store_ttl_seconds = parseInt(Config.getEnv("cache_store_ttl_seconds", "300"));
         Config.cache_store_redis_host = Config.getEnv("cache_store_redis_host", "");
         Config.cache_store_redis_port = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
         Config.cache_store_redis_password = Config.getEnv("cache_store_redis_password", "");
-
         Config.cache_workitem_queues = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
 
         Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "480"));
@@ -457,6 +483,7 @@ export class Config {
         Config.skip_history_collections = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
         Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
         Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
+        Config.max_memory_restart_mb = parseInt(Config.getEnv("max_memory_restart_mb", "0"));
 
         Config.saml_issuer = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
         Config.aes_secret = Config.getEnv("aes_secret", "");
@@ -472,7 +499,7 @@ export class Config {
 
         Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
         Config.agent_images = JSON.parse(Config.getEnv("agent_images", 
-        JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
+        JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"NodeRED+Chromium", "image":"openiap/noderedagent:chromium", "chromium": true, "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
         ));
         Config.agent_domain_schema = Config.getEnv("agent_domain_schema", "");
         Config.agent_node_selector = Config.getEnv("agent_node_selector", "");
@@ -511,6 +538,7 @@ export class Config {
         Config.otel_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
         Config.otel_measure_onlineuser = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
         Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+        Config.enable_detailed_analytic = Config.parseBoolean(Config.getEnv("enable_detailed_analytic", "false"));
 
         Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
         Config.otel_warn_log = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
@@ -552,14 +580,23 @@ export class Config {
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key", "");
     public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
+    public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi", "true"));    
     public static enable_openaiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
     public static openai_token: string = Config.getEnv("openai_token", "");
     public static version: string = Config.getversion();
-    public static logpath: string = Config.getEnv("logpath", __dirname);
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
-    
+
+    public static cache_store_type: string = Config.getEnv("cache_store_type", "memory");
+    public static cache_store_max: number = parseInt(Config.getEnv("cache_store_max", "1000"));
+    public static cache_store_ttl_seconds: number = parseInt(Config.getEnv("cache_store_ttl_seconds", "300"));
+    public static cache_store_redis_host: string = Config.getEnv("cache_store_redis_host", "");
+    public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
+    public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
+    public static cache_workitem_queues: boolean = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
+
     public static log_cache: boolean = Config.parseBoolean(Config.getEnv("log_cache", "false"));
     public static log_amqp: boolean = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
+    public static log_openapi: boolean = Config.parseBoolean(Config.getEnv("log_openapi", "false"));    
     public static log_login_provider: boolean = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
     public static log_with_trace: boolean = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
     public static log_websocket: boolean = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
@@ -649,14 +686,6 @@ export class Config {
     public static tls_ca: string = Config.getEnv("tls_ca", "");
     public static tls_passphrase: string = Config.getEnv("tls_passphrase", "");
 
-    public static cache_store_type: string = Config.getEnv("cache_store_type", "memory");
-    public static cache_store_max: number = parseInt(Config.getEnv("cache_store_max", "1000"));
-    public static cache_store_ttl_seconds: number = parseInt(Config.getEnv("cache_store_ttl_seconds", "3600"));
-    public static cache_store_redis_host: string = Config.getEnv("cache_store_redis_host", "");
-    public static cache_store_redis_port: number = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
-    public static cache_store_redis_password: string = Config.getEnv("cache_store_redis_password", "");
-    public static cache_workitem_queues: boolean = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
-
     public static oidc_access_token_ttl: number = parseInt(Config.getEnv("oidc_access_token_ttl", "480")); // 8 hours
     public static oidc_authorization_code_ttl: number = parseInt(Config.getEnv("oidc_authorization_code_ttl", "480")); // 8 hours
     public static oidc_client_credentials_ttl: number = parseInt(Config.getEnv("oidc_client_credentials_ttl", "480")); // 8 hours
@@ -728,6 +757,7 @@ export class Config {
     public static skip_history_collections: string = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
     public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count", "1000"));
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
+    public static max_memory_restart_mb: number = parseInt(Config.getEnv("max_memory_restart_mb", "0"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
     public static aes_secret: string = Config.getEnv("aes_secret", "");
@@ -785,6 +815,7 @@ export class Config {
     public static otel_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
     public static otel_measure_onlineuser: boolean = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
+    public static enable_detailed_analytic: boolean = Config.parseBoolean(Config.getEnv("enable_detailed_analytic", "false"));
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
     public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
     public static otel_err_log: boolean = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));

@@ -15,6 +15,6 @@ sonar-scanner.properties
 sonar-project.properties
 crash.log
 package-lock.json
-.cache-require-paths.json
 *.heapsnapshot
 /proto
+.clinic

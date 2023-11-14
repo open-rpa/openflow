@@ -6,8 +6,7 @@ import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
 import { SigninMessage, NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
-import { Span } from "@opentelemetry/api";
-import { Histogram, Counter, Observable } from "@opentelemetry/api-metrics"
+import { Span, Histogram, Counter, Observable } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { WebServer } from "./WebServer";
@@ -50,16 +49,16 @@ export class WebSocketServer {
                 try {
                     const url = require('url');
                     const location = url.parse(req.url, true);
-                    if(location.pathname == "/" || location.pathname == "/ws"|| location.pathname == "/ws/v1") {
+                    if (location.pathname == "/" || location.pathname == "/ws" || location.pathname == "/ws/v1") {
                         var sock = new WebSocketServerClient();
                         this._clients.push(sock);
                         await sock.Initialize(socketObject, req);
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, null);    
+                    Logger.instanse.error(error, null);
                 }
             });
-            if(WebServer.wss.on) {
+            if (WebServer.wss.on) {
                 WebServer.wss.on("error", (error: Error): void => {
                     Logger.instanse.error(error, null);
                 });
@@ -95,8 +94,8 @@ export class WebSocketServer {
                         if (p_all[key] > 0) {
                             res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
                         } else {
-                            res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
-                        }                        
+                            // res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
+                        }
                     });
                 });
                 WebSocketServer.websocket_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_queue", {
@@ -128,7 +127,7 @@ export class WebSocketServer {
                     if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
-                        if((cli && cli.messageQueue)) {
+                        if ((cli && cli.messageQueue)) {
                             const keys = Object.keys(cli.messageQueue);
                             res.observe(keys.length, { ...Logger.otel.defaultlabels, clientid: cli.id })
                         } else {
@@ -172,15 +171,15 @@ export class WebSocketServer {
     }
     public static getclients(user: TokenUser): WebSocketServerClient[] {
         var result = [];
-        if (Config.enable_openflow_amqp && WebSocketServer._remoteclients.length > 0) {
-            for(var x = 0; x < WebSocketServer._remoteclients.length; x++) {
+        if (Config.enable_openflow_amqp && WebSocketServer._remoteclients != null && WebSocketServer._remoteclients.length > 0) {
+            for (var x = 0; x < WebSocketServer._remoteclients.length; x++) {
                 // var cli = WebSocketServer._remoteclients[x];
                 var cli = Object.assign({}, WebSocketServer._remoteclients[x]);
                 // @ts-ignore
-                if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
-                if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                if(cli.user?._acl != null) { // 
+                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                if (cli.user?._acl != null) { // 
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
@@ -190,14 +189,14 @@ export class WebSocketServer {
                     result.push(cli);
                 }
             }
-        } else {
-            for(var x = 0; x < WebSocketServer._clients.length; x++) {
+        } else if (WebSocketServer._remoteclients != null) {
+            for (var x = 0; x < WebSocketServer._clients.length; x++) {
                 var cli = Object.assign({}, WebSocketServer._clients[x]);
                 // @ts-ignore
-                if(!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
-                if(!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                if(cli.user != null) { // cli.user?._acl
+                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                if (cli.user != null) { // cli.user?._acl
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
@@ -209,7 +208,7 @@ export class WebSocketServer {
             }
         }
         var finalresult = [];
-        for(var x = 0; x < result.length; x++) {
+        for (var x = 0; x < result.length; x++) {
             var u = Object.assign({}, result[x]);
             delete u._acl;
             finalresult.push(u);
@@ -219,7 +218,7 @@ export class WebSocketServer {
     public static async DumpClients(parent: Span): Promise<void> {
         try {
             WebSocketServer._remoteclients = [];
-            
+
             const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
             const clients: Base[] = [];
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
@@ -230,9 +229,9 @@ export class WebSocketServer {
                 c.id = cli.id;
                 c.clientagent = cli.clientagent;
                 // @ts-ignore
-                if(cli.agent) c.clientagent = cli.agent;
+                if (cli.agent) c.clientagent = cli.agent;
                 // @ts-ignore
-                if(cli.protocol) c.protocol = cli.protocol;
+                if (cli.protocol) c.protocol = cli.protocol;
                 c.clientversion = cli.clientversion;
                 c._exchanges = cli._exchanges;
                 c._queues = cli._queues;
@@ -296,7 +295,7 @@ export class WebSocketServer {
                             try {
                                 Logger.instanse.debug(cli.id + "/" + cli.user?.name + "/" + cli.clientagent + "/" + cli.remoteip + " ERROR: " + (error.message || error), span);
                                 if (cli != null) cli.Close(span);
-                            } catch (error) {                                
+                            } catch (error) {
                             }
                         }
                     } else {

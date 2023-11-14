@@ -112,6 +112,9 @@ export class Logger {
             }
             span.addEvent(obj.message, obj)
         }
+        if (obj.ms != null && obj.ms != "") {
+            if (obj.ms < Config.log_database_queries_ms) return;
+        }
         if (Logger.enabled[cls]) {
             if (Logger.enabled[cls] < lvl) return;
         } else {
@@ -124,11 +127,7 @@ export class Logger {
             else if (Config.log_verbose) {
                 if (lvl > level.Verbose) return;
             } else if (lvl > level.Information) {
-                if (Config.log_database_queries && obj.ms != null && obj.ms != "") {
-                    if (obj.ms < Config.log_database_queries_ms) return;
-                } else {
-                    return;
-                }
+                return;
             }
         }
         if (message instanceof Error) {
@@ -171,8 +170,8 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (obj.cls == "") {
-            var c = obj.cls;
+        if(options?.openapi) {
+            obj.cls = "OpenAIProxy";
         }
         this.json(obj, span);
     }
@@ -191,8 +190,8 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (obj.cls == "") {
-            var c = obj.cls;
+        if(options?.openapi) {
+            obj.cls = "OpenAIProxy";
         }
         this.json(obj, span);
     }
@@ -210,8 +209,8 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (obj.cls == "") {
-            var c = obj.cls;
+        if(options?.openapi) {
+            obj.cls = "OpenAIProxy";
         }
         this.json(obj, span);
     }
@@ -229,8 +228,8 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (obj.cls == "") {
-            var c = obj.cls;
+        if(options?.openapi) {
+            obj.cls = "OpenAIProxy";
         }
         this.json(obj, span);
     }
@@ -249,12 +248,13 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (obj.cls == "") {
-            var c = obj.cls;
+        if(options?.openapi) {
+            obj.cls = "OpenAIProxy";
         }
         this.json(obj, span);
     }
     public silly(message: string, span: Span, options?: any) {
+        if(!Config.log_silly) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -268,8 +268,8 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if (obj.cls == "") {
-            var c = obj.cls;
+        if(options?.openapi) {
+            obj.cls = "OpenAIProxy";
         }
         this.json(obj, span);
     }
@@ -286,6 +286,8 @@ export class Logger {
         Logger.enabled = {};
         if (Config.log_cache) Logger.enabled["DBHelper"] = level.Verbose;
         if (Config.log_amqp) Logger.enabled["amqpwrapper"] = level.Verbose;
+        if (Config.log_openapi) Logger.enabled["OpenAIProxy"] = level.Verbose;
+        
         if (Config.log_login_provider) Logger.enabled["LoginProvider"] = level.Verbose;
         if (Config.log_websocket) Logger.enabled["WebSocketServer"] = level.Verbose;
         if (Config.log_websocket) Logger.enabled["WebSocketServerClient"] = level.Verbose;
@@ -335,25 +337,6 @@ export class Logger {
     static async configure(skipotel: boolean, skiplic: boolean): Promise<void> {
         Logger.DBHelper = new DBHelper();
         Logger.reload()
-
-        const filename = path.join(Config.logpath, "openflow.log");
-        const options: any = {
-            file: {
-                level: "debug",
-                filename: filename,
-                handleExceptions: false,
-                json: true,
-                maxsize: 5242880, // 5MB
-                maxFiles: 5,
-                colorize: false,
-            },
-            console: {
-                level: "debug",
-                handleExceptions: false,
-                json: false,
-                colorize: true
-            },
-        };
         Logger.instanse = new Logger();
         let _lic_require: any = null;
         try {
@@ -393,7 +376,7 @@ export class Logger {
                     startSpan: () => fakespan,
                     startSubSpan: () => fakespan,
                 startSpanExpress: () => fakespan,
-                GetTraceSpanId(span: Span): () => [string, string] { return () => ["", ""]; },
+                GetTraceSpanId(span: Span): [string, string] { return ["", ""]; },
                     endSpan: () => undefined,
                     startTimer: () => undefined,
                     endTimer: () => undefined,

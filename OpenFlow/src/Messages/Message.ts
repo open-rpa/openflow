@@ -86,6 +86,9 @@ export class Message {
                     case "count":
                         await this.Count(span);
                         break;
+                    case "distinct":
+                        await this.Distinct(span);
+                        break;
                     case "getdocumentversion":
                         await this.GetDocumentVersion(span);
                         break;
@@ -389,6 +392,13 @@ export class Message {
                                 await this.Count(span);
                             }
                             break;
+                        case "distinct":
+                            if (Config.enable_openflow_amqp) {
+                                return resolve(await QueueClient.SendForProcessing(this, this.priority, span));
+                            } else {
+                                await this.Distinct(span);
+                            }
+                            break;
                         case "getdocumentversion":
                             this.clientagent = cli.clientagent;
                             this.clientversion = cli.clientversion;
@@ -483,9 +493,6 @@ export class Message {
                             break;
                         case "signin":
                             await this.Signin(cli, span);
-                            break;
-                        case "mapreduce":
-                            await this.MapReduce(cli);
                             break;
                         case "refreshtoken":
                             break;
@@ -598,8 +605,24 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 resolve(this);
             } catch (error) {
-                reject(error);
-                Logger.instanse.error(error, span, Logger.parsecli(cli));
+                // reject(error);
+                // Logger.instanse.error(error, span, Logger.parsecli(cli));
+
+                if(this.replyto == null || this.replyto == "") {
+                    this.Reply("error");
+                } else {
+                    this.command = "error";                    
+                }
+                this.data = "{\"message\": \"" + error.message + "\"}";
+                if(error.message.indexOf("Not signed in, and missing jwt") > -1) {
+                    Logger.instanse.error(error.message, span, Logger.parsecli(cli));
+                } else {
+                    Logger.instanse.error(error, span, Logger.parsecli(cli));
+                }
+                delete this.jwt;
+                delete this.tuser;
+                resolve(this);
+                
             } finally {
                 Logger.otel.endSpan(span);
             }
@@ -953,8 +976,8 @@ export class Message {
             Logger.instanse.error(new Error("Received message with no command"), null);
             return;
         }
-        this.Reply("error");
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
+        this.Reply("error");
         Logger.instanse.error(`UnknownCommand ${this.command}`, null);
     }
     private static collectionCache: any = {};
@@ -1076,6 +1099,32 @@ export class Message {
         }
         
     }
+    private async Distinct(parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("message.Distinct", parent);
+        this.Reply();
+        let msg: DistinctMessage = this.data as any;
+        try {
+            // @ts-ignore
+            if (typeof this.data === 'string' || this.data instanceof String) {
+                // @ts-ignore
+                msg = JSON.stringify(this.data);
+            }
+            
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+                await handleError(null, new Error("Access denied, not signed in"), span);
+                msg.error = "Access denied, not signed in";
+            } else {
+                const { query, field, collectionname, jwt, queryas } = msg;
+                msg.results = await Config.db.distinct({ query, field, collectionname, jwt, queryas }, span);
+            }
+            delete msg.query;
+            delete msg.jwt;
+            this.data = JSON.stringify(msg);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }     
     private async Count(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Count", parent);
         this.Reply();
@@ -1123,7 +1172,9 @@ export class Message {
         let msg: AggregateMessage
         msg = AggregateMessage.assign(this.data);
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-        msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, span);
+        // @ts-ignore
+        var queryas = msg.queryas;
+        msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, queryas, span);
         if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
         delete msg.aggregates;
         delete msg.jwt;
@@ -1350,23 +1401,6 @@ export class Message {
             Logger.otel.endSpan(span);
         }
     }
-    private async MapReduce(cli: WebSocketServerClient): Promise<void> {
-        this.Reply();
-        let msg: MapReduceMessage
-        try {
-            msg = MapReduceMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            msg.result = await Config.db.MapReduce(msg.map, msg.reduce, msg.finalize, msg.query, msg.out, msg.collectionname, msg.scope, msg.jwt);
-            delete msg.map;
-            delete msg.reduce;
-            delete msg.finalize;
-            delete msg.jwt;
-            this.data = JSON.stringify(msg);
-        } finally {
-        }
-        // cli?.Send(this);
-    }
     public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string, parent: Span): Promise<TokenUser> {
         const span: Span = Logger.otel.startSubSpan("message.DoSignin", parent);
         let tuser: TokenUser;
@@ -1442,19 +1476,19 @@ export class Message {
                 if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.version)) cli.clientversion = msg.version;
             }
             // @ts-ignore
-            if(cli.clientagent == "") cli.clientagent = "unknown"
+            if(cli?.clientagent == "") cli.clientagent = "unknown"
             // @ts-ignore
-            if(cli.clientagent == "assistent") cli.clientagent = "assistant"
+            if(cli?.clientagent == "assistent") cli.clientagent = "assistant"
             // @ts-ignore
-            if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+            if (cli?.clientagent == "webapp" || cli?.clientagent == "aiotwebapp") {
                 cli.clientagent = "browser"
             }
             // @ts-ignore
-            if (cli.clientagent == "RDService" || cli.clientagent == "rdservice") {
+            if (cli?.clientagent == "RDService" || cli?.clientagent == "rdservice") {
                 cli.clientagent = "rdservice"
             }
             // @ts-ignore
-            if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+            if (cli?.clientagent == "webapp" || cli?.clientagent == "aiotwebapp") {
                 cli.clientagent = "browser"
             }
 
@@ -1784,6 +1818,7 @@ export class Message {
                     throw new Error("User  " + msg.user.username + " is dblocked, please login to openflow and buy more storage and try again");
                 }
             }
+            // openrpa settings
             msg.websocket_package_size = Config.websocket_package_size;
             msg.openflow_uniqueid = Config.openflow_uniqueid;
             if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
@@ -2048,6 +2083,7 @@ export class Message {
         const count = await this.filescount(files);
         if (count == 0) { throw new Error("Cannot update file with id " + msg.id); }
         const file = await this.filesnext(files);
+        files.close();
         msg.metadata._createdby = file.metadata._createdby;
         msg.metadata._createdbyid = file.metadata._createdbyid;
         msg.metadata._created = file.metadata._created;
@@ -2182,6 +2218,8 @@ export class Message {
             if (usage == null) throw new Error("Unknown usage or Access Denied");
             const customer: Customer = await Config.db.getbyid(usage.customerid, "users", jwt, true, span);
             if (customer == null) throw new Error("Unknown usage or Access Denied (customer)");
+            // @ts-ignore
+            if(usage.mode == "one_time") throw new Error("Cannot cancel a one time purchase");
             let user: TokenUser;
             if (!NoderedUtil.IsNullEmpty(usage.userid)) {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
@@ -2276,6 +2314,20 @@ export class Message {
                     msg.error = error.response.body;
                     error = new Error(msg.error)
                 }
+                try {
+                    var e = JSON.parse(msg.error);
+                    if(e.message) {
+                        msg.error = e.message;
+                        error = new Error(msg.error)
+                    } else if(e.error && e.error.message) {
+                        msg.error = e.error.message;
+                        error = new Error(msg.error)
+                    }
+                    
+                } catch (error) {
+
+                }
+
             }
             throw error
         } finally {
@@ -2430,7 +2482,14 @@ export class Message {
 
             }
 
-            msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+            try {
+                msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+            } catch (error) {
+                if(error.message.indexOf("code 404") > -1) {
+                    throw new Error("No pending invoice found");
+                }
+                throw new Error("Error getting invoice: " + error.message+ "\nIf error persist contact billing support");
+            }
 
             if (msg.invoice.lines.has_more) {
                 payload.limit = 100;
@@ -2445,15 +2504,22 @@ export class Message {
             }
             delete msg.jwt;
             this.data = JSON.stringify(msg);
-        } catch (error) {
+        } catch (_error) {
             if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
-            if (msg !== null && msg !== undefined) {
-                msg.error = (error.message ? error.message : error);
-                if (error.response && error.response.body) {
-                    msg.error = error.response.body;
-                    error = new Error(msg.error)
+            const errormessage = (_error.message ? _error.message : _error);
+            let error = new Error("Unknown error");
+            try {
+                msg.error = errormessage as any;
+                if (_error.response && _error.response.body) {
+                    if(_error.response.body.indexOf("{") == -1) {
+                        msg.error = _error.response.body;
+                        msg.error.replace(/[^a-zA-Z0-9 ]/g, "")
+                    }
                 }
+                error = new Error(msg.error);
+            } catch (error) {
             }
+            console.error(error);
             throw error
         } finally {
             Logger.otel.endSpan(span);
@@ -2479,6 +2545,17 @@ export class Message {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
                     msg.error = error.response.body;
+                    try {
+                        var e = JSON.parse(msg.error);
+                        if(e.message) {
+                            msg.error = e.message;
+                        } else if(e.error && e.error.message) {
+                            msg.error = e.error.message;
+                        }
+                        
+                    } catch (error) {
+
+                    }
                     error = new Error(msg.error)
                 }
             }
@@ -2520,6 +2597,9 @@ export class Message {
             // }
             const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, true, span);
             if (resource == null) throw new Error("Unknown resource or Access Denied");
+            console.log("stripeprice", stripeprice);
+            console.log("resource", resource.products.map(x=>x.stripeprice));
+            console.log("count", resource.products.filter(x => x.stripeprice == stripeprice).length);
             if (resource.products.filter(x => x.stripeprice == stripeprice).length != 1) throw new Error("Unknown resource product");
             const product: ResourceVariant = resource.products.filter(x => x.stripeprice == stripeprice)[0];
 
@@ -2613,11 +2693,21 @@ export class Message {
             // Add requested quantity, now we have our target count
             _quantity += quantity;
 
-            if (NoderedUtil.IsNullEmpty(usage.subid)) {
-                usage.quantity = quantity;
-            } else {
-                usage.quantity += quantity;
+            const stripe_product = await this.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
+            if(stripe_product==null) throw new Error("Unknown product");
+            if(stripe_product.active == false) throw new Error("Product is not active");
+            const stripe_price = await this.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
+            if(stripe_price==null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
+            if(stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
+
+            if((stripe_price as any).type != "one_time"){
+                if (NoderedUtil.IsNullEmpty(usage.subid)) {
+                    usage.quantity = quantity;
+                } else {
+                    usage.quantity += quantity;
+                }
             }
+
             usage.customerid = customer._id;
             if (user != null) {
                 usage.userid = user._id;
@@ -2625,7 +2715,13 @@ export class Message {
             } else {
                 usage.name = usage.resource + " / " + product.name + " for " + customer.name;
             }
-            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout) {
+
+
+            var s = usage.siid;
+            // @ts-ignore
+            usage.mode = (stripe_price as any).type
+
+            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
                 let tax_rates = [];
                 // if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
                 // customer.country = customer.country.toUpperCase();
@@ -2641,7 +2737,8 @@ export class Message {
 
                 // https://stripe.com/docs/payments/checkout/taxes
                 Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
-                if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout) {
+
+                if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
                     if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                         // Create fake subscription id
                         usage.siid = NoderedUtil.GetUniqueIdentifier();
@@ -2661,11 +2758,12 @@ export class Message {
                     if (!skipSession) {
                         const baseurl = Config.baseurl() + "#/Customer/" + customer._id;
 
-
+                        var mode = "subscription";
+                        if((stripe_price as any).type == "one_time") mode = "payment";
                         const payload: any = {
                             client_reference_id: usage._id,
                             success_url: baseurl + "/refresh", cancel_url: baseurl + "/refresh",
-                            payment_method_types: ["card"], mode: "subscription",
+                            payment_method_types: ["card"], mode,
                             tax_id_collection: { enabled: true }, // Allow customer to addd tax id
                             automatic_tax: { enabled: true },     // Let stripe add the correct tax
                             line_items: []
@@ -2684,7 +2782,9 @@ export class Message {
                         }
 
                         let line_item: any = { price: product.stripeprice, tax_rates };
-                        if ((resource.target == "user" && product.userassign != "metered") ||
+                        if((stripe_price as any).type == "one_time") {
+                            line_item.quantity = 1
+                        } else if ((resource.target == "user" && product.userassign != "metered") ||
                             (resource.target == "customer" && product.customerassign != "metered")) {
                             line_item.quantity = _quantity
                         }
@@ -2699,11 +2799,16 @@ export class Message {
                             }
                             payload.line_items.push(line_item);
                         }
+                        console.log(JSON.stringify(payload, null, 2));
                         if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                             checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
                             // @ts-ignore
                             customer.sessionid = checkout.id;
+                            // @ts-ignore
+                            usage.sessionid = checkout.id;
+
                             await Config.db._UpdateOne(null, customer, "users", 3, true, rootjwt, span);
+                            await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
                         } else {
                             // Create fake subscription id
                             usage.siid = NoderedUtil.GetUniqueIdentifier();
@@ -2729,6 +2834,7 @@ export class Message {
                     }
                 }
             } else {
+                // (stripe_price as any).type == "one_time"
                 const payload: any = {};
                 // Update quantity if not metered
                 if ((resource.target == "user" && product.userassign != "metered") ||
@@ -3026,6 +3132,20 @@ export class Message {
             let sessionid = customer.sessionid
             if (!NoderedUtil.IsNullEmpty(sessionid)) {
                 var session = await this.Stripe<stripe_base>("GET", "checkout.sessions", sessionid, null, null);
+
+                var onetime = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "mode": "one_time", "sessionid": sessionid }, top: 1, collectionname: "config", jwt: msg.jwt }, span);
+                if (onetime.length > 0) {
+                    const usage = onetime[0];
+                    if((session as any).payment_status == "paid") {
+                        if(usage.quantity == null) usage.quantity = 0;
+                        usage.quantity ++;
+                        // add fake siid, since this is a onetime purche and does not have a subscription item
+                        usage.siid = NoderedUtil.GetUniqueIdentifier();
+                        // @ts-ignore
+                        delete usage.sessionid;
+                        await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                    }
+                }
                 // @ts-ignore
                 if (session != null && !NoderedUtil.IsNullEmpty(session.customer)) {
                     // @ts-ignore
@@ -3033,6 +3153,7 @@ export class Message {
                     // @ts-ignore
                     delete customer.sessionid;
                 }
+
             }
 
             // if (msg.customer.vatnumber) {
@@ -3059,7 +3180,10 @@ export class Message {
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                         Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
                         for (let usage of total_usage) {
-                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                            // @ts-ignore
+                            if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                            }
                         }
                     }
 
@@ -3096,8 +3220,11 @@ export class Message {
                                 usage.subid = sub.id;
                                 await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
                             } else {
-                                // Clean up old buy attempts
-                                await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                // @ts-ignore
+                                if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                    // Clean up old buy attempts
+                                    await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                }
                             }
                         }
                     } else {
@@ -3107,7 +3234,11 @@ export class Message {
                             const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                             Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
                             for (let usage of total_usage) {
-                                await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                // @ts-ignore
+                                if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                    await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                                }
+                                
                             }
                         }
                     }
@@ -3156,7 +3287,10 @@ export class Message {
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
                     for (let usage of total_usage) {
-                        await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                        // @ts-ignore
+                        if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                            await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
+                        }
                     }
                 }
             }
@@ -3320,9 +3454,14 @@ export class Message {
         Message.lastHouseKeeping = new Date();
         this.tuser = User.assign(Crypt.rootUser());
         let rootuser = this.tuser;
-        const jwt: string = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
+            try {
+                Logger.instanse.info("Ensure Indexes", span);
+                await Config.db.ensureindexes(span);
+            } catch (error) {
+                
+            }
             try {
                 if(Logger.agentdriver != null) {
                     try {
@@ -3331,8 +3470,10 @@ export class Message {
                     } catch (error) {
                         Logger.instanse.error(error, span);
                     }
+                    const jwt: string = Crypt.rootToken();
                     var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true }, jwt }, span);
                     Logger.instanse.info("HouseKeeping ensure " + agents.length + " agents", span);
+                    
                     for (let i = 0; i < agents.length; i++) {
                         const agent = agents[i];
                         var pods = await Logger.agentdriver.GetInstancePods(rootuser, jwt, agent, false, span);
@@ -3342,7 +3483,11 @@ export class Message {
                             } else {
                                 Logger.instanse.info("HouseKeeping ensure " + agent.name, span);
                             }
-                            await Logger.agentdriver.EnsureInstance(rootuser, jwt, agent, span);
+                            try {
+                                await Logger.agentdriver.EnsureInstance(rootuser, jwt, agent, span);
+                            } catch (error) {
+                                Logger.instanse.error(error, span);                                
+                            }
                         }
                     }
                 } else {
@@ -3354,6 +3499,7 @@ export class Message {
 
 
             try {
+                const jwt: string = Crypt.rootToken();
                 Logger.instanse.info("Begin validating builtin roles", span);
                 for(var i = 0; i < Config.db.WellknownIdsArray.length; i++) {
                     const item: Role = await Config.db.GetOne<Role>({ 
@@ -3406,14 +3552,8 @@ export class Message {
             // }
         } catch (error) {
         }
-        try {
-            await Config.db.ensureindexes(span);
-        } catch (error) {
-        }
 
-
-
-
+        Logger.instanse.info("Begin validating prefered timeseries collections", span);
         let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
         try {
             let audit = collections.find(x => x.name == "audit");
@@ -3696,6 +3836,7 @@ export class Message {
                 const usemetadata = DatabaseConnection.usemetadata("dbusage");
                 const user = Crypt.rootUser();
                 const tuser = TokenUser.From(user);
+                const jwt: string = Crypt.rootToken();
                 let collections = await Config.db.ListCollections(jwt);
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
                 let totalusage = 0;
@@ -4111,6 +4252,8 @@ export class Message {
                 } else {
                     Logger.instanse.error(error, span);
                 }
+            } finally {
+                Logger.instanse.info("Completed housekeeping", span);
             }
         }
         Logger.otel.endSpan(span);
@@ -4523,7 +4666,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = "application";
         }
         if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
-        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
+        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority; // old api
+        // @ts-ignore
+        if (!NoderedUtil.IsNullEmpty(msg.priority)) wi.priority = msg.priority; // new api
         if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
 
         var oldstate = wi.state;
@@ -4814,6 +4959,8 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
         msg = AddWorkitemQueueMessage.assign(this.data);
+        // @ts-ignore
+        if(this.data.workitemqueue != null) msg = this.data.workitemqueue;
         if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
         if (NoderedUtil.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
         if (NoderedUtil.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
@@ -4848,6 +4995,7 @@ export class Message {
         wiq.projectid = msg.projectid;
         wiq.amqpqueue = msg.amqpqueue;
         wiq.maxretries = msg.maxretries;
+        if(wiq.maxretries < 1) wiq.maxretries = 3;
         wiq.retrydelay = msg.retrydelay;
         wiq.initialdelay = msg.initialdelay;
         wiq.failed_wiq = msg.failed_wiq;
@@ -4856,7 +5004,7 @@ export class Message {
         wiq.success_wiqid = msg.success_wiqid;
         // @ts-ignore
         wiq.packageid = msg.packageid;
-
+        msg = JSON.parse(JSON.stringify(msg));
         msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
 
         if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
@@ -4890,6 +5038,13 @@ export class Message {
         let msg: UpdateWorkitemQueueMessage;
         const jwt = this.jwt;
         msg = UpdateWorkitemQueueMessage.assign(this.data);
+        // @ts-ignore
+        if(this.data.workitemqueue != null) {
+            // @ts-ignore
+            msg = this.data.workitemqueue;
+            // @ts-ignore
+            msg.purge = this.data.purge;
+        }
 
         if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
@@ -4925,6 +5080,7 @@ export class Message {
 
 
         if (msg._acl) wiq._acl = msg._acl;
+        msg = JSON.parse(JSON.stringify(msg));
 
         msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
 
@@ -4949,6 +5105,10 @@ export class Message {
         let msg: DeleteWorkitemQueueMessage;
         const jwt = this.jwt;
         msg = DeleteWorkitemQueueMessage.assign(this.data);
+        // @ts-ignore
+        if (!NoderedUtil.IsNullEmpty(msg.wiq)) msg.name = msg.wiq;
+        // @ts-ignore
+        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) msg._id = msg.wiqid;
         if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
         var wiq = new WorkitemQueue();
@@ -5217,10 +5377,53 @@ export class Message {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
                 }
                 if(pack.fileid != null && pack.fileid != "") {
-                    await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                    const rootjwt = Crypt.rootToken();
+                    let query = { _id: pack.fileid };
+                    const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
+                    if(item != null) {
+                        await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                    }
                 }
                 await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;
+            case "createindex":
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                var name = msg.name || data.name;
+                msg.result = await Config.db.createIndex(data.collection || data.collectionname, name, data.index, data.options, parent);
+                break;
+            case "issuelicense":
+                let _lic_require: any = null;
+                try {
+                    _lic_require = require("../ee/license-file");
+                } catch (error) {
+                }
+                if (_lic_require == null) {
+                    throw new Error("License module not found");
+                }
+                Logger.License = new _lic_require.LicenseFile();
+                // @ts-ignore
+                var data = msg.data;
+                try {
+                    data = JSON.parse(data);
+                } catch (error) {                    
+                }
+                if(data == null || data == "") throw new Error("No data found");
+                var domain = data.domain;
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                    delete data.months;
+                }
+                var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage"}, collectionname: "config", jwt }, parent);
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                    if(exists == null) throw new Error("Access denied");
+                }
+                if(data.months == null || data.months == "") {
+                    if(exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
+                }
+                //  throw new Error("Access denied");
+                msg.result = Logger.License.generate2(data);
+                break;            
             default:
                 msg.error = "Unknown custom command";
         }
@@ -5235,4 +5438,13 @@ export class JSONfn {
             return (typeof value === 'function') ? value.toString() : value;
         });
     }
+}
+export declare class DistinctMessage {
+    error: string;
+    jwt: string;
+    query: any;
+    field: string;
+    collectionname: string;
+    results: any[];
+    queryas: string;
 }

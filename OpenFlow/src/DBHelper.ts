@@ -1,81 +1,90 @@
 import { Crypt } from "./Crypt";
 import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue, Resource, ResourceUsage } from "@openiap/openflow-api";
 import { Config } from "./Config";
-import { Span } from "@opentelemetry/api";
-import { Observable } from '@opentelemetry/api-metrics';
+import { Span, Observable } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Auth } from "./Auth";
 import { WebSocketServerClient } from "./WebSocketServerClient";
 import { LoginProvider, Provider } from "./LoginProvider";
-import * as cacheManager from "cache-manager";
+import { caching } from 'cache-manager';
 import { TokenRequest } from "./TokenRequest";
 import { amqpwrapper } from "./amqpwrapper";
 import { EntityRestriction } from "./EntityRestriction";
 import { iAgent } from "./commoninterfaces";
-// var cacheManager = require('cache-manager');
-var redisStore = require('cache-manager-ioredis');
-var mongoStore = require('@skadefro/cache-manager-mongodb');
+import { CollectionInfo } from "mongodb";
+import { redisStore } from 'cache-manager-ioredis-yet'
 
 export class DBHelper {
 
     public memoryCache: any;
-    public mongoCache: any;
+    // public mongoCache: any;
     public async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
 
-        this.mongoCache = cacheManager.caching({
-            store: mongoStore,
-            uri: Config.mongodb_url,
-            options: {
-                collection: "_cache",
-                compression: false,
-                poolSize: 5
-            }
-        });
+        const ttl = (Config.cache_store_ttl_seconds) * 1000;
+        const max = Config.cache_store_max;
 
-        if (Config.cache_store_type == "mongodb") {
-            this.memoryCache = this.mongoCache;
-            this.ensureotel();
-            return;
-        } else if (Config.cache_store_type == "redis") {
-            this.memoryCache = cacheManager.caching({
-                store: redisStore,
+        // this.mongoCache = await caching(mongoStore, {
+        //     uri: Config.mongodb_url,
+        //     options: {
+        //         collection: "_cache",
+        //         compression: false,
+        //         poolSize: 5
+        //     }
+        // });
+
+        // if (Config.cache_store_type == "mongodb") {
+        //     this.memoryCache = this.mongoCache;
+        //     this.ensureotel();
+        //     return;
+        // } else 
+        if (Config.cache_store_type == "redis") {
+
+            this.memoryCache = await caching(redisStore, {
                 host: Config.cache_store_redis_host,
                 port: Config.cache_store_redis_port,
                 password: Config.cache_store_redis_password,
-                ignoreCacheErrors: true,
-                db: 0,
-                ttl: Config.cache_store_ttl_seconds,
-                max: Config.cache_store_max
+                db: 0, ttl,
+                isCacheable: (val: unknown) => {
+                    return true
+                }
             })
             // listen for redis connection error event
-            var redisClient = this.memoryCache.store.getClient();
-            redisClient.on('error', (error) => {
-                Logger.instanse.error(error, null);
-            });
-
+            // var redisClient = this.memoryCache.store.getClient();
+            // redisClient.on('error', (error) => {
+            //     Logger.instanse.error(error, null);
+            // });
             this.ensureotel();
             return;
         }
-        this.memoryCache = cacheManager.caching({
-            store: 'memory',
-            ignoreCacheErrors: true,
-            max: Config.cache_store_max,
-            ttl: Config.cache_store_ttl_seconds
-        });
+        this.memoryCache = await caching('memory', { max, ttl,
+            isCacheable: (val: unknown) => {
+                return true
+            }
+            });
         this.ensureotel();
     }
     public async clearCache(reason: string, span: Span) {
         await this.init();
         var keys: string[];
         if (Config.cache_store_type == "redis") {
-            keys = await this.memoryCache.keys('*');
+            if(this.memoryCache.keys) {
+                keys = await this.memoryCache.keys('*');
+            } else {
+                keys = await this.memoryCache.store.keys('*');
+            }
         } else {
-            keys = await this.memoryCache.keys();
+            if(this.memoryCache.keys) {
+                keys = await this.memoryCache.keys();
+            } else {
+                keys = await this.memoryCache.store.keys();
+            }
         }
         for (var i = 0; i < keys.length; i++) {
             if (keys[i] && !keys[i].startsWith("requesttoken")) {
                 this.memoryCache.del(keys[i]);
+            } else {
+                console.log("not deleting " + keys[i]);
             }
         }
         Logger.instanse.debug("clearCache called with reason: " + reason, span);
@@ -89,10 +98,14 @@ export class DBHelper {
             this.item_cache?.addCallback(async (res) => {
                 var keys: any = null;
                 try {
-                    if (Config.cache_store_type == "redis") {
+                    if (Config.cache_store_type == "redis" && this.memoryCache && this.memoryCache.keys) {
                         keys = await this.memoryCache.keys('*');
-                    } else {
-                        keys = await this.memoryCache.keys();
+                    } else if(this.memoryCache && this.memoryCache.keys) {
+                        if(this.memoryCache.keys.get) {
+                            keys = await this.memoryCache.keys.get();
+                        } else {
+                            keys = await this.memoryCache.keys();
+                        }
                     }
                 } catch (error) {
 
@@ -279,11 +292,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
             if (NoderedUtil.IsNullEmpty(key)) return null;
-            if (Config.cache_store_type == "redis") {
-                return await this.memoryCache.get("requesttoken" + key);
-            } else {
-                return await this.mongoCache.get("requesttoken" + key);
-            }
+            return await this.memoryCache.get("requesttoken" + key);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -292,11 +301,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.AddRequestTokenID", parent);
         try {
-            if (Config.cache_store_type == "redis") {
-                return await this.memoryCache.set("requesttoken" + key, data);
-            } else {
-                return await this.mongoCache.set("requesttoken" + key, data);
-            }
+            return await this.memoryCache.set("requesttoken" + key, data);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -305,11 +310,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.RemoveRequestTokenID", parent);
         try {
-            if (Config.cache_store_type == "redis") {
-                return await this.memoryCache.del("requesttoken" + key);
-            } else {
-                return await this.mongoCache.del("requesttoken" + key);
-            }
+            return await this.memoryCache.del("requesttoken" + key);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -574,7 +575,7 @@ export class DBHelper {
                 }
             }
         ]
-        return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, span);
+        return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, null, span);
     }
     public DecorateWithRolesAllRolesWrap(span: Span) {
         Logger.instanse.debug("Add all roles", span);
@@ -790,24 +791,6 @@ export class DBHelper {
         await this.DeleteKey("pushablequeues", watch, false, span);
         if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
-    public GetQueuesWrap(span: Span) {
-        Logger.instanse.debug("Add pushable queues", span);
-        return Config.db.query<WorkitemQueue>({
-            query: { _type: "workitemqueue"}
-            , top:1000, collectionname: "mq", jwt: Crypt.rootToken()
-        }, span);
-    }
-    public async GetQueues(parent: Span): Promise<WorkitemQueue[]> {
-        await this.init();
-        const span: Span = Logger.otel.startSubSpan("dbhelper.GetQueues", parent);
-        try {
-            if (!Config.cache_workitem_queues) return await this.GetQueuesWrap(span);
-            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetQueuesWrap(span) });
-            return items;
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-    }
     public GetPushableQueuesWrap(span: Span) {
         Logger.instanse.debug("Add pushable queues", span);
         return Config.db.query<WorkitemQueue>({
@@ -823,14 +806,14 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
         try {
             if (!Config.cache_workitem_queues) return await this.GetPushableQueuesWrap(span);
-            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) });
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) }); // , { ttl: Config.workitem_queue_monitoring_interval / 1000 }
             return items;
         } finally {
             Logger.otel.endSpan(span);
         }
     }
     public GetPendingWorkitemsCountWrap(wiqid: string, span: Span) {
-        Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
+        // Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
         // TODO: skip nextrun ? or accept neextrun will always be based of cache TTL or substract the TTL ?
         const query = { "wiqid": wiqid, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
         return Config.db.count({
@@ -841,9 +824,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
         try {
-            if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
+            //if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
+            return await this.GetPendingWorkitemsCountWrap(wiqid, span);
             var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
-            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); });
+            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); }); // , { ttl: Config.workitem_queue_monitoring_interval / 1000 }
             return count;
         } finally {
             Logger.otel.endSpan(span);
@@ -991,7 +975,7 @@ export class DBHelper {
         }
     }
     public GetIPBlockListWrap(span) {
-        return Config.db.query<Base>({ query: { _type: "ipblock" }, projection: { "ips": 1 }, top: 10, collectionname: "config", jwt: Crypt.rootToken() }, span);;
+        return Config.db.query<Base>({ query: { _type: "ipblock" }, projection: { "ips": 1 }, top: 1, collectionname: "config", jwt: Crypt.rootToken() }, span);;
     }
     public async GetIPBlockList(parent: Span): Promise<Base[]> {
         await this.init();
@@ -1007,4 +991,34 @@ export class DBHelper {
     private async ClearIPBlockList() {
         await this.memoryCache.del("ipblock");
     }
+
+    public GetCollectionsWrap(span) {
+        return DBHelper.toArray(Config.db.db.listCollections());
+    }
+    public async GetCollections(parent: Span): Promise<CollectionInfo[]> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.GetCollections", parent);
+        try {
+            let items = await this.memoryCache.wrap("collections", () => { return this.GetCollectionsWrap(span) });
+            if (NoderedUtil.IsNullUndefinded(items)) items = [];
+            return items;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async ClearGetCollections() {
+        await this.memoryCache.del("collections");
+    }
+    static toArray(iterator): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            iterator.toArray((err, res) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(res);
+                }
+            });
+        });
+    }
+
 }
