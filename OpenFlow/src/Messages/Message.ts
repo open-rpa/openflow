@@ -295,12 +295,12 @@ export class Message {
                     //     if ((error.consumedPoints % 10) == 1 || error.consumedPoints > 0) {
                     //         // Logger.instanse.warn("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
                     //     }
-                    //     if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
+                         if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
                     //         Logger.instanse.warn("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
                     //         cli.devnull = true;
                     //         cli.Close(span);
                     //         return;
-                    //     }
+                         }
                     //     setTimeout(() => { this.Process(cli); }, 250);
                     // }
                     // return;

@@ -212,7 +212,7 @@
             ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span translate
                 lib="web">rpaworkflows</span></a>
             <a href="#/Clients" class="dropdown-item" 
-            ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"><span translate
+            ng-show="menuctrl.hasrole('personal nodered users')"><span translate
                 lib="web">clients</span></a>
             <!-- <a href="#/Nodered" class="dropdown-item"
               ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">

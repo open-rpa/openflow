@@ -26,7 +26,6 @@ export class WebSocketClientService {
                 this.version = data.version;
                 this.allow_user_registration = data.allow_user_registration;
 
-                this.allow_personal_nodered = data.allow_personal_nodered;
                 this.auto_create_personal_nodered_group = data.auto_create_personal_nodered_group;
                 this.namespace = data.namespace;
                 this.nodered_domain_schema = data.nodered_domain_schema;
@@ -180,7 +179,6 @@ export class WebSocketClientService {
     public connected: boolean = false;
     public domain: string = "";
     public allow_user_registration: boolean = false;
-    public allow_personal_nodered: boolean = false;
     public auto_create_personal_nodered_group: boolean = false;
     public namespace: string = "";
     public nodered_domain_schema: string = "";

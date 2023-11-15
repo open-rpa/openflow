@@ -77,7 +77,6 @@ services:
       - multi_tenant=false
       - auto_create_users=true
       - auto_create_domains=
-      - allow_personal_nodered=true
       - auto_create_personal_nodered_group=false
       - tls_crt=
       - tls_key=

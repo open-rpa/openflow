@@ -25,7 +25,6 @@ export class dbConfig extends Base {
     public allow_skiphistory: boolean;
     public max_memory_restart_mb: number;
 
-    public allow_personal_nodered: boolean;
     public amqp_enabled_exchange: boolean;
     public log_with_trace: boolean;
     public log_with_colors: boolean;
@@ -86,7 +85,6 @@ export class dbConfig extends Base {
 
     public ensure_indexes: boolean;
     public text_index_name_fields: string[];
-    public metadata_collections: string[];    
 
     public auto_create_users: boolean;
     public auto_create_user_from_jwt: boolean;
@@ -147,7 +145,6 @@ export class dbConfig extends Base {
         Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
 
         if (!NoderedUtil.IsNullEmpty(conf.auto_create_users)) Config.auto_create_users = Config.parseBoolean(conf.auto_create_users);
-        if (!NoderedUtil.IsNullEmpty(conf.allow_personal_nodered)) Config.allow_personal_nodered = Config.parseBoolean(conf.allow_personal_nodered);
         if (!NoderedUtil.IsNullEmpty(conf.amqp_enabled_exchange)) Config.amqp_enabled_exchange = Config.parseBoolean(conf.amqp_enabled_exchange);
 
         Logger.instanse.info("db version: " + conf.version, parent);
@@ -225,7 +222,6 @@ export class dbConfig extends Base {
 
         Config.ensure_indexes = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ensure_indexes) ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
         Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields.toString() : Config.getEnv("text_index_name_fields", "name,_names"))
-        Config.metadata_collections = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.metadata_collections) ? conf.metadata_collections.toString() : Config.getEnv("metadata_collections", ""))
         Config.auto_create_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_users) ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
 
         Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
@@ -346,8 +342,6 @@ export class Config {
         Config.enable_nodered_tours = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
         Config.grafana_url = Config.getEnv("grafana_url", "");
         Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
-        Config.housekeeping_update_usage_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
-        Config.housekeeping_update_usersize_hourly = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
         Config.housekeeping_skip_collections = Config.getEnv("housekeeping_skip_collections", "");
         Config.workitem_queue_monitoring_enabled = Config.parseBoolean(Config.getEnv("workitem_queue_monitoring_enabled", "true"));
         Config.workitem_queue_monitoring_interval = parseInt(Config.getEnv("workitem_queue_monitoring_interval", (10 * 1000).toString())); // 10 sec
@@ -373,14 +367,12 @@ export class Config {
         Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
         Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
         Config.text_index_name_fields = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
-        Config.metadata_collections = Config.parseArray(Config.getEnv("metadata_collections", ""));        
 
         Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
         Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
         Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
         Config.persist_user_impersonation = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
         Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
-        Config.allow_personal_nodered = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
         Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
         Config.use_openshift_routes = Config.parseBoolean(Config.getEnv("use_openshift_routes", "false"));
         Config.agent_image_pull_secrets = Config.parseArray(Config.getEnv("agent_image_pull_secrets", ""));
@@ -629,8 +621,6 @@ export class Config {
     public static enable_nodered_tours: boolean = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
     public static grafana_url:string = Config.getEnv("grafana_url", "");
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
-    public static housekeeping_update_usage_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usage_hourly", "false"));
-    public static housekeeping_update_usersize_hourly: boolean = Config.parseBoolean(Config.getEnv("housekeeping_update_usersize_hourly", "true"));
     public static housekeeping_skip_collections: string = Config.getEnv("housekeeping_skip_collections", "");
     public static workitem_queue_monitoring_enabled: boolean = Config.parseBoolean(Config.getEnv("workitem_queue_monitoring_enabled", "true"));
     public static workitem_queue_monitoring_interval: number = parseInt(Config.getEnv("workitem_queue_monitoring_interval", (10 * 1000).toString())); // 10 sec
@@ -656,7 +646,6 @@ export class Config {
     public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
     public static text_index_name_fields: string[] = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
-    public static metadata_collections: string[] = Config.parseArray(Config.getEnv("metadata_collections", ""));    
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
@@ -664,7 +653,6 @@ export class Config {
     public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
     public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
 
-    public static allow_personal_nodered: boolean = Config.parseBoolean(Config.getEnv("allow_personal_nodered", "false"));
     public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
     public static use_openshift_routes: boolean = Config.parseBoolean(Config.getEnv("use_openshift_routes", "false"));
     public static agent_image_pull_secrets: string[] = Config.parseArray(Config.getEnv("agent_image_pull_secrets", ""));
