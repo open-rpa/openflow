@@ -17,6 +17,7 @@ export class dbConfig extends Base {
         this._type = "config";
         this.name = "Base configuration";
         this.version = "0.0.1";
+        this._encrypt = ["stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
     }
     public version: string;
     public needsupdate: boolean;
@@ -52,13 +53,15 @@ export class dbConfig extends Base {
             try {
                 if(key.startsWith("_")) continue;
                 if(NoderedUtil.IsNullEmpty(value)) continue;
-                if(["name", "version"].indexOf(key) > -1 ) continue;
-                if(key == "license_key") {
-                    if(os.hostname().toLowerCase() == "nixos") {
-                        continue;
-                    }
+                if(["name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
+
+                if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
+                "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
+                "domain" ].indexOf(key) > -1 ) continue;
+                if(os.hostname().toLowerCase() == "nixos") {
+                    continue;
                 }
-    
+
                 if (Object.prototype.hasOwnProperty.call(Config, key)) {
                     if(typeof Config[key] === "boolean") {
                         // console.log("Setting boolen " + key + " to " + conf[key]);
@@ -85,6 +88,36 @@ export class dbConfig extends Base {
                 Logger.instanse.error("Error setting config " + keys + " to " + value, parent);
             }
         }
+        var keys = Object.keys(Config);
+        var updated = false;
+        for(var i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            if(key.startsWith("_")) continue;
+            if(["name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
+            if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
+            "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
+            "domain" ].indexOf(key) > -1 ) continue;
+            if(os.hostname().toLowerCase() == "nixos") {
+                continue;
+            }
+    
+            const _default = Config.default_config[key];
+            const setting = Config[key];
+            const dbsetting = conf[key];
+            if(_default == null || setting == null) continue;
+            // console.log("Checking " + key + " " + _default + " " + setting + " " + dbsetting);
+            if(setting == _default) continue; // ignore if default, kee dbsettings small
+            if(dbsetting != null) continue; // db setting overrides env setting (yeah, a little weird)
+            if(setting != dbsetting) {
+                conf[key] = setting;
+                updated = true;
+            }
+
+        }
+        conf._encrypt = ["stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
+        if(updated) {
+            await Config.db._UpdateOne(null, conf, "config", 1, true, jwt, parent);
+        }
         await Logger.reload();
         return conf;
     }
@@ -96,6 +129,238 @@ export class dbConfig extends Base {
 }
 export class Config {
     public static dbConfig: dbConfig;
+    public static default_config: dbConfig = {
+        enable_openai: false,
+        enable_openapi: true,
+        enable_openaiauth: true,
+        log_with_colors: true,
+        cache_store_type: "memory",
+        cache_store_max: 1000,
+        cache_store_ttl_seconds: 300,
+        cache_store_redis_port: 6379,
+        cache_workitem_queues: false,
+
+        log_cache: false,
+        log_amqp: false,
+        log_openapi: false,
+        log_login_provider: false,
+        log_with_trace: false,
+        log_websocket: false,
+        log_oauth: false,
+        log_webserver: false,
+        log_database: false,
+        log_database_queries: false,
+        log_database_queries_ms: 0,
+        log_grafana: false,
+        log_housekeeping: false,
+        log_otel: false,
+        log_blocked_ips: true,
+        log_information: true,
+        log_debug: false,
+        log_verbose: false,
+        log_silly: false,
+        log_to_exchange: false,
+
+        heapdump_onstop: false,
+        amqp_allow_replyto_empty_queuename: false,
+        enable_openflow_amqp: false,
+        openflow_amqp_expiration: 60 * 1000 * 25, // 25 min
+        amqp_prefetch: 25,
+        enable_entity_restriction: false,
+        enable_web_tours: true,
+        enable_nodered_tours: true,
+        grafana_url: "",
+        auto_hourly_housekeeping: true,
+        housekeeping_skip_collections: "",
+        workitem_queue_monitoring_enabled: true,
+        workitem_queue_monitoring_interval: 10 * 1000, // 10 sec
+        upload_max_filesize_mb: 25,
+        getting_started_url: "",
+        NODE_ENV: "development",
+        agent_HTTP_PROXY: "",
+        agent_HTTPS_PROXY: "",
+        agent_NO_PROXY: "",
+
+        stripe_api_key: "",
+        stripe_api_secret: "",
+        stripe_force_vat: false,
+        stripe_force_checkout: false,
+        stripe_allow_promotion_codes: true,
+
+        supports_watch: false,
+        ensure_indexes: true,
+        text_index_name_fields: ["name", "_names"],
+        auto_create_users: false,
+        auto_create_user_from_jwt: false,
+        auto_create_domains: [],
+        persist_user_impersonation: true,
+        ping_clients_interval: 10000, // 10 seconds
+
+        use_ingress_beta1_syntax: false,
+        use_openshift_routes: false,
+        agent_image_pull_secrets: [],
+        auto_create_personal_nodered_group: false,
+        auto_create_personal_noderedapi_group: false,
+        force_add_admins: true,
+
+        validate_emails: false,
+        forgot_pass_emails: false,
+        smtp_service: "",
+        smtp_from: "",
+        smtp_user: "",
+        smtp_pass: "",
+        smtp_url: "",
+        debounce_lookup: false,
+        validate_emails_disposable: false,
+
+        oidc_access_token_ttl: 480, // 8 hours
+        oidc_authorization_code_ttl: 480, // 8 hours
+        oidc_client_credentials_ttl: 480, // 8 hours
+        oidc_refresh_token_ttl: 20160, // 14 days in seconds
+        oidc_session_ttl: 20160, // 14 days in seconds
+
+        oidc_cookie_key: "Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss=",
+        api_rate_limit: true,
+        api_rate_limit_points: 20,
+        api_rate_limit_duration: 1,
+        socket_rate_limit: true,
+        socket_rate_limit_points: 30,
+        socket_rate_limit_points_disconnect: 100,
+        socket_rate_limit_duration: 1,
+        socket_error_rate_limit_points: 30,
+        socket_error_rate_limit_duration: 1,
+
+        client_heartbeat_timeout: 60,
+        client_signin_timeout: 120,
+        client_disconnect_signin_error: false,
+
+        expected_max_roles: 20000,
+        decorate_roles_fetching_all_roles: true,
+        max_recursive_group_depth: 2,
+        update_acl_based_on_groups: true,
+        allow_merge_acl: false,
+
+        multi_tenant: false,
+        cleanup_on_delete_customer: false,
+        cleanup_on_delete_user: false,
+        api_bypass_perm_check: false,
+        ignore_expiration: false,
+        force_audit_ts: false,
+        force_dbusage_ts: false,
+        migrate_audit_to_ts: true,
+        
+        websocket_package_size: 25000,
+        websocket_max_package_count: 25000,
+        websocket_message_callback_timeout: 3600,
+        websocket_disconnect_out_of_sync: false,
+        protocol: "http",
+        port: 80,
+        domain: "localhost.openiap.io",
+        cookie_secret: "",
+        max_ace_count: 128,
+        
+        amqp_reply_expiration: 60 * 1000, // 1 min
+        amqp_force_queue_prefix: false,
+        amqp_force_exchange_prefix: false,
+        amqp_force_sender_has_read: true,
+        amqp_force_sender_has_invoke: false,
+        amqp_force_consumer_has_update: false,
+        amqp_enabled_exchange: false,
+        amqp_url: "amqp://localhost",
+        amqp_username: "guest",
+        amqp_password: "guest",
+
+        amqp_check_for_consumer: true,
+        amqp_check_for_consumer_count: false,
+        amqp_default_expiration: 60 * 1000, // 1 min
+        amqp_requeue_time: 1000, // 1 seconds
+        amqp_dlx: "openflow-dlx", // Dead letter exchange, used to pickup dead or timeout messages
+
+        // mongodb_url: "mongodb://localhost:27017",
+        // mongodb_db: "openflow",
+        // mongodb_minpoolsize: 25,
+        // mongodb_maxpoolsize: 25,
+
+        skip_history_collections: "audit,openrpa_instances,workflow_instances",
+        history_delta_count: 1000,
+        allow_skiphistory: false,
+        max_memory_restart_mb: 0,
+
+        saml_issuer: "the-issuer",
+        // aes_secret: "",
+        signing_crt: "",
+        singing_key: "",
+        wapid_mail: "",
+        wapid_pub: "",
+        wapid_key: "",
+        shorttoken_expires_in: "5m",
+        longtoken_expires_in: "365d",
+        downloadtoken_expires_in: "15m",
+        personalnoderedtoken_expires_in: "365d",
+
+        agent_images: [{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} , {"name":"PowerShell 7.3", "image":"openiap/nodeagent:pwsh", "languages": ["powershell"]} ],
+        agent_domain_schema: "",
+        agent_node_selector: "",
+        agent_apiurl: "",
+        agent_oidc_config: "",
+        agent_oidc_client_id: "",
+        agent_oidc_client_secret: "",
+        agent_oidc_userinfo_endpoint: "",
+
+        saml_federation_metadata: "",
+        api_ws_url: "",
+        nodered_ws_url: "",
+        nodered_saml_entrypoint: "",
+        agent_docker_entrypoints: "web",
+        agent_docker_use_project: false,
+        agent_docker_certresolver: "",
+        namespace: "",
+        nodered_domain_schema: "",
+        nodered_initial_liveness_delay: 60,
+        nodered_allow_nodeselector: false,
+        nodered_liveness_failurethreshold: 5,
+        nodered_liveness_timeoutseconds: 5,
+        noderedcatalogues: "",
+        otel_measure_nodeid: false,
+        otel_measure_queued_messages: false,
+        otel_measure__mongodb_watch: false,
+        otel_measure_onlineuser: false,
+        enable_analytics: true,
+        enable_detailed_analytic: false,
+        otel_debug_log: false,
+        otel_warn_log: false,
+        otel_err_log: false,
+        otel_trace_url: "",
+        otel_metric_url: "",
+
+        otel_trace_interval: 5000,
+        otel_metric_interval: 5000,
+
+        otel_trace_pingclients: false,
+        otel_trace_dashboardauth: false,
+        otel_trace_include_query: false,
+        otel_trace_connection_ips: false,
+        otel_trace_mongodb_per_users: false,
+        otel_trace_mongodb_query_per_users: false,
+        otel_trace_mongodb_count_per_users: false,
+        otel_trace_mongodb_aggregate_per_users: false,
+        otel_trace_mongodb_insert_per_users: false,
+        otel_trace_mongodb_update_per_users: false,
+        otel_trace_mongodb_delete_per_users: false,
+
+        grpc_keepalive_time_ms: -1,
+        grpc_keepalive_timeout_ms: -1,
+        grpc_http2_min_ping_interval_without_data_ms: -1,
+        grpc_max_connection_idle_ms: -1,
+        grpc_max_connection_age_ms: -1,
+        grpc_max_connection_age_grace_ms: -1,
+        grpc_http2_max_pings_without_data: -1,
+        grpc_keepalive_permit_without_calls: -1,
+        grpc_max_receive_message_length: -1,
+        grpc_max_send_message_length: -1,
+
+        validate_user_form: "",
+    } as any;
     public static getversion(): string {
         let packagefile: string = path.join(__dirname, "package.json");
         if (!fs.existsSync(packagefile)) packagefile = path.join(__dirname, "..", "package.json")
