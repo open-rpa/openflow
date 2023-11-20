@@ -56,7 +56,8 @@ export class dbConfig extends Base {
                 if(["name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
 
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
-                "NODE_ENV", "validate_emails", "amqp_url", "port" ].indexOf(key) > -1 ) continue;
+                "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
+                "domain" ].indexOf(key) > -1 ) continue;
                 if(os.hostname().toLowerCase() == "nixos") {
                     continue;
                 }
@@ -94,7 +95,8 @@ export class dbConfig extends Base {
             if(key.startsWith("_")) continue;
             if(["name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
-            "NODE_ENV", "validate_emails", "amqp_url", "port" ].indexOf(key) > -1 ) continue;
+            "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
+            "domain" ].indexOf(key) > -1 ) continue;
             if(os.hostname().toLowerCase() == "nixos") {
                 continue;
             }
