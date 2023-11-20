@@ -77,7 +77,6 @@ services:
       - multi_tenant=false
       - auto_create_users=true
       - auto_create_domains=
-      - allow_personal_nodered=true
       - auto_create_personal_nodered_group=false
       - tls_crt=
       - tls_key=
@@ -98,10 +97,6 @@ services:
       - socket_rate_limit_points=1000
       - socket_rate_limit_points_disconnect=2500
 
-      - nodered_images=[{"name":"Latest Plain Nodered",
-        "image":"openiap/nodered:edge"},{"name":"Latest Puppeteer Nodered",
-        "image":"openiap/nodered-puppeteer"},{"name":"Latest TagUI Nodered",
-        "image":"openiap/nodered-tagui"}]
       - nodered_ws_url=ws://api:3000
       - saml_federation_metadata=http://api:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
       - nodered_saml_entrypoint=http://localhost.openiap.io/issue

@@ -96,6 +96,10 @@ export class Logger {
     }
     public json(obj, span: Span) {
         if (Config.unittesting) return;
+        if(obj.func == "_Housekeeping") {
+            obj.cls = "Housekeeping";
+        }
+
         const { cls, func, message, lvl } = obj;
         if (!NoderedUtil.IsNullEmpty(func) && span != null && span.isRecording()) {
             var stringifyError = function (err, filter, space) {
@@ -112,10 +116,9 @@ export class Logger {
             }
             span.addEvent(obj.message, obj)
         }
-        if (obj.ms != null && obj.ms != "") {
+        if (obj.ms != null && obj.ms != "" && obj.func != "query" && Config.log_database_queries) {
             if (obj.ms < Config.log_database_queries_ms) return;
-        }
-        if (Logger.enabled[cls]) {
+        } else if (Logger.enabled[cls]) {
             if (Logger.enabled[cls] < lvl) return;
         } else {
             if (Config.log_silly) {
@@ -279,7 +282,7 @@ export class Logger {
         if (Config.db != null) await Config.db.shutdown();
         await Logger.otel.shutdown();
     }
-    public static reload() {
+    public static async reload() {
         Logger.log_with_trace = Config.log_with_trace;
         Logger.usecolors = Config.log_with_colors;
         // if (Config.NODE_ENV == "development") Logger.log_with_trace = true;
@@ -302,6 +305,11 @@ export class Logger {
         if (Config.otel_err_log) Logger.enabled["WebSocketServerClient"] = level.Error;
         if (Config.log_database_queries) Logger.enabled["log_database_queries"] = level.Verbose;
 
+        try {
+            await Logger.License?.validate();
+        } catch (error) {
+            
+        }
     }
     static hasDockerEnv(): boolean {
         try {
@@ -333,114 +341,125 @@ export class Logger {
         Logger._isKubernetes = true;
         return true;
     }
-
+    static async relaodotel() {
+        
+    }
+    static _otel_require: any = null;
     static async configure(skipotel: boolean, skiplic: boolean): Promise<void> {
         Logger.DBHelper = new DBHelper();
-        Logger.reload()
-        Logger.instanse = new Logger();
-        let _lic_require: any = null;
-        try {
-            if (!skiplic) _lic_require = require("./ee/license-file");
-        } catch (error) {
-        }
-        if (_lic_require != null) {
-            Logger.License = new _lic_require.LicenseFile();
-        } else {
-            Logger.License = {} as any;
-            Logger.License.ofid = Logger.ofid;
-            Logger.License.shutdown = () => undefined;
-        }
-
-        let _otel_require: any = null;
-        try {
-            if (!skipotel) _otel_require = require("./ee/otel");
-        } catch (error) {
-
-        }
-        if (_otel_require != null) {
-            Logger.otel = await _otel_require.otel.configure();
-        } else {
-            const fakespan = {
-                context: () => undefined,
-                setAttribute: () => undefined,
-                setAttributes: () => undefined,
-                addEvent: () => undefined,
-                setStatus: () => undefined,
-                updateName: () => undefined,
-                end: () => undefined,
-                isRecording: () => undefined,
-                recordException: () => undefined,
-            };
-            Logger.otel =
-                {
-                    startSpan: () => fakespan,
-                    startSubSpan: () => fakespan,
-                startSpanExpress: () => fakespan,
-                GetTraceSpanId(span: Span): [string, string] { return ["", ""]; },
-                    endSpan: () => undefined,
-                    startTimer: () => undefined,
-                    endTimer: () => undefined,
-                    setdefaultlabels: () => undefined,
-                    shutdown: () => undefined,
-                    meter: {
-                        createHistogram: () => undefined,
-                        createCounter: () => undefined,
-                        createObservableUpDownCounter: () => undefined,
-                        createUpDownCounter: () => undefined,
-                        createValueObserver: () => undefined,
-                        createObservableGauge: () => undefined,
-                    }
-                } as any;
-        }
-
-
-        this.agentdriver = null; // with npm -omit=optional we need to install npm i openid-client
-
-        if (NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"])) {
+        await Logger.reload()
+        if(Logger.instanse == null) Logger.instanse = new Logger();
+        if(Logger.License == null) {
+            let _lic_require: any = null;
             try {
-                this.agentdriver = new dockerdriver();
-                if (!(await this.agentdriver.detect())) {
-                    this.agentdriver = null;
-                }
+                if (!skiplic && _lic_require == null) _lic_require = require("./ee/license-file");
             } catch (error) {
-                this.agentdriver = null;
+            }
+            if (_lic_require != null) {
+                Logger.License = new _lic_require.LicenseFile();
+            } else {
+                Logger.License = {} as any;
+                Logger.License.ofid = Logger.ofid;
+                Logger.License.shutdown = () => undefined;
             }
         }
-        if (this.agentdriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
-            let _driver: any = null;
+
+        if(Logger.otel == null) {
             try {
-                _driver = require("./ee/kubedriver");
+                if (!skipotel && Logger._otel_require == null) Logger._otel_require = require("./ee/otel");
             } catch (error) {
-                console.log(error)
+    
             }
-            try {
-                if (_driver != null) {
-                    this.agentdriver = new _driver.kubedriver();
-                } else {
+            if (Logger._otel_require != null) {
+                Logger.otel = await Logger._otel_require.otel.configure();
+            } else {
+                const fakespan = {
+                    context: () => undefined,
+                    setAttribute: () => undefined,
+                    setAttributes: () => undefined,
+                    addEvent: () => undefined,
+                    setStatus: () => undefined,
+                    updateName: () => undefined,
+                    end: () => undefined,
+                    isRecording: () => undefined,
+                    recordException: () => undefined,
+                };
+                Logger.otel =
+                    {
+                        startSpan: () => fakespan,
+                        startSubSpan: () => fakespan,
+                        startSpanExpress: () => fakespan,
+                        GetTraceSpanId(span: Span): [string, string] { return ["", ""]; },
+                        endSpan: () => undefined,
+                        startTimer: () => undefined,
+                        endTimer: () => undefined,
+                        setdefaultlabels: () => undefined,
+                        shutdown: () => undefined,
+                        meter: {
+                            createHistogram: () => undefined,
+                            createCounter: () => undefined,
+                            createObservableUpDownCounter: () => undefined,
+                            createUpDownCounter: () => undefined,
+                            createValueObserver: () => undefined,
+                            createObservableGauge: () => undefined,
+                        }
+                    } as any;
+            }
+        } else {
+            if (Logger._otel_require != null) {
+                Logger.otel = await Logger._otel_require.otel.configure();
+            }
+        }
+
+
+        if(this.agentdriver == null) {
+            this.agentdriver = null; // with npm -omit=optional we need to install npm i openid-client
+
+            if (NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"])) {
+                try {
                     this.agentdriver = new dockerdriver();
-                }
-                if (_driver != null) {
                     if (!(await this.agentdriver.detect())) {
                         this.agentdriver = null;
                     }
-                }
-            } catch (error) {
-                this.agentdriver = null;
-                Logger.instanse.error(error, null);
-            }
-        }
-        if (this.agentdriver == null) {
-            try {
-                this.agentdriver = new dockerdriver();
-                if (!(await this.agentdriver.detect())) {
+                } catch (error) {
                     this.agentdriver = null;
                 }
-            } catch (error) {
-                this.agentdriver = null;
-                Logger.instanse.error(error, null);
+            }
+            if (this.agentdriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
+                let _driver: any = null;
+                try {
+                    _driver = require("./ee/kubedriver");
+                } catch (error) {
+                    console.log(error)
+                }
+                try {
+                    if (_driver != null) {
+                        this.agentdriver = new _driver.kubedriver();
+                    } else {
+                        this.agentdriver = new dockerdriver();
+                    }
+                    if (_driver != null) {
+                        if (!(await this.agentdriver.detect())) {
+                            this.agentdriver = null;
+                        }
+                    }
+                } catch (error) {
+                    this.agentdriver = null;
+                    Logger.instanse.error(error, null);
+                }
+            }
+            if (this.agentdriver == null) {
+                try {
+                    this.agentdriver = new dockerdriver();
+                    if (!(await this.agentdriver.detect())) {
+                        this.agentdriver = null;
+                    }
+                } catch (error) {
+                    this.agentdriver = null;
+                    Logger.instanse.error(error, null);
+                }
             }
         }
-
     }
     static instanse: Logger = null;
     private static _ofid = null;

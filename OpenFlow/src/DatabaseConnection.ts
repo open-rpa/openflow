@@ -411,6 +411,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "config" && _type === "config") {
                     discardspan = false;
                     await dbConfig.Reload(Crypt.rootToken(), span);
+                    
                 }
             }
             span.updateName("Watch " + collectionname + " " + next.operationType + " " + _type);
@@ -1090,9 +1091,11 @@ export class DatabaseConnection extends events.EventEmitter {
             // }
         }
         span?.setAttribute("results", arr.length);
-        let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+        var ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
         if (decrypt) for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
+        var log_database_queries = Config.log_database_queries;
+        var log_database_queries_ms = Config.log_database_queries_ms;
         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
             Logger.instanse.debug(JSON.stringify(query), span, { collection: collectionname, user: user?.username, ms, count: arr.length });
         } else {

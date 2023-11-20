@@ -102,6 +102,9 @@
           ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')"
           ng-class="{active: menuctrl.PathIs(['/FormResources', '/FormResource', '/FormResource/'])}"><span translate
             lib="web">formresources</span></a>
+        <a class="sidebar-link" href="#/Config"
+          ng-class="{active: menuctrl.PathIs(['/Config', '/Console'])}"
+          ng-show="menuctrl.hasrole('admins')"><span translate lib="web">config</span></a>
         <a class="sidebar-link" href="#/Providers"
           ng-class="{active: menuctrl.PathIs(['/Providers', '/Provider', '/Provider/'])}"
           ng-show="menuctrl.hasrole('admins')"><span translate lib="web">providers</span></a>
@@ -212,7 +215,7 @@
             ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span translate
                 lib="web">rpaworkflows</span></a>
             <a href="#/Clients" class="dropdown-item" 
-            ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')"><span translate
+            ng-show="menuctrl.hasrole('personal nodered users')"><span translate
                 lib="web">clients</span></a>
             <!-- <a href="#/Nodered" class="dropdown-item"
               ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">

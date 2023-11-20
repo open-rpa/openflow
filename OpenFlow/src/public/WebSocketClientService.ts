@@ -26,7 +26,6 @@ export class WebSocketClientService {
                 this.version = data.version;
                 this.allow_user_registration = data.allow_user_registration;
 
-                this.allow_personal_nodered = data.allow_personal_nodered;
                 this.auto_create_personal_nodered_group = data.auto_create_personal_nodered_group;
                 this.namespace = data.namespace;
                 this.nodered_domain_schema = data.nodered_domain_schema;
@@ -39,7 +38,6 @@ export class WebSocketClientService {
                 this.forgot_pass_emails = data.forgot_pass_emails;
                 this.multi_tenant = data.multi_tenant;
 
-                this.nodered_images = data.nodered_images;
                 this.agent_images = data.agent_images;
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
@@ -180,7 +178,6 @@ export class WebSocketClientService {
     public connected: boolean = false;
     public domain: string = "";
     public allow_user_registration: boolean = false;
-    public allow_personal_nodered: boolean = false;
     public auto_create_personal_nodered_group: boolean = false;
     public namespace: string = "";
     public nodered_domain_schema: string = "";
@@ -190,7 +187,6 @@ export class WebSocketClientService {
     public validate_user_form: string = "";
     public validate_emails: boolean = false;
     public forgot_pass_emails: boolean = false;
-    public nodered_images: nodered_image[];
     public agent_images: nodered_image[];
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;

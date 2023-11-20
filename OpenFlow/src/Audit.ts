@@ -173,6 +173,35 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
+    public static async IssueLicense(username: string,userid: string, customerid: string, remoteip: string, domain: string, months: number, success: boolean, error: string, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.IssueLicense", parent);
+        try {
+            const log: LicenseKey = new LicenseKey();
+            log.type = "issue";
+            log.remoteip = remoteip;
+            log.ip = Audit.dot2num(log.remoteip);
+            log.success = success;
+            log.months = months;
+            log.customerid = customerid;
+            if(success) {
+                log.name = domain + " " + months + " months";
+            } else {
+                if(error != null && error != "") {
+                    log.name = error;
+                } else {
+                    log.name = domain + " failed";
+                }                
+            }
+            log.username = username;
+            log.userid = userid;
+            Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span);
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     static dot2num(dot: string): number {
         if (NoderedUtil.IsNullEmpty(dot)) return 0;
         if (dot.indexOf(".") == -1) return 0;
@@ -221,6 +250,21 @@ export class Nodered extends Base {
     constructor() {
         super();
         this._type = "nodered";
+    }
+}
+export class LicenseKey extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public remoteip: string;
+    public ip: number;
+    public domain: string;
+    public months: number;
+    public customerid: string;
+    constructor() {
+        super();
+        this._type = "license";
     }
 }
 export class auditWorkitem extends Base {

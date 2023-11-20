@@ -558,7 +558,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     public of_logger_ready: boolean = false;
     async AddOFLogExchange(parent: Span) {
-        if (!Config.enable_openflow_amqp) return;
+        // if (!Config.enable_openflow_amqp) return; // Listen no matter what, but we don't use it unless enable_openflow_amqp is true
         await amqpwrapper.Instance().AddExchangeConsumer(Crypt.rootUser(), "openflow_logs", "fanout", "",
             null, null, true, async (msg: any, options: any, ack: any, done: any) => {
                 ack();
@@ -567,7 +567,7 @@ export class amqpwrapper extends events.EventEmitter {
         this.of_logger_ready = true;
     }
     async AddOFExchange(parent: Span) {
-        if (!Config.enable_openflow_amqp) return;
+        // if (!Config.enable_openflow_amqp) return; // Listen no matter what, but we don't use it unless enable_openflow_amqp is true
         await this.AddExchangeConsumer(Crypt.rootUser(), "openflow", "fanout", "",
             null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             ack();

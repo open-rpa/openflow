@@ -1,0 +1,102 @@
+<style type="text/css">
+    .list-group-item:hover {
+        color: #337ab7;
+        text-shadow: 0 0 1em #337ab7;
+        cursor: pointer;
+    }
+
+    .listgroupitemselected {
+        border: 6px;
+        border-color: black;
+        background-color: #337ab7;
+        color: white;
+        cursor: pointer;
+    }
+
+    textarea {
+        border: 0 none white;
+        overflow: hidden;
+        padding: 0;
+        outline: none;
+        background-color: #D0D0D0;
+    }
+
+    textarea.form-control {
+        min-height: unset !important;
+    }
+    .secret {
+        -webkit-text-security: disc;
+    }
+</style>
+
+<div class="row">
+    <div class="col">
+        <input type="checkbox" ng-checked="ctrl.model.log_to_exchange"
+        ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()" value="1" id="ctrl.model.log_to_exchange" /><span ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()">enabled streaming</span> to
+        <a ng-href="#/Console">Console</a>
+        <br>
+        <input type="checkbox" ng-checked="ctrl.model.log_cache"
+        ng-click="ctrl.model.log_cache = !ctrl.model.log_cache; ctrl.submit()" value="1" id="ctrl.model.log_cache" /><span ng-click="ctrl.model.log_cache = !ctrl.model.log_cache; ctrl.submit()">cache</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_amqp"
+        ng-click="ctrl.model.log_amqp = !ctrl.model.log_amqp; ctrl.submit()" value="1" id="ctrl.model.log_amqp" /><span ng-click="ctrl.model.log_amqp = !ctrl.model.log_amqp; ctrl.submit()">amqp</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_websocket"
+        ng-click="ctrl.model.log_websocket = !ctrl.model.log_websocket; ctrl.submit()" value="1" id="ctrl.model.log_websocket" /><span ng-click="ctrl.model.log_websocket = !ctrl.model.log_websocket; ctrl.submit()">websocket</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_webserver"
+        ng-click="ctrl.model.log_webserver = !ctrl.model.log_webserver; ctrl.submit()" value="1" id="ctrl.model.log_webserver" /><span ng-click="ctrl.model.log_webserver = !ctrl.model.log_webserver; ctrl.submit()">webserver</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_oauth"
+        ng-click="ctrl.model.log_oauth = !ctrl.model.log_oauth; ctrl.submit()" value="1" id="ctrl.model.log_oauth" /><span ng-click="ctrl.model.log_oauth = !ctrl.model.log_oauth; ctrl.submit()">oauth</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_database"
+        ng-click="ctrl.model.log_database = !ctrl.model.log_database; ctrl.submit()" value="1" id="ctrl.model.log_database" /><span ng-click="ctrl.model.log_database = !ctrl.model.log_database; ctrl.submit()">database</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_grafana"
+        ng-click="ctrl.model.log_grafana = !ctrl.model.log_grafana; ctrl.submit()" value="1" id="ctrl.model.log_grafana" /><span ng-click="ctrl.model.log_grafana = !ctrl.model.log_grafana; ctrl.submit()">grafana</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_housekeeping"
+        ng-click="ctrl.model.log_housekeeping = !ctrl.model.log_housekeeping; ctrl.submit()" value="1" id="ctrl.model.log_housekeeping" /><span ng-click="ctrl.model.log_housekeeping = !ctrl.model.log_housekeeping; ctrl.submit()">housekeeping</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_login_provider"
+        ng-click="ctrl.model.log_login_provider = !ctrl.model.log_login_provider; ctrl.submit()" value="1" id="ctrl.model.log_login_provider" /><span ng-click="ctrl.model.log_login_provider = !ctrl.model.log_login_provider; ctrl.submit()">login_provider</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_otel"
+        ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()" value="1" id="ctrl.model.log_otel" /><span ng-click="ctrl.model.log_otel = !ctrl.model.log_otel; ctrl.submit()">otel</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_blocked_ips"
+        ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()" value="1" id="ctrl.model.log_blocked_ips" /><span ng-click="ctrl.model.log_blocked_ips = !ctrl.model.log_blocked_ips; ctrl.submit()">blocked_ips</span>
+
+        <input type="checkbox" ng-checked="ctrl.model.log_openapi"
+        ng-click="ctrl.model.log_openapi = !ctrl.model.log_openapi; ctrl.submit()" value="1" id="ctrl.model.log_openapi" /><span ng-click="ctrl.model.log_openapi = !ctrl.model.log_openapi; ctrl.submit()">open-api</span>
+
+        <br /><input type="checkbox" ng-checked="ctrl.model.log_database_queries"
+        ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()" value="1" id="ctrl.model.log_database_queries" /><span ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()">database queries</span>
+        <input type="number" ng-model="ctrl.model.log_database_queries_ms" ng-blur="ctrl.submit()" min="0" max="240000" />ms
+
+        <br /> <strong>On high volume systems, these 3 can crash your system!!!</strong> 
+        <input type="checkbox" ng-checked="ctrl.model.log_debug"
+        ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" value="1" id="ctrl.model.log_debug" /><span ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" >debug</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_verbose"
+        ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()" value="1" id="ctrl.model.log_verbose" /><span ng-click="ctrl.model.log_verbose = !ctrl.model.log_verbose; ctrl.submit()">verbose</span>
+        <input type="checkbox" ng-checked="ctrl.model.log_silly"
+        ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()" value="1" id="ctrl.model.log_silly" /><span ng-click="ctrl.model.log_silly = !ctrl.model.log_silly; ctrl.submit()">silly</span>
+        <br>
+    </div>
+</div>
+<div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+    
+<div class="form-group">
+    <label><span translate lib="web">version</span></label>
+    <span ng-class="{'form-control': true}">{{ctrl.model.version}}</span>
+    <label><span translate lib="web">updatedat</span></label>
+    <span ng-class="{'form-control': true}">{{ctrl.model.updatedat}}</span>
+</div>
+
+<div ng-repeat="setting in ctrl.settings" class="form-group" ng-show="!ctrl.isobject(ctrl.model[setting.name]) ">
+    <label>{{ setting.name }} ({{ setting.type }}) </label>
+    <!-- no-model does not work for boolens if type has not been set before parsing ng-type -->
+    
+    <input ng-model="ctrl.model[setting.name]" ng-if="setting.type != 'boolean'"
+        ng-model="ctrl.model[setting.name]"
+        ng-type step="{{ctrl.getstep(setting.name, ctrl.model[setting.name])}}"
+        ng-on-blur="ctrl.submit()"
+        ng-class="{'form-control': setting.type != 'boolean', 'secret': ctrl.model._encrypt.indexOf(setting.name) > -1}" />
+    <input ng-model="ctrl.model[setting.name]" ng-if="setting.type == 'boolean'"
+    type="checkbox" ng-model="ctrl.model[setting.name]"
+    ng-click="ctrl.delayedUpdate()"
+    ng-class="{'form-control': setting.type != 'boolean', 'secret': ctrl.model._encrypt.indexOf(setting.name) > -1}" />
+
+        
+</div>

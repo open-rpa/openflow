@@ -73,6 +73,20 @@ async function initDatabase(parent: Span): Promise<boolean> {
         const jwt: string = Crypt.rootToken();
         const rootuser = Crypt.rootUser();
         Config.dbConfig = await dbConfig.Load(jwt, span);
+        try {
+            var lic = Logger.License;
+            await lic?.validate();
+        } catch (error) {
+            console.log(error);            
+        }
+        try {
+            await Logger.configure(false, true);
+        } catch (error) {
+            console.error(error);
+            process.exit(404);
+        }
+    
+
 
         const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
         const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
@@ -435,13 +449,6 @@ var server: http.Server = null;
         await Config.db.connect(span);
         await initamqp(span);
         Logger.instanse.info("VERSION: " + Config.version, span);
-        if (Logger.License.validlicense) {
-            if (NoderedUtil.IsNullEmpty(Logger.License.data.domain)) {
-                Logger.instanse.info("License valid to " + Logger.License.data.expirationDate, span);
-            } else {
-                Logger.instanse.info("License valid for " + Logger.License.data.domain + " until the " + Logger.License.data.expirationDate, span);
-            }
-        }
         server = await WebServer.configure(Config.baseurl(), span);
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);

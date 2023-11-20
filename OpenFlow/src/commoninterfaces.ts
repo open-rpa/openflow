@@ -16,14 +16,14 @@ export interface i_license_file {
     licenserror: string;
     data: i_license_data;
     ofid(force: boolean): any;
-    validate(): void;
+    validate(): Promise<void>;
     shutdown(): void;
     /**
      *  Generate license file
      *
      * @param options
     */
-    generate2(options: any): any;
+    generate2(options: any, remoteip: string, tuser: TokenUser, span: Span): Promise<any>;
     /**
      *  Generate license file
      *
