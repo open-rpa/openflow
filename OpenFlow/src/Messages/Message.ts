@@ -591,7 +591,7 @@ export class Message {
                             await this.DeleteWorkitem(span);
                             break;
                         case "customcommand":
-                            await this.CustomCommand(span);
+                            await this.CustomCommand(cli, span);
                             break;
                         default:
                             if (command != "error") {
@@ -3457,7 +3457,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
         try {
             try {
-                Logger.instanse.info("Ensure Indexes", span);
+                Logger.instanse.debug("Ensure Indexes", span);
                 await Config.db.ensureindexes(span);
             } catch (error) {
                 
@@ -3465,23 +3465,23 @@ export class Message {
             try {
                 if(Logger.agentdriver != null) {
                     try {
-                        Logger.instanse.info("HouseKeeping Run InstanceCleanup", span);
+                        Logger.instanse.debug("HouseKeeping Run InstanceCleanup", span);
                         await Logger.agentdriver.InstanceCleanup(span);
                     } catch (error) {
                         Logger.instanse.error(error, span);
                     }
                     const jwt: string = Crypt.rootToken();
                     var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true }, jwt }, span);
-                    Logger.instanse.info("HouseKeeping ensure " + agents.length + " agents", span);
+                    Logger.instanse.debug("HouseKeeping ensure " + agents.length + " agents", span);
                     
                     for (let i = 0; i < agents.length; i++) {
                         const agent = agents[i];
                         var pods = await Logger.agentdriver.GetInstancePods(rootuser, jwt, agent, false, span);
                         if(pods == null || pods.length == 0) {
                             if(agent.name != agent.slug) {
-                                Logger.instanse.info("HouseKeeping ensure " + agent.name + " (" + agent.slug + ")", span);
+                                Logger.instanse.debug("HouseKeeping ensure " + agent.name + " (" + agent.slug + ")", span);
                             } else {
-                                Logger.instanse.info("HouseKeeping ensure " + agent.name, span);
+                                Logger.instanse.debug("HouseKeeping ensure " + agent.name, span);
                             }
                             try {
                                 await Logger.agentdriver.EnsureInstance(rootuser, jwt, agent, span);
@@ -3500,7 +3500,7 @@ export class Message {
 
             try {
                 const jwt: string = Crypt.rootToken();
-                Logger.instanse.info("Begin validating builtin roles", span);
+                Logger.instanse.debug("Begin validating builtin roles", span);
                 for(var i = 0; i < Config.db.WellknownIdsArray.length; i++) {
                     const item: Role = await Config.db.GetOne<Role>({ 
                         query: {_id: Config.db.WellknownIdsArray[i], 
@@ -3539,7 +3539,7 @@ export class Message {
             //             doensure = true;
             //         }
             //         if (doensure) {
-            //             Logger.instanse.info("EnsureNoderedInstance for " + user.name, span);
+            //             Logger.instanse.debug("EnsureNoderedInstance for " + user.name, span);
             //             var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
             //             ensuremsg._id = user._id;
             //             var msg: Message = new Message(); msg.jwt = jwt;
@@ -3553,7 +3553,7 @@ export class Message {
         } catch (error) {
         }
 
-        Logger.instanse.info("Begin validating prefered timeseries collections", span);
+        Logger.instanse.debug("Begin validating prefered timeseries collections", span);
         let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
         try {
             let audit = collections.find(x => x.name == "audit");
@@ -3700,7 +3700,7 @@ export class Message {
                 if (DatabaseConnection.usemetadata(collectionname)) {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("Start creating metadata._searchnames for collection " + collectionname, span);
+                        Logger.instanse.debug("Start creating metadata._searchnames for collection " + collectionname, span);
                         await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
                             [
                                 {
@@ -3760,12 +3760,12 @@ export class Message {
                                 { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("Done creating _searchnames for collection " + collectionname, span);
+                        Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span);
                     }
                 } else {
                     let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.info("Start creating _searchnames for collection " + collectionname, span);
+                        Logger.instanse.debug("Start creating _searchnames for collection " + collectionname, span);
                         await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
                             [
                                 {
@@ -3825,7 +3825,7 @@ export class Message {
                                 { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
                             ]
                         )
-                        Logger.instanse.info("Done creating _searchnames for collection " + collectionname, span);
+                        Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span);
                     }
                 }
             }
@@ -4253,7 +4253,7 @@ export class Message {
                     Logger.instanse.error(error, span);
                 }
             } finally {
-                Logger.instanse.info("Completed housekeeping", span);
+                Logger.instanse.debug("Completed housekeeping", span);
             }
         }
         Logger.otel.endSpan(span);
@@ -5148,7 +5148,7 @@ export class Message {
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
-    async CustomCommand(parent: Span): Promise<void> {
+    async CustomCommand(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         let msg: CustomCommandMessage;
         const rootjwt = Crypt.rootToken();
@@ -5422,7 +5422,7 @@ export class Message {
                     if(exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
                 }
                 //  throw new Error("Access denied");
-                msg.result = Logger.License.generate2(data);
+                msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
                 break;            
             default:
                 msg.error = "Unknown custom command";

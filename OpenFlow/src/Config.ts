@@ -3,6 +3,7 @@ import * as https from "https";
 import * as http from "http";
 // import { fetch, toPassportConfig } from "passport-saml-metadata";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Logger } from "./Logger";
@@ -20,105 +21,6 @@ export class dbConfig extends Base {
     public version: string;
     public needsupdate: boolean;
     public updatedat: Date;
-    public skip_history_collections: string;
-    public history_delta_count: number;
-    public allow_skiphistory: boolean;
-    public max_memory_restart_mb: number;
-
-    public amqp_enabled_exchange: boolean;
-    public log_with_trace: boolean;
-    public log_with_colors: boolean;
-    public enable_openai: boolean;
-    public enable_openapi: boolean;
-    public enable_openaiauth: boolean;
-    public openai_token: string;
-
-    public cache_store_type: string;
-    public cache_store_max: number;
-    public cache_store_ttl_seconds;
-    public cache_store_redis_host;
-    public cache_store_redis_port;
-    public cache_store_redis_password;
-    public cache_workitem_queues;
-
-    public log_cache: boolean;
-    public log_amqp: boolean;
-    public log_openapi: boolean;
-    public log_login_provider: boolean;
-    public log_websocket: boolean;
-    public log_oauth: boolean;
-    public log_webserver: boolean;
-    public log_database: boolean;
-    public log_database_queries: boolean;
-    public log_database_queries_ms: number;
-    public log_grafana: boolean;
-    public log_housekeeping: boolean;
-    public log_otel: boolean;
-    public log_blocked_ips: boolean;
-    public otel_debug_log: boolean;
-    public otel_warn_log: boolean;
-    public otel_err_log: boolean;
-    public otel_measure_queued_messages: boolean;
-    public otel_measure__mongodb_watch: boolean;
-    public otel_measure_onlineuser: boolean;
-    public otel_measure_nodeid: boolean;    
-    public log_information: boolean;
-    public log_debug: boolean;
-    public log_verbose: boolean;
-    public log_silly: boolean;
-    public log_to_exchange: boolean;
-    public heapdump_onstop: boolean;
-    public api_bypass_perm_check: boolean;
-    public ignore_expiration: boolean;
-
-    public workitem_queue_monitoring_interval: number;
-    public workitem_queue_monitoring_enabled: boolean;
-    public client_heartbeat_timeout: number;
-    public client_signin_timeout: number;
-    public client_disconnect_signin_error: boolean;
-
-    public amqp_allow_replyto_empty_queuename: boolean;
-    public enable_web_tours: boolean;
-    public enable_nodered_tours: boolean;
-    public grafana_url:string;
-    public housekeeping_skip_collections: string;
-
-    public ensure_indexes: boolean;
-    public text_index_name_fields: string[];
-
-    public auto_create_users: boolean;
-    public auto_create_user_from_jwt: boolean;
-    public auto_create_domains: string[];
-    public persist_user_impersonation: boolean;
-    public ping_clients_interval: number;
-    public websocket_message_callback_timeout: number;
-
-    public otel_trace_pingclients: boolean;
-    public otel_trace_dashboardauth: boolean;
-    public otel_trace_include_query: boolean;
-    public otel_trace_connection_ips: boolean;
-    public otel_trace_mongodb_per_users: boolean;
-    public otel_trace_mongodb_query_per_users: boolean;
-    public otel_trace_mongodb_count_per_users: boolean;    
-    public otel_trace_mongodb_aggregate_per_users: boolean;
-    public otel_trace_mongodb_insert_per_users: boolean;
-    public otel_trace_mongodb_update_per_users: boolean;
-    public otel_trace_mongodb_delete_per_users: boolean;
-
-    public grpc_keepalive_time_ms: number; 
-    public grpc_keepalive_timeout_ms: number;
-    public grpc_http2_min_ping_interval_without_data_ms: number; 
-    public grpc_max_connection_idle_ms: number;
-    public grpc_max_connection_age_ms: number;
-    public grpc_max_connection_age_grace_ms: number;
-    public grpc_http2_max_pings_without_data: number;
-    public grpc_keepalive_permit_without_calls: number;
-    public grpc_max_receive_message_length: number;
-    public grpc_max_send_message_length: number;
-
-
-    public agent_images: NoderedImage[]
-    public agent_node_selector: string;
 
 
     public async Save(jwt: string, parent: Span): Promise<void> {
@@ -142,135 +44,54 @@ export class dbConfig extends Base {
         if (conf.compare(Config.version) == -1) {
             conf.needsupdate = true;
         }
-        Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
 
-        if (!NoderedUtil.IsNullEmpty(conf.auto_create_users)) Config.auto_create_users = Config.parseBoolean(conf.auto_create_users);
-        if (!NoderedUtil.IsNullEmpty(conf.amqp_enabled_exchange)) Config.amqp_enabled_exchange = Config.parseBoolean(conf.amqp_enabled_exchange);
-
-        Logger.instanse.info("db version: " + conf.version, parent);
-
-        Config.skip_history_collections = (!NoderedUtil.IsNullEmpty(conf.skip_history_collections) ? conf.skip_history_collections : Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances"))
-        Config.history_delta_count = parseInt(!NoderedUtil.IsNullEmpty(conf.history_delta_count) ? conf.history_delta_count.toString() : Config.getEnv("history_delta_count", "1000"));
-        Config.allow_skiphistory = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.allow_skiphistory) ? conf.allow_skiphistory : Config.getEnv("allow_skiphistory", "false"));
-        Config.max_memory_restart_mb = parseInt(!NoderedUtil.IsNullEmpty(conf.max_memory_restart_mb) ? conf.max_memory_restart_mb.toString() : Config.getEnv("max_memory_restart_mb", "0"));
-
-        Config.log_with_trace = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_trace) ? conf.log_with_trace : Config.getEnv("log_with_trace", "false"));
-        Config.log_with_colors = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_with_colors) ? conf.log_with_colors : Config.getEnv("log_with_colors", "true"));
-        Config.enable_openai = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openai) ? conf.enable_openai : Config.getEnv("enable_openai", "false"));
-        Config.enable_openapi = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openapi) ? conf.enable_openapi : Config.getEnv("enable_openapi", "true"));
-        Config.enable_openaiauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_openaiauth) ? conf.enable_openaiauth : Config.getEnv("enable_openaiauth", "true"));
-        Config.openai_token = !NoderedUtil.IsNullEmpty(conf.openai_token) ? conf.openai_token : Config.getEnv("openai_token", "");
-        
-        Config.cache_store_type = !NoderedUtil.IsNullEmpty(conf.cache_store_type) ? conf.cache_store_type : Config.getEnv("cache_store_type", "memory");
-        Config.cache_store_max = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_max) ? conf.cache_store_max.toString() : Config.getEnv("cache_store_max", "1000"));
-        Config.cache_store_ttl_seconds = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_ttl_seconds) ? conf.cache_store_ttl_seconds.toString() : Config.getEnv("cache_store_ttl_seconds", "300"));
-        Config.cache_store_redis_host = !NoderedUtil.IsNullEmpty(conf.cache_store_redis_host) ? conf.cache_store_redis_host : Config.getEnv("cache_store_redis_host", "");
-        Config.cache_store_redis_port = parseInt(!NoderedUtil.IsNullEmpty(conf.cache_store_redis_port) ? conf.cache_store_redis_port.toString() : Config.getEnv("cache_store_redis_port", "6379"));
-        Config.cache_store_redis_password = !NoderedUtil.IsNullEmpty(conf.cache_store_redis_password) ? conf.cache_store_redis_password : Config.getEnv("cache_store_redis_password", "");
-        Config.cache_workitem_queues = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.cache_workitem_queues) ? conf.cache_workitem_queues : Config.getEnv("cache_workitem_queues", "false"));
-
-        Config.log_cache = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_cache) ? conf.log_cache : Config.getEnv("log_cache", "false"));
-        Config.log_amqp = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_amqp) ? conf.log_amqp : Config.getEnv("log_amqp", "false"));
-        Config.log_openapi = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_openapi) ? conf.log_openapi : Config.getEnv("log_openapi", "false"));
-        
-        Config.log_login_provider = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_login_provider) ? conf.log_login_provider : Config.getEnv("log_login_provider", "false"));
-        Config.log_websocket = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_websocket) ? conf.log_websocket : Config.getEnv("log_websocket", "false"));
-        Config.log_oauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_oauth) ? conf.log_oauth : Config.getEnv("log_oauth", "false"));
-        Config.log_webserver = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_webserver) ? conf.log_webserver : Config.getEnv("log_webserver", "false"));
-        Config.log_database = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_database) ? conf.log_database : Config.getEnv("log_database", "false"));
-        Config.log_database_queries = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_database_queries) ? conf.log_database_queries : Config.getEnv("log_database_queries", "false"));
-        Config.log_database_queries_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.log_database_queries_ms) ? conf.log_database_queries_ms.toString() : Config.getEnv("log_database_queries_ms", "0"));
-
-        Config.log_grafana = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_grafana) ? conf.log_grafana : Config.getEnv("log_grafana", "false"));
-        Config.log_housekeeping = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_housekeeping) ? conf.log_housekeeping : Config.getEnv("log_housekeeping", "false"));
-        Config.log_otel = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_otel) ? conf.log_otel : Config.getEnv("log_otel", "false"));
-        Config.log_blocked_ips = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_blocked_ips) ? conf.log_blocked_ips : Config.getEnv("log_blocked_ips", "true"));
-        Config.otel_debug_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_debug_log) ? conf.otel_debug_log : Config.getEnv("otel_debug_log", "false"));
-        Config.otel_warn_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_warn_log) ? conf.otel_warn_log : Config.getEnv("otel_warn_log", "false"));
-        Config.otel_err_log = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_err_log) ? conf.otel_err_log : Config.getEnv("otel_err_log", "false"));
-        Config.otel_measure_queued_messages = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_queued_messages) ? conf.otel_measure_queued_messages : Config.getEnv("otel_measure_queued_messages", "false"));
-        Config.otel_measure__mongodb_watch = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure__mongodb_watch) ? conf.otel_measure__mongodb_watch : Config.getEnv("otel_measure__mongodb_watch", "false"));
-        Config.otel_measure_onlineuser = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_onlineuser) ? conf.otel_measure_onlineuser : Config.getEnv("otel_measure_onlineuser", "false"));
-        Config.otel_measure_nodeid = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_measure_nodeid) ? conf.otel_measure_nodeid : Config.getEnv("otel_measure_nodeid", "false"));
-
-
-        Config.log_information = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_information) ? conf.log_information : Config.getEnv("log_information", "true"));
-        Config.log_debug = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_debug) ? conf.log_debug : Config.getEnv("log_debug", "false"));
-        Config.log_verbose = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_verbose) ? conf.log_verbose : Config.getEnv("log_verbose", "false"));
-        Config.log_silly = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_silly) ? conf.log_silly : Config.getEnv("log_silly", "false"));
-        Config.log_to_exchange = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.log_to_exchange) ? conf.log_to_exchange : Config.getEnv("log_to_exchange", "false"));
-        Config.heapdump_onstop = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.heapdump_onstop) ? conf.heapdump_onstop : Config.getEnv("heapdump_onstop", "false"));
-
-        Config.client_heartbeat_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_heartbeat_timeout) ? conf.client_heartbeat_timeout.toString() : Config.getEnv("client_heartbeat_timeout", "60"));
-        Config.client_signin_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.client_signin_timeout) ? conf.client_signin_timeout.toString() : Config.getEnv("client_signin_timeout", "120"));
-        Config.client_disconnect_signin_error = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.client_disconnect_signin_error) ? conf.client_disconnect_signin_error : Config.getEnv("client_disconnect_signin_error", "false"));
-        Config.api_bypass_perm_check = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.api_bypass_perm_check) ? conf.api_bypass_perm_check : Config.getEnv("api_bypass_perm_check", "false"));
-        Config.ignore_expiration = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ignore_expiration) ? conf.ignore_expiration : Config.getEnv("ignore_expiration", "false"));
-        
-
-
-
-        Config.workitem_queue_monitoring_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_interval) ? conf.workitem_queue_monitoring_interval.toString() : Config.getEnv("workitem_queue_monitoring_interval", "10000"));
-        Config.workitem_queue_monitoring_enabled = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.workitem_queue_monitoring_enabled) ? conf.workitem_queue_monitoring_enabled : Config.getEnv("workitem_queue_monitoring_enabled", "true"));
-
-        Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.amqp_allow_replyto_empty_queuename) ? conf.amqp_allow_replyto_empty_queuename : Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
-        Config.enable_web_tours = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_web_tours) ? conf.enable_web_tours : Config.getEnv("enable_web_tours", "true"));
-        Config.enable_nodered_tours = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.enable_nodered_tours) ? conf.enable_nodered_tours : Config.getEnv("enable_nodered_tours", "true"));
-        Config.grafana_url = !NoderedUtil.IsNullEmpty(conf.grafana_url) ? conf.grafana_url : Config.getEnv("grafana_url", "");
-        Config.housekeeping_skip_collections = !NoderedUtil.IsNullEmpty(conf.housekeeping_skip_collections) ? conf.housekeeping_skip_collections : Config.getEnv("housekeeping_skip_collections", "");
-
-
-        Config.ensure_indexes = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.ensure_indexes) ? conf.ensure_indexes : Config.getEnv("ensure_indexes", "true"));
-        Config.text_index_name_fields = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.text_index_name_fields) ? conf.text_index_name_fields.toString() : Config.getEnv("text_index_name_fields", "name,_names"))
-        Config.auto_create_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_users) ? conf.auto_create_users : Config.getEnv("auto_create_users", "false"))
-
-        Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
-        Config.auto_create_user_from_jwt = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.auto_create_user_from_jwt) ? conf.auto_create_user_from_jwt : Config.getEnv("auto_create_user_from_jwt", ""))
-        Config.auto_create_domains = Config.parseArray(!NoderedUtil.IsNullEmpty(conf.auto_create_domains) ? conf.auto_create_domains.toString() : Config.getEnv("auto_create_domains", ""))
-        Config.persist_user_impersonation = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.persist_user_impersonation) ? conf.persist_user_impersonation : Config.getEnv("persist_user_impersonation", "true"))
-        Config.ping_clients_interval = parseInt(!NoderedUtil.IsNullEmpty(conf.ping_clients_interval) ? conf.ping_clients_interval.toString() : Config.getEnv("ping_clients_interval", (10000).toString()))
-        Config.websocket_message_callback_timeout = parseInt(!NoderedUtil.IsNullEmpty(conf.websocket_message_callback_timeout) ? conf.websocket_message_callback_timeout.toString() : Config.getEnv("websocket_message_callback_timeout", (10000).toString()))
-
-        Config.otel_trace_pingclients = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_pingclients) ? conf.otel_trace_pingclients : Config.getEnv("otel_trace_pingclients", "false"));
-        Config.otel_trace_dashboardauth = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_dashboardauth) ? conf.otel_trace_dashboardauth : Config.getEnv("otel_trace_dashboardauth", "false"));
-        Config.otel_trace_include_query = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_include_query) ? conf.otel_trace_include_query : Config.getEnv("otel_trace_include_query", "false"));
-        Config.otel_trace_connection_ips = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_connection_ips) ? conf.otel_trace_connection_ips : Config.getEnv("otel_trace_connection_ips", "false"));
-        Config.otel_trace_mongodb_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_per_users) ? conf.otel_trace_mongodb_per_users : Config.getEnv("otel_trace_mongodb_per_users", "false"));
-        Config.otel_trace_mongodb_query_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_query_per_users) ? conf.otel_trace_mongodb_query_per_users : Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
-        Config.otel_trace_mongodb_count_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_count_per_users) ? conf.otel_trace_mongodb_count_per_users : Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
-        Config.otel_trace_mongodb_aggregate_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_aggregate_per_users) ? conf.otel_trace_mongodb_aggregate_per_users : Config.getEnv("otel_trace_mongodb_aggregate_per_users", "false"));
-        Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_insert_per_users) ? conf.otel_trace_mongodb_insert_per_users : Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
-        Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_update_per_users) ? conf.otel_trace_mongodb_update_per_users : Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
-        Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(!NoderedUtil.IsNullEmpty(conf.otel_trace_mongodb_delete_per_users) ? conf.otel_trace_mongodb_delete_per_users : Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
-
-        Config.grpc_keepalive_time_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_keepalive_time_ms) ? conf.grpc_keepalive_time_ms.toString() : Config.getEnv("grpc_keepalive_time_ms", (-1).toString()))
-        Config.grpc_keepalive_timeout_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_keepalive_timeout_ms) ? conf.grpc_keepalive_timeout_ms.toString() : Config.getEnv("grpc_keepalive_timeout_ms", (-1).toString()))
-        Config.grpc_http2_min_ping_interval_without_data_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_http2_min_ping_interval_without_data_ms) ? conf.grpc_http2_min_ping_interval_without_data_ms.toString() : Config.getEnv("grpc_http2_min_ping_interval_without_data_ms", (-1).toString()))
-        Config.grpc_max_connection_idle_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_connection_idle_ms) ? conf.grpc_max_connection_idle_ms.toString() : Config.getEnv("grpc_max_connection_idle_ms", (-1).toString()))
-        Config.grpc_max_connection_age_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_connection_age_ms) ? conf.grpc_max_connection_age_ms.toString() : Config.getEnv("grpc_max_connection_age_ms", (-1).toString()))
-        Config.grpc_max_connection_age_grace_ms = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_connection_age_grace_ms) ? conf.grpc_max_connection_age_grace_ms.toString() : Config.getEnv("grpc_max_connection_age_grace_ms", (-1).toString()))
-        Config.grpc_http2_max_pings_without_data = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_http2_max_pings_without_data) ? conf.grpc_http2_max_pings_without_data.toString() : Config.getEnv("grpc_http2_max_pings_without_data", (-1).toString()))
-        Config.grpc_keepalive_permit_without_calls = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_keepalive_permit_without_calls) ? conf.grpc_keepalive_permit_without_calls.toString() : Config.getEnv("grpc_keepalive_permit_without_calls", (-1).toString()))
-        Config.grpc_max_receive_message_length = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_receive_message_length) ? conf.grpc_max_receive_message_length.toString() : Config.getEnv("grpc_max_receive_message_length", (-1).toString()))
-        Config.grpc_max_send_message_length = parseInt(!NoderedUtil.IsNullEmpty(conf.grpc_max_send_message_length) ? conf.grpc_max_send_message_length.toString() : Config.getEnv("grpc_max_send_message_length", (-1).toString()))
+        var keys = Object.keys(conf);
+        for(var i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            const value = conf[key];
+            try {
+                if(key.startsWith("_")) continue;
+                if(NoderedUtil.IsNullEmpty(value)) continue;
+                if(["name", "version"].indexOf(key) > -1 ) continue;
+                if(key == "license_key") {
+                    if(os.hostname().toLowerCase() == "nixos") {
+                        continue;
+                    }
+                }
     
-    
-
-        Config.agent_node_selector = (!NoderedUtil.IsNullEmpty(conf.agent_node_selector) ? conf.agent_node_selector : Config.getEnv("agent_node_selector", ""))
-
-        if(!NoderedUtil.IsNullUndefinded(conf.agent_images)) {
-            Config.agent_images = conf.agent_images;
-            if(typeof conf.agent_images === "string") conf.agent_images = JSON.parse(conf.agent_images);
-        } else {
-            Config.agent_images = JSON.parse(Config.getEnv("agent_images", 
-                JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
-            ));
+                if (Object.prototype.hasOwnProperty.call(Config, key)) {
+                    if(typeof Config[key] === "boolean") {
+                        // console.log("Setting boolen " + key + " to " + conf[key]);
+                        Config[key] = Config.parseBoolean(conf[key]);
+                    } else if(typeof Config[key] === "number") {
+                        // console.log("Setting number " + key + " to " + conf[key]);
+                        Config[key] = parseInt(conf[key]);
+                    } else if(Array.isArray(Config[key])) {
+                        // console.log("Setting array " + key + " to " + conf[key]);
+                        if(Array.isArray(conf[key])) {
+                            Config[key] = conf[key];
+                        } else {
+                            Config[key] = Config.parseArray(conf[key]);
+                        }
+                    } else if(typeof Config[key] === "string") {
+                        // console.log("Setting string " + key + " to " + conf[key]);
+                        Config[key] = conf[key];
+                    } else {
+                        // console.log("Setting Unknown " + key + " to " + conf[key]);
+                        Config[key] = conf[key];
+                    }
+                }
+            } catch (error) {
+                Logger.instanse.error("Error setting config " + keys + " to " + value, parent);
+            }
         }
-        Logger.reload();
+        await Logger.reload();
         return conf;
     }
     public static async Reload(jwt: string, parent: Span): Promise<void> {
         Config.dbConfig = await dbConfig.Load(jwt, parent);
+
+        Logger.instanse.info("Reloaded config version " + Config.dbConfig._version, parent);
     }
 }
 export class Config {
@@ -298,275 +119,6 @@ export class Config {
         Config.log_websocket = false;
         Config.log_oauth = false;
         Config.unittesting = true;
-    }
-    public static reload(): void {
-        Config.getversion();
-        Config.log_with_colors = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
-        Config.enable_openai = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
-        Config.enable_openapi = Config.parseBoolean(Config.getEnv("enable_openapi", "true"));
-        Config.enable_openaiauth = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
-        Config.openai_token = Config.getEnv("openai_token", "");
-
-        Config.log_with_trace = Config.parseBoolean(Config.getEnv("log_with_trace", "false"));
-
-        Config.log_cache = Config.parseBoolean(Config.getEnv("log_cache", "false"));
-        Config.log_amqp = Config.parseBoolean(Config.getEnv("log_amqp", "false"));
-        Config.log_openapi = Config.parseBoolean(Config.getEnv("log_openapi", "false"));        
-        Config.log_login_provider = Config.parseBoolean(Config.getEnv("log_login_provider", "false"));
-        Config.log_websocket = Config.parseBoolean(Config.getEnv("log_websocket", "false"));
-        Config.log_oauth = Config.parseBoolean(Config.getEnv("log_oauth", "false"));
-        Config.log_webserver = Config.parseBoolean(Config.getEnv("log_webserver", "false"));
-        Config.log_database = Config.parseBoolean(Config.getEnv("log_database", "false"));
-        Config.log_database_queries = Config.parseBoolean(Config.getEnv("log_database_queries", "false"));
-        Config.log_database_queries_ms = parseInt(Config.getEnv("log_database_queries_ms", "0")); 
-        Config.log_grafana = Config.parseBoolean(Config.getEnv("log_grafana", "false"));
-        Config.log_housekeeping = Config.parseBoolean(Config.getEnv("log_housekeeping", "false"));
-        Config.log_otel = Config.parseBoolean(Config.getEnv("log_otel", "false"));
-        Config.log_blocked_ips = Config.parseBoolean(Config.getEnv("log_blocked_ips", "true"));
-        Config.log_information = Config.parseBoolean(Config.getEnv("log_information", "true"));
-        Config.log_debug = Config.parseBoolean(Config.getEnv("log_debug", "false"));
-        Config.log_verbose = Config.parseBoolean(Config.getEnv("log_verbose", "false"));
-        Config.log_silly = Config.parseBoolean(Config.getEnv("log_silly", "false"));
-        Config.log_to_exchange = Config.parseBoolean(Config.getEnv("log_to_exchange", "false"));
-        
-        Config.heapdump_onstop = Config.parseBoolean(Config.getEnv("heapdump_onstop", "false"));
-
-        Config.amqp_allow_replyto_empty_queuename = Config.parseBoolean(Config.getEnv("amqp_allow_replyto_empty_queuename", "false"));
-
-        Config.openflow_uniqueid = Config.getEnv("openflow_uniqueid", "");
-        Config.enable_openflow_amqp = Config.parseBoolean(Config.getEnv("enable_openflow_amqp", "false"));
-        Config.openflow_amqp_expiration = parseInt(Config.getEnv("openflow_amqp_expiration", (60 * 1000 * 25).toString())); // 25 min
-        Config.amqp_prefetch = parseInt(Config.getEnv("amqp_prefetch", "25"));
-        Config.enable_entity_restriction = Config.parseBoolean(Config.getEnv("enable_entity_restriction", "false"));
-        Config.enable_web_tours = Config.parseBoolean(Config.getEnv("enable_web_tours", "true"));
-        Config.enable_nodered_tours = Config.parseBoolean(Config.getEnv("enable_nodered_tours", "true"));
-        Config.grafana_url = Config.getEnv("grafana_url", "");
-        Config.auto_hourly_housekeeping = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping", "true"));
-        Config.housekeeping_skip_collections = Config.getEnv("housekeeping_skip_collections", "");
-        Config.workitem_queue_monitoring_enabled = Config.parseBoolean(Config.getEnv("workitem_queue_monitoring_enabled", "true"));
-        Config.workitem_queue_monitoring_interval = parseInt(Config.getEnv("workitem_queue_monitoring_interval", (10 * 1000).toString())); // 10 sec
-
-
-        Config.getting_started_url = Config.getEnv("getting_started_url", "");
-
-        Config.NODE_ENV = Config.getEnv("NODE_ENV", "development");
-        Config.HTTP_PROXY = Config.getEnv("HTTP_PROXY", "");
-        Config.HTTPS_PROXY = Config.getEnv("HTTPS_PROXY", "");
-        Config.NO_PROXY = Config.getEnv("NO_PROXY", "");
-        Config.agent_HTTP_PROXY = Config.getEnv("agent_HTTP_PROXY", "");
-        Config.agent_HTTPS_PROXY = Config.getEnv("agent_HTTPS_PROXY", "");
-        Config.agent_NO_PROXY = Config.getEnv("agent_NO_PROXY", "");
-        
-
-        Config.stripe_api_key = Config.getEnv("stripe_api_key", "");
-        Config.stripe_api_secret = Config.getEnv("stripe_api_secret", "");
-        Config.stripe_force_vat = Config.parseBoolean(Config.getEnv("stripe_force_vat", "false"));
-        Config.stripe_force_checkout = Config.parseBoolean(Config.getEnv("stripe_force_checkout", "true"));
-        Config.stripe_allow_promotion_codes = Config.parseBoolean(Config.getEnv("stripe_allow_promotion_codes", "true"));
-
-        Config.supports_watch = Config.parseBoolean(Config.getEnv("supports_watch", "false"));
-        Config.ensure_indexes = Config.parseBoolean(Config.getEnv("ensure_indexes", "true"));
-        Config.text_index_name_fields = Config.parseArray(Config.getEnv("text_index_name_fields", "name,_names"));
-
-        Config.auto_create_users = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
-        Config.auto_create_user_from_jwt = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
-        Config.auto_create_domains = Config.parseArray(Config.getEnv("auto_create_domains", ""));
-        Config.persist_user_impersonation = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
-        Config.ping_clients_interval = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
-        Config.use_ingress_beta1_syntax = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
-        Config.use_openshift_routes = Config.parseBoolean(Config.getEnv("use_openshift_routes", "false"));
-        Config.agent_image_pull_secrets = Config.parseArray(Config.getEnv("agent_image_pull_secrets", ""));
-
-        
-
-        Config.auto_create_personal_nodered_group = Config.parseBoolean(Config.getEnv("auto_create_personal_nodered_group", "false"));
-        Config.auto_create_personal_noderedapi_group = Config.parseBoolean(Config.getEnv("auto_create_personal_noderedapi_group", "false"));
-        Config.force_add_admins = Config.parseBoolean(Config.getEnv("force_add_admins", "true"));
-        Config.validate_emails = Config.parseBoolean(Config.getEnv("validate_emails", "false"));
-        Config.forgot_pass_emails = Config.parseBoolean(Config.getEnv("forgot_pass_emails", "false"));
-        Config.smtp_service = Config.getEnv("smtp_service", "");
-        Config.smtp_from = Config.getEnv("smtp_from", "");
-        Config.smtp_user = Config.getEnv("smtp_user", "");
-        Config.smtp_pass = Config.getEnv("smtp_service", "");
-        Config.smtp_url = Config.getEnv("smtp_url", "");
-        Config.debounce_lookup = Config.parseBoolean(Config.getEnv("debounce_lookup", "false"));
-        Config.validate_emails_disposable = Config.parseBoolean(Config.getEnv("validate_emails_disposable", "false"));
-
-
-
-        Config.tls_crt = Config.getEnv("tls_crt", "");
-        Config.tls_key = Config.getEnv("tls_key", "");
-        Config.tls_ca = Config.getEnv("tls_ca", "");
-        Config.tls_passphrase = Config.getEnv("tls_passphrase", "");
-
-        Config.cache_store_type = Config.getEnv("cache_store_type", "memory");
-        Config.cache_store_max = parseInt(Config.getEnv("cache_store_max", "1000"));
-        Config.cache_store_ttl_seconds = parseInt(Config.getEnv("cache_store_ttl_seconds", "300"));
-        Config.cache_store_redis_host = Config.getEnv("cache_store_redis_host", "");
-        Config.cache_store_redis_port = parseInt(Config.getEnv("cache_store_redis_port", "6379"));
-        Config.cache_store_redis_password = Config.getEnv("cache_store_redis_password", "");
-        Config.cache_workitem_queues = Config.parseBoolean(Config.getEnv("cache_workitem_queues", "false"));
-
-        Config.oidc_access_token_ttl = parseInt(Config.getEnv("oidc_access_token_ttl", "480"));
-        Config.oidc_authorization_code_ttl = parseInt(Config.getEnv("oidc_authorization_code_ttl", "480"));
-        Config.oidc_client_credentials_ttl = parseInt(Config.getEnv("oidc_client_credentials_ttl", "480"));
-        Config.oidc_refresh_token_ttl = parseInt(Config.getEnv("oidc_refresh_token_ttl", "20160"));
-        Config.oidc_session_ttl = parseInt(Config.getEnv("oidc_session_ttl", "20160"));
-
-        Config.api_rate_limit = Config.parseBoolean(Config.getEnv("api_rate_limit", "true"));
-        Config.api_rate_limit_points = parseInt(Config.getEnv("api_rate_limit_points", "60"));
-        Config.api_rate_limit_duration = parseInt(Config.getEnv("api_rate_limit_duration", "1"));
-        Config.socket_rate_limit = Config.parseBoolean(Config.getEnv("socket_rate_limit", "true"));
-        Config.socket_rate_limit_points = parseInt(Config.getEnv("socket_rate_limit_points", "30"));
-        Config.socket_rate_limit_points_disconnect = parseInt(Config.getEnv("socket_rate_limit_points_disconnect", "100"));
-        Config.socket_rate_limit_duration = parseInt(Config.getEnv("socket_rate_limit_duration", "1"));
-        Config.socket_error_rate_limit_points = parseInt(Config.getEnv("socket_error_rate_limit_points", "16"));
-        Config.socket_error_rate_limit_duration = parseInt(Config.getEnv("socket_error_rate_limit_duration", "2"));
-
-        Config.client_heartbeat_timeout = parseInt(Config.getEnv("client_heartbeat_timeout", "60"));
-        Config.client_signin_timeout = parseInt(Config.getEnv("client_signin_timeout", "120"));
-        Config.client_disconnect_signin_error = Config.parseBoolean(Config.getEnv("client_disconnect_signin_error", "false"));
-
-
-        Config.expected_max_roles = parseInt(Config.getEnv("expected_max_roles", "4000"));
-        Config.decorate_roles_fetching_all_roles = Config.parseBoolean(Config.getEnv("decorate_roles_fetching_all_roles", "true"));
-        Config.update_acl_based_on_groups = Config.parseBoolean(Config.getEnv("update_acl_based_on_groups", "true"));
-        Config.allow_merge_acl = Config.parseBoolean(Config.getEnv("allow_merge_acl", "false"));
-        Config.multi_tenant = Config.parseBoolean(Config.getEnv("multi_tenant", "false"));
-        Config.cleanup_on_delete_customer = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer", "false"));
-        Config.cleanup_on_delete_user = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user", "false"));
-
-        Config.api_bypass_perm_check = Config.parseBoolean(Config.getEnv("api_bypass_perm_check", "false"));
-        Config.ignore_expiration = Config.parseBoolean(Config.getEnv("ignore_expiration", "false"));
-        Config.force_audit_ts = Config.parseBoolean(Config.getEnv("force_audit_ts", "false"));
-        Config.force_dbusage_ts = Config.parseBoolean(Config.getEnv("force_dbusage_ts", "false"));
-        Config.migrate_audit_to_ts = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts", "true"));
-
-        Config.websocket_package_size = parseInt(Config.getEnv("websocket_package_size", "25000"), 10);
-        Config.websocket_max_package_count = parseInt(Config.getEnv("websocket_max_package_count", "1024"), 10);
-        Config.websocket_message_callback_timeout = parseInt(Config.getEnv("websocket_message_callback_timeout", "3600"), 10);
-        Config.protocol = Config.getEnv("protocol", "http"); // used by personal nodered and baseurl()
-        Config.port = parseInt(Config.getEnv("port", "80"));
-        Config.domain = Config.getEnv("domain", "localhost"); // sent to website and used in baseurl()
-        Config.cookie_secret = Config.getEnv("cookie_secret", "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu");
-
-        Config.amqp_reply_expiration = parseInt(Config.getEnv("amqp_reply_expiration", "10000")); // 10 seconds
-        Config.amqp_force_queue_prefix = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix", "false"));
-        Config.amqp_force_exchange_prefix = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix", "false"));
-        Config.amqp_force_sender_has_read = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_read", "true"));
-        Config.amqp_force_sender_has_invoke = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_invoke", "false"));
-        Config.amqp_force_consumer_has_update = Config.parseBoolean(Config.getEnv("amqp_force_consumer_has_update", "false"));
-
-        Config.amqp_enabled_exchange = Config.parseBoolean(Config.getEnv("amqp_enabled_exchange", "false"));
-        Config.amqp_url = Config.getEnv("amqp_url", "amqp://localhost"); // used to register queues and by personal nodered
-        Config.amqp_username = Config.getEnv("amqp_username", "guest"); // used to talk wth rabbitmq api, used if not present in amqp_url
-        Config.amqp_password = Config.getEnv("amqp_password", "guest"); // used to talk wth rabbitmq api, used if not present in amqp_url
-        Config.amqp_check_for_consumer = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer", "true"));
-        Config.amqp_check_for_consumer_count = Config.parseBoolean(Config.getEnv("amqp_check_for_consumer_count", "false"));
-        Config.amqp_default_expiration = parseInt(Config.getEnv("amqp_default_expiration", "10000")); // 10 seconds
-        Config.amqp_requeue_time = parseInt(Config.getEnv("amqp_requeue_time", "1000")); // 1 seconds    
-        Config.amqp_dlx = Config.getEnv("amqp_dlx", "openflow-dlx");  // Dead letter exchange, used to pickup dead or timeout messages
-
-        Config.mongodb_url = Config.getEnv("mongodb_url", "mongodb://localhost:27017");
-        Config.mongodb_db = Config.getEnv("mongodb_db", "openflow");
-        Config.mongodb_minpoolsize = parseInt(Config.getEnv("mongodb_minpoolsize", "25"));
-        Config.mongodb_maxpoolsize = parseInt(Config.getEnv("mongodb_maxpoolsize", "25"));
-
-        Config.skip_history_collections = Config.getEnv("skip_history_collections", "audit,openrpa_instances,workflow_instances");
-        Config.history_delta_count = parseInt(Config.getEnv("history_delta_count", "1000"));
-        Config.allow_skiphistory = Config.parseBoolean(Config.getEnv("allow_skiphistory", "false"));
-        Config.max_memory_restart_mb = parseInt(Config.getEnv("max_memory_restart_mb", "0"));
-
-        Config.saml_issuer = Config.getEnv("saml_issuer", "the-issuer"); // define uri of STS, also sent to personal nodereds
-        Config.aes_secret = Config.getEnv("aes_secret", "");
-        Config.signing_crt = Config.getEnv("signing_crt", "");
-        Config.singing_key = Config.getEnv("singing_key", "");
-        Config.wapid_mail = Config.getEnv("wapid_mail", "");
-        Config.wapid_pub = Config.getEnv("wapid_pub", "");
-        Config.wapid_key = Config.getEnv("wapid_key", "");
-        Config.shorttoken_expires_in = Config.getEnv("shorttoken_expires_in", "5m");
-        Config.longtoken_expires_in = Config.getEnv("longtoken_expires_in", "365d");
-        Config.downloadtoken_expires_in = Config.getEnv("downloadtoken_expires_in", "15m");
-        Config.personalnoderedtoken_expires_in = Config.getEnv("personalnoderedtoken_expires_in", "365d");
-
-        Config.nodered_images = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
-        Config.agent_images = JSON.parse(Config.getEnv("agent_images", 
-        JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"NodeRED+Chromium", "image":"openiap/noderedagent:chromium", "chromium": true, "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} ])
-        ));
-        Config.agent_domain_schema = Config.getEnv("agent_domain_schema", "");
-        Config.agent_node_selector = Config.getEnv("agent_node_selector", "");
-
-        Config.agent_apiurl = Config.getEnv("agent_apiurl", "");
-        Config.agent_oidc_config = Config.getEnv("agent_oidc_config", "");
-        Config.agent_oidc_client_id = Config.getEnv("agent_oidc_client_id", "");
-        Config.agent_oidc_client_secret = Config.getEnv("agent_oidc_client_secret", "");
-        Config.agent_oidc_userinfo_endpoint = Config.getEnv("agent_oidc_userinfo_endpoint", "");
-        Config.agent_oidc_issuer = Config.getEnv("agent_oidc_issuer", "");
-        Config.agent_oidc_authorization_endpoint = Config.getEnv("agent_oidc_authorization_endpoint", "");
-        Config.agent_oidc_token_endpoint = Config.getEnv("agent_oidc_token_endpoint", "");
-    
-        Config.saml_federation_metadata = Config.getEnv("saml_federation_metadata", "");
-        Config.api_ws_url = Config.getEnv("api_ws_url", "");
-        Config.nodered_ws_url = Config.getEnv("nodered_ws_url", "");
-        Config.nodered_saml_entrypoint = Config.getEnv("nodered_saml_entrypoint", "");
-        Config.agent_docker_entrypoints = Config.getEnv("agent_docker_entrypoints", "web");
-        Config.agent_docker_use_project = Config.parseBoolean(Config.getEnv("agent_docker_use_project", "false"));
-        Config.agent_docker_certresolver = Config.getEnv("agent_docker_certresolver", "");
-        Config.namespace = Config.getEnv("namespace", ""); // also sent to website 
-        Config.nodered_domain_schema = Config.getEnv("nodered_domain_schema", ""); // also sent to website
-        Config.nodered_initial_liveness_delay = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
-        Config.nodered_allow_nodeselector = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
-        // Config.nodered_requests_memory = Config.getEnv("nodered_requests_memory", "");
-        // Config.nodered_requests_cpu = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
-        // Config.nodered_limits_memory = Config.getEnv("nodered_limits_memory", "");
-        // Config.nodered_limits_cpu = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
-
-        Config.nodered_liveness_failurethreshold = parseInt(Config.getEnv("nodered_liveness_failurethreshold", "5"));
-        Config.nodered_liveness_timeoutseconds = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
-        Config.noderedcatalogues = Config.getEnv("noderedcatalogues", "");
-
-        Config.otel_measure_nodeid = Config.parseBoolean(Config.getEnv("otel_measure_nodeid", "false"));
-        Config.otel_measure_queued_messages = Config.parseBoolean(Config.getEnv("otel_measure_queued_messages", "false"));
-        Config.otel_measure__mongodb_watch = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch", "false"));
-        Config.otel_measure_onlineuser = Config.parseBoolean(Config.getEnv("otel_measure_onlineuser", "false"));
-        Config.enable_analytics = Config.parseBoolean(Config.getEnv("enable_analytics", "true"));
-        Config.enable_detailed_analytic = Config.parseBoolean(Config.getEnv("enable_detailed_analytic", "false"));
-
-        Config.otel_debug_log = Config.parseBoolean(Config.getEnv("otel_debug_log", "false"));
-        Config.otel_warn_log = Config.parseBoolean(Config.getEnv("otel_warn_log", "false"));
-        Config.otel_err_log = Config.parseBoolean(Config.getEnv("otel_err_log", "false"));
-        Config.otel_trace_url = Config.getEnv("otel_trace_url", "");
-        Config.otel_metric_url = Config.getEnv("otel_metric_url", "");
-        Config.otel_trace_interval = parseInt(Config.getEnv("otel_trace_interval", "5000"));
-        Config.otel_metric_interval = parseInt(Config.getEnv("otel_metric_interval", "5000"));
-
-        Config.otel_trace_pingclients = Config.parseBoolean(Config.getEnv("otel_trace_pingclients", "false"));
-        Config.otel_trace_dashboardauth = Config.parseBoolean(Config.getEnv("otel_trace_dashboardauth", "false"));
-        Config.otel_trace_include_query = Config.parseBoolean(Config.getEnv("otel_trace_include_query", "false"));
-        Config.otel_trace_connection_ips = Config.parseBoolean(Config.getEnv("otel_trace_connection_ips", "false"));
-        Config.otel_trace_mongodb_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_per_users", "false"));
-        Config.otel_trace_mongodb_query_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_query_per_users", "false"));
-        Config.otel_trace_mongodb_count_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_count_per_users", "false"));
-        Config.otel_trace_mongodb_aggregate_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_aggregate_per_users", "false"));
-        Config.otel_trace_mongodb_insert_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_insert_per_users", "false"));
-        Config.otel_trace_mongodb_update_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
-        Config.otel_trace_mongodb_delete_per_users = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
-
-        Config.grpc_keepalive_time_ms = parseInt(Config.getEnv("grpc_keepalive_time_ms", "-1"));
-        Config.grpc_keepalive_timeout_ms = parseInt(Config.getEnv("grpc_keepalive_timeout_ms", "-1"));
-        Config.grpc_http2_min_ping_interval_without_data_ms = parseInt(Config.getEnv("grpc_http2_min_ping_interval_without_data_ms", "-1"));
-        Config.grpc_max_connection_idle_ms = parseInt(Config.getEnv("grpc_max_connection_idle_ms", "-1"));
-        Config.grpc_max_connection_age_ms = parseInt(Config.getEnv("grpc_max_connection_age_ms", "-1"));
-        Config.grpc_max_connection_age_grace_ms = parseInt(Config.getEnv("grpc_max_connection_age_grace_ms", "-1"));
-        Config.grpc_http2_max_pings_without_data = parseInt(Config.getEnv("grpc_http2_max_pings_without_data", "-1"));
-        Config.grpc_keepalive_permit_without_calls = parseInt(Config.getEnv("grpc_keepalive_permit_without_calls", "-1"));
-        Config.grpc_max_receive_message_length = parseInt(Config.getEnv("grpc_max_receive_message_length", "-1"));
-        Config.grpc_max_send_message_length = parseInt(Config.getEnv("grpc_max_send_message_length", "-1"));
-    
-
-        Config.validate_user_form = Config.getEnv("validate_user_form", "");
-    }
-    public static load_drom_db(): void {
     }
     public static unittesting: boolean = false;
     public static db: DatabaseConnection = null;
@@ -760,8 +312,6 @@ export class Config {
     public static downloadtoken_expires_in: string = Config.getEnv("downloadtoken_expires_in", "15m");
     public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in", "365d");
 
-    // public static nodered_image: string = Config.getEnv("nodered_image", "openiap/nodered");
-    public static nodered_images: NoderedImage[] = JSON.parse(Config.getEnv("nodered_images", "[{\"name\":\"Latest Plain Nodered\", \"image\":\"openiap/nodered\"}]"));
     public static agent_images: NoderedImage[] = JSON.parse(Config.getEnv("agent_images", 
         JSON.stringify([{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} , {"name":"PowerShell 7.3", "image":"openiap/nodeagent:pwsh", "languages": ["powershell"]} ])
     ));
@@ -790,10 +340,6 @@ export class Config {
     public static nodered_domain_schema: string = Config.getEnv("nodered_domain_schema", ""); // also sent to website
     public static nodered_initial_liveness_delay: number = parseInt(Config.getEnv("nodered_initial_liveness_delay", "60"));
     public static nodered_allow_nodeselector: boolean = Config.parseBoolean(Config.getEnv("nodered_allow_nodeselector", "false"));
-    // public static nodered_requests_memory: string = Config.getEnv("nodered_requests_memory", "");
-    // public static nodered_requests_cpu: string = Config.getEnv("nodered_requests_cpu", ""); // 1000m = 1vCPU
-    // public static nodered_limits_memory: string = Config.getEnv("nodered_limits_memory", "");
-    // public static nodered_limits_cpu: string = Config.getEnv("nodered_limits_cpu", ""); // 1000m = 1vCPU
     public static nodered_liveness_failurethreshold: number = parseInt(Config.getEnv("nodered_liveness_failurethreshold", "5"));
     public static nodered_liveness_timeoutseconds: number = parseInt(Config.getEnv("nodered_liveness_timeoutseconds", "5"));
     public static noderedcatalogues: string = Config.getEnv("noderedcatalogues", "");
@@ -823,18 +369,19 @@ export class Config {
     public static otel_trace_mongodb_update_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_update_per_users", "false"));
     public static otel_trace_mongodb_delete_per_users: boolean = Config.parseBoolean(Config.getEnv("otel_trace_mongodb_delete_per_users", "false"));
 
-    public static grpc_keepalive_time_ms = parseInt(Config.getEnv("grpc_keepalive_time_ms", "-1"));
-    public static grpc_keepalive_timeout_ms = parseInt(Config.getEnv("grpc_keepalive_timeout_ms", "-1"));
-    public static grpc_http2_min_ping_interval_without_data_ms = parseInt(Config.getEnv("grpc_http2_min_ping_interval_without_data_ms", "-1"));
-    public static grpc_max_connection_idle_ms = parseInt(Config.getEnv("grpc_max_connection_idle_ms", "-1"));
-    public static grpc_max_connection_age_ms = parseInt(Config.getEnv("grpc_max_connection_age_ms", "-1"));
-    public static grpc_max_connection_age_grace_ms = parseInt(Config.getEnv("grpc_max_connection_age_grace_ms", "-1"));
-    public static grpc_http2_max_pings_without_data = parseInt(Config.getEnv("grpc_http2_max_pings_without_data", "-1"));
-    public static grpc_keepalive_permit_without_calls = parseInt(Config.getEnv("grpc_keepalive_permit_without_calls", "-1"));
-    public static grpc_max_receive_message_length = parseInt(Config.getEnv("grpc_max_receive_message_length", "-1"));
-    public static grpc_max_send_message_length = parseInt(Config.getEnv("grpc_max_send_message_length", "-1"));
+    public static grpc_keepalive_time_ms: number = parseInt(Config.getEnv("grpc_keepalive_time_ms", "-1"));
+    public static grpc_keepalive_timeout_ms: number = parseInt(Config.getEnv("grpc_keepalive_timeout_ms", "-1"));
+    public static grpc_http2_min_ping_interval_without_data_ms: number = parseInt(Config.getEnv("grpc_http2_min_ping_interval_without_data_ms", "-1"));
+    public static grpc_max_connection_idle_ms: number = parseInt(Config.getEnv("grpc_max_connection_idle_ms", "-1"));
+    public static grpc_max_connection_age_ms: number = parseInt(Config.getEnv("grpc_max_connection_age_ms", "-1"));
+    public static grpc_max_connection_age_grace_ms: number = parseInt(Config.getEnv("grpc_max_connection_age_grace_ms", "-1"));
+    public static grpc_http2_max_pings_without_data: number = parseInt(Config.getEnv("grpc_http2_max_pings_without_data", "-1"));
+    public static grpc_keepalive_permit_without_calls: number = parseInt(Config.getEnv("grpc_keepalive_permit_without_calls", "-1"));
+    public static grpc_max_receive_message_length: number = parseInt(Config.getEnv("grpc_max_receive_message_length", "-1"));
+    public static grpc_max_send_message_length: number = parseInt(Config.getEnv("grpc_max_send_message_length", "-1"));
 
     public static validate_user_form: string = Config.getEnv("validate_user_form", "");
+    
 
     public static externalbaseurl(): string {
         let result: string = "";

@@ -38,7 +38,6 @@ export class WebSocketClientService {
                 this.forgot_pass_emails = data.forgot_pass_emails;
                 this.multi_tenant = data.multi_tenant;
 
-                this.nodered_images = data.nodered_images;
                 this.agent_images = data.agent_images;
                 this.enable_entity_restriction = data.enable_entity_restriction;
                 this.enable_web_tours = data.enable_web_tours;
@@ -188,7 +187,6 @@ export class WebSocketClientService {
     public validate_user_form: string = "";
     public validate_emails: boolean = false;
     public forgot_pass_emails: boolean = false;
-    public nodered_images: nodered_image[];
     public agent_images: nodered_image[];
     public multi_tenant: boolean;
     public enable_entity_restriction: boolean;

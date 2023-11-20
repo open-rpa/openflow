@@ -67,8 +67,6 @@ services:
   #     - enable_nodered_tours=false
   #     - enable_openflow_amqp=true
 
-  #     - nodered_images=[{"name":"Latest Plain Nodered",
-  #       "image":"localhost:5000/openiap/nodered:staging"}]
   #     - nodered_ws_url=ws://api:3000
 
   #     - domain=localhost.openiap.io
