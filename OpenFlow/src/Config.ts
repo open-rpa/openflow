@@ -193,7 +193,7 @@ export class Config {
         auto_create_users: false,
         auto_create_user_from_jwt: false,
         auto_create_domains: [],
-        persist_user_impersonation: true,
+        persist_user_impersonation: false,
         ping_clients_interval: 10000, // 10 seconds
 
         use_ingress_beta1_syntax: false,
@@ -467,7 +467,7 @@ export class Config {
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users", "false"));
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt", "false"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains", ""));
-    public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "true"));
+    public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation", "false"));
     public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval", (10000).toString())); // 10 seconds
 
     public static use_ingress_beta1_syntax: boolean = Config.parseBoolean(Config.getEnv("use_ingress_beta1_syntax", "false"));
