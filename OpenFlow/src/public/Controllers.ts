@@ -7410,7 +7410,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "license_key", "type": "string", "default": ""},
             {"name": "enable_openai", "type": "boolean", "default": "false"},
             {"name": "enable_openapi", "type": "boolean", "default": "true"},
-            {"name": "enable_openaiauth", "type": "boolean", "default": "true"},
+            {"name": "enable_openapiauth", "type": "boolean", "default": "true"},
             {"name": "openai_token", "type": "string", "default": ""},
             {"name": "log_with_colors", "type": "boolean", "default": "true"},
             {"name": "cache_store_type", "type": "string", "default": "memory"},
