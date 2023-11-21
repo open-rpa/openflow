@@ -57,7 +57,7 @@ export class dbConfig extends Base {
 
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
-                "domain" ].indexOf(key) > -1 ) {
+                "domain", "enable_openapiauth" ].indexOf(key) > -1 ) {
                     if(os.hostname().toLowerCase() == "nixos") {
                         continue;
                     }
@@ -110,7 +110,7 @@ export class dbConfig extends Base {
             if(["db", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
-            "domain" ].indexOf(key) > -1 ) {
+            "domain", "enable_openapiauth" ].indexOf(key) > -1 ) {
                 if(os.hostname().toLowerCase() == "nixos") {
                     continue;
                 }
@@ -184,7 +184,7 @@ export class Config {
     public static default_config: dbConfig = {
         enable_openai: false,
         enable_openapi: true,
-        enable_openaiauth: true,
+        enable_openapiauth: true,
         log_with_colors: true,
         cache_store_type: "memory",
         cache_store_max: 1000,
@@ -442,7 +442,7 @@ export class Config {
     public static license_key: string = Config.getEnv("license_key", "");
     public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai", "false"));
     public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi", "true"));    
-    public static enable_openaiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openaiauth", "true"));
+    public static enable_openapiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openapiauth", "true"));
     public static openai_token: string = Config.getEnv("openai_token", "");
     public static version: string = Config.getversion();
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors", "true"));
