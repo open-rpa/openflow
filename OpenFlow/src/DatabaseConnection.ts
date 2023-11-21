@@ -3830,7 +3830,7 @@ export class DatabaseConnection extends events.EventEmitter {
     _decryptentity(item, newObj, key) {
         const value: any = item[key];
         try {
-            if (this._shouldEncryptValue(item._encrypt, key, value)) {
+            if (this._shouldEncryptValue(item._encrypt, key, value) && value != null) {
                 let newvalue = Crypt.decrypt(value);
                 if (newvalue.indexOf("{") === 0 || newvalue.indexOf("[") === 0) {
                     try {
