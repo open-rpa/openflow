@@ -7,7 +7,7 @@ import * as os from "os";
 import * as path from "path";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { Logger } from "./Logger";
-import { Base, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
+import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
 import { promiseRetry } from "./Logger";
 import { Span } from "@opentelemetry/api";
 
@@ -53,15 +53,21 @@ export class dbConfig extends Base {
             try {
                 if(key.startsWith("_")) continue;
                 if(NoderedUtil.IsNullEmpty(value)) continue;
-                if(["name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
+                if(["db", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
 
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
-                "domain" ].indexOf(key) > -1 ) continue;
-                if(os.hostname().toLowerCase() == "nixos") {
-                    continue;
+                "domain" ].indexOf(key) > -1 ) {
+                    if(os.hostname().toLowerCase() == "nixos") {
+                        continue;
+                    }
                 }
-
+                if(key == "amqp_allow_replyto_empty_queuename") {
+                    var now = Config.amqp_allow_replyto_empty_queuename;
+                    var v = conf[key];
+                    var b = true;
+                }
+    
                 if (Object.prototype.hasOwnProperty.call(Config, key)) {
                     if(typeof Config[key] === "boolean") {
                         // console.log("Setting boolen " + key + " to " + conf[key]);
@@ -84,6 +90,14 @@ export class dbConfig extends Base {
                         Config[key] = conf[key];
                     }
                 }
+
+                if(key == "amqp_allow_replyto_empty_queuename") {
+                    var now = Config.amqp_allow_replyto_empty_queuename;
+                    var v = conf[key];
+                    var v2 = Config[key];
+                    var b = true;
+                }
+    
             } catch (error) {
                 Logger.instanse.error("Error setting config " + keys + " to " + value, parent);
             }
@@ -93,18 +107,37 @@ export class dbConfig extends Base {
         for(var i = 0; i < keys.length; i++) {
             const key = keys[i];
             if(key.startsWith("_")) continue;
-            if(["name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
+            if(["db", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url", "nodered_domain_schema",
-            "domain" ].indexOf(key) > -1 ) continue;
-            if(os.hostname().toLowerCase() == "nixos") {
-                continue;
+            "domain" ].indexOf(key) > -1 ) {
+                if(os.hostname().toLowerCase() == "nixos") {
+                    continue;
+                }
+            }
+            if(key == "amqp_allow_replyto_empty_queuename") {
+                var now = Config.amqp_allow_replyto_empty_queuename;
+                var v = Config[key];
+                var v2 = conf[key];
+                var b = true;
             }
     
             const _default = Config.default_config[key];
             const setting = Config[key];
             const dbsetting = conf[key];
-            if(_default == null || setting == null) continue;
+            // if(_default != null && dbsetting == null) {
+            //     Config[key] = setting;
+
+            //     if(key == "amqp_allow_replyto_empty_queuename") {
+            //         var now = Config.amqp_allow_replyto_empty_queuename;
+            //         var v = Config[key];
+            //         var v2 = conf[key];
+            //         var b = true;
+            //     }
+
+                
+            //     continue;
+            // }
             // console.log("Checking " + key + " " + _default + " " + setting + " " + dbsetting);
             if(setting == _default) continue; // ignore if default, kee dbsettings small
             if(dbsetting != null) continue; // db setting overrides env setting (yeah, a little weird)
@@ -113,10 +146,29 @@ export class dbConfig extends Base {
                 updated = true;
             }
 
+            if(key == "amqp_allow_replyto_empty_queuename") {
+                var now = Config.amqp_allow_replyto_empty_queuename;
+                var v = Config[key];
+                var v2 = conf[key];
+                var b = true;
+            }
+
+
         }
         conf._encrypt = ["stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
         if(updated) {
-            await Config.db._UpdateOne(null, conf, "config", 1, true, jwt, parent);
+            try {
+                var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
+                msg.collectionname = "config"; msg.jwt = jwt;
+                msg.item = conf;
+                msg.uniqeness = "_id";
+                await Config.db._InsertOrUpdateOne(msg, parent);
+                // await Config.db.InsertOrUpdateOne(null, conf, "config", 1, true, jwt, parent);
+            } catch (error) {
+                var e = error;
+                console.error(error);
+                
+            }
         }
         await Logger.reload();
         return conf;
@@ -583,7 +635,8 @@ export class Config {
     public static agent_domain_schema: string = Config.getEnv("agent_domain_schema", "");
     public static agent_node_selector:string = Config.getEnv("agent_node_selector", "");
 
-    public static agent_apiurl: string = Config.getEnv("agent_apiurl", "");
+    public static agent_grpc_apihost: string = Config.getEnv("agent_grpc_apihost", "");
+    public static agent_ws_apihost: string = Config.getEnv("agent_ws_apihost", "");
     public static agent_oidc_config: string = Config.getEnv("agent_oidc_config", "");
     public static agent_oidc_client_id: string = Config.getEnv("agent_oidc_client_id", "");
     public static agent_oidc_client_secret: string = Config.getEnv("agent_oidc_client_secret", "");

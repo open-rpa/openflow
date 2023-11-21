@@ -7561,7 +7561,8 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "agent_images", "type": "NoderedImage[]", "default": "[{\"name\":\"Agent\", \"image\":\"openiap/nodeagent\", \"languages\": [\"nodejs\", \"python\"]}, {\"name\":\"Agent+Chromium\", \"image\":\"openiap/nodechromiumagent\", \"chromium\": true, \"languages\": [\"nodejs\", \"python\"]}, {\"name\":\"NodeRED\", \"image\":\"openiap/noderedagent\", \"port\": 3000}, {\"name\":\"DotNet 6\", \"image\":\"openiap/dotnetagent\", \"languages\": [\"dotnet\"]} , {\"name\":\"PowerShell 7.3\", \"image\":\"openiap/nodeagent:pwsh\", \"languages\": [\"powershell\"]}]"},
             {"name": "agent_domain_schema", "type": "string", "default": ""},
             {"name": "agent_node_selector", "type": "string", "default": ""},
-            {"name": "agent_apiurl", "type": "string", "default": ""},
+            {"name": "agent_grpc_apihost", "type": "string", "default": ""},
+            {"name": "agent_ws_apihost", "type": "string", "default": ""},
             {"name": "agent_oidc_config", "type": "string", "default": ""},
             {"name": "agent_oidc_client_id", "type": "string", "default": ""},
             {"name": "agent_oidc_client_secret", "type": "string", "default": ""},
@@ -7681,7 +7682,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             for(let i = 0; i < this.settings.length; i++) {
                 if (this.model[this.settings[i].name] == null || this.model[this.settings[i].name] == ""
                     || this.model[this.settings[i].name] == this.settings[i].default) {
-                    delete this.model[this.settings[i].name];
+                    // delete this.model[this.settings[i].name];
                 }
             }
 
