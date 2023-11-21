@@ -69,9 +69,16 @@ export class dockerdriver implements i_agent_driver {
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
         Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
 
-        var apiurl = Config.agent_apiurl || ""
-        var grpcapiurl = "grpc://api:50051"
-        var wsapiurl = "ws://api:3000/ws/v2"
+        var agent_grpc_apihost = "api-grpc";
+        if(Config.agent_grpc_apihost != null && Config.agent_grpc_apihost != "") {
+            agent_grpc_apihost = Config.agent_grpc_apihost;
+        }
+        var grpcapiurl = "grpc://" + agent_grpc_apihost + ":50051"
+        var agent_ws_apihost = "api";
+        if(Config.agent_ws_apihost != null && Config.agent_ws_apihost != "") {
+            agent_ws_apihost = Config.agent_ws_apihost;
+        }
+        var wsapiurl = "ws://" + agent_ws_apihost + ":3000/ws/v2"
         let hasbilling = false;
 
         var agentjwt = "";
@@ -169,7 +176,7 @@ export class dockerdriver implements i_agent_driver {
             const Env = [
                 "jwt=" + agentjwt,
                 "agentid=" + agent._id,
-                "apiurl=" + apiurl,
+                // "apiurl=" + apiurl,
                 "grpcapiurl=" + grpcapiurl,
                 "wsapiurl=" + wsapiurl,
                 "domain=" + hostname,
