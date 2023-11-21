@@ -3812,7 +3812,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 newObj[key] = value;
             }
         } catch (error) {
-            Logger.instanse.error(error, null);
+            // Logger.instanse.error(error, null);
+            var errormessage = error.message ? error.message : error;
+            Logger.instanse.debug(errormessage, null);
             newObj[key] = value;
         }
         return newObj;
@@ -3830,7 +3832,7 @@ export class DatabaseConnection extends events.EventEmitter {
     _decryptentity(item, newObj, key) {
         const value: any = item[key];
         try {
-            if (this._shouldEncryptValue(item._encrypt, key, value) && value != null) {
+            if (this._shouldEncryptValue(item._encrypt, key, value) && value != null && value != "") {
                 let newvalue = Crypt.decrypt(value);
                 if (newvalue.indexOf("{") === 0 || newvalue.indexOf("[") === 0) {
                     try {
@@ -3843,7 +3845,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 newObj[key] = value;
             }
         } catch (error) {
-            Logger.instanse.error(error, null);
+            // Logger.instanse.error(error, null);
+            var errormessage = error.message ? error.message : error;
+            Logger.instanse.debug(errormessage, null);
             newObj[key] = value;
         }
         return newObj;
