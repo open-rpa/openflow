@@ -422,6 +422,7 @@ let OpenAIProxy: any = null;
 try {
     OpenAIProxy = require("./ee/OpenAIProxy");
 } catch (error) {
+    console.error(error);
 
 }
 

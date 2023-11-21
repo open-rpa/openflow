@@ -385,6 +385,21 @@ export class WebServer {
             });
         });
       }
+
+    public static async ProcessMessage(req: any, tuser: TokenUser, jwt: string): Promise<any> {
+        const client:any = {user: tuser, jwt: jwt};
+        const msg = new Message();
+        const urlPath = req.path;
+        msg.command = urlPath.replace("/rest/v1/", "").toLowerCase();
+        msg.id = NoderedUtil.GetUniqueIdentifier();
+        msg.jwt = jwt;
+        msg.data = req.body;
+        msg.tuser = tuser;
+        msg.clientagent = req.headers["user-agent"];
+        msg.clientversion = "0.0.1";
+        var result = await msg.Process(client);
+        return result
+    }
     public static async onMessage(client: flowclient, message: any) {
         let command, msg, reply;
         try {
