@@ -391,6 +391,20 @@ export class WebServer {
         const msg = new Message();
         const urlPath = req.path;
         msg.command = urlPath.replace("/rest/v1/", "").toLowerCase();
+
+        if(msg.command == "updatedocument") {
+            msg.command = "updatemany" // new command to new
+        }
+        if(msg.command == "unregisterqueue") {
+            msg.command = "closequeue" // new command to new
+        }
+        if(msg.command == "pushworkitem") {
+            msg.command = "addworkitem" // new command to new
+        }
+        if(msg.command == "pushworkitems") {
+            msg.command = "addworkitems" // new command to new
+        }
+
         msg.id = NoderedUtil.GetUniqueIdentifier();
         msg.jwt = jwt;
         msg.data = req.body;

@@ -590,6 +590,36 @@ export class Message {
                         case "deleteworkitem":
                             await this.DeleteWorkitem(span);
                             break;
+                        case "startagent":
+                            await this.ControlAgent(span);
+                            break;
+                        case "stopagent":
+                            await this.ControlAgent(span);
+                            break;
+                        case "deleteagentpod":
+                            await this.ControlAgent(span);
+                            break;
+                        case "getagentlog":
+                            await this.ControlAgent(span);
+                            break;
+                        case "getagentpods":
+                            await this.ControlAgent(span);
+                            break;
+                        case "deleteagent":
+                            await this.ControlAgent(span);
+                            break;
+                        case "createindex":
+                            await this.CreateIndex(span);
+                            break;
+                        case "deletepackage":
+                            await this.DeletePackage(span);
+                            break;
+                        case "issuelicense":
+                            await this.IssueLicense(cli, span);
+                            break;
+                        case "invokeopenra":
+                            await this.InvokeOpenRPA(cli, span);
+                            break;
                         case "customcommand":
                             await this.CustomCommand(cli, span);
                             break;
@@ -628,6 +658,145 @@ export class Message {
             }
         });
     }
+    async ControlAgent(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        msg =JSON.parse(JSON.stringify(msg));
+        try {
+            console.log(this.data);
+            if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
+            var agent = null;
+            if((msg.agentid == null || msg.agentid == "")) {
+                if(this.command != "getagentpods") throw new Error("No agentid is specified");
+            } else {
+                agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.agentid }, collectionname: "agents", jwt:this.jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                }
+                if(agent.image == null || agent.image == "") return;
+            }
+    
+            
+            if(this.command == "startagent") {
+                await Logger.agentdriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
+            } else if(this.command == "stopagent") {
+                await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, false, parent);
+            } else if(this.command == "getagentlog") {
+                msg.result = await Logger.agentdriver.GetInstanceLog(this.tuser, this.jwt, agent, msg.podname, parent);
+            } else if(this.command == "getagentpods") {
+                var getstats = false;
+                if(!NoderedUtil.IsNullEmpty(msg.stats)) getstats = msg.stats;
+                msg.results = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, msg.podname, parent);
+                // msg.results = JSON.stringify(await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, msg.podname, parent));
+                var b = true;
+            } else if(this.command == "deleteagentpod") {
+                await Logger.agentdriver.RemoveInstancePod(this.tuser, this.jwt, agent, msg.podname, parent);
+            } else if(this.command == "deleteagent") {
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.delete)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${agent.name}`);
+                }    
+                await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, true, parent);
+                Config.db.DeleteOne(agent._id, "agents", false, this.jwt, parent);
+            }            
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async CreateIndex(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        msg = JSON.parse(JSON.stringify(msg));
+        try {
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+            msg.result = await Config.db.createIndex(msg.collectionname, msg.name, msg.index, msg.options, parent);
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async DeletePackage(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        try {
+            var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt: this.jwt }, parent);
+            if(pack == null) throw new Error("Access denied or package not found");
+            if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
+                throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
+            }
+            if(pack.fileid != null && pack.fileid != "") {
+                const rootjwt = Crypt.rootToken();
+                let query = { _id: pack.fileid };
+                const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
+                if(item != null) {
+                    await Config.db.DeleteOne(pack.fileid, "files", false, this.jwt, parent);
+                }
+            }
+            await Config.db.DeleteOne(pack._id, "agents", false, this.jwt, parent);
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async IssueLicense(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        try {
+            let _lic_require: any = null;
+            try {
+                _lic_require = require("../ee/license-file");
+            } catch (error) {
+            }
+            if (_lic_require == null) {
+                throw new Error("License module not found");
+            }
+            Logger.License = new _lic_require.LicenseFile();
+            // @ts-ignore
+            var data = msg.data;
+            try {
+                data = JSON.parse(data);
+            } catch (error) {                    
+            }
+            if(data == null || data == "") throw new Error("No data found");
+            var domain = data.domain;
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                delete data.months;
+            }
+            var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage"}, collectionname: "config", jwt:this.jwt }, parent);
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                if(exists == null) throw new Error("Access denied");
+            }
+            if(data.months == null || data.months == "") {
+                if(exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
+            }
+            //  throw new Error("Access denied");
+            msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async InvokeOpenRPA(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        try {
+            throw new Error("Not implemented, only available using OpenAPI");
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }    
     async RegisterExchange(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         let msg: RegisterExchangeMessage;
@@ -977,8 +1146,8 @@ export class Message {
             return;
         }
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
-        this.Reply("error");
         Logger.instanse.error(`UnknownCommand ${this.command}`, null);
+        this.Reply("error");
     }
     private static collectionCache: any = {};
     private static collectionCachetime: Date = new Date();
