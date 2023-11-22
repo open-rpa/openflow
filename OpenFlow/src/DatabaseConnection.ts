@@ -4384,8 +4384,10 @@ export class DatabaseConnection extends events.EventEmitter {
         return new Promise((resolve, reject) => {
             try {
                 Logger.instanse.info("Adding index " + name + " to " + collectionname, span, { collection: collectionname });
-                if (NoderedUtil.IsNullUndefinded(options)) options = {};
-                options["name"] = name;
+                if(typeof keypath === "string") keypath = JSON.parse(keypath);
+                if (NoderedUtil.IsNullEmpty(options)) options = {};
+                if(typeof options === "string") options = JSON.parse(options);
+                if (!NoderedUtil.IsNullEmpty(name)) options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
                     if (err) {
                         Logger.instanse.error(err, span);
