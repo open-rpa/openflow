@@ -7325,6 +7325,10 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
         this.messages = [];
         this.postloadData = this.processdata;
         this.settings = [
+            // {"name": "supports_watch", "type": "boolean", "default": "false"},
+            // {"name": "NODE_ENV", "type": "string", "default": "development"},
+            // {"name": "log_to_exchange", "type": "boolean", "default": "false"}, // called straming handled elsewere
+            // {"name": "aes_secret", "type": "string", "default": ""}, // ONLY envoriment variable
             {"name": "license_key", "type": "string", "default": ""},
             {"name": "enable_openai", "type": "boolean", "default": "false"},
             {"name": "enable_openapi", "type": "boolean", "default": "true"},
@@ -7342,8 +7346,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "heapdump_onstop", "type": "boolean", "default": "false"},
             {"name": "amqp_allow_replyto_empty_queuename", "type": "boolean", "default": "false"},
             {"name": "enable_openflow_amqp", "type": "boolean", "default": "false"},
-            // {"name": "log_to_exchange", "type": "boolean", "default": "false"},
-            {"name": "openflow_amqp_expiration", "type": "number", "default": "1500000"}, // 25 min in milliseconds
+            {"name": "openflow_amqp_expiration", "type": "number", "default": "1500000"}, 
             {"name": "amqp_prefetch", "type": "number", "default": "25"},
             {"name": "enable_entity_restriction", "type": "boolean", "default": "false"},
             {"name": "enable_web_tours", "type": "boolean", "default": "true"},
@@ -7354,10 +7357,9 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "housekeeping_remomve_unvalidated_user_days", "type": "number", "default": "0"},
             {"name": "housekeeping_cleanup_openrpa_instances", "type": "boolean", "default": "false"},
             {"name": "workitem_queue_monitoring_enabled", "type": "boolean", "default": "true"},
-            {"name": "workitem_queue_monitoring_interval", "type": "number", "default": "10000"}, // 10 sec
+            {"name": "workitem_queue_monitoring_interval", "type": "number", "default": "10000"},
             {"name": "upload_max_filesize_mb", "type": "number", "default": "25"},
             {"name": "getting_started_url", "type": "string", "default": ""},
-            {"name": "NODE_ENV", "type": "string", "default": "development"},
             {"name": "HTTP_PROXY", "type": "string", "default": ""},
             {"name": "HTTPS_PROXY", "type": "string", "default": ""},
             {"name": "NO_PROXY", "type": "string", "default": ""},
@@ -7369,7 +7371,6 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "stripe_force_vat", "type": "boolean", "default": "false"},
             {"name": "stripe_force_checkout", "type": "boolean", "default": "false"},
             {"name": "stripe_allow_promotion_codes", "type": "boolean", "default": "true"},
-            {"name": "supports_watch", "type": "boolean", "default": "false"},
             {"name": "ensure_indexes", "type": "boolean", "default": "true"},
             {"name": "text_index_name_fields", "type": "string[]", "default": "name,_names"},
             {"name": "auto_create_users", "type": "boolean", "default": "false"},
@@ -7469,7 +7470,6 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "allow_skiphistory", "type": "boolean", "default": "false"},
             {"name": "max_memory_restart_mb", "type": "number", "default": "0"},
             {"name": "saml_issuer", "type": "string", "default": "the-issuer"},
-            // {"name": "aes_secret", "type": "string", "default": ""},
             {"name": "signing_crt", "type": "string", "default": ""},
             {"name": "singing_key", "type": "string", "default": ""},
             {"name": "wapid_mail", "type": "string", "default": ""},
