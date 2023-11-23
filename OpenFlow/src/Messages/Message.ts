@@ -3692,7 +3692,10 @@ export class Message {
 
                 let query = { "validated": false, "_type": "user" }
                 query["_modified"] = { "$lt": todate.toISOString(), "$gt": fromdate.toISOString()}
-                Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
+                let count = await Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
+                if(count > 0) {
+                    Logger.instanse.verbose("Removed " + count + " unvalidated users", span);
+                }                
             }
             if(Config.housekeeping_cleanup_openrpa_instances == true) {
                 let msg = new UpdateManyMessage();
@@ -3700,7 +3703,12 @@ export class Message {
                 msg.collectionname = "openrpa_instances"; 
                 msg.query = { "state": { "$in": ["idle", "running"] } };
                 msg.item = { "$set": { "state": "completed"}, "$unset": {"xml": ""}} as any;
-                Config.db.UpdateDocument(msg, span);                
+                let result = await Config.db.UpdateDocument(msg, span);
+                if(result?.opresult?.nModified > 0) {
+                    Logger.instanse.verbose("Updated " + result.opresult.nModified + " openrpa instances", span);
+                } else if (result?.opresult?.modifiedCount > 0) {
+                    Logger.instanse.verbose("Updated " + result.opresult.modifiedCount + " openrpa instances", span);
+                }
             }
             
         } catch (error) {

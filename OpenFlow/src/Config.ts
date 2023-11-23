@@ -37,7 +37,7 @@ export class dbConfig extends Base {
     public compare(version: string): number {
         return this.version.localeCompare(version, undefined, { numeric: true, sensitivity: 'base' });
     }
-    public static async Load(jwt: string, parent: Span): Promise<dbConfig> {
+    public static async Load(jwt: string, watch:boolean, parent: Span): Promise<dbConfig> {
         var conf: dbConfig = await Config.db.GetOne({ query: { "_type": "config" }, collectionname: "config", jwt }, parent);
         if (conf == null) { conf = new dbConfig(); }
         conf = Object.assign(new dbConfig(), conf);
@@ -156,7 +156,7 @@ export class dbConfig extends Base {
 
         }
         conf._encrypt = ["stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
-        if(updated) {
+        if(updated && !watch) {
             try {
                 var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
                 msg.collectionname = "config"; msg.jwt = jwt;
@@ -177,8 +177,8 @@ export class dbConfig extends Base {
         await Logger.reload();
         return conf;
     }
-    public static async Reload(jwt: string, parent: Span): Promise<void> {
-        Config.dbConfig = await dbConfig.Load(jwt, parent);
+    public static async Reload(jwt: string, watch:boolean, parent: Span): Promise<void> {
+        Config.dbConfig = await dbConfig.Load(jwt, watch, parent);
 
         Logger.instanse.info("Reloaded config version " + Config.dbConfig._version, parent);
     }
@@ -216,6 +216,11 @@ export class Config {
         log_verbose: false,
         log_silly: false,
         log_to_exchange: false,
+
+        tls_crt: "",
+        tls_key: "",
+        tls_ca: "",
+        tls_passphrase: "",
 
         heapdump_onstop: false,
         amqp_allow_replyto_empty_queuename: false,

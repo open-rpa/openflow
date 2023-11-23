@@ -15,6 +15,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { TokenRequest } from "./TokenRequest";
+import { WebServer } from "./WebServer";
 var nodemailer = require('nodemailer');
 var dns = require('dns');
 const got = require("got");
@@ -1192,6 +1193,8 @@ export class LoginProvider {
     static async post_AddTokenRequest(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
         try {
+            const remoteip = LoginProvider.remoteip(req);
+            span?.setAttribute("remoteip", remoteip);
             const key = req.body.key;
             let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
             if (!NoderedUtil.IsNullUndefinded(exists)) {
@@ -1199,7 +1202,7 @@ export class LoginProvider {
                 return res.status(500).send({ message: "Illegal key" });
             }
             await Logger.DBHelper.AddRequestTokenID(key, {}, span);
-            Logger.instanse.info("Added token request " + key, span);
+            Logger.instanse.info("Added token request " + key + " from " + remoteip, span);
             res.status(200).send({ message: "ok" });
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -1211,6 +1214,7 @@ export class LoginProvider {
     static async get_GetTokenRequest(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
         try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             const key = req.query.key;
             let exists: TokenRequest = null;
             exists = await Logger.DBHelper.FindRequestTokenID(key, span);

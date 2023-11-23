@@ -72,7 +72,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Logger.instanse.info("Begin validating builtin roles", span);
         const jwt: string = Crypt.rootToken();
         const rootuser = Crypt.rootUser();
-        Config.dbConfig = await dbConfig.Load(jwt, span);
+        Config.dbConfig = await dbConfig.Load(jwt, false, span);
         try {
             var lic = Logger.License;
             await lic?.validate();

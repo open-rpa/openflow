@@ -410,7 +410,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (collectionname === "config" && _type === "config") {
                     discardspan = false;
-                    await dbConfig.Reload(Crypt.rootToken(), span);
+                    await dbConfig.Reload(Crypt.rootToken(), true, span);
                     
                 }
             }
