@@ -1320,7 +1320,6 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
             this.queuename = await NoderedUtil.RegisterQueue({
                 callback: (data: QueueMessage, ack: any) => {
                     ack();
-                    console.debug(data);
                     if (data.data.command == undefined && data.data.data != null) data.data = data.data.data;
                     this.messages += data.data.command + "\n";
                     if (data.data.command == "invokecompleted") {
@@ -1341,7 +1340,6 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
                     setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
                 }
             });
-            console.debug("queuename: " + this.queuename);
         } catch (error) {
             this.queuename = "";
             console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
@@ -1627,7 +1625,6 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.ReportsCtrl.run(this.userdata.data.ReportsCtrl.points);
     }
     async processData(): Promise<void> {
-        console.debug('processData');
         this.userdata.data.ReportsCtrl.run = this.processData.bind(this);
         this.userdata.data.ReportsCtrl.points = null;
         this.loading = true;
@@ -1696,7 +1693,6 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async robotsclick(points, evt): Promise<void> {
-        console.debug('robotsclick');
         this.userdata.data.ReportsCtrl.run = this.robotsclick.bind(this);
         this.userdata.data.ReportsCtrl.points = points;
         if (points.length > 0) {
@@ -1823,7 +1819,6 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
 
     }
     async robotclick(points, evt): Promise<void> {
-        console.debug('robotclick');
         if (points.length > 0) {
         } else { return; }
         const userid = this.charts[0].ids[points[0]._index];
@@ -1860,7 +1855,6 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
 
     }
     async workflowclick(points, evt): Promise<void> {
-        console.debug('workflowclick');
         if (points.length > 0) {
         } else { return; }
 
@@ -2047,7 +2041,6 @@ export class LoginCtrl {
                 fs.root.getFile(filename, { create: true }, function (fileEntry) {
                     fileEntry.createWriter(function (fileWriter) {
                         fileWriter.onwriteend = function (e) {
-                            console.debug('Write completed.');
                             resolve();
                         };
                         fileWriter.onerror = function (e) {
@@ -2068,7 +2061,6 @@ export class LoginCtrl {
     scanForQRScanner() {
         try {
             if (QRScanner !== undefined) {
-                console.debug("Found QRScanner!!!!");
                 this.qrcodescan = true;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             } else {
@@ -2082,7 +2074,6 @@ export class LoginCtrl {
     }
     Scan() {
         try {
-            console.debug("Scan");
             if (this.scanning) {
                 this.scanning = false;
                 QRScanner.destroy();
@@ -2100,12 +2091,10 @@ export class LoginCtrl {
     }
     async QRScannerHit(err, value) {
         try {
-            console.debug("QRScannerHit");
             if (err) {
                 console.error(err);
                 return;
             }
-            console.debug(value);
             QRScanner.hide();
             QRScanner.destroy();
 
@@ -2117,7 +2106,6 @@ export class LoginCtrl {
             console.debug("QRCode value: " + value);
             const config = JSON.parse(value);
             if (config.url !== null || config.url !== undefined || config.url !== "" || config.loginurl !== null || config.loginurl !== undefined || config.loginurl !== "") {
-                console.debug("set mobiledomain to " + value);
                 await this.writefile("mobiledomain.txt", value);
                 window.location.replace(config.url);
             }
@@ -2133,7 +2121,6 @@ export class LoginCtrl {
     async submit(): Promise<void> {
         this.message = "";
         try {
-            console.debug("signing in with username/password");
             const result: SigninMessage = await NoderedUtil.SigninWithUsername({ username: this.username, password: this.password });
             if (result.user == null) { return; }
             this.setCookie("jwt", result.jwt, 365);
@@ -2313,7 +2300,6 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
                     haderror = true;
                 }
                 if (haderror) {
-                    console.debug("loading stripe script")
                     await jsutil.loadScript('//js.stripe.com/v3/');
                     this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 }
@@ -2621,12 +2607,10 @@ export class UserCtrl extends entityCtrl<TokenUser> {
                         if (roles.length > 0) {
                             role = roles[0];
                             if (role.members === null || role.members === undefined) {
-                                console.log("role.members is null", role);
                                 continue;
                             }
                             const exists = role.members.filter(x => x._id == this.model._id);
                             if (exists.length > 0) {
-                                console.log("Updating role", role.name);
                                 role.members = role.members.filter(x => x._id != this.model._id);
                                 try {
                                     await NoderedUtil.UpdateOne({ collectionname: "users", item: role });
@@ -2936,23 +2920,19 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         const xhr = new XMLHttpRequest();
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-                console.debug("upload complete");
                 // we done!
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 this.loadData();
 
             }
         };
-        console.debug("open");
         xhr.open('POST', '/upload', true);
-        console.debug("send");
         xhr.send(fd);
     }
     async Upload_usingapi() {
         try {
             const filename = (this.$scope as any).filename;
             const mimeType = (this.$scope as any).type;
-            console.debug("filename: " + filename + " mimeType: " + mimeType);
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             const lastp: number = 0;
@@ -3006,7 +2986,6 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
                 return;
             }
         }
-        console.debug("path: " + this.$location.path());
         if (NoderedUtil.IsNullEmpty(this.collection)) {
             this.$location.path("/Entities/entities");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -3424,7 +3403,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
             await jsutil.ensureJQuery();
             await this.RegisterQueue();
-            console.debug("queuename: " + this.queuename);
             if (this.id !== null && this.id !== undefined && this.id !== "") {
                 this.basequery = { _id: this.id };
                 this.loadData();
@@ -3441,7 +3419,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         const result = await NoderedUtil.RegisterExchange(
             {
                 exchangename: exchange, algorithm: "direct", callback: async (msg: QueueMessage, ack: any) => {
-                    console.debug(msg);
                     ack();
                     if (NoderedUtil.IsNullEmpty(msg.routingkey) || msg.routingkey == this.instanceid) {
                         // this.loadData();
@@ -3468,14 +3445,11 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 }
             });
         this.localexchangequeue = result.queuename;
-        console.debug("Register exchange for " + exchange + " with queue " + this.localexchangequeue);
-
     }
     async RegisterQueue() {
         this.queuename = await NoderedUtil.RegisterQueue({
             callback: (data: QueueMessage, ack: any) => {
                 ack();
-                console.debug(data);
                 if (data.queuename == this.queuename) {
                     if (data && data.data && data.data.command == "timeout") {
                         this.errormessage = "No \"workflow in\" node listening or message timed out, is nodered running?";
@@ -3510,8 +3484,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         });
     }
     async hideFormElements() {
-        console.debug("hideFormElements");
-
         $('input[ref="component"]').prop("disabled", true);
         $('#workflowform :input').prop("disabled", true);
         $('#workflowform :button').prop("disabled", true);
@@ -3556,7 +3528,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
 
 
             if (this.model.form === "none" || this.model.form === "") {
-                console.debug("workflow_instances has no form set, state " + this.model.state);
                 if (this.model.state != "failed") {
                     this.$location.path("/main");
                 } else {
@@ -3580,7 +3551,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 return;
             } else if (this.model.form === "unknown") {
-                console.debug("Form is unknown for instance, send empty message");
                 this.Save();
                 return;
             } else if (this.model.form !== "") {
@@ -3601,8 +3571,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             this.renderform();
         } else {
             try {
-                console.debug("No instance id found, send empty message");
-                console.debug("SendOne: " + this.workflow._id + " / " + this.workflow.queue);
                 await this.SendOne(this.workflow.queue, {});
             } catch (error) {
                 this.errormessage = error.message ? error.message : error;
@@ -3691,14 +3659,10 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                     for (let x = 0; x < item.components.length; x++) {
                         obj[item.components[x].key] = "";
                     }
-                    console.debug("add default array for " + item.key, obj);
                     this.model.payload[item.key] = [obj];
                 } else {
-                    console.debug("payload already have values for " + item.key);
-                    console.debug("isArray: " + Array.isArray(this.model.payload[item.key]))
                     if (Array.isArray(this.model.payload[item.key])) {
                     } else {
-                        console.debug("convert payload for " + item.key + " from object to array");
                         const keys = Object.keys(this.model.payload[item.key]);
                         const arr: any[] = [];
                         for (let x = 0; x < keys.length; x++) {
@@ -3726,7 +3690,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                         const item = components[y];
                         if (item.key == keys[i]) {
                             if (Array.isArray(values)) {
-                                console.debug("handle " + item.key + " as array");
                                 const obj2: any = {};
                                 for (let x = 0; x < values.length; x++) {
                                     obj2[x] = values[x];
@@ -3738,7 +3701,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                                     item.values = values;
                                 }
                             } else {
-                                console.debug("handle " + item.key + " as an object");
                                 if (item.data != null && item.data != undefined) {
                                     item.data.values = values;
                                     item.data.json = JSON.stringify(values);
@@ -3788,7 +3750,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         if ((this.form.fbeditor as any) == "false") this.form.fbeditor = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         if (this.form.fbeditor === true) {
-            console.debug("renderform fbeditor");
             const roles: any = {};
             WebSocketClient.instance.user.roles.forEach(role => {
                 roles[role._id] = role.name;
@@ -3860,7 +3821,6 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
             this.formRender = ele.formRender(formRenderOpts);
         } else {
-            console.debug("renderform formio", this.form.schema?.components);
             if (!this.form.schema || !this.form.schema.components || this.form.schema.components.length == 0) {
                 if (this.form.formData && this.form.formData.components && this.form.formData.components.length > 0) {
                     console.warn("schema has no components, but forData does, using form formData.components instead")
@@ -4180,8 +4140,6 @@ export class EntityCtrl extends entityCtrl<Base> {
                 if (idx <= 0) {
                     idx = 0;
                 } else { idx--; }
-                console.debug("idx: " + idx);
-                // this.searchtext = this.searchFilteredList[idx].name;
                 this.searchSelectedItem = this.searchFilteredList[idx];
                 return;
             }
@@ -4189,8 +4147,6 @@ export class EntityCtrl extends entityCtrl<Base> {
                 if (idx >= this.searchFilteredList.length) {
                     idx = this.searchFilteredList.length - 1;
                 } else { idx++; }
-                console.debug("idx: " + idx);
-                // this.searchtext = this.searchFilteredList[idx].name;
                 this.searchSelectedItem = this.searchFilteredList[idx];
                 return;
             }
@@ -4592,8 +4548,6 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         this.searchfields = ["name", "impostorname", "clientagent", "type"];
         console.debug("AuditlogsCtrl");
         this.pagesize = 20;
-        // this.basequery = { _type: "role" };
-        // this.orderby = { "_created": -1 };
         this.collection = "audit";
         this.postloadData = this.processdata;
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
@@ -4706,7 +4660,6 @@ export class CredentialsCtrl extends entitiesCtrl<Base> {
         var query = { _type: "role", "$or": [{ name: name + "noderedadmins" }, { name: name + "nodered api users" }] }
         const list = await NoderedUtil.Query({ collectionname: "users", query, top: 4 });
         for (var i = 0; i < list.length; i++) {
-            console.debug("Deleting " + list[i].name)
             await NoderedUtil.DeleteOne({ collectionname: "users", id: list[i]._id });
         }
 
@@ -4835,8 +4788,6 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 if (idx <= 0) {
                     idx = 0;
                 } else { idx--; }
-                console.debug("idx: " + idx);
-                // this.searchtext = this.searchFilteredList[idx].name;
                 this.searchSelectedItem = this.searchFilteredList[idx];
                 return;
             }
@@ -4844,8 +4795,6 @@ export class CredentialCtrl extends entityCtrl<Base> {
                 if (idx >= this.searchFilteredList.length) {
                     idx = this.searchFilteredList.length - 1;
                 } else { idx++; }
-                console.debug("idx: " + idx);
-                // this.searchtext = this.searchFilteredList[idx].name;
                 this.searchSelectedItem = this.searchFilteredList[idx];
                 return;
             }
@@ -5348,7 +5297,6 @@ export class DeletedCtrl extends entitiesCtrl<Base> {
                 return;
             }
         }
-        console.debug("path: " + this.$location.path());
         if (NoderedUtil.IsNullEmpty(this.collection)) {
             this.$location.path("/Deleted/entities");
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -5501,13 +5449,11 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     haderror = true;
                 }
                 if (haderror) {
-                    console.debug("loading stripe script")
                     await jsutil.loadScript('//js.stripe.com/v3/');
                     this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 }
             }
             if (this.id !== null && this.id !== undefined && this.id != "new") {
-                console.debug("Loading customer id " + this.id);
                 this.loading = false;
                 this.loadData();
                 return;
@@ -5516,7 +5462,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 if (user.customerid != null && this.id != "new") {
                     this.id = user.customerid;
                     this.basequery = { _id: this.id };
-                    console.debug("Loading customer id " + this.id);
                     this.loading = false;
                     this.loadData();
                     return;
@@ -5529,7 +5474,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                         });
                         if (results.length > 0) {
                             this.model = results[0];
-                            console.debug("Loaded customer " + this.model._id);
                         }
                     }
 
@@ -5558,7 +5502,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     if (this.model.email && this.model.email.indexOf("@") == -1) {
                         this.model.email = (WebSocketClient.instance.user as any).username + "@domain.com";
                     }
-                    console.debug("Create new customer");
                 }
                 this.loading = false;
 
@@ -5607,11 +5550,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
     async processdata() {
         try {
             if (this.model._type != "customer") {
-                console.log("Not customer!", this.model);
                 return;
             }
-            console.log(this.model);
-            console.debug("processdata");
             this.loading = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.errormessage = "";
@@ -5628,9 +5568,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                 await NoderedUtil.EnsureCustomer({ customer: this.model });
             }
             this.Resources = await NoderedUtil.Query({ collectionname: "config", query: { "_type": "resource", "target": "customer", "allowdirectassign": true }, orderby: { _created: -1 } });
-            console.debug("Resources", this.Resources);
             this.Assigned = await NoderedUtil.Query({ collectionname: "config", query: { "_type": "resourceusage", "customerid": this.model._id, "userid": { "$exists": false } }, orderby: { _created: -1 } });
-            console.debug("Assigned", this.Assigned);
             for (var res of this.Resources) {
                 res.products = res.products.filter(x => x.allowdirectassign == true);
                 for (var prod of res.products) {
@@ -5664,8 +5602,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     }
                 }
             }
-            console.debug("Assigned", this.Assigned);
-            console.debug("UserAssigned", this.UserAssigned);
             this.support = [];
             this.licenses = [];
             for (let a of this.Assigned) {
@@ -5681,7 +5617,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             this.errormessage = error;
         }
         this.loading = false;
-        console.debug("processdata::end");
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     ToggleNextInvoiceModal() {
@@ -5881,7 +5816,6 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             }
             this.domain = domain;
             const res:string = await NoderedUtil.CustomCommand({ command: "issuelicense", data: payload });
-            console.log(res);
             // @ts-ignore
             this.licensekey = res;
             this.licensekeydecoded = atob(res);
@@ -6065,10 +5999,8 @@ export class EntityRestrictionsCtrl extends entitiesCtrl<Base> {
         (model as any).collection = collection;
         (model as any).paths = paths;
         if (model._id) {
-            console.debug("updating " + name);
             await NoderedUtil.UpdateOne({ collectionname: this.collection, item: model });
         } else {
-            console.debug("adding " + name);
             await NoderedUtil.InsertOne({ collectionname: this.collection, item: model });
         }
     }
@@ -6216,7 +6148,6 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
                 if (idx <= 0) {
                     idx = 0;
                 } else { idx--; }
-                console.debug("idx: " + idx);
                 this.searchSelectedItem = this.searchFilteredList[idx];
                 return;
             }
@@ -6224,7 +6155,6 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
                 if (idx >= this.searchFilteredList.length) {
                     idx = this.searchFilteredList.length - 1;
                 } else { idx++; }
-                console.debug("idx: " + idx);
                 this.searchSelectedItem = this.searchFilteredList[idx];
                 return;
             }
@@ -6508,10 +6438,8 @@ export class ResourcesCtrl extends entitiesCtrl<Resource> {
             Base.addRight(model, "5a17f157c4815318c8536c21", "users", [2]);
         }
         if (model._id) {
-            console.debug("updating " + name);
             return await NoderedUtil.UpdateOne({ collectionname: this.collection, item: model });
         } else {
-            console.debug("adding " + name);
             return await NoderedUtil.InsertOne({ collectionname: this.collection, item: model });
         }
     }
@@ -6612,8 +6540,6 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
             this.basequery = { _type: "workitem", "wiq": this.queue };
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
-        console.log(this.workitemqueues);
-        console.log(this.queue);
         this.loadData();
     }
     SetState(state) {
@@ -6927,7 +6853,6 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         this.projects.unshift({ "_id": "", "name": "", "display": "(no project)" } as any);
         let queryas: string = null;
         if (this.model != null) queryas = this.model.robotqueue;
-        console.log("queryas", queryas)
         this.workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { "_type": "workflow" }, projection: { "name": 1, "projectandname": 1 }, orderby: "name", top: 500, queryas });
         this.workflows.forEach((e: any) => { e.display = e.projectandname });
         this.workflows.unshift({ "_id": "", "name": "", "projectandname": "", "display": "(no workflow)" } as any);
@@ -6947,10 +6872,8 @@ export class WorkitemQueueCtrl extends entityCtrl<WorkitemQueue> {
         this.workitemqueues.unshift({ "_id": "", "name": "", "display": "(no workitem queue)" } as any);
 
         this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "agent" }, orderby: "name", projection: { "slug": 1, "name": 1 } });
-        console.log(this.agents);
         this.agents.unshift({ "name": "" } as any)
         this.packages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package" }, orderby: "name", projection: { "name": 1 } });
-        console.log(this.packages);
         this.packages.unshift({ "name": "" } as any)
     
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -7280,7 +7203,6 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
                     if (this.messages.length >= lines) this.messages.splice(lines - 1);
                     if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 }, closedcallback: (msg) => {
-                    console.debug("rabbitmq disconnected, start reconnect")
                     setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
                 }
             });
@@ -7289,12 +7211,9 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
             }
             this.watchid = await NoderedUtil.Watch({
                 aggregates: [{ "$match": { "fullDocument._type": "config" } }], collectionname: "config", callback: (data) => {
-                    console.log(data);
                     this.loadData();
                 }
             })
-            console.debug("exchange: ", this.exchange);
-            console.debug("watchid: ", this.watchid);
         } catch (error) {
             console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
             setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
@@ -7412,6 +7331,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "enable_openapiauth", "type": "boolean", "default": "true"},
             {"name": "openai_token", "type": "string", "default": ""},
             {"name": "log_with_colors", "type": "boolean", "default": "true"},
+            {"name": "log_database_queries_to_collection", "type": "string", "default": ""},
             {"name": "cache_store_type", "type": "string", "default": "memory"},
             {"name": "cache_store_max", "type": "number", "default": "1000"},
             {"name": "cache_store_ttl_seconds", "type": "number", "default": "300"},
@@ -7617,44 +7537,36 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
         ]
         WebSocketClientService.onSignedin(async (_user: TokenUser) => {
             await this.RegisterWatch();
-            console.log("Load data")
             this.loading = false;
             this.loadData();
             this.$scope.$on('signin', (event, data) => {
                 this.RegisterWatch();
-                console.log("Load data")
                 this.loading = false;
                 this.loadData();
             });
         });
     }
     async RegisterWatch() {
-        console.log("RegisterWatch")
         try {
             if (!NoderedUtil.IsNullEmpty(this.watchid)) {
                 await NoderedUtil.UnWatch({ id: this.watchid });
             }
             this.watchid = await NoderedUtil.Watch({
                 aggregates: [{ "$match": { "fullDocument._type": "config" } }], collectionname: "config", callback: (data) => {
-                    console.log(data);
                     this.loading = false;
                     this.loadData();
                 }
             })
-            console.debug("watchid: ", this.watchid);
         } catch (error) {
             console.debug("register queue failed, start reconnect. " + error.message ? error.message : error)
             setTimeout(this.RegisterWatch.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
         }
     }
+    deletekey(key: string) {
+        delete this.model[key]; 
+        this.submit();
+    }
     processdata() {
-        console.log("processdata")
-        // console.log(this.model);
-        // for(let i = 0; i < this.settings.length; i++) {
-        //     if (this.model[this.settings[i].name] == null) {
-        //         this.model[this.settings[i].name] = this.settings[i].default;
-        //     }
-        // }
         const ids: string[] = [];
         if (this.collection == "files") {
             for (let i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
@@ -7672,13 +7584,6 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
     }
     async submit(): Promise<void> {
         try {
-            for(let i = 0; i < this.settings.length; i++) {
-                if (this.model[this.settings[i].name] == null || this.model[this.settings[i].name] == ""
-                    || this.model[this.settings[i].name] == this.settings[i].default) {
-                    // delete this.model[this.settings[i].name];
-                }
-            }
-
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
             } else {
@@ -7732,9 +7637,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
     delayedUpdate() {
         if(this.loading == true) return;
         if(this.delayhandler ! = null) return;
-        console.log("delayedUpdate", this.loading)
         this.delayhandler = setTimeout(() => {
-            console.log("do it")
             this.delayhandler = null;
             this.submit();
         }, 500);
@@ -7801,19 +7704,16 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
             if(model.image == null) {
                 var cli = this.clients.filter(x=> x.user?._id ==model.runas && (x.agent == "nodeagent" || x.agent == "assistant"));
                 if(cli != null && cli.length > 0) {
-                    console.log(cli[0], model);
                     model.status = "online"
                 }
             } else if(model.image.indexOf("nodered") > -1) {
                 var cli = this.clients.filter(x=> x.user?._id ==model.runas && x.agent == "nodered");
                 if(cli != null && cli.length > 0) {
-                    console.log(cli[0], model);
                     model.status = "online"
                 }
             } else if(model.image.indexOf("agent") > -1) {
                 var cli = this.clients.filter(x=> x.user?._id ==model.runas && (x.agent == "nodeagent" || x.agent == "python") );
                 if(cli != null && cli.length > 0) {
-                    console.log(cli[0], model);
                     model.status = "online"
                 }
             }
@@ -8079,7 +7979,6 @@ export class AgentCtrl extends entityCtrl<any> {
         }
     }
     async ImageUpdated() {
-        console.log("ImageUpdated")
         this.sizewarningtitle = ""
         this.sizewarning = ""
 
@@ -8098,20 +7997,10 @@ export class AgentCtrl extends entityCtrl<any> {
         }
         if (languages == null || languages.length == 0) {
             this.packages = [];
-            console.log("languages empty", this.packages)
         } else {
-            console.log("languages", languages[0])
             this.packages = this.allpackages.filter(x => languages.indexOf(x.language) > -1)
-            console.log("filtered", this.packages)
             if (!haschromium && !haschrome) {
                 this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
-                console.log("filtered again", this.packages)
-            }
-            if (this.model._id == null || this.model._id == "") {
-                // this.model.package = "";
-                // if ((this.model.package == null || this.model.package == "") && this.packages.length > 0) {
-                //     this.model.package = this.packages[0]._id;
-                // }
             }
             this.packages.unshift({ _id: "", name: "None" })
         }
@@ -8194,8 +8083,8 @@ export class AgentCtrl extends entityCtrl<any> {
             this.refreshtimer = setTimeout(() => {
                 this.refreshtimer = null;
                 var path = this.$location.path();
-                if (path == null && path == undefined) { console.debug("getagent, path is null"); return false; }
-                if (!path.toLowerCase().startsWith("/agent/") && path.toLowerCase() != "/agent") { console.debug("getagent, path is no longer /Agent"); return false; }
+                if (path == null && path == undefined) {  return false; }
+                if (!path.toLowerCase().startsWith("/agent/") && path.toLowerCase() != "/agent") { return false; }
                 this.loadInstances();
             }, 2000);
         }
@@ -8406,12 +8295,9 @@ export class AgentCtrl extends entityCtrl<any> {
                 var tmp = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
                 if (this.model) {
                     this.model = tmp;
-                    console.log("insertone", this.model)
                     this.id = this.model._id
                     this.basequery = { _id: this.id };
-                    console.log("startagent", this.model.slug)
                     await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
-                    console.log("load data")
                 }
             }
             this.loading = false;
@@ -8679,16 +8565,12 @@ export class PackageCtrl extends entityCtrl<Base> {
                 const filename = e.files[0].name
                 // @ts-ignore
                 var result = await NoderedUtil.SaveFile({ filename, mimeType, file: buffer, compressed: false, metadata: { _type: "package" } });
-                // console.log(result)
-                console.log(result.id)
                 // @ts-ignore
                 this.oldfileid = this.model.fileid;
                 // @ts-ignore
                 this.model.fileid = result.id;
                 e.value = null;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
-            } else {
-                console.log("no files in form")
             }
 
         } catch (error) {
@@ -8787,17 +8669,9 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         this.haschromium = (_a.chromium == true)
 
         this.packages = this.allpackages.filter(x => this.languages.indexOf(x.language) > -1)
-        console.log("filtered", this.packages)
         if (!this.haschromium && !this.haschrome) {
             this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
-            console.log("filtered again", this.packages)
         }
-        // if(this.packages.find(x => x._id == this.package) == null) {
-        //     this.package = "";
-        // }
-        // if(this.package == "" && this.packages.length > 0) {
-        //     this.package = this.packages[0]._id;
-        // }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async addprocess(streamid:string, schedulename:string = undefined): Promise<void> {
@@ -8838,7 +8712,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         killbutton.id = streamid + "_kill";
         killbutton.onclick = async () => {
             try {
-                console.log("kill", streamid)
                 await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
             } catch (error) {
                 console.error(error);                
@@ -8855,7 +8728,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         runs.prepend(div);
 
         await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
-        console.log("submitted", payload)        
     }
     async submit(): Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);
@@ -8868,20 +8740,17 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             "queuename": this.queuename
         }
         await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
-        console.log("submitted", payload)        
     }
     async RegisterQueue() {
         if(this.queuename != "") return;
         this.queuename = await NoderedUtil.RegisterQueue({
             callback: (_data: QueueMessage, ack: any) => {
                 ack();
-                console.log(_data.data)
                 if(_data == null) return;
                 var correlationId = _data.correlationId;
                 var data: any = _data;
                 while(data.data != null && data.data != "") data = data.data;
                 if(data.command == "listprocesses") {
-                    console.log("listprocesses !!!")
                     for(var i = 0; i < data.processes.length; i++) {
                         console.log("add process " + data.processes[i].id)
                         this.addprocess(data.processes[i].id, data.processes[i].schedulename);
@@ -8917,9 +8786,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                 setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             }
         });
-        console.debug("registed queue", this.queuename);
         var _a = this.agents.find(x => x._id == this.id);
         await NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent" });
-        console.debug("Added streamid to command streams for " + _a.slug + "agent")
     }
 }

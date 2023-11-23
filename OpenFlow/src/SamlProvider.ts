@@ -66,8 +66,10 @@ export class SamlProvider {
         const key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
         if(cert != null && cert != "") {
+            let saml_issuer: string = Config.saml_issuer;
+            if(saml_issuer == null || saml_issuer == "") saml_issuer = "uri:" + Config.domain;
             const samlpoptions: any = {
-                issuer: Config.saml_issuer,
+                issuer: saml_issuer,
                 cert: cert,
                 key: key,
                 getPostURL: (wtrealm: any, wreply: any, req: any, callback: any) => {
@@ -126,7 +128,7 @@ export class SamlProvider {
             try {
                 app.get("/issue/", samlp.auth(samlpoptions));
                 app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
-                    issuer: Config.saml_issuer,
+                    issuer: saml_issuer,
                     cert: cert,
                 }));
             } catch (error) {
@@ -190,8 +192,10 @@ export class SamlProvider {
         });
         app.post('/logout', (req: any, res: any, next: any): void => {
             if(cert != null && cert != "") {
+                let saml_issuer: string = Config.saml_issuer;
+                if(saml_issuer == null || saml_issuer == "") saml_issuer = "uri:" + Config.domain;
                 samlp.logout({
-                    issuer: Config.saml_issuer,
+                    issuer: saml_issuer,
                     protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
                     cert: cert,
                     key: key

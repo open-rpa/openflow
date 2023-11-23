@@ -3,6 +3,11 @@ function clog(message) {
     let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
     console.log(dts + " " + message);
 }
+function cerror(error) {
+    let dt = new Date();
+    let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
+    console.error(dts, error.message ? error.message : error);
+}
 clog("Starting @openiap/openflow");
 import { Logger } from "./Logger";
 import * as http from "http";
@@ -82,7 +87,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         try {
             await Logger.configure(false, true);
         } catch (error) {
-            console.error(error);
+            cerror(error);
             process.exit(404);
         }
     
@@ -422,8 +427,7 @@ let OpenAIProxy: any = null;
 try {
     OpenAIProxy = require("./ee/OpenAIProxy");
 } catch (error) {
-    console.error(error);
-
+    cerror(error);
 }
 
 
@@ -441,7 +445,7 @@ var server: http.Server = null;
     try {
         await Logger.configure(false, false);
     } catch (error) {
-        console.error(error);
+        cerror(error);
         process.exit(404);
     }
     Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, true);

@@ -38,29 +38,9 @@ export class dockerdriver implements i_agent_driver {
         }
 
         if(pull) {
-            console.log("Pull image " + imagename)
+            Logger.instanse.info("Pull image " + imagename, span);
             await docker.pull(imagename)
         }
-        // return new Promise<void>((resolve, reject) => {
-        //     docker.pull(imagename, function (err, stream) {
-        //         if (err)
-        //             return reject(err);
-
-        //         docker.modem.followProgress(stream, onFinished, onProgress);
-
-        //         function onFinished(err2, output) {
-        //             Logger.instanse.debug(output, span);
-        //             if (err2) {
-        //                 Logger.instanse.error(err2, null);
-        //                 return reject(err2);
-        //             }
-        //             return resolve();
-        //         }
-        //         function onProgress(event) {
-        //             Logger.instanse.debug(event, span);
-        //         }
-        //     });
-        // })
     }
     public async NodeLabels(parent: Span): Promise<any> {
         return null;

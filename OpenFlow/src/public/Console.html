@@ -86,6 +86,9 @@ tr:nth-child(even){background-color: #f2f2f2}
         ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()" value="1" id="ctrl.model.log_database_queries" /><span ng-click="ctrl.model.log_database_queries = !ctrl.model.log_database_queries; ctrl.submit()">database queries</span>
         <input type="number" ng-model="ctrl.model.log_database_queries_ms" ng-blur="ctrl.submit()" min="0" max="240000" />ms
 
+        <input type="checkbox" ng-checked="ctrl.model.log_all_watches"
+        ng-click="ctrl.model.log_all_watches = !ctrl.model.log_all_watches; ctrl.submit()" value="1" id="ctrl.model.log_all_watches" /><span ng-click="ctrl.model.log_all_watches = !ctrl.model.log_all_watches; ctrl.submit()">all watches</span>
+
         <br /> <strong>On high volume systems, these 3 can crash your system!!!</strong> 
         <input type="checkbox" ng-checked="ctrl.model.log_debug"
         ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" value="1" id="ctrl.model.log_debug" /><span ng-click="ctrl.model.log_debug = !ctrl.model.log_debug; ctrl.submit()" >debug</span>

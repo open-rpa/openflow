@@ -759,7 +759,7 @@ export class entitiesCtrl<T> {
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= this.pagesize || this.page > 0) {
-                    // console.warn("Disabling auto refresh, result has more than pagesize entries");
+                    // Disabling auto refresh, result has more than pagesize entries
                 } else {
                     if (this.autorefreshpromise == null && this.searchstring === "") {
                         this.autorefreshpromise = this.$interval(() => {

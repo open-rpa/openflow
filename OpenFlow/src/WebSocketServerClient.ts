@@ -711,7 +711,7 @@ export class WebSocketServerClient {
                 }
             });
         } catch (error) {
-            console.error(error);
+            Logger.instanse.error(error, span);
         } finally {
             subspan?.end();
         }

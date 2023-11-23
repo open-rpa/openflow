@@ -116,7 +116,10 @@ export class Logger {
             }
             span.addEvent(obj.message, obj)
         }
-        if (obj.ms != null && obj.ms != "" && obj.func != "query" && Config.log_database_queries) {
+        if(Config.log_all_watches && obj.cls == "DatabaseConnection" && obj.func == "onchange") {
+
+        } else if(Config.log_database_queries && obj.requestId != null) {
+        } else if (obj.ms != null && obj.ms != "" && obj.func != "query" && Config.log_database_queries) {
             if (obj.ms < Config.log_database_queries_ms) return;
         } else if (Logger.enabled[cls]) {
             if (Logger.enabled[cls] < lvl) return;
@@ -173,8 +176,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -193,8 +202,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -212,8 +227,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -231,8 +252,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -251,8 +278,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -271,8 +304,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }

@@ -3127,7 +3127,9 @@ export class Message {
         if (payload && payload.limit) {
             url += "&limit=" + payload.limit;
         }
-        const auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
+        var stripe_api_secret = Config.stripe_api_secret;
+        if(stripe_api_secret == null || stripe_api_secret == "") throw new Error("Missing stripe_api_secret");
+        const auth = "Basic " + Buffer.from(stripe_api_secret + ":").toString("base64");
 
         const options = {
             headers: {
@@ -4366,7 +4368,15 @@ export class Message {
                                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                                 const payload: any = { "quantity": billablecount, "timestamp": dt };
                                 if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
-                                    await this.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
+                                    try {
+                                        await this.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
+                                    } catch (error) {
+                                        if (error.response && error.response.body) {
+                                            Logger.instanse.error("Update usage record error!" + error.response.body, span);
+                                        } else {
+                                            Logger.instanse.error("Update usage record error!" + error, span);
+                                        }
+                                    }
                                 }
                             }
                             if (c.dblocked || !c.dblocked) {
