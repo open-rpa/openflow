@@ -10,6 +10,9 @@
       <span translate lib="web">reload</span>
     </a>
 
+    <input type="radio" id="checkbox-1" value="pods" ng-model="ctrl.show" ng-change="ctrl.loading = false; ctrl.loadData()"> 
+    <label for="checkbox-1"><span translate lib="web" >pods</span></label>
+
     <input type="radio" id="checkbox-1" value="docker" ng-model="ctrl.show" ng-change="ctrl.loading = false; ctrl.loadData()"> 
     <label for="checkbox-1"><span translate lib="web" >docker</span></label>
 

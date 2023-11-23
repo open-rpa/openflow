@@ -7838,11 +7838,15 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         // }
         return image;
     }
-    preLoad() {
-        if (this.show != "all") {
+    async preLoad() {
+        if (this.show == "pods") {
+            this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
+            const slugs = this.knownpods.map(x => x.metadata.labels.slug).filter(x => x != null);
+            this.basequery = { _type: "agent", slug: { $in: slugs } };            
+        } else if (this.show != "all" ) {
             this.basequery = { _type: "agent" };
             this.basequery[this.show] = true;
-        }else {
+        } else {
             this.basequery = { _type: "agent" };
         }
     }

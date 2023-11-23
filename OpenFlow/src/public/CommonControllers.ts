@@ -655,7 +655,7 @@ export class entitiesCtrl<T> {
             this.errormessage = "";
             this.loading = true;
             if (this.preloadData != null) {
-                this.preloadData();
+                await this.preloadData();
             }
             let query: object = Object.assign({}, this.basequery);
             let exactquery: object = null;
