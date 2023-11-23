@@ -219,7 +219,7 @@ export class WebSocketServer {
         try {
             WebSocketServer._remoteclients = [];
 
-            const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            const hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
             const clients: Base[] = [];
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];

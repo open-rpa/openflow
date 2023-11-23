@@ -67,11 +67,8 @@ services:
   #     - enable_nodered_tours=false
   #     - enable_openflow_amqp=true
 
-  #     - nodered_ws_url=ws://api:3000
-
   #     - domain=localhost.openiap.io
   #     - saml_federation_metadata=http://api:3000/issue/FederationMetadata/2007-06/FederationMetadata.xml
-  #     - nodered_saml_entrypoint=http://localhost.openiap.io/issue
   #     - saml_issuer=uri:localhost.openiap.io
 
   #     - aes_secret=7TXsxf7cn9EkUqm5h4MEWGjzkxkNCk2K

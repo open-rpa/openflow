@@ -4554,7 +4554,6 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         let name = model.username;
         name = name.toLowerCase();
         name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
-        // const noderedurl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", name);
         const noderedurl = "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", name);
         window.open(noderedurl);
     }
@@ -7572,23 +7571,15 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "agent_oidc_token_endpoint", "type": "string", "default": ""},
             {"name": "saml_federation_metadata", "type": "string", "default": ""},
             {"name": "api_ws_url", "type": "string", "default": ""},
-            {"name": "nodered_ws_url", "type": "string", "default": ""},
-            {"name": "nodered_saml_entrypoint", "type": "string", "default": ""},
             {"name": "agent_docker_entrypoints", "type": "string", "default": "web"},
             {"name": "agent_docker_use_project", "type": "boolean", "default": "false"},
             {"name": "agent_docker_certresolver", "type": "string", "default": ""},
             {"name": "namespace", "type": "string", "default": ""},
-            {"name": "nodered_domain_schema", "type": "string", "default": ""},
-            {"name": "nodered_initial_liveness_delay", "type": "number", "default": "60"},
-            {"name": "nodered_allow_nodeselector", "type": "boolean", "default": "false"},
-            {"name": "nodered_liveness_failurethreshold", "type": "number", "default": "5"},
-            {"name": "nodered_liveness_timeoutseconds", "type": "number", "default": "5"},
-            {"name": "noderedcatalogues", "type": "string", "default": ""},
+            {"name": "agent_allow_nodeselector", "type": "boolean", "default": "false"},
 
             {"name": "otel_measure_nodeid", "type": "boolean", "default": "false"},
             {"name": "otel_measure_queued_messages", "type": "boolean", "default": "false"},
             {"name": "otel_measure__mongodb_watch", "type": "boolean", "default": "false"},
-            {"name": "otel_measure_onlineuser", "type": "boolean", "default": "false"},
             {"name": "enable_analytics", "type": "boolean", "default": "true"},
             {"name": "enable_detailed_analytic", "type": "boolean", "default": "false"},
             {"name": "otel_debug_log", "type": "boolean", "default": "false"},
@@ -7884,7 +7875,6 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     weburl(model) {
-        // return "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", model.slug)
         return "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", model.slug)
     }
     async DeleteAgent(model: any): Promise<void> {

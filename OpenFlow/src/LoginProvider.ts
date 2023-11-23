@@ -1126,10 +1126,6 @@ export class LoginProvider {
         let _url = Config.basewsurl();
         if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
         if (!_url.endsWith("/")) _url += "/";
-        let nodered_domain_schema = Config.nodered_domain_schema;
-        if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
-            nodered_domain_schema = "$nodered_id$." + Config.domain;
-        }
         let agent_domain_schema = Config.agent_domain_schema;
         if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
             agent_domain_schema = "$slug$." + Config.domain;
@@ -1151,7 +1147,6 @@ export class LoginProvider {
             auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
             auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
             namespace: Config.namespace,
-            nodered_domain_schema: nodered_domain_schema,
             agent_domain_schema: agent_domain_schema,
             websocket_package_size: Config.websocket_package_size,
             version: Config.version,
@@ -1476,11 +1471,6 @@ export class LoginProvider {
                                 Config.validate_emails = false;
                             }
                         }
-
-                        Config.smtp_service = Config.getEnv("smtp_service", "");
-                        Config.smtp_from = Config.getEnv("smtp_from", "");
-                        Config.smtp_user = Config.getEnv("smtp_user", "");
-                        Config.smtp_pass = Config.getEnv("smtp_service", "");
 
                         if (Config.validate_emails) {
                             let email: string = tuser.username;

@@ -4179,13 +4179,6 @@ export class Message {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
                 } else {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
-                    // if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
-                    //     // cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
-                    //     cursor = Config.db.db.collection("users").find({ "_type": "user", "dblocked": true })
-                    // } else {
-                    //     cursor = Config.db.db.collection("users").find({ "_type": "user" })
-                    // }
-                    // While debugging, also update users who has not been online the last 24 hours
                 }
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;

@@ -777,7 +777,7 @@ export class WebServer {
         let span = Logger.otel.startSpanExpress("get_livenessprobe", req)
         try {
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
-            if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
             res.end(JSON.stringify({ "success": "true", "hostname": _hostname, dt: new Date(), traceId, spanId }));
             res.end();
             // @ts-ignore

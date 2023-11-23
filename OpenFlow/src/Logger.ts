@@ -152,7 +152,7 @@ export class Logger {
             return JSON.stringify(plainObject, filter, space);
         };
         if (Config.log_to_exchange && !Config.unittesting) {
-            if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
             if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
                 if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
                 amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", span, 1);
