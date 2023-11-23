@@ -7431,6 +7431,8 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "grafana_url", "type": "string", "default": ""},
             {"name": "auto_hourly_housekeeping", "type": "boolean", "default": "true"},
             {"name": "housekeeping_skip_collections", "type": "string", "default": ""},
+            {"name": "housekeeping_remomve_unvalidated_user_days", "type": "number", "default": "0"},
+            {"name": "housekeeping_cleanup_openrpa_instances", "type": "boolean", "default": "false"},
             {"name": "workitem_queue_monitoring_enabled", "type": "boolean", "default": "true"},
             {"name": "workitem_queue_monitoring_interval", "type": "number", "default": "10000"}, // 10 sec
             {"name": "upload_max_filesize_mb", "type": "number", "default": "25"},

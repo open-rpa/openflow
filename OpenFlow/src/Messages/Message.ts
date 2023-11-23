@@ -3682,43 +3682,27 @@ export class Message {
             } catch (error) {
                 Logger.instanse.error(error, span);
             }
+
+            if(Config.housekeeping_remomve_unvalidated_user_days > 0) {
+                let todate = new Date();
+                todate.setDate(todate.getDate() - 1);
+                let fromdate = new Date();
+                fromdate.setMonth(fromdate.getMonth() - 1);
+                const jwt: string = Crypt.rootToken();
+
+                let query = { "validated": false, "_type": "user" }
+                query["_modified"] = { "$lt": todate.toISOString(), "$gt": fromdate.toISOString()}
+                Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
+            }
+            if(Config.housekeeping_cleanup_openrpa_instances == true) {
+                let msg = new UpdateManyMessage();
+                msg.jwt = Crypt.rootToken();
+                msg.collectionname = "openrpa_instances"; 
+                msg.query = { "state": { "$in": ["idle", "running"] } };
+                msg.item = { "$set": { "state": "completed"}, "$unset": {"xml": ""}} as any;
+                Config.db.UpdateDocument(msg, span);                
+            }
             
-            // if (!skipNodered) {
-            //     Logger.instanse.debug("Get running Nodered Instances", span);
-            //     await this.GetNoderedInstance(span);
-            //     Logger.instanse.debug("Get users with autocreate", span);
-            //     const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
-            //     // TODO: we should get instances and compare, running ensure for each user will not scale well
-            //     for (let i = 0; i < users.length; i++) {
-            //         let user = users[i];
-            //         var doensure = false;
-            //         if (Config.multi_tenant) {
-            //             if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-            //                 if (!NoderedUtil.IsNullEmpty(user.customerid)) {
-            //                     // @ts-ignore
-            //                     var customers: Customer[] = await Config.db.db.collection("users").find({ "_type": "customer", "_id": user.customerid }).toArray();
-            //                     if (customers.length > 0 && !NoderedUtil.IsNullEmpty(customers[0].subscriptionid)) {
-            //                         doensure = true;
-            //                     }
-            //                 }
-            //             } else {
-            //                 doensure = true;
-            //             }
-            //         } else {
-            //             doensure = true;
-            //         }
-            //         if (doensure) {
-            //             Logger.instanse.debug("EnsureNoderedInstance for " + user.name, span);
-            //             var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
-            //             ensuremsg._id = user._id;
-            //             var msg: Message = new Message(); msg.jwt = jwt;
-            //             msg.data = JSON.stringify(ensuremsg);
-            //             msg.tuser = this.tuser;
-            //             await msg.EnsureNoderedInstance(span);
-            //         }
-            //     }
-            //     Logger.instanse.debug("Done processing autocreate", span);
-            // }
         } catch (error) {
         }
 

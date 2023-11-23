@@ -160,7 +160,11 @@ export class dbConfig extends Base {
             try {
                 var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
                 msg.collectionname = "config"; msg.jwt = jwt;
-                msg.item = conf;
+                msg.item = JSON.parse(JSON.stringify(conf));
+                // @ts-ignore
+                delete msg.item.default_config;
+                // @ts-ignore
+                delete msg.item.dbConfig;
                 msg.uniqeness = "_id";
                 await Config.db._InsertOrUpdateOne(msg, parent);
                 // await Config.db.InsertOrUpdateOne(null, conf, "config", 1, true, jwt, parent);
@@ -224,6 +228,8 @@ export class Config {
         grafana_url: "",
         auto_hourly_housekeeping: true,
         housekeeping_skip_collections: "",
+        housekeeping_remomve_unvalidated_user_days: 0, // if above 0, remove unvalidated users after x days
+        housekeeping_cleanup_openrpa_instances: false,
         workitem_queue_monitoring_enabled: true,
         workitem_queue_monitoring_interval: 10 * 1000, // 10 sec
         upload_max_filesize_mb: 25,
@@ -483,6 +489,8 @@ export class Config {
     public static grafana_url:string = Config.getEnv("grafana_url");
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping"));
     public static housekeeping_skip_collections: string = Config.getEnv("housekeeping_skip_collections");
+    public static housekeeping_remomve_unvalidated_user_days: number = parseInt(Config.getEnv("housekeeping_remomve_unvalidated_user_days"));
+    public static housekeeping_cleanup_openrpa_instances: boolean = Config.parseBoolean(Config.getEnv("housekeeping_cleanup_openrpa_instances"));
     public static workitem_queue_monitoring_enabled: boolean = Config.parseBoolean(Config.getEnv("workitem_queue_monitoring_enabled"));
     public static workitem_queue_monitoring_interval: number = parseInt(Config.getEnv("workitem_queue_monitoring_interval"));
 
@@ -790,6 +798,7 @@ export class Config {
         return metadata;
     }
     public static parseArray(s: string): string[] {
+        if(Array.isArray(s)) return s;
         let arr = s.split(",");
         arr = arr.map(p => p.trim());
         arr = arr.filter(result => (result.trim() !== ""));
