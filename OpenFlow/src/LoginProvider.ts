@@ -1156,7 +1156,7 @@ export class LoginProvider {
             validate_user_form: Config.validate_user_form,
             validate_emails: Config.validate_emails,
             forgot_pass_emails: Config.forgot_pass_emails,
-            supports_watch: Config.supports_watch,
+            supports_watch: true,
             agent_images: Config.agent_images,
             amqp_enabled_exchange: Config.amqp_enabled_exchange,
             multi_tenant: Config.multi_tenant,

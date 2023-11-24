@@ -1356,11 +1356,11 @@ export class Message {
         msg = WatchMessage.assign(this.data);
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-        if (Config.supports_watch) {
+        //if (Config.supports_watch) {
             await cli.UnWatch(msg.id, msg.jwt);
-        } else {
-            msg.error = "Watch is not supported by this openflow";
-        }
+        // } else {
+        //     msg.error = "Watch is not supported by this openflow";
+        // }
         msg.result = null;
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -1372,14 +1372,14 @@ export class Message {
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
         msg.id = null;
-        if (Config.supports_watch) {
+        // if (Config.supports_watch) {
             msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
             if(msg.collectionname != null && msg.collectionname != "") {
                 Config.db.registerGlobalWatch(msg.collectionname, null);
             }
-        } else {
-            msg.error = "Watch is not supported by this openflow";
-        }
+        // } else {
+        //     msg.error = "Watch is not supported by this openflow";
+        // }
         msg.result = msg.id;
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -1945,7 +1945,7 @@ export class Message {
                 } else {
                     Logger.instanse.debug(tuser.username + " was validated in using " + tokentype, span);
                 }
-                msg.supports_watch = Config.supports_watch;
+                msg.supports_watch = true;
                 var keys = Object.keys(UpdateDoc.$set);
                 if (keys.length > 0 || UpdateDoc.$unset || NoderedUtil.IsNullEmpty(user.lastseen)) {
                     // ping will handle this, if no new information needs to be added

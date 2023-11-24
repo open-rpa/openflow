@@ -238,18 +238,18 @@ export class DatabaseConnection extends events.EventEmitter {
             //     // Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms, count: arr.length, collection: "users" });
             // })
         this.db = this.cli.db(this._dbname);
-        try {
-            var topology = (this.cli as any).topology;
-            if (topology.s.description.type == "Single" || topology.s.description.type == "single") {
-                Config.supports_watch = false;
-            } else {
-                Config.supports_watch = true;
-            }
-        } catch (error) {
-            Logger.instanse.error(error, span);
-        }
-        Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
-        if (Config.supports_watch && this.registerGlobalWatches) {
+        // try {
+        //     var topology = (this.cli as any).topology;
+        //     if (topology.s.description.type == "Single" || topology.s.description.type == "single") {
+        //         Config.supports_watch = false;
+        //     } else {
+        //         Config.supports_watch = true;
+        //     }
+        // } catch (error) {
+        //     Logger.instanse.error(error, span);
+        // }
+        // Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
+        // if (Config.supports_watch && this.registerGlobalWatches) {
             // let collections = await DatabaseConnection.toArray(this.db.listCollections());
             let collections = await Logger.DBHelper.GetCollections(span);
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -259,7 +259,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
                 this.registerGlobalWatch(collections[c].name, span);
             }
-        }
+        // }
         this.ensureQueueMonitoring();
         this.isConnected = true;
         Logger.otel.endSpan(span);
@@ -4836,14 +4836,14 @@ export class DatabaseConnection extends events.EventEmitter {
             collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
-            if (Config.supports_watch) {
+            // if (Config.supports_watch) {
                 Logger.instanse.info("Register global watches for each collection", span);
                 for (var c = 0; c < collections.length; c++) {
                     if (collections[c].type != "collection") continue;
                     if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
                     this.registerGlobalWatch(collections[c].name, span);
                 }
-            }
+            // }
 
             DatabaseConnection.timeseries_collections = [];
             DatabaseConnection.collections_with_text_index = [];

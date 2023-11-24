@@ -257,7 +257,6 @@ export class Config {
         stripe_force_checkout: false,
         stripe_allow_promotion_codes: true,
 
-        supports_watch: false,
         ensure_indexes: true,
         text_index_name_fields: ["name", "_names"],
         auto_create_users: false,
@@ -531,7 +530,6 @@ export class Config {
     public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout"));
     public static stripe_allow_promotion_codes: boolean = Config.parseBoolean(Config.getEnv("stripe_allow_promotion_codes"));
 
-    public static supports_watch: boolean = Config.parseBoolean(Config.getEnv("supports_watch"));
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes"));
     public static text_index_name_fields: string[] = Config.parseArray(Config.getEnv("text_index_name_fields"));
 
