@@ -4586,6 +4586,16 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    ToogleType(logtype) {
+        if(logtype == null || logtype == "") {
+            this.basequery = {}
+        } else {
+            this.basequery['type'] = logtype;
+        }
+        this.page = 0; 
+        this.loading = false;
+        this.loadData()
+    }
     ToggleModal() {
         var modal = document.getElementById("exampleModal");
         modal.classList.toggle("show");

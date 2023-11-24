@@ -23,39 +23,39 @@
   <!-- <a class="btn" href ng-click="ctrl.loadData()" title="Reload current data">
     <span translate lib="web">reload</span>
   </a> -->
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'jwtsignin'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'jwtsignin'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('jwtsignin'); " ng-class="{'btn-primary': ctrl.basequery['type'] == 'jwtsignin'}"
     title="jwt signin">
     <span translate lib="web">jwt signin</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'impersonate'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'impersonate'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('impersonate')" ng-class="{'btn-primary': ctrl.basequery['type'] == 'impersonate'}"
     title="impersonate">
     <span translate lib="web">impersonate</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'assignplan'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'assignplan'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('assignplan')" ng-class="{'btn-primary': ctrl.basequery['type'] == 'assignplan'}"
     title="assignplan">
     <span translate lib="web">assignplan</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'unassignplan'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'unassignplan'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('unassignplan')" ng-class="{'btn-primary': ctrl.basequery['type'] == 'unassignplan'}"
     title="unassignplan">
     <span translate lib="web">unassignplan</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'ensureagent'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'ensureagent'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('ensureagent')" ng-class="{'btn-primary': ctrl.basequery['type'] == 'ensureagent'}"
     title="ensureagent">
     <span translate lib="web">ensureagent</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'killagent'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'killagent'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('killagent')" ng-class="{'btn-primary': ctrl.basequery['type'] == 'killagent'}"
     title="killagent">
     <span translate lib="web">killagent</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'removeagent'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'removeagent'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('removeagent')" ng-class="{'btn-primary': ctrl.basequery['type'] == 'removeagent'}"
     title="removeagent">
     <span translate lib="web">removeagent</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery['type'] = 'issue'; ctrl.loadData()" ng-class="{'btn-primary': ctrl.basequery['type'] == 'issue'}"
+  <a class="btn" href ng-click="ctrl.ToogleType('issue')" ng-class="{'btn-primary': ctrl.basequery['type'] == 'issue'}"
     title="Issue">
     <span translate lib="web">Issue</span>
   </a>
-  <a class="btn" href ng-click="ctrl.basequery = {}; ctrl.loadData()"
+  <a class="btn" href ng-click="ctrl.ToogleType()"
   title="clear filters and show all status and Workitem queues">
   <span translate lib="web">all</span>
 </a>
