@@ -3692,7 +3692,7 @@ export class Message {
                 fromdate.setMonth(fromdate.getMonth() - 1);
                 const jwt: string = Crypt.rootToken();
 
-                let query = { "validated": false, "_type": "user" }
+                let query = { "validated": false, "_type": "user", "_id": { "$ne": WellknownIds.root } };
                 query["_modified"] = { "$lt": todate.toISOString(), "$gt": fromdate.toISOString()}
                 let count = await Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
                 if(count > 0) {
