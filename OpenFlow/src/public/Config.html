@@ -38,13 +38,26 @@
         <!-- <input type="checkbox" ng-checked="ctrl.model.log_to_exchange"
         ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()" value="1" id="ctrl.model.log_to_exchange" /><span ng-click="ctrl.model.log_to_exchange = !ctrl.model.log_to_exchange; ctrl.submit()">enabled streaming</span> to -->
         <a ng-href="#/Console">Console</a>
+        <a class="btn" href ng-click="ctrl.SetState('all')" ng-class="{'btn-primary': ctrl.show == 'all'}"
+            title="Show only new Workitemss">
+            <span translate lib="web">all</span>
+        </a>
+        <a class="btn" href ng-click="ctrl.SetState('set')" ng-class="{'btn-primary': ctrl.show == 'set'}"
+            title="Show only new Workitemss">
+            <span translate lib="web">set</span>
+        </a>
+        <a class="btn" href ng-click="ctrl.SetState('unset')" ng-class="{'btn-primary': ctrl.show == 'unset'}"
+            title="Show only new Workitemss">
+            <span translate lib="web">unset</span>
+        </a>
+  
         <br>
         <br>
     </div>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
     
-<div ng-repeat="setting in ctrl.settings" class="form-group">
+<div ng-repeat="setting in ctrl.settings" class="form-group" ng-show="ctrl.Show(setting)">
     <label ng-class="{'dimmed': ctrl.model[setting.name] == null}">{{ setting.name }} ({{ setting.type }}) 
         <a href="" ng-click="ctrl.deletekey(setting.name); $event.preventDefault(); $event.stopPropagation();">clear</a>
         ( default: {{ setting.default }})

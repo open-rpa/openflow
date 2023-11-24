@@ -17,12 +17,13 @@ export class dbConfig extends Base {
         this._type = "config";
         this.name = "Base configuration";
         this.version = "0.0.1";
-        this._encrypt = ["stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
+        this._encrypt = ["mongodb_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
     }
     public version: string;
     public needsupdate: boolean;
     public updatedat: Date;
 
+    
 
     public async Save(jwt: string, parent: Span): Promise<void> {
         if (this.needsupdate = true) {
@@ -38,6 +39,19 @@ export class dbConfig extends Base {
         if(this.version == null) return -1;
         return this.version.localeCompare(version, undefined, { numeric: true, sensitivity: 'base' });
     }
+    public static areEqual(a, b) {
+        if (a === b) return true;
+        if (a == null || b == null) return false;
+        try {
+            var _a = JSON.stringify(a);
+            var _b = JSON.stringify(b);
+        } catch (error) {
+            console.error("areEqual failed to stringify")
+            return false;
+        }
+        if (_a !== _b) return false;
+        return true;
+      }
 
     public static cleanAndApply(conf: dbConfig, parent: Span): Boolean {
         var updated = false;
@@ -77,7 +91,7 @@ export class dbConfig extends Base {
                 if(key == "HTTP_PROXY") {
                     var b = true;
                 }
-                if(_env != _default) {
+                if(!dbConfig.areEqual(_env, _default)) {
                     updated = true;
                     conf[key] = Config[key];
                 }
@@ -103,9 +117,6 @@ export class dbConfig extends Base {
                         continue;
                     }
                 }
-                if(key == "HTTP_PROXY") {
-                    var b = true;
-                }
                 if (Object.prototype.hasOwnProperty.call(Config, key)) {
                     Config[key] = value;
 
@@ -125,12 +136,12 @@ export class dbConfig extends Base {
                             continue;
                         }
                         if(_env != _default) {
-                        } else if(_env == value ) {
+                        } else if(dbConfig.areEqual(_env, value)) {
                             updated = true;
                             delete conf[key];
                         }
                     } else {
-                        if(_default == value ) {
+                        if(dbConfig.areEqual(_default, value)) {
                             updated = true;
                             delete conf[key];
                         }
@@ -140,7 +151,7 @@ export class dbConfig extends Base {
                 Logger.instanse.error("Error setting config " + keys + " to " + value, null);
             }
         }
-        conf._encrypt = ["stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
+        conf._encrypt = ["mongodb_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
         if(Config._version != conf._version) {
             Config._version = conf._version;
             Logger.instanse.info("Loaded config version " + conf._version, parent);
@@ -319,7 +330,7 @@ export class Config {
         migrate_audit_to_ts: true,
         
         websocket_package_size: 25000,
-        websocket_max_package_count: 25000,
+        websocket_max_package_count: 1048576,
         websocket_message_callback_timeout: 3600,
         websocket_disconnect_out_of_sync: false,
         protocol: "http",

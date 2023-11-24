@@ -7307,6 +7307,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
     public func: boolean = true;
     public searchstring: string = "";
     public settings: any[] = [];
+    public show: "all" | "set" | "unset" = "set";
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -7329,6 +7330,8 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             // {"name": "NODE_ENV", "type": "string", "default": "development"},
             // {"name": "log_to_exchange", "type": "boolean", "default": "false"}, // called straming handled elsewere
             // {"name": "aes_secret", "type": "string", "default": ""}, // ONLY envoriment variable
+            // {"name": "signing_crt", "type": "string", "default": ""}, // ONLY envoriment variable
+            // {"name": "singing_key", "type": "string", "default": ""}, // ONLY envoriment variable
             {"name": "license_key", "type": "string", "default": ""},
             {"name": "enable_openai", "type": "boolean", "default": "false"},
             {"name": "enable_openapi", "type": "boolean", "default": "true"},
@@ -7380,7 +7383,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "ping_clients_interval", "type": "number", "default": "10000"}, // 10 seconds
             {"name": "use_ingress_beta1_syntax", "type": "boolean", "default": "false"},
             {"name": "use_openshift_routes", "type": "boolean", "default": "false"},
-            {"name": "agent_image_pull_secrets", "type": "string[]", "default": ""},
+            {"name": "agent_image_pull_secrets", "type": "string[]", "default": "[]"},
             {"name": "auto_create_personal_nodered_group", "type": "boolean", "default": "false"},
             {"name": "auto_create_personal_noderedapi_group", "type": "boolean", "default": "false"},
             {"name": "force_add_admins", "type": "boolean", "default": "true"},
@@ -7434,7 +7437,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "force_dbusage_ts", "type": "boolean", "default": "false"},
             {"name": "migrate_audit_to_ts", "type": "boolean", "default": "true"},
             {"name": "websocket_package_size", "type": "number", "default": "25000"},
-            {"name": "websocket_max_package_count", "type": "number", "default": "25000"},
+            {"name": "websocket_max_package_count", "type": "number", "default": "1048576"},
             {"name": "websocket_message_callback_timeout", "type": "number", "default": "3600"},
             {"name": "websocket_disconnect_out_of_sync", "type": "boolean", "default": "false"},
             {"name": "protocol", "type": "string", "default": "http"},
@@ -7470,8 +7473,6 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "allow_skiphistory", "type": "boolean", "default": "false"},
             {"name": "max_memory_restart_mb", "type": "number", "default": "0"},
             {"name": "saml_issuer", "type": "string", "default": "the-issuer"},
-            {"name": "signing_crt", "type": "string", "default": ""},
-            {"name": "singing_key", "type": "string", "default": ""},
             {"name": "wapid_mail", "type": "string", "default": ""},
             {"name": "wapid_pub", "type": "string", "default": ""},
             {"name": "wapid_key", "type": "string", "default": ""},
@@ -7545,6 +7546,17 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
                 this.loadData();
             });
         });
+    }
+    SetState(state: "all" | "set" | "unset") {
+        this.show = state;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    Show(setting) {
+        if(this.show == "all") return true;
+        var isset = this.model[setting.name] != null;
+        if(this.show == "set" && isset) return true;
+        if(this.show == "unset" && !isset) return true;
+        return false;
     }
     async RegisterWatch() {
         try {
