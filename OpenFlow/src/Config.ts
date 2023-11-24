@@ -64,7 +64,8 @@ export class dbConfig extends Base {
             if(["db", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
-            "domain", "enable_openapi", "enable_openapiauth" ].indexOf(key) > -1 ) {
+            "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
+            "otel_metric_url", "otel_trace_url" ].indexOf(key) > -1 ) {
                 if(os.hostname().toLowerCase() == "nixos") {
                     continue;
                 }
@@ -112,7 +113,8 @@ export class dbConfig extends Base {
 
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
-                "domain", "enable_openapi", "enable_openapiauth" ].indexOf(key) > -1 ) {
+                "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
+                "otel_metric_url", "otel_trace_url"  ].indexOf(key) > -1 ) {
                     if(os.hostname().toLowerCase() == "nixos") {
                         continue;
                     }
@@ -272,6 +274,7 @@ export class Config {
         text_index_name_fields: ["name", "_names"],
         auto_create_users: false,
         auto_create_user_from_jwt: false,
+        allow_signin_with_expired_jwt: false,
         auto_create_domains: [],
         persist_user_impersonation: false,
         ping_clients_interval: 10000, // 10 seconds
@@ -324,7 +327,6 @@ export class Config {
         cleanup_on_delete_customer: false,
         cleanup_on_delete_user: false,
         api_bypass_perm_check: false,
-        ignore_expiration: false,
         force_audit_ts: false,
         force_dbusage_ts: false,
         migrate_audit_to_ts: true,
@@ -546,6 +548,7 @@ export class Config {
 
     public static auto_create_users: boolean = Config.parseBoolean(Config.getEnv("auto_create_users"));
     public static auto_create_user_from_jwt: boolean = Config.parseBoolean(Config.getEnv("auto_create_user_from_jwt"));
+    public static allow_signin_with_expired_jwt: boolean = Config.parseBoolean(Config.getEnv("allow_signin_with_expired_jwt"));
     public static auto_create_domains: string[] = Config.parseArray(Config.getEnv("auto_create_domains"));
     public static persist_user_impersonation: boolean = Config.parseBoolean(Config.getEnv("persist_user_impersonation"));
     public static ping_clients_interval: number = parseInt(Config.getEnv("ping_clients_interval")); // 10 seconds
@@ -602,7 +605,6 @@ export class Config {
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check"));
-    public static ignore_expiration: boolean = Config.parseBoolean(Config.getEnv("ignore_expiration"));
     public static force_audit_ts: boolean = Config.parseBoolean(Config.getEnv("force_audit_ts"));
     public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts"));
     public static migrate_audit_to_ts: boolean = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts"));
