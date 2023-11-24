@@ -104,6 +104,12 @@ export class DBHelper {
                         } else {
                             keys = await this.memoryCache.keys();
                         }
+                    } else if(this.memoryCache &&this.memoryCache.store && this.memoryCache.store.keys) {
+                        if(this.memoryCache.store.keys.get) {
+                            keys = await this.memoryCache.store.keys.get();
+                        } else {
+                            keys = await this.memoryCache.store.keys();
+                        }
                     }
                 } catch (error) {
 
