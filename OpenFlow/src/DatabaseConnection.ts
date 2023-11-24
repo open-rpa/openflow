@@ -160,7 +160,7 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.addEvent("connecting to mongodb");
         Logger.instanse.info("Connecting to mongodb", span);
         const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, maxPoolSize: Config.mongodb_maxpoolsize };
-        options.monitorCommands = true;
+        // options.monitorCommands = true;
         this.cli = await MongoClient.connect(this.mongodburl, options);
         Logger.instanse.info("Connected to mongodb", span);
         span?.addEvent("Connected to mongodb");
