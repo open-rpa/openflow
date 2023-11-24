@@ -6543,6 +6543,7 @@ export class WorkitemsCtrl extends entitiesCtrl<Base> {
         this.loadData();
     }
     SetState(state) {
+        this.page = 0;
         if (state == "" || state == null) {
             delete this.basequery["state"];
         } else {
