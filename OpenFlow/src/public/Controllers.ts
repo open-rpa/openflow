@@ -7468,7 +7468,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "mongodb_minpoolsize", "type": "number", "default": "25"},
             {"name": "mongodb_maxpoolsize", "type": "number", "default": "25"},
 
-            {"name": "skip_history_collections", "type": "string", "default": "audit,openrpa_instances,workflow_instances"},
+            {"name": "skip_history_collections", "type": "string", "default": "audit,oauthtokens,openrpa_instances,workflow_instances,workitems,mailhist"},
             {"name": "history_delta_count", "type": "number", "default": "1000"},
             {"name": "allow_skiphistory", "type": "boolean", "default": "false"},
             {"name": "max_memory_restart_mb", "type": "number", "default": "0"},
