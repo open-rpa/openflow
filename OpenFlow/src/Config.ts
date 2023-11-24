@@ -363,7 +363,7 @@ export class Config {
         mongodb_minpoolsize: 25,
         mongodb_maxpoolsize: 25,
 
-        skip_history_collections: "audit,oauthtokens,openrpa_instances,workflow_instances,workitems,dbsize,mailhist", // "audit,openrpa_instances,workflow_instances",
+        skip_history_collections: "oauthtokens,openrpa_instances,workflow_instances,workitems,mailhist", // "audit,openrpa_instances,workflow_instances",
         history_delta_count: 1000,
         allow_skiphistory: false,
         max_memory_restart_mb: 0,
