@@ -7452,8 +7452,8 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "websocket_message_callback_timeout", "type": "number", "default": "3600"},
             {"name": "websocket_disconnect_out_of_sync", "type": "boolean", "default": "false"},
             {"name": "protocol", "type": "string", "default": "http"},
-            {"name": "port", "type": "number", "default": "80"},
-            {"name": "domain", "type": "string", "default": "localhost"},
+            {"name": "port", "type": "number", "default": "3000"},
+            {"name": "domain", "type": "string", "default": "localhost.openiap.io"},
             {"name": "cookie_secret", "type": "string", "default": "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"},
             {"name": "max_ace_count", "type": "number", "default": "128"},
         
