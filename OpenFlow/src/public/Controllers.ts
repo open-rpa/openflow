@@ -7780,7 +7780,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         for (var i = 0; i < this.models.length; i++) {
             var model = this.models[i];
             var user = await NoderedUtil.Query({ collectionname: "users", query: { _id: (model as any).runas }, top: 1 });
-            if(user.length > 0) {
+            if(user != null && user.length > 0) {
                 // @ts-ignore
                 model.customerid = user[0].customerid;
             }
