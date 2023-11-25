@@ -2522,7 +2522,7 @@ export class Message {
                 // throw new Error("Customer has no billing information, please update with vattype and vatnumber");
             }
             if (Config.stripe_force_vat) {
-                if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
+                if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer " + customer.name + " has no billing information, please update with vattype and vatnumber");
             }
 
 
