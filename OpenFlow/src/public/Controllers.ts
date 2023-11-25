@@ -7688,7 +7688,7 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.postloadData = this.processdata;
         this.searchfields = ["name", "slug"];
         this.orderby = { "_modified": -1 }
-        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, webserver: 1, runas: 1, _createdby: 1, slug: 1, arch: 1, os:1 };
+        this.baseprojection = { _type: 1, name: 1, _created: 1, _modified: 1, image: 1, stripeprice: 1, webserver: 1, runas: 1, _createdby: 1, slug: 1, arch: 1, os:1 };
         if (this.userdata.data.AgentsCtrl) {
             this.basequery = this.userdata.data.AgentsCtrl.basequery;
             this.collection = this.userdata.data.AgentsCtrl.collection;

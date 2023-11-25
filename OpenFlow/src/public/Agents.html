@@ -46,7 +46,9 @@
       <th scope="col" ng-click="ctrl.ToggleOrder('name')"><strong translate lib="web">name</strong></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('image')"><strong translate lib="web">image</strong></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('os')"><strong translate lib="web">os</strong></th>      
-      <th scope="col" ng-click="ctrl.ToggleOrder('arch')"><strong translate lib="web">arch</strong></th>      
+      <th scope="col" ng-click="ctrl.ToggleOrder('arch')"><strong translate lib="web">arch</strong></th>
+      <th ng-show="menuctrl.WebSocketClientService.multi_tenant" scope="col" ng-click="ctrl.ToggleOrder('stripeprice')"><strong translate lib="web">$$</strong></th>
+      
       <th scope="col" ng-click="ctrl.ToggleOrder('_createdby')"><strong translate lib="web">createdby</strong></th>
       <th scope="col" ng-click="ctrl.ToggleOrder('status')"><strong translate lib="web">status</strong></th>
       <th class="text-right"></th>
@@ -61,6 +63,7 @@
       <td>{{ctrl.trimimage(model.image) }}</td>
       <td>{{model.os }}</td>
       <td>{{model.arch}}</td>
+      <td ng-show="menuctrl.WebSocketClientService.multi_tenant" ><div ng-show="model.stripeprice != null && model.stripeprice != ''">*</div></td>
       <td>{{model._createdby | limitTo: 20}}</td>
       <td>{{model.status | limitTo: 20}}</td>
       <td class="text-right">
