@@ -7777,6 +7777,16 @@ export class AgentsCtrl extends entitiesCtrl<Base> {
         this.userdata.data.AgentsCtrl.skipcustomerfilter = this.skipcustomerfilter;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
+        for (var i = 0; i < this.models.length; i++) {
+            var model = this.models[i];
+            var user = await NoderedUtil.Query({ collectionname: "users", query: { _id: (model as any).runas }, top: 1 });
+            if(user.length > 0) {
+                // @ts-ignore
+                model.customerid = user[0].customerid;
+            }
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
         this.knownpods = await NoderedUtil.CustomCommand({ command: "getagentpods" })
         this.clients = await NoderedUtil.CustomCommand({ "command": "getclients" });
 
