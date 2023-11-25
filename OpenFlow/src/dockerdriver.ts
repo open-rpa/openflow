@@ -49,7 +49,7 @@ export class dockerdriver implements i_agent_driver {
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
         Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
 
-        var agent_grpc_apihost = "api-grpc";
+        var agent_grpc_apihost = "api";
         if(Config.agent_grpc_apihost != null && Config.agent_grpc_apihost != "") {
             agent_grpc_apihost = Config.agent_grpc_apihost;
         }
