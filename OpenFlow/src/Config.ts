@@ -17,7 +17,7 @@ export class dbConfig extends Base {
         this._type = "config";
         this.name = "Base configuration";
         this.version = "0.0.1";
-        this._encrypt = ["mongodb_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
+        this._encrypt = ["mongodb_url", "amqp_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
     }
     public version: string;
     public needsupdate: boolean;
@@ -157,7 +157,7 @@ export class dbConfig extends Base {
                 Logger.instanse.error("Error setting config " + keys + " to " + value, null);
             }
         }
-        conf._encrypt = ["mongodb_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
+        conf._encrypt = ["mongodb_url", "amqp_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
         if(Config._version != conf._version) {
             Config._version = conf._version;
             Logger.instanse.info("Loaded config version " + conf._version, parent);
