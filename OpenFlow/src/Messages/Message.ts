@@ -590,6 +590,36 @@ export class Message {
                         case "deleteworkitem":
                             await this.DeleteWorkitem(span);
                             break;
+                        case "startagent":
+                            await this.ControlAgent(span);
+                            break;
+                        case "stopagent":
+                            await this.ControlAgent(span);
+                            break;
+                        case "deleteagentpod":
+                            await this.ControlAgent(span);
+                            break;
+                        case "getagentlog":
+                            await this.ControlAgent(span);
+                            break;
+                        case "getagentpods":
+                            await this.ControlAgent(span);
+                            break;
+                        case "deleteagent":
+                            await this.ControlAgent(span);
+                            break;
+                        case "createindex":
+                            await this.CreateIndex(span);
+                            break;
+                        case "deletepackage":
+                            await this.DeletePackage(span);
+                            break;
+                        case "issuelicense":
+                            await this.IssueLicense(cli, span);
+                            break;
+                        case "invokeopenra":
+                            await this.InvokeOpenRPA(cli, span);
+                            break;
                         case "customcommand":
                             await this.CustomCommand(cli, span);
                             break;
@@ -628,6 +658,145 @@ export class Message {
             }
         });
     }
+    async ControlAgent(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        msg =JSON.parse(JSON.stringify(msg));
+        try {
+            console.log(this.data);
+            if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
+            var agent = null;
+            if((msg.agentid == null || msg.agentid == "")) {
+                if(this.command != "getagentpods") throw new Error("No agentid is specified");
+            } else {
+                agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.agentid }, collectionname: "agents", jwt:this.jwt }, parent);
+                if(agent == null) throw new Error("Access denied");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
+                }
+                if(agent.image == null || agent.image == "") return;
+            }
+    
+            
+            if(this.command == "startagent") {
+                await Logger.agentdriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
+            } else if(this.command == "stopagent") {
+                await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, false, parent);
+            } else if(this.command == "getagentlog") {
+                msg.result = await Logger.agentdriver.GetInstanceLog(this.tuser, this.jwt, agent, msg.podname, parent);
+            } else if(this.command == "getagentpods") {
+                var getstats = false;
+                if(!NoderedUtil.IsNullEmpty(msg.stats)) getstats = msg.stats;
+                msg.results = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, msg.podname, parent);
+                // msg.results = JSON.stringify(await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, msg.podname, parent));
+                var b = true;
+            } else if(this.command == "deleteagentpod") {
+                await Logger.agentdriver.RemoveInstancePod(this.tuser, this.jwt, agent, msg.podname, parent);
+            } else if(this.command == "deleteagent") {
+                if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.delete)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${agent.name}`);
+                }    
+                await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, true, parent);
+                Config.db.DeleteOne(agent._id, "agents", false, this.jwt, parent);
+            }            
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async CreateIndex(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        msg = JSON.parse(JSON.stringify(msg));
+        try {
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+            msg.result = await Config.db.createIndex(msg.collectionname, msg.name, msg.index, msg.options, parent);
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async DeletePackage(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        try {
+            var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt: this.jwt }, parent);
+            if(pack == null) throw new Error("Access denied or package not found");
+            if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
+                throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
+            }
+            if(pack.fileid != null && pack.fileid != "") {
+                const rootjwt = Crypt.rootToken();
+                let query = { _id: pack.fileid };
+                const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
+                if(item != null) {
+                    await Config.db.DeleteOne(pack.fileid, "files", false, this.jwt, parent);
+                }
+            }
+            await Config.db.DeleteOne(pack._id, "agents", false, this.jwt, parent);
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async IssueLicense(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        try {
+            let _lic_require: any = null;
+            try {
+                _lic_require = require("../ee/license-file");
+            } catch (error) {
+            }
+            if (_lic_require == null) {
+                throw new Error("License module not found");
+            }
+            Logger.License = new _lic_require.LicenseFile();
+            // @ts-ignore
+            var data = msg.data;
+            try {
+                data = JSON.parse(data);
+            } catch (error) {                    
+            }
+            if(data == null || data == "") throw new Error("No data found");
+            var domain = data.domain;
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                delete data.months;
+            }
+            var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage"}, collectionname: "config", jwt:this.jwt }, parent);
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                if(exists == null) throw new Error("Access denied");
+            }
+            if(data.months == null || data.months == "") {
+                if(exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
+            }
+            //  throw new Error("Access denied");
+            msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async InvokeOpenRPA(cli: WebSocketServerClient, parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        try {
+            throw new Error("Not implemented, only available using OpenAPI");
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }    
     async RegisterExchange(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         let msg: RegisterExchangeMessage;
@@ -977,8 +1146,8 @@ export class Message {
             return;
         }
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
-        this.Reply("error");
         Logger.instanse.error(`UnknownCommand ${this.command}`, null);
+        this.Reply("error");
     }
     private static collectionCache: any = {};
     private static collectionCachetime: Date = new Date();
@@ -1187,11 +1356,11 @@ export class Message {
         msg = WatchMessage.assign(this.data);
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-        if (Config.supports_watch) {
+        //if (Config.supports_watch) {
             await cli.UnWatch(msg.id, msg.jwt);
-        } else {
-            msg.error = "Watch is not supported by this openflow";
-        }
+        // } else {
+        //     msg.error = "Watch is not supported by this openflow";
+        // }
         msg.result = null;
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -1203,14 +1372,14 @@ export class Message {
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
         msg.id = null;
-        if (Config.supports_watch) {
+        // if (Config.supports_watch) {
             msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
             if(msg.collectionname != null && msg.collectionname != "") {
                 Config.db.registerGlobalWatch(msg.collectionname, null);
             }
-        } else {
-            msg.error = "Watch is not supported by this openflow";
-        }
+        // } else {
+        //     msg.error = "Watch is not supported by this openflow";
+        // }
         msg.result = msg.id;
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -1776,7 +1945,7 @@ export class Message {
                 } else {
                     Logger.instanse.debug(tuser.username + " was validated in using " + tokentype, span);
                 }
-                msg.supports_watch = Config.supports_watch;
+                msg.supports_watch = true;
                 var keys = Object.keys(UpdateDoc.$set);
                 if (keys.length > 0 || UpdateDoc.$unset || NoderedUtil.IsNullEmpty(user.lastseen)) {
                     // ping will handle this, if no new information needs to be added
@@ -2353,7 +2522,7 @@ export class Message {
                 // throw new Error("Customer has no billing information, please update with vattype and vatnumber");
             }
             if (Config.stripe_force_vat) {
-                if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer has no billing information, please update with vattype and vatnumber");
+                if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer " + customer.name + " has no billing information, please update with vattype and vatnumber");
             }
 
 
@@ -2958,7 +3127,9 @@ export class Message {
         if (payload && payload.limit) {
             url += "&limit=" + payload.limit;
         }
-        const auth = "Basic " + Buffer.from(Config.stripe_api_secret + ":").toString("base64");
+        var stripe_api_secret = Config.stripe_api_secret;
+        if(stripe_api_secret == null || stripe_api_secret == "") throw new Error("Missing stripe_api_secret");
+        const auth = "Basic " + Buffer.from(stripe_api_secret + ":").toString("base64");
 
         const options = {
             headers: {
@@ -3513,43 +3684,35 @@ export class Message {
             } catch (error) {
                 Logger.instanse.error(error, span);
             }
+
+            if(Config.housekeeping_remomve_unvalidated_user_days > 0) {
+                let todate = new Date();
+                todate.setDate(todate.getDate() - 1);
+                let fromdate = new Date();
+                fromdate.setMonth(fromdate.getMonth() - 1);
+                const jwt: string = Crypt.rootToken();
+
+                let query = { "validated": false, "_type": "user", "_id": { "$ne": WellknownIds.root } };
+                query["_modified"] = { "$lt": todate.toISOString(), "$gt": fromdate.toISOString()}
+                let count = await Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
+                if(count > 0) {
+                    Logger.instanse.verbose("Removed " + count + " unvalidated users", span);
+                }                
+            }
+            if(Config.housekeeping_cleanup_openrpa_instances == true) {
+                let msg = new UpdateManyMessage();
+                msg.jwt = Crypt.rootToken();
+                msg.collectionname = "openrpa_instances"; 
+                msg.query = { "state": { "$in": ["idle", "running"] } };
+                msg.item = { "$set": { "state": "completed"}, "$unset": {"xml": ""}} as any;
+                let result = await Config.db.UpdateDocument(msg, span);
+                if(result?.opresult?.nModified > 0) {
+                    Logger.instanse.verbose("Updated " + result.opresult.nModified + " openrpa instances", span);
+                } else if (result?.opresult?.modifiedCount > 0) {
+                    Logger.instanse.verbose("Updated " + result.opresult.modifiedCount + " openrpa instances", span);
+                }
+            }
             
-            // if (!skipNodered) {
-            //     Logger.instanse.debug("Get running Nodered Instances", span);
-            //     await this.GetNoderedInstance(span);
-            //     Logger.instanse.debug("Get users with autocreate", span);
-            //     const users: any[] = await Config.db.db.collection("users").find({ "_type": "user", "nodered.autocreate": true }).toArray();
-            //     // TODO: we should get instances and compare, running ensure for each user will not scale well
-            //     for (let i = 0; i < users.length; i++) {
-            //         let user = users[i];
-            //         var doensure = false;
-            //         if (Config.multi_tenant) {
-            //             if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-            //                 if (!NoderedUtil.IsNullEmpty(user.customerid)) {
-            //                     // @ts-ignore
-            //                     var customers: Customer[] = await Config.db.db.collection("users").find({ "_type": "customer", "_id": user.customerid }).toArray();
-            //                     if (customers.length > 0 && !NoderedUtil.IsNullEmpty(customers[0].subscriptionid)) {
-            //                         doensure = true;
-            //                     }
-            //                 }
-            //             } else {
-            //                 doensure = true;
-            //             }
-            //         } else {
-            //             doensure = true;
-            //         }
-            //         if (doensure) {
-            //             Logger.instanse.debug("EnsureNoderedInstance for " + user.name, span);
-            //             var ensuremsg: EnsureNoderedInstanceMessage = new EnsureNoderedInstanceMessage();
-            //             ensuremsg._id = user._id;
-            //             var msg: Message = new Message(); msg.jwt = jwt;
-            //             msg.data = JSON.stringify(ensuremsg);
-            //             msg.tuser = this.tuser;
-            //             await msg.EnsureNoderedInstance(span);
-            //         }
-            //     }
-            //     Logger.instanse.debug("Done processing autocreate", span);
-            // }
         } catch (error) {
         }
 
@@ -4010,13 +4173,6 @@ export class Message {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
                 } else {
                     cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
-                    // if (Config.nodered_domain_schema == "$nodered_id$.app.openiap.io") {
-                    //     // cursor = Config.db.db.collection("users").find({ "_type": "user", "dbusage": { "$gte": 15815993 } })
-                    //     cursor = Config.db.db.collection("users").find({ "_type": "user", "dblocked": true })
-                    // } else {
-                    //     cursor = Config.db.db.collection("users").find({ "_type": "user" })
-                    // }
-                    // While debugging, also update users who has not been online the last 24 hours
                 }
                 for await (const u of cursor) {
                     if (u.dbusage == null) u.dbusage = 0;
@@ -4212,7 +4368,15 @@ export class Message {
                                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                                 const payload: any = { "quantity": billablecount, "timestamp": dt };
                                 if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
-                                    await this.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
+                                    try {
+                                        await this.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
+                                    } catch (error) {
+                                        if (error.response && error.response.body) {
+                                            Logger.instanse.error("Update usage record error!" + error.response.body, span);
+                                        } else {
+                                            Logger.instanse.error("Update usage record error!" + error, span);
+                                        }
+                                    }
                                 }
                             }
                             if (c.dblocked || !c.dblocked) {

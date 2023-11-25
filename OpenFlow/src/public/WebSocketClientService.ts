@@ -28,7 +28,6 @@ export class WebSocketClientService {
 
                 this.auto_create_personal_nodered_group = data.auto_create_personal_nodered_group;
                 this.namespace = data.namespace;
-                this.nodered_domain_schema = data.nodered_domain_schema;
                 this.agent_domain_schema = data.agent_domain_schema;
                 
                 this.websocket_package_size = data.websocket_package_size;
@@ -180,7 +179,6 @@ export class WebSocketClientService {
     public allow_user_registration: boolean = false;
     public auto_create_personal_nodered_group: boolean = false;
     public namespace: string = "";
-    public nodered_domain_schema: string = "";
     public agent_domain_schema: string = "";
     public websocket_package_size: number = 25000;
     public stripe_api_key: string = "";

@@ -655,7 +655,7 @@ export class entitiesCtrl<T> {
             this.errormessage = "";
             this.loading = true;
             if (this.preloadData != null) {
-                this.preloadData();
+                await this.preloadData();
             }
             let query: object = Object.assign({}, this.basequery);
             let exactquery: object = null;
@@ -759,7 +759,7 @@ export class entitiesCtrl<T> {
             this.loading = false;
             if (this.autorefresh) {
                 if (this.models.length >= this.pagesize || this.page > 0) {
-                    // console.warn("Disabling auto refresh, result has more than pagesize entries");
+                    // Disabling auto refresh, result has more than pagesize entries
                 } else {
                     if (this.autorefreshpromise == null && this.searchstring === "") {
                         this.autorefreshpromise = this.$interval(() => {
@@ -941,7 +941,6 @@ export class entityCtrl<T> {
             }
             // @ts-ignore
             this.weburl = "//" + this.WebSocketClientService.agent_domain_schema.replace("$slug$", this.model.slug)
-            // this.weburl = "//" + this.WebSocketClientService.nodered_domain_schema.replace("$nodered_id$", this.model.slug)
         } catch (error) {
             this.loading = false;
             this.errormessage = JSON.stringify(error);

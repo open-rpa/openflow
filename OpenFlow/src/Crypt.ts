@@ -123,7 +123,7 @@ export class Crypt {
                 throw new Error('jwt must be provided');
             }
             if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-            if(ignoreExpiration == false && Config.ignore_expiration == true) ignoreExpiration = true;
+            if(Config.allow_signin_with_expired_jwt == false) ignoreExpiration = false;
             const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: ignoreExpiration });
             let impostor: string = null;
             if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
@@ -162,6 +162,6 @@ export class Crypt {
     }
     static decryptToken(token: string): any {
         if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-        return jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: Config.ignore_expiration });
+        return jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: Config.allow_signin_with_expired_jwt });
     }
 }

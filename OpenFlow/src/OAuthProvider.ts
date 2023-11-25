@@ -168,7 +168,7 @@ export class OAuthProvider {
                         defaultrole : "Viewer",
                         rolemappings : { "admins": "Admin" },
                         clientId: "openai",client_id: "openai", 
-                        client_secret: "secret",
+                        client_secret: "openai",
                         token_endpoint_auth_method: "client_secret_post",
                         response_types: ['code', 'id_token', 'code id_token'],
                         grant_types: ['implicit', 'authorization_code'],

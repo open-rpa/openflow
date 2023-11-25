@@ -116,7 +116,10 @@ export class Logger {
             }
             span.addEvent(obj.message, obj)
         }
-        if (obj.ms != null && obj.ms != "" && obj.func != "query" && Config.log_database_queries) {
+        if(Config.log_all_watches && obj.cls == "DatabaseConnection" && obj.func == "onchange") {
+
+        } else if(Config.log_database_queries && obj.requestId != null) {
+        } else if (obj.ms != null && obj.ms != "" && obj.func != "query" && Config.log_database_queries) {
             if (obj.ms < Config.log_database_queries_ms) return;
         } else if (Logger.enabled[cls]) {
             if (Logger.enabled[cls] < lvl) return;
@@ -152,7 +155,7 @@ export class Logger {
             return JSON.stringify(plainObject, filter, space);
         };
         if (Config.log_to_exchange && !Config.unittesting) {
-            if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
             if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
                 if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
                 amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", span, 1);
@@ -173,8 +176,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -193,8 +202,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -212,8 +227,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -231,8 +252,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -251,8 +278,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }
@@ -271,8 +304,14 @@ export class Logger {
             obj.cls = "";
             if (s.file != '') obj.cls = s.file.replace(".js", "");
         }
-        if(options?.openapi) {
-            obj.cls = "OpenAIProxy";
+        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+            obj.func = "anonymous";
+        }
+        if(options?.cls != null && options?.cls != "") {
+            obj.cls = options.cls;
+        }
+        if(options?.func != null && options?.func != "") {
+            obj.func = options.func;
         }
         this.json(obj, span);
     }

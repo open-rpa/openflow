@@ -150,7 +150,7 @@ export class flowclient extends client {
         var paylad = {"command": "watchevent", "data": data}
         protowrap.sendMesssag(this, paylad, null, true);
     } catch (error) {
-        console.error(error);
+        Logger.instanse.error(error, span);
     } finally {
     }
   }
@@ -226,7 +226,6 @@ export class flowclient extends client {
                 this._queuescounterstr = this._queuescounter.toString();
                 this._queuescurrentstr = this._queuescurrent.toString();
                 this._queues.push(queue);
-                console.log(this.id + " has " + this._queues.length + " queues")
             }
         } finally {
             if (queue) semaphore.up();
@@ -336,7 +335,6 @@ export class flowclient extends client {
     } finally {
         semaphore.up();
         Logger.otel.endSpan(span);
-        console.log(this.id + " has " + this._queues.length + " queues")
     }
   }
   public async CloseConsumers(parent: Span): Promise<void> {

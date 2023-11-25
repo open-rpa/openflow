@@ -83,8 +83,6 @@ export class DBHelper {
         for (var i = 0; i < keys.length; i++) {
             if (keys[i] && !keys[i].startsWith("requesttoken")) {
                 this.memoryCache.del(keys[i]);
-            } else {
-                console.log("not deleting " + keys[i]);
             }
         }
         Logger.instanse.debug("clearCache called with reason: " + reason, span);
@@ -105,6 +103,12 @@ export class DBHelper {
                             keys = await this.memoryCache.keys.get();
                         } else {
                             keys = await this.memoryCache.keys();
+                        }
+                    } else if(this.memoryCache &&this.memoryCache.store && this.memoryCache.store.keys) {
+                        if(this.memoryCache.store.keys.get) {
+                            keys = await this.memoryCache.store.keys.get();
+                        } else {
+                            keys = await this.memoryCache.store.keys();
                         }
                     }
                 } catch (error) {

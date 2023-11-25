@@ -14,6 +14,7 @@ import { SocketMessage } from "./SocketMessage";
 import { LoginProvider } from "./LoginProvider";
 import { WebServer } from "./WebServer";
 import { iAgent } from "./commoninterfaces";
+import * as os from "os";
 
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -141,6 +142,8 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     public replicat: string = null;
     public streams: clsstream[] = [];
+    public requests: any = {};
+    public host: string = "";
     /**
      * Connect to MongoDB
      * @returns Promise<void>
@@ -149,11 +152,15 @@ export class DatabaseConnection extends events.EventEmitter {
         if (this.cli !== null && this.cli !== undefined && this.isConnected) {
             return;
         }
+        if(this.host == "") {
+            this.host = os.hostname();
+        }
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
         this.streams = [];
         span?.addEvent("connecting to mongodb");
         Logger.instanse.info("Connecting to mongodb", span);
         const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, maxPoolSize: Config.mongodb_maxpoolsize };
+        // options.monitorCommands = true;
         this.cli = await MongoClient.connect(this.mongodburl, options);
         Logger.instanse.info("Connected to mongodb", span);
         span?.addEvent("Connected to mongodb");
@@ -173,20 +180,76 @@ export class DatabaseConnection extends events.EventEmitter {
             .on('error', errEvent)
             .on('parseError', errEvent)
             .on('timeout', errEvent)
-            .on('close', closeEvent);
+            .on('close', closeEvent)
+            // .on("commandStarted", (event) => {
+            //     if(this.host != "nixos") return;
+            //     let req = this.requests[event.requestId];
+            //     if(req != null) {
+            //         this.requests[event.requestId] = { start: new Date(), command: event.commandName, connectionId: event.connectionId };
+            //     } else {
+            //         this.requests[event.requestId] = { start: new Date(), command: event.commandName, connectionId: event.connectionId };
+            //     }
+            //     if(Config.log_database_queries == true) {
+            //         Logger.instanse.debug(event.requestId + " cmd: " + event.commandName + " started ", span, { requestId: event.requestId, connectionId: event.connectionId, command: event.commandName, cls: "DatabaseConnection" })
+            //     }
+            // })
+            // .on("commandFailed", (event) => {
+            //     if(this.host != "nixos") return;
+            //     if(Config.log_database_queries == true) {
+            //         Logger.instanse.debug(event.requestId + " cmd: " + event.commandName + " failed" , span, { requestId: event.requestId, ms: event.duration, connectionId: event.connectionId, command: event.commandName, failure: event.failure, cls: "DatabaseConnection" })
+            //     }
+            //     // Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms, count: arr.length, collection: "users" });
+            // })
+            // .on("commandSucceeded", (event) => {
+            //     if(this.host != "nixos") return;
+            //     if(Config.log_database_queries == true) {
+            //         // @ts-ignore
+            //         let ns = event.reply?.cursor?.ns;
+            //         // @ts-ignore
+            //         let count = (event.reply?.cursor?.nextBatch?.length !== undefined && event.reply?.cursor?.nextBatch?.length !== null) ? event.reply?.cursor?.nextBatch?.length 
+            //         // @ts-ignore
+            //             : (event.reply?.cursor?.firstBatch?.length !== undefined && event.reply?.cursor?.firstBatch?.length !== null) ? event.reply?.cursor?.firstBatch?.length 
+            //             // @ts-ignore
+            //             : (event.reply?.cursor?.nReturned !== undefined && event.reply?.cursor?.nReturned !== null) ? event.reply?.cursor?.nReturned 
+            //             // @ts-ignore
+            //             : (event.reply?.n !== undefined && event.reply?.n !== null) ? event.reply?.n 
+            //             // @ts-ignore
+            //             : (event.reply?.nModified !== undefined && event.reply?.nModified !== null) ? event.reply?.nModified 
+            //             // @ts-ignore
+            //             : (event.reply?.nUpserted !== undefined && event.reply?.nUpserted !== null) ? event.reply?.nUpserted 
+            //             // @ts-ignore
+            //             : event.reply?.nRemoved;
+
+            //         let req = this.requests[event.requestId];
+            //         if(req != null) {
+            //             req.end = new Date();
+            //             req.duration = req.end - req.start;
+            //             req.count = count;
+            //             req.ns = ns;
+            //             // delete this.requests[event.requestId];
+            //             let command = event.commandName;
+            //             if(command != req.command) command = req.command + "-" + command;
+            //             Logger.instanse.debug(event.requestId + " cmd: " + command + " c: " + req.count + " mq:" + req.duration, span, { requestId: event.requestId, ms: event.duration, connectionId: event.connectionId, command: event.commandName, reply: event.reply, cls: "DatabaseConnection" })
+            //         } else {
+            //             var b = true;
+            //         }
+            //         // Logger.instanse.debug(event.commandName + " " + event.requestId + " " + ns + " " + count, span, { requestId: event.requestId, ms: event.duration, connectionId: event.connectionId, command: event.commandName, reply: event.reply, cls: "DatabaseConnection" })
+            //     }
+            //     // Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms, count: arr.length, collection: "users" });
+            // })
         this.db = this.cli.db(this._dbname);
-        try {
-            var topology = (this.cli as any).topology;
-            if (topology.s.description.type == "Single" || topology.s.description.type == "single") {
-                Config.supports_watch = false;
-            } else {
-                Config.supports_watch = true;
-            }
-        } catch (error) {
-            Logger.instanse.error(error, span);
-        }
-        Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
-        if (Config.supports_watch && this.registerGlobalWatches) {
+        // try {
+        //     var topology = (this.cli as any).topology;
+        //     if (topology.s.description.type == "Single" || topology.s.description.type == "single") {
+        //         Config.supports_watch = false;
+        //     } else {
+        //         Config.supports_watch = true;
+        //     }
+        // } catch (error) {
+        //     Logger.instanse.error(error, span);
+        // }
+        // Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
+        // if (Config.supports_watch && this.registerGlobalWatches) {
             // let collections = await DatabaseConnection.toArray(this.db.listCollections());
             let collections = await Logger.DBHelper.GetCollections(span);
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -196,7 +259,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
                 this.registerGlobalWatch(collections[c].name, span);
             }
-        }
+        // }
         this.ensureQueueMonitoring();
         this.isConnected = true;
         Logger.otel.endSpan(span);
@@ -245,7 +308,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const wiq = queues[i];
                 const count = await Logger.DBHelper.GetPendingWorkitemsCount(wiq._id, null);
                 if (count < 1) continue;
-                const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
+                // const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
                 var payload = null;
                 // const payload = await this.GetOne({ jwt, collectionname, query }, null);
                 // if (payload == null) continue;
@@ -410,7 +473,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (collectionname === "config" && _type === "config") {
                     discardspan = false;
-                    await dbConfig.Reload(Crypt.rootToken(), span);
+                    await dbConfig.Reload(Crypt.rootToken(), true, span);
                     
                 }
             }
@@ -554,7 +617,12 @@ export class DatabaseConnection extends events.EventEmitter {
             (stream.stream as any).on("error", err => {
                 Logger.instanse.error(err, span, { collection: collectionname });
             });
-            (stream.stream as any).on("change", async (next) => { this.GlobalWatchCallback(collectionname, next) });
+            (stream.stream as any).on("change", async (next) => {
+                if(Config.log_all_watches == true) {
+                    Logger.instanse.debug(collectionname + " watch " + next?.fullDocument?._type + " " + next?.operationType + " " + next?.fullDocument?.name, span, { cls: "DatabaseConnection", func: "onchange", collection: collectionname });
+                }
+                this.GlobalWatchCallback(collectionname, next) 
+            });
             this.streams.push(stream);
         } catch (error) {
             Logger.instanse.error(error, span, { collection: collectionname });
@@ -2468,7 +2536,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!DatabaseConnection.hasAuthorization(user, original, Rights.update)) {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
-
+                if(q.collectionname === "config" && q.item._type === "config") {
+                    if (!user.HasRoleId(WellknownIds.admins)) throw new Error("Access denied, no authorization to update config");
+                    dbConfig.cleanAndApply(q.item as any, span);
+                }
+    
                 await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
 
                 if (q.collectionname === "agents") {
@@ -3597,7 +3669,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         try {
                             if(ids[i] != null && ids[i].trim() != "") objectids.push(safeObjectID(ids[i]))
                         } catch (error) {
-                            console.error(error);
+                            Logger.instanse.error(error, span);
                         }
                     }
                 } else {
@@ -3605,7 +3677,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         try {
                             if(ids[i] != null && ids[i].trim() != "") objectids.push(ids[i])
                         } catch (error) {
-                            console.error(error);
+                            Logger.instanse.error(error, span);
                         }
                     }
                 }
@@ -3812,7 +3884,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 newObj[key] = value;
             }
         } catch (error) {
-            Logger.instanse.error(error, null);
+            // Logger.instanse.error(error, null);
+            var errormessage = error.message ? error.message : error;
+            Logger.instanse.debug(errormessage, null);
             newObj[key] = value;
         }
         return newObj;
@@ -3830,7 +3904,7 @@ export class DatabaseConnection extends events.EventEmitter {
     _decryptentity(item, newObj, key) {
         const value: any = item[key];
         try {
-            if (this._shouldEncryptValue(item._encrypt, key, value) && value != null) {
+            if (this._shouldEncryptValue(item._encrypt, key, value) && value != null && value != "") {
                 let newvalue = Crypt.decrypt(value);
                 if (newvalue.indexOf("{") === 0 || newvalue.indexOf("[") === 0) {
                     try {
@@ -3843,7 +3917,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 newObj[key] = value;
             }
         } catch (error) {
-            Logger.instanse.error(error, null);
+            // Logger.instanse.error(error, null);
+            var errormessage = error.message ? error.message : error;
+            Logger.instanse.debug(errormessage, null);
             newObj[key] = value;
         }
         return newObj;
@@ -4170,6 +4246,26 @@ export class DatabaseConnection extends events.EventEmitter {
 
     }
 
+    SaveMongoDBCommand( user: TokenUser, collection: string, command: string, query: any, ms:number) {
+        try {
+            const cmd = {
+                _created: new Date(new Date().toISOString()),
+                _createdby: user.name,
+                _createdbyid: user._id,
+                collection: collection,
+                name: user?.username + " " + command + " " + collection + " " + ms,
+                command: command,
+                query: query,
+                ms: ms
+            }
+            this.db.collection("dbcommands").insertOne(cmd).then(() => {
+            }).catch(err => {
+                Logger.instanse.error(err, null);
+            });
+        } catch (error) {
+            Logger.instanse.error(error, null, { collection: collection, user: user?.username, ms: ms, query: query });
+        }
+    }
     async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage, user: TokenUser, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.SaveUpdateDiff", parent);
         try {
@@ -4380,8 +4476,10 @@ export class DatabaseConnection extends events.EventEmitter {
         return new Promise((resolve, reject) => {
             try {
                 Logger.instanse.info("Adding index " + name + " to " + collectionname, span, { collection: collectionname });
-                if (NoderedUtil.IsNullUndefinded(options)) options = {};
-                options["name"] = name;
+                if(typeof keypath === "string") keypath = JSON.parse(keypath);
+                if (NoderedUtil.IsNullEmpty(options)) options = {};
+                if(typeof options === "string") options = JSON.parse(options);
+                if (!NoderedUtil.IsNullEmpty(name)) options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
                     if (err) {
                         Logger.instanse.error(err, span);
@@ -4738,14 +4836,14 @@ export class DatabaseConnection extends events.EventEmitter {
             collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
-            if (Config.supports_watch) {
+            // if (Config.supports_watch) {
                 Logger.instanse.info("Register global watches for each collection", span);
                 for (var c = 0; c < collections.length; c++) {
                     if (collections[c].type != "collection") continue;
                     if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
                     this.registerGlobalWatch(collections[c].name, span);
                 }
-            }
+            // }
 
             DatabaseConnection.timeseries_collections = [];
             DatabaseConnection.collections_with_text_index = [];

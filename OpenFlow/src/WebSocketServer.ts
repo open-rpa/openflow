@@ -219,7 +219,7 @@ export class WebSocketServer {
         try {
             WebSocketServer._remoteclients = [];
 
-            const hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            const hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
             const clients: Base[] = [];
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
@@ -386,16 +386,17 @@ export class WebSocketServer {
                 }
             }
 
-            if (bulkUpdates.length > 0) {
+            // seconds since lastUserUpdate
+            const seconds: number = (Date.now() - this.lastUserUpdate) / 1000;
+
+            if (bulkUpdates.length > 0 && Config.enable_openflow_amqp) {
+                amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", span, 1);
+            }
+            if (bulkUpdates.length > 0 && seconds > 60) {
                 this.lastUserUpdate = Date.now();
                 let ot_end: any = Logger.otel.startTimer();
                 var bulkresult = await Config.db.db.collection("users").bulkWrite(bulkUpdates);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_updatemany, { collection: "users" });
-                if (Config.enable_openflow_amqp) {
-                    amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", span, 1);
-                } else {
-                    // WebSocketServer.DumpClients(span);
-                }
             }
         } catch (error) {
             Logger.instanse.error(error, span);

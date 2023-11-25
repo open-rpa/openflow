@@ -385,6 +385,35 @@ export class WebServer {
             });
         });
       }
+
+    public static async ProcessMessage(req: any, tuser: TokenUser, jwt: string): Promise<any> {
+        const client:any = {user: tuser, jwt: jwt};
+        const msg = new Message();
+        const urlPath = req.path;
+        msg.command = urlPath.replace("/rest/v1/", "").toLowerCase();
+
+        if(msg.command == "updatedocument") {
+            msg.command = "updatemany" // new command to new
+        }
+        if(msg.command == "unregisterqueue") {
+            msg.command = "closequeue" // new command to new
+        }
+        if(msg.command == "pushworkitem") {
+            msg.command = "addworkitem" // new command to new
+        }
+        if(msg.command == "pushworkitems") {
+            msg.command = "addworkitems" // new command to new
+        }
+
+        msg.id = NoderedUtil.GetUniqueIdentifier();
+        msg.jwt = jwt;
+        msg.data = req.body;
+        msg.tuser = tuser;
+        msg.clientagent = req.headers["user-agent"];
+        msg.clientversion = "0.0.1";
+        var result = await msg.Process(client);
+        return result
+    }
     public static async onMessage(client: flowclient, message: any) {
         let command, msg, reply;
         try {
@@ -719,18 +748,6 @@ export class WebServer {
             array.push(new Array(10000000).join('x'));
             await new Promise(resolve => { setTimeout(resolve, 1000) });
         }
-        // let buffer = [];
-        // const MB = (bytes) => Math.round(bytes/1024/1024) + 'MB'
-        // const memoryUsage = () => {
-        //         const mem = process.memoryUsage();
-        //         return MB(mem.rss) + '\t' + MB(mem.heapTotal) + '\t' + MB(mem.external);
-        // }
-        // setInterval(()=>{
-        //     buffer.push(Buffer.alloc(1024 * 1024* 1024)); // Eat 1GB of RAM every second
-        //     console.log(buffer.length + '\t' + memoryUsage());
-        // }, 1000);
-        res.end(JSON.stringify({ "success": "true", "message": "Ok here we go, crash incomming!!!!", "remoteip": remoteip, "hostname": _hostname, dt: new Date() }));
-        res.end();
     }
         
     static async get_heapdump(req: any, res: any, next: any): Promise<void> {
@@ -748,13 +765,13 @@ export class WebServer {
         let span = Logger.otel.startSpanExpress("get_livenessprobe", req)
         try {
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
-            if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (Config.getEnv("HOSTNAME", undefined) || os.hostname()) || "unknown";
+            if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
             res.end(JSON.stringify({ "success": "true", "hostname": _hostname, dt: new Date(), traceId, spanId }));
             res.end();
             // @ts-ignore
             span.setStatus({ code: 200 });
         } catch (error) {
-            console.error(error);
+            Logger.instanse.error(error, span);
             // @ts-ignore
             span.setStatus({code: 500, message: error instanceof Error ? error.message : undefined,
             });

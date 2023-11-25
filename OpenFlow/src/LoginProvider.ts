@@ -15,6 +15,7 @@ import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { TokenRequest } from "./TokenRequest";
+import { WebServer } from "./WebServer";
 var nodemailer = require('nodemailer');
 var dns = require('dns');
 const got = require("got");
@@ -1126,10 +1127,6 @@ export class LoginProvider {
         let _url = Config.basewsurl();
         if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
         if (!_url.endsWith("/")) _url += "/";
-        let nodered_domain_schema = Config.nodered_domain_schema;
-        if (NoderedUtil.IsNullEmpty(nodered_domain_schema)) {
-            nodered_domain_schema = "$nodered_id$." + Config.domain;
-        }
         let agent_domain_schema = Config.agent_domain_schema;
         if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
             agent_domain_schema = "$slug$." + Config.domain;
@@ -1151,7 +1148,6 @@ export class LoginProvider {
             auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
             auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
             namespace: Config.namespace,
-            nodered_domain_schema: nodered_domain_schema,
             agent_domain_schema: agent_domain_schema,
             websocket_package_size: Config.websocket_package_size,
             version: Config.version,
@@ -1160,7 +1156,7 @@ export class LoginProvider {
             validate_user_form: Config.validate_user_form,
             validate_emails: Config.validate_emails,
             forgot_pass_emails: Config.forgot_pass_emails,
-            supports_watch: Config.supports_watch,
+            supports_watch: true,
             agent_images: Config.agent_images,
             amqp_enabled_exchange: Config.amqp_enabled_exchange,
             multi_tenant: Config.multi_tenant,
@@ -1197,6 +1193,8 @@ export class LoginProvider {
     static async post_AddTokenRequest(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
         try {
+            const remoteip = LoginProvider.remoteip(req);
+            span?.setAttribute("remoteip", remoteip);
             const key = req.body.key;
             let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
             if (!NoderedUtil.IsNullUndefinded(exists)) {
@@ -1204,7 +1202,7 @@ export class LoginProvider {
                 return res.status(500).send({ message: "Illegal key" });
             }
             await Logger.DBHelper.AddRequestTokenID(key, {}, span);
-            Logger.instanse.info("Added token request " + key, span);
+            Logger.instanse.info("Added token request " + key + " from " + remoteip, span);
             res.status(200).send({ message: "ok" });
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -1216,6 +1214,7 @@ export class LoginProvider {
     static async get_GetTokenRequest(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
         try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             const key = req.query.key;
             let exists: TokenRequest = null;
             exists = await Logger.DBHelper.FindRequestTokenID(key, span);
@@ -1476,11 +1475,6 @@ export class LoginProvider {
                                 Config.validate_emails = false;
                             }
                         }
-
-                        Config.smtp_service = Config.getEnv("smtp_service", "");
-                        Config.smtp_from = Config.getEnv("smtp_from", "");
-                        Config.smtp_user = Config.getEnv("smtp_user", "");
-                        Config.smtp_pass = Config.getEnv("smtp_service", "");
 
                         if (Config.validate_emails) {
                             let email: string = tuser.username;

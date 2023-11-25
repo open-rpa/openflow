@@ -550,7 +550,7 @@ export class WebSocketServerClient {
                         result.priority = first.priority;
                         if (result.command != "ping" && result.command != "pong") {
                             result.Process(this).then(msg=> {
-                                this.Send(msg);
+                                if(msg != null) this.Send(msg);
                             }) .catch((error) => {
                                 Logger.instanse.error(error, span, Logger.parsecli(this));
                             });
@@ -711,7 +711,7 @@ export class WebSocketServerClient {
                 }
             });
         } catch (error) {
-            console.error(error);
+            Logger.instanse.error(error, span);
         } finally {
             subspan?.end();
         }
