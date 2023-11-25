@@ -341,7 +341,7 @@ export class Config {
         websocket_message_callback_timeout: 3600,
         websocket_disconnect_out_of_sync: false,
         protocol: "http",
-        port: 80,
+        port: 3000,
         domain: "localhost.openiap.io",
         cookie_secret: "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu",
         max_ace_count: 128,
