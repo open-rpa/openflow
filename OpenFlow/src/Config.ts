@@ -54,6 +54,7 @@ export class dbConfig extends Base {
       }
 
     public static cleanAndApply(conf: dbConfig, parent: Span): Boolean {
+        if(Config.disable_db_config) return false;
         var updated = false;
         // add settings et via env variables that is not the default value
         var keys = Object.keys(Config);
@@ -61,11 +62,13 @@ export class dbConfig extends Base {
             const key = keys[i];
             if(key == "_version") continue;
             if(key.startsWith("_")) continue;
+            if(key == "disable_db_config") continue;
+            
             if(["db", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
             "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-            "otel_metric_url", "otel_trace_url" ].indexOf(key) > -1 ) {
+            "otel_metric_url", "otel_trace_url", "multi_tenant" ].indexOf(key) > -1 ) {
                 if(os.hostname().toLowerCase() == "nixos") {
                     continue;
                 }
@@ -105,6 +108,7 @@ export class dbConfig extends Base {
         for(var i = 0; i < keys.length; i++) {
             const key = keys[i];
             if(key == "_version") continue;
+            if(key == "disable_db_config") continue;
             const value = conf[key];
             try {
                 if(key.startsWith("_")) continue;
@@ -114,7 +118,7 @@ export class dbConfig extends Base {
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
                 "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-                "otel_metric_url", "otel_trace_url"  ].indexOf(key) > -1 ) {
+                "otel_metric_url", "otel_trace_url", "multi_tenant" ].indexOf(key) > -1 ) {
                     if(os.hostname().toLowerCase() == "nixos") {
                         continue;
                     }
@@ -327,6 +331,7 @@ export class Config {
         cleanup_on_delete_customer: false,
         cleanup_on_delete_user: false,
         api_bypass_perm_check: false,
+        disable_db_config: false,
         force_audit_ts: false,
         force_dbusage_ts: false,
         migrate_audit_to_ts: true,
@@ -605,6 +610,7 @@ export class Config {
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check"));
+    public static disable_db_config: boolean = Config.parseBoolean(Config.getEnv("disable_db_config"));
     public static force_audit_ts: boolean = Config.parseBoolean(Config.getEnv("force_audit_ts"));
     public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts"));
     public static migrate_audit_to_ts: boolean = Config.parseBoolean(Config.getEnv("migrate_audit_to_ts"));
