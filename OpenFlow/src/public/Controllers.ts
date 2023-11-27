@@ -8333,6 +8333,7 @@ export class AgentCtrl extends entityCtrl<any> {
                     this.basequery = { _id: this.id };
                     await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
                 }
+                this.$location.path("/Agent/" + this.id);
             }
             this.loading = false;
             if (this.model) { this.loadData(); }
