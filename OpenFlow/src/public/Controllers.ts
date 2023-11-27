@@ -3034,6 +3034,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     SelectCollection() {
+        if (!this.userdata.data.EntitiesCtrl) this.userdata.data.EntitiesCtrl = {};
         this.userdata.data.EntitiesCtrl.collection = this.collection;
         this.$location.path("/Entities/" + this.collection);
         //this.$location.hash("#/Entities/" + this.collection);
