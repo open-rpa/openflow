@@ -727,13 +727,16 @@ export class entitiesCtrl<T> {
 
                 }
             }
-            if (this.WebSocketClientService.collections_with_text_index.indexOf(this.collection) == -1) {
+            if (this.WebSocketClientService.timeseries_collections.indexOf(this.collection) == -1 &&
+                this.WebSocketClientService.collections_with_text_index.indexOf(this.collection) == -1) {
                 if (NoderedUtil.IsNullUndefinded(this.orderby) || Object.keys(this.orderby).length == 0) {
                     orderby = { _created: -1 };
                 }
             } else {
                 if (NoderedUtil.IsNullUndefinded(this.orderby) || Object.keys(this.orderby).length == 0) {
-                    orderby = { _created: -1 };
+                    if(this.collection == "audit" || this.collection == "dbusage") {
+                        orderby = { _created: -1 };
+                    }
                 }
                 if (!NoderedUtil.IsNullEmpty(this.searchstring) && !this.searchstring.startsWith(".")) {
                     // Remove order by when using text index
@@ -741,7 +744,6 @@ export class entitiesCtrl<T> {
                 }
             }
             if (this.page == 0) {
-
                 this.models = await NoderedUtil.Query({ collectionname: this.collection, query, projection: this.baseprojection, orderby, top: this.pagesize, queryas: basequeryas });
             } else {
                 var temp = await NoderedUtil.Query({ collectionname: this.collection, query, projection: this.baseprojection, orderby, top: this.pagesize, skip: this.pagesize * this.page, queryas: basequeryas });

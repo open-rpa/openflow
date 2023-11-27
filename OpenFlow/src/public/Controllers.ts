@@ -3034,6 +3034,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     SelectCollection() {
+        if (!this.userdata.data.EntitiesCtrl) this.userdata.data.EntitiesCtrl = {};
         this.userdata.data.EntitiesCtrl.collection = this.collection;
         this.$location.path("/Entities/" + this.collection);
         //this.$location.hash("#/Entities/" + this.collection);
@@ -8332,6 +8333,7 @@ export class AgentCtrl extends entityCtrl<any> {
                     this.basequery = { _id: this.id };
                     await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
                 }
+                this.$location.path("/Agent/" + this.id);
             }
             this.loading = false;
             if (this.model) { this.loadData(); }
