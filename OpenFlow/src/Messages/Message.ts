@@ -3610,6 +3610,7 @@ export class Message {
             Logger.otel.endSpan(span);
         }        
     }
+
     public async _Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
         if (Message.lastHouseKeeping == null) {
             Message.lastHouseKeeping = new Date();

@@ -90,6 +90,10 @@ async function initDatabase(parent: Span): Promise<boolean> {
             cerror(error);
             process.exit(404);
         }
+        try {
+            await Config.db.UpdateIndexTypes(span);
+        } catch (error) {            
+        }
     
 
 

@@ -4580,6 +4580,41 @@ export class DatabaseConnection extends events.EventEmitter {
     public static timeseries_collections: string[] = [];
     public static timeseries_collections_metadata: any = {};
     public static timeseries_collections_time: any = {};
+    public async UpdateIndexTypes(parent: Span) {
+        try {
+            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+            collections = collections.filter(x => x.name.indexOf("system.") === -1);
+
+            DatabaseConnection.timeseries_collections = [];
+            for (let i = 0; i < collections.length; i++) {
+                var collection = collections[i];
+                if (collection.type == "timeseries") {
+                    DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+                    DatabaseConnection.timeseries_collections.push(collection.name);
+                }
+            }
+            DatabaseConnection.timeseries_collections = [];
+            DatabaseConnection.collections_with_text_index = [];
+            for (let i = 0; i < collections.length; i++) {
+                var collection = collections[i];
+                if (collection.type == "timeseries") {
+                    DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
+                    DatabaseConnection.timeseries_collections.push(collection.name);
+                }
+                if (collection.type != "collection" && collection.type != "timeseries") continue;
+                parent?.addEvent("Get indexes for " + collection.name);
+                const indexes = await this.db.collection(collection.name).indexes();
+                for (let y = 0; y < indexes.length; y++) {
+                    var idx = indexes[y];
+                    if (idx.textIndexVersion && idx.textIndexVersion > 1 && collection.name != "fs.files") {
+                        DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
+                        DatabaseConnection.collections_with_text_index.push(collection.name);
+                    }
+                }
+            }
+        } catch (error) {
+        }
+    }
     async ensureindexes(parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
@@ -4597,25 +4632,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             if (!Config.ensure_indexes) {
-                DatabaseConnection.timeseries_collections = [];
-                DatabaseConnection.collections_with_text_index = [];
-                for (let i = 0; i < collections.length; i++) {
-                    var collection = collections[i];
-                    if (collection.type == "timeseries") {
-                        DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
-                        DatabaseConnection.timeseries_collections.push(collection.name);
-                    }
-                    if (collection.type != "collection" && collection.type != "timeseries") continue;
-                    span?.addEvent("Get indexes for " + collection.name);
-                    const indexes = await this.db.collection(collection.name).indexes();
-                    for (let y = 0; y < indexes.length; y++) {
-                        var idx = indexes[y];
-                        if (idx.textIndexVersion && idx.textIndexVersion > 1 && collection.name != "fs.files") {
-                            DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
-                            DatabaseConnection.collections_with_text_index.push(collection.name);
-                        }
-                    }
-                }
+                await this.UpdateIndexTypes(span);
                 return;
             }
 
