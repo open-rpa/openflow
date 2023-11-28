@@ -7368,6 +7368,8 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "enable_nodered_tours", "type": "boolean", "default": "true"},
             {"name": "grafana_url", "type": "string", "default": ""},
             {"name": "auto_hourly_housekeeping", "type": "boolean", "default": "true"},
+            {"name": "housekeeping_skip_calculate_size", "type": "boolean", "default": "false"},
+            {"name": "housekeeping_skip_update_user_size", "type": "boolean", "default": "false"},    
             {"name": "housekeeping_skip_collections", "type": "string", "default": ""},
             {"name": "housekeeping_remomve_unvalidated_user_days", "type": "number", "default": "0"},
             {"name": "housekeeping_cleanup_openrpa_instances", "type": "boolean", "default": "false"},
@@ -7564,11 +7566,23 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     Show(setting) {
+        if(this.model == null) return false;
         if(this.show == "all") return true;
         var isset = this.model[setting.name] != null;
         if(this.show == "set" && isset) return true;
         if(this.show == "unset" && !isset) return true;
         return false;
+    }
+    Toggle(name) {
+        if(this.model == null) return;
+        console.log(name, this.model[name])
+        if(this.model[name] == null) {
+            this.model[name] = !this.settings.filter(x => x.name == name)[0].default;
+        } else {
+            this.model[name] = !this.model[name];
+        }
+        console.log(name, this.model[name])
+        this.delayedUpdate();
     }
     async RegisterWatch() {
         try {
@@ -7588,19 +7602,10 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
     }
     deletekey(key: string) {
         delete this.model[key]; 
+        this.delayedUpdate();
         this.submit();
     }
     processdata() {
-        const ids: string[] = [];
-        if (this.collection == "files") {
-            for (let i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
-                ids.push((this.model as any).metadata._acl[i]._id);
-            }
-        } else {
-            for (let i: number = 0; i < this.model._acl.length; i++) {
-                ids.push(this.model._acl[i]._id);
-            }
-        }
         if (this.model._encrypt == null) { this.model._encrypt = []; }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.fixtextarea();
@@ -7617,6 +7622,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
         } catch (error) {
             this.errormessage = error.message ? error.message : error;
         }
+        this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     hasprop(name) {
@@ -7659,12 +7665,15 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
     }
     delayhandler = null;
     delayedUpdate() {
+        console.log("delayedUpdate")
         if(this.loading == true) return;
         if(this.delayhandler ! = null) return;
+        this.loading = true;
         this.delayhandler = setTimeout(() => {
             this.delayhandler = null;
             this.submit();
         }, 500);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
 
