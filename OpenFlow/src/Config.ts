@@ -68,7 +68,8 @@ export class dbConfig extends Base {
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
             "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-            "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping" ].indexOf(key) > -1 ) {
+            "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size"].indexOf(key) > -1 ) {
+            
                 if(os.hostname().toLowerCase() == "nixos") {
                     continue;
                 }
@@ -118,7 +119,7 @@ export class dbConfig extends Base {
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
                 "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-                "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping" ].indexOf(key) > -1 ) {
+                "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size" ].indexOf(key) > -1 ) {
                     if(os.hostname().toLowerCase() == "nixos") {
                         continue;
                     }
@@ -256,6 +257,8 @@ export class Config {
         enable_nodered_tours: true,
         grafana_url: "",
         auto_hourly_housekeeping: true,
+        housekeeping_skip_calculate_size: false,
+        housekeeping_skip_update_user_size: false,
         housekeeping_skip_collections: "",
         housekeeping_remomve_unvalidated_user_days: 0, // if above 0, remove unvalidated users after x days
         housekeeping_cleanup_openrpa_instances: false,
@@ -267,6 +270,7 @@ export class Config {
         agent_HTTP_PROXY: "",
         agent_HTTPS_PROXY: "",
         agent_NO_PROXY: "",
+        agent_NPM_REGISTRY: "",
 
         stripe_api_key: "",
         stripe_api_secret: "",
@@ -524,6 +528,9 @@ export class Config {
     public static enable_nodered_tours: boolean = Config.parseBoolean(Config.getEnv("enable_nodered_tours"));
     public static grafana_url:string = Config.getEnv("grafana_url");
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping"));
+    public static housekeeping_skip_calculate_size: boolean = Config.parseBoolean(Config.getEnv("housekeeping_skip_calculate_size"));
+    public static housekeeping_skip_update_user_size: boolean = Config.parseBoolean(Config.getEnv("housekeeping_skip_update_user_size"));
+
     public static housekeeping_skip_collections: string = Config.getEnv("housekeeping_skip_collections");
     public static housekeeping_remomve_unvalidated_user_days: number = parseInt(Config.getEnv("housekeeping_remomve_unvalidated_user_days"));
     public static housekeeping_cleanup_openrpa_instances: boolean = Config.parseBoolean(Config.getEnv("housekeeping_cleanup_openrpa_instances"));
@@ -541,6 +548,9 @@ export class Config {
     public static agent_HTTP_PROXY: string = Config.getEnv("agent_HTTP_PROXY");
     public static agent_HTTPS_PROXY: string = Config.getEnv("agent_HTTPS_PROXY");
     public static agent_NO_PROXY: string = Config.getEnv("agent_NO_PROXY");
+    public static agent_NPM_REGISTRY: string = Config.getEnv("agent_NPM_REGISTRY");
+    public static agent_NPM_TOKEN: string = Config.getEnv("agent_NPM_TOKEN");
+    
 
     public static stripe_api_key: string = Config.getEnv("stripe_api_key");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret");

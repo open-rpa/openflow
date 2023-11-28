@@ -62,9 +62,12 @@ function doHouseKeeping(span: Span) {
     var dt = new Date(Message.lastHouseKeeping.toISOString());
     var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
     var h = dt.getHours();
-    var skipUpdateUsage: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+    var housekeeping_skip_calculate_size: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+    var housekeeping_skip_update_user_size: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
+    if(Config.housekeeping_skip_calculate_size) housekeeping_skip_calculate_size = true;
+    if(Config.housekeeping_skip_update_user_size) housekeeping_skip_update_user_size = true;
     if (Config.NODE_ENV == "production") {
-        msg2._Housekeeping(false, skipUpdateUsage, skipUpdateUsage, null).catch((error) => Logger.instanse.error(error, null));
+        msg2._Housekeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null));
     } else {
         // While debugging, always do all calculations
         msg2._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
@@ -293,7 +296,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
 
-        if (Config.auto_hourly_housekeeping) {
+        // if (Config.auto_hourly_housekeeping) {
             const crypto = require('crypto');
             const randomNum = crypto.randomInt(1, 100);
             // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
@@ -333,7 +336,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
                     doHouseKeeping(span);
                 }
             }, randomNum2 * 1000);
-        }
+        // }
         await Config.db.ParseTimeseries(span);
         return true;
     } catch (error) {
