@@ -3632,7 +3632,10 @@ export class Message {
                 Logger.instanse.debug("Ensure Indexes", span);
                 await Config.db.ensureindexes(span);
             } catch (error) {
-                
+            }
+            if(Config.auto_hourly_housekeeping == false) {
+                Logger.instanse.debug("HouseKeeping disabled, quit.", span);
+                return;
             }
             try {
                 if(Logger.agentdriver != null) {
