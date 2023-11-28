@@ -344,7 +344,11 @@ export class WebServer {
             metadata._created = new Date(new Date().toISOString());
             metadata._modified = metadata._created;
     
-            Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            if(!Config.multi_tenant) {
+                Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            }
+
     
             const rs = new stream.Readable;
             rs._read = () => { };

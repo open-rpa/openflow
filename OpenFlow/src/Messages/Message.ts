@@ -2108,11 +2108,15 @@ export class Message {
         file = null;
         if (metadata == null) { metadata = new Base(); }
         metadata = Base.assign(metadata);
+        const user: TokenUser = await Message.verityToken(jwt);
         if (NoderedUtil.IsNullUndefinded(metadata._acl)) {
             metadata._acl = [];
-            Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            if(!Config.multi_tenant) {
+                Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+            }
+            Base.addRight(metadata, user._id, user.name, [Rights.full_control]);            
         }
-        const user: TokenUser = await Message.verityToken(jwt);
         metadata._createdby = user.name;
         metadata._createdbyid = user._id;
         metadata._created = new Date(new Date().toISOString());
