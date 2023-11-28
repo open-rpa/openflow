@@ -270,6 +270,7 @@ export class Config {
         agent_HTTP_PROXY: "",
         agent_HTTPS_PROXY: "",
         agent_NO_PROXY: "",
+        agent_NPM_REGISTRY: "",
 
         stripe_api_key: "",
         stripe_api_secret: "",
@@ -547,6 +548,9 @@ export class Config {
     public static agent_HTTP_PROXY: string = Config.getEnv("agent_HTTP_PROXY");
     public static agent_HTTPS_PROXY: string = Config.getEnv("agent_HTTPS_PROXY");
     public static agent_NO_PROXY: string = Config.getEnv("agent_NO_PROXY");
+    public static agent_NPM_REGISTRY: string = Config.getEnv("agent_NPM_REGISTRY");
+    public static agent_NPM_TOKEN: string = Config.getEnv("agent_NPM_TOKEN");
+    
 
     public static stripe_api_key: string = Config.getEnv("stripe_api_key");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret");

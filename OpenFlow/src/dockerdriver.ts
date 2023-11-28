@@ -153,6 +153,20 @@ export class dockerdriver implements i_agent_driver {
             if((oidc_config == null || oidc_config == "") && Config.agent_oidc_issuer == "") {
                 if(Config.domain != "localhost.openiap.io") oidc_config = Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration"
             }
+            var HTTP_PROXY = Config.HTTP_PROXY;
+            var HTTPS_PROXY = Config.HTTPS_PROXY;
+            var NO_PROXY = Config.NO_PROXY;
+            var NPM_REGISTRY = Config.agent_NPM_REGISTRY;
+            var NPM_TOKEN = Config.agent_NPM_TOKEN;
+
+            if(HTTP_PROXY == null) HTTP_PROXY = "";
+            if(Config.agent_HTTP_PROXY != null && Config.agent_HTTP_PROXY != "") HTTP_PROXY = Config.agent_HTTP_PROXY;
+            if(HTTPS_PROXY == null) HTTPS_PROXY = "";
+            if(Config.agent_HTTPS_PROXY != null && Config.agent_HTTPS_PROXY != "") HTTPS_PROXY = Config.agent_HTTPS_PROXY;
+            if(NO_PROXY == null) NO_PROXY = "";
+            if(Config.agent_NO_PROXY != null && Config.agent_NO_PROXY != "") NO_PROXY = Config.agent_NO_PROXY;
+            if(NPM_REGISTRY == null) NPM_REGISTRY = "";
+            if(NPM_TOKEN == null) NPM_TOKEN = "";
             const Env = [
                 "jwt=" + agentjwt,
                 "agentid=" + agent._id,
@@ -163,9 +177,11 @@ export class dockerdriver implements i_agent_driver {
                 "protocol=" + Config.protocol,
                 "port=" + agentport.toString(),
                 "NODE_ENV=" + Config.NODE_ENV,
-                "HTTP_PROXY=" + Config.HTTP_PROXY,
-                "HTTPS_PROXY=" + Config.HTTPS_PROXY,
-                "NO_PROXY=" + Config.NO_PROXY,
+                "HTTP_PROXY=" + HTTP_PROXY,
+                "HTTPS_PROXY=" + HTTPS_PROXY,
+                "NO_PROXY=" + NO_PROXY,
+                "NPM_REGISTRY=" + NPM_REGISTRY,
+                "NPM_TOKEN=" + NPM_TOKEN,
                 "enable_analytics=" + Config.enable_analytics.toString(),
                 "enable_detailed_analytic=" + Config.enable_detailed_analytic.toString(),
                 "otel_trace_url=" + Config.otel_trace_url,

@@ -7383,6 +7383,8 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "agent_HTTP_PROXY", "type": "string", "default": ""},
             {"name": "agent_HTTPS_PROXY", "type": "string", "default": ""},
             {"name": "agent_NO_PROXY", "type": "string", "default": ""},
+            {"name": "agent_NPM_REGISTRY", "type": "string", "default": ""},
+            {"name": "agent_NPM_TOKEN", "type": "string", "default": ""},            
             {"name": "stripe_api_key", "type": "string", "default": ""},
             {"name": "stripe_api_secret", "type": "string", "default": ""},
             {"name": "stripe_force_vat", "type": "boolean", "default": "false"},
