@@ -7575,13 +7575,22 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
         if(this.show == "unset" && !isset) return true;
         return false;
     }
-    Toggle(name) {
+    Toggle(el, name) {
         if(this.model == null) return;
         console.log(name, this.model[name])
         if(this.model[name] == null) {
-            this.model[name] = !this.settings.filter(x => x.name == name)[0].default;
+            var de = this.settings.filter(x => x.name == name)[0].default;
+            if(de == "true") {
+                de = true;
+            } else {
+                de = false;
+            }
+            console.log("default", de)
+            this.model[name] = !de;
+            el.checked = this.model[name];
         } else {
             this.model[name] = !this.model[name];
+            el.checked = this.model[name];
         }
         console.log(name, this.model[name])
         this.delayedUpdate();
