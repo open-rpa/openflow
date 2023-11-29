@@ -110,7 +110,7 @@ export class dbConfig extends Base {
             const key = keys[i];
             if(key == "_version") continue;
             if(key == "disable_db_config") continue;
-            const value = conf[key];
+            let value = conf[key];
             try {
                 if(key.startsWith("_")) continue;
                 // if(NoderedUtil.IsNullEmpty(value)) continue;
@@ -125,9 +125,20 @@ export class dbConfig extends Base {
                     }
                 }
                 if (Object.prototype.hasOwnProperty.call(Config, key)) {
+                    let _default:any = Config.default_config[key]; // envorinment variable 
+                    if(typeof Config[key] === "boolean") {
+                        value = Config.parseBoolean(value);
+                    } else if(typeof Config[key] === "number") {
+                        value = parseInt(value);
+                    } else if(Array.isArray(Config[key])) {
+                        value = Config.parseArray(value);
+                    } else if(typeof Config[key] === "string") {
+                        value = value;
+                    } else {
+                        continue;
+                    }
                     Config[key] = value;
 
-                    let _default:any = Config.default_config[key]; // envorinment variable 
                     if(_default == null) _default = "";
                     let _env:any = process.env[key]; // db value
                     if(_env != null && _env != "") {
@@ -271,6 +282,7 @@ export class Config {
         agent_HTTPS_PROXY: "",
         agent_NO_PROXY: "",
         agent_NPM_REGISTRY: "",
+        agent_NPM_TOKEN: "",
 
         stripe_api_key: "",
         stripe_api_secret: "",

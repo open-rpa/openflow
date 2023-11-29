@@ -430,6 +430,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     async sendWithReplyTo(exchange: string, queue: string, replyTo: string, data: any, expiration: number, correlationId: string, routingkey: string, span: Span, priority: number = 1): Promise<void> {
         await amqpwrapper.asyncWaitFor(() => this.connected);
+        if(data)
         if (this.channel == null || this.conn == null) {
             throw new Error("Cannot send message, when not connected");
         }
@@ -446,6 +447,11 @@ export class amqpwrapper extends events.EventEmitter {
         }
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
+        }
+        // PRECONDITION_FAILED - message size 155339741 is larger than configured max size 134217728
+        if(data.length > 130000000 ) {
+            Logger.instanse.error("send to queue: " + queue + " exchange: " + exchange + " PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000", span);
+            throw new Error("PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000")
         }
         Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId, span);
         const options: any = { mandatory: true };
@@ -490,6 +496,10 @@ export class amqpwrapper extends events.EventEmitter {
         }
         if (typeof data !== 'string' && !(data instanceof String)) {
             data = JSON.stringify(data);
+        }
+        if(data.length > 130000000 ) {
+            Logger.instanse.error("send to queue: " + queue + " exchange: " + exchange + " PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000", span);
+            throw new Error("PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000")
         }
         if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
         if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange, span);
