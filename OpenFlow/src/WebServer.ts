@@ -39,6 +39,14 @@ const rateLimiter = async (req: express.Request, res: express.Response, next: ex
         return next();
     }
     try {
+        if(Config.api_rate_limit_duration != WebServer.BaseRateLimiter.duration || Config.api_rate_limit_points != WebServer.BaseRateLimiter.points) {
+            Logger.instanse.info("Create new api rate limitter", span);
+            WebServer.BaseRateLimiter = new RateLimiterMemory({
+                points: Config.api_rate_limit_points,
+                duration: Config.api_rate_limit_duration,
+            });            
+        }
+
         Logger.instanse.verbose("Validate for " + req.originalUrl, null);
         var e = await WebServer.BaseRateLimiter.consume(WebServer.remoteip(req))
         Logger.instanse.verbose("consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints, null);

@@ -21,6 +21,7 @@ import { QueueClient } from "../QueueClient";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, CustomCommandMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { WebServer } from "../WebServer";
 import { iAgent } from "../commoninterfaces";
+import { RateLimiterMemory } from "rate-limiter-flexible";
 const pako = require('pako');
 const got = require("got");
 
@@ -287,6 +288,14 @@ export class Message {
                 if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
                 let command: string = this.command;
                 try {
+                    if(Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
+                        Logger.instanse.info("Create new socket rate limitter", span, Logger.parsecli(cli));
+                        WebSocketServer.BaseRateLimiter = new RateLimiterMemory({
+                            points: Config.socket_rate_limit_points,
+                            duration: Config.socket_rate_limit_duration,
+                        });            
+                    }
+    
                     if (Config.socket_rate_limit) await WebSocketServer.BaseRateLimiter.consume(cli.id);
                 } catch (error) {
                     // if (error.consumedPoints) {
@@ -304,7 +313,8 @@ export class Message {
                     //     setTimeout(() => { this.Process(cli); }, 250);
                     // }
                     // return;
-                    return reject(error);
+                    var e = new Error("Rate limit exceeded consumedPoints: " + error.consumedPoints);
+                    return reject(e);
                 }
 
                 if (!NoderedUtil.IsNullEmpty(this.replyto)) {
