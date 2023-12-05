@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId, Db, Binary, GridFSBucket, ChangeStream, MongoClientOptions, AggregateOptions, InsertOneOptions, InsertOneResult, UpdateOptions } from "mongodb";
+import { MongoClient, ObjectId, Db, Binary, GridFSBucket, ChangeStream, MongoClientOptions, AggregateOptions, InsertOneOptions, InsertOneResult, UpdateOptions, FindOptions } from "mongodb";
 import { Crypt } from "./Crypt";
 import { Config, dbConfig } from "./Config";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions, CountOptions, Resource, ResourceUsage } from "@openiap/openflow-api";
@@ -629,10 +629,12 @@ export class DatabaseConnection extends events.EventEmitter {
             return false;
         }
     }
-    async ListCollections(jwt: string): Promise<any[]> {
+    async ListCollections(includesystem: boolean, jwt: string): Promise<any[]> {
         // let result = await DatabaseConnection.toArray(this.db.listCollections());
         let result = await Logger.DBHelper.GetCollections(null);
-        result = result.filter(x => x.name.indexOf("system.") === -1);
+        if(includesystem == false) {
+            result = result.filter(x => x.name.indexOf("system.") === -1);
+        }
         result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
         await Crypt.verityToken(jwt);
         return result;
@@ -1085,10 +1087,15 @@ export class DatabaseConnection extends events.EventEmitter {
         for (let key of keys) {
             if (key === "_id") {
                 const id: string = query._id;
-                const safeid = safeObjectID(id);
-                if (safeid !== null && safeid !== undefined) {
+                if(id.length == 12 || id.length == 24) {
+                    const safeid = safeObjectID(id);
+                    if (safeid !== null && safeid !== undefined) {
+                        delete query._id;
+                        query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    }
+                } else {
                     delete query._id;
-                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    query.$or = [{ _id: id }];
                 }
             }
         }
@@ -1122,8 +1129,10 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.setAttribute("top", top);
         span?.setAttribute("skip", skip);
         let arr: T[] = [];
+        let findoptions: FindOptions = {};
+        findoptions.explain = options.explain;
         const ot_end = Logger.otel.startTimer();
-        let _pipe = this.db.collection(collectionname).find(_query);
+        let _pipe = this.db.collection(collectionname).find(_query, findoptions);
         if (projection != null) {
             _pipe = _pipe.project(projection);
         }
@@ -1216,8 +1225,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 const id: string = query._id;
                 const safeid = safeObjectID(id);
                 if (safeid !== null && safeid !== undefined) {
-                    delete query._id;
-                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    const safeid = safeObjectID(id);
+                    if (safeid !== null && safeid !== undefined) {
+                        delete query._id;
+                        query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    }
                 }
             }
         }
@@ -1446,7 +1458,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt
      * @returns Promise
      */
-    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, queryas:string, parent: Span): Promise<T[]> {
+    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, queryas:string, explain:boolean, parent: Span): Promise<T[]> {
         const span: Span = Logger.otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
@@ -1526,6 +1538,7 @@ export class DatabaseConnection extends events.EventEmitter {
             aggregates.push({ "$limit": 500 });
         }
         const options: AggregateOptions = {};
+        options.explain = explain;
         options.hint = myhint;
         try {
             const ot_end = Logger.otel.startTimer();
@@ -2907,10 +2920,14 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (q.query === null || q.query === undefined) {
                 const id: string = q.item._id;
-                const safeid = safeObjectID(id);
-                q.query = { _id: id };
-                if (safeid != null) {
-                    q.query = { $or: [{ _id: id }, { _id: safeid }] };
+                if(id.length == 12 || id.length == 24) {
+                    const safeid = safeObjectID(id);
+                    q.query = { _id: id };
+                    if (safeid != null) {
+                        q.query = { $or: [{ _id: id }, { _id: safeid }] };
+                    }
+                } else {
+                    q.query = { _id: id };
                 }
             }
             let _query: Object = {};
@@ -3139,8 +3156,13 @@ export class DatabaseConnection extends events.EventEmitter {
             for (let key in q.query) {
                 if (key === "_id") {
                     const id: string = (q.query as any)._id;
-                    delete (q.query as any)._id;
-                    (q.query as any).$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                    if(id.length == 12 || id.length == 24) {
+                        const safeid = safeObjectID(id);
+                        if(safeid != null) {
+                            delete (q.query as any)._id;
+                            (q.query as any).$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                        }
+                    }
                 }
             }
             let _query: Object = {};
@@ -3458,7 +3480,16 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
-                _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, [Rights.delete], collectionname)] };
+                if(id.length == 12 || id.length == 24) {
+                    const safeid = safeObjectID(id);
+                    if(safeid != null) {
+                        _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, [Rights.delete], collectionname)] };
+                    } else {
+                        _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
+                    }                    
+                } else {
+                    _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
+                }
                 const ot_end = Logger.otel.startTimer();
                 const cursor = this.db.collection(collectionname).find(_query);
                 const arr = await cursor.toArray();
@@ -3706,10 +3737,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (let key of keys) {
                         if (key === "_id") {
                             const id: string = query._id;
-                            const safeid = safeObjectID(id);
-                            if (safeid !== null && safeid !== undefined) {
-                                delete query._id;
-                                query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                            if(id.length == 12 || id.length == 24) {
+                                const safeid = safeObjectID(id);
+                                if (safeid !== null && safeid !== undefined) {
+                                    delete query._id;
+                                    query.$or = [{ _id: id }, { _id: safeObjectID(id) }];
+                                }
                             }
                         }
                     }
@@ -4473,7 +4506,7 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     async createIndex(collectionname: string, name: string, keypath: any, options: any, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.createIndex", parent);
-        return new Promise((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
             try {
                 Logger.instanse.info("Adding index " + name + " to " + collectionname, span, { collection: collectionname });
                 if(typeof keypath === "string") keypath = JSON.parse(keypath);

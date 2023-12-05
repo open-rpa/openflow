@@ -430,9 +430,9 @@ try {
 } catch (error) {
 
 }
-let OpenAIProxy: any = null;
+let OpenAPIProxy: any = null;
 try {
-    OpenAIProxy = require("./ee/OpenAIProxy");
+    OpenAPIProxy = require("./ee/OpenAPIProxy");
 } catch (error) {
     cerror(error);
 }
@@ -465,8 +465,8 @@ var server: http.Server = null;
         if (GrafanaProxy != null) {
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
         }
-        if (OpenAIProxy != null) {
-            const OpenAI = await OpenAIProxy.OpenAIProxy.configure(WebServer.app, span);
+        if (OpenAPIProxy != null) {
+            const OpenAI = await OpenAPIProxy.OpenAPIProxy.configure(WebServer.app, span);
         }
         OAuthProvider.configure(WebServer.app, span);
         WebSocketServer.configure(server, span);

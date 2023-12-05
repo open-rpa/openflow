@@ -329,6 +329,7 @@ export class Logger {
         if (Config.log_cache) Logger.enabled["DBHelper"] = level.Verbose;
         if (Config.log_amqp) Logger.enabled["amqpwrapper"] = level.Verbose;
         if (Config.log_openapi) Logger.enabled["OpenAIProxy"] = level.Verbose;
+        if (Config.log_openapi) Logger.enabled["OpenAPIProxy"] = level.Verbose;
         
         if (Config.log_login_provider) Logger.enabled["LoginProvider"] = level.Verbose;
         if (Config.log_websocket) Logger.enabled["WebSocketServer"] = level.Verbose;

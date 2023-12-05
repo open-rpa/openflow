@@ -197,12 +197,14 @@ export class Message {
     public static async verityToken(token:string, cli?: WebSocketServerClient, ) {
         if(token == null || token == "") return null;
         var user = null;
-        try {
-            user = User.assign(await Crypt.verityToken(token, cli));
-            if(user!=null) return user;
-        } catch (error) {
-        }
         var AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(token);
+        if (NoderedUtil.IsNullUndefinded(AccessToken)) {
+            try {
+                user = User.assign(await Crypt.verityToken(token, cli));
+                if(user!=null) return user;
+            } catch (error) {
+            }
+        }
         if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
             user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
         } else {
@@ -621,6 +623,12 @@ export class Message {
                         case "createindex":
                             await this.CreateIndex(span);
                             break;
+                        case "dropindex":
+                            await this.DropIndex(span);
+                            break;                            
+                        case "getindexes":
+                            await this.GetIndexes(span);
+                            break;                        
                         case "deletepackage":
                             await this.DeletePackage(span);
                             break;
@@ -726,6 +734,35 @@ export class Message {
         try {
             if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
             msg.result = await Config.db.createIndex(msg.collectionname, msg.name, msg.index, msg.options, parent);
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async GetIndexes(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        msg = JSON.parse(JSON.stringify(msg));
+        try {
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+            const indexes = await Config.db.db.collection(msg.collectionname).indexes();
+            msg.results = indexes;
+        } finally {
+            this.data = JSON.stringify(msg);
+        }
+    }
+    async DropIndex(parent: Span) {
+        this.Reply();
+        let msg: any = this.data 
+        if( typeof this.data == "string") {
+            msg = JSON.stringify(this.data)
+        }
+        msg = JSON.parse(JSON.stringify(msg));
+        try {
+            if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+            msg.result = await Config.db.deleteIndex(msg.collectionname, msg.name, parent);
         } finally {
             this.data = JSON.stringify(msg);
         }
@@ -1180,7 +1217,7 @@ export class Message {
                 msg.result = Message.collectionCache[msg.jwt];
             } else {
                 span?.addEvent("ListCollections");
-                msg.result = await Config.db.ListCollections(msg.jwt);
+                msg.result = await Config.db.ListCollections(false, msg.jwt);
                 span?.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
@@ -1353,7 +1390,7 @@ export class Message {
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         // @ts-ignore
         var queryas = msg.queryas;
-        msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, queryas, span);
+        msg.result = await Config.db.aggregate(msg.aggregates, msg.collectionname, msg.jwt, msg.hint, queryas, msg.explain, span);
         if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
         delete msg.aggregates;
         delete msg.jwt;
@@ -2876,12 +2913,19 @@ export class Message {
             // Add requested quantity, now we have our target count
             _quantity += quantity;
 
-            const stripe_product = await this.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
-            if(stripe_product==null) throw new Error("Unknown product");
-            if(stripe_product.active == false) throw new Error("Product is not active");
-            const stripe_price = await this.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
-            if(stripe_price==null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
-            if(stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
+            if(!NoderedUtil.IsNullEmpty(product.stripeproduct) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                const stripe_product = await this.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
+                if(stripe_product==null) throw new Error("Unknown product");
+                if(stripe_product.active == false) throw new Error("Product is not active");
+            }
+            let stripe_price: stripe_price = {type: "payment"} as any;
+
+            if(!NoderedUtil.IsNullEmpty(product.stripeprice) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                stripe_price = await this.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
+                if(stripe_price==null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
+                if(stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
+            }
+
 
             if((stripe_price as any).type != "one_time"){
                 if (NoderedUtil.IsNullEmpty(usage.subid)) {
@@ -4018,7 +4062,7 @@ export class Message {
                 const user = Crypt.rootUser();
                 const tuser = TokenUser.From(user);
                 const jwt: string = Crypt.rootToken();
-                let collections = await Config.db.ListCollections(jwt);
+                let collections = await Config.db.ListCollections(false, jwt);
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
                 let totalusage = 0;
                 let index = 0;
