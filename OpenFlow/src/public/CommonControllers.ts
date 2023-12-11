@@ -706,6 +706,7 @@ export class entitiesCtrl<T> {
                         finalor.push(newq);
                         finalexactor.push(newexactq);
                     }
+                    finalexactor.push({ "_id": this.searchstring });
                     var hastextindex = false;
                     if (this.WebSocketClientService.collections_with_text_index.indexOf(this.collection) > -1) {
                         hastextindex = true;
