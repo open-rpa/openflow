@@ -260,7 +260,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 this.registerGlobalWatch(collections[c].name, span);
             }
         // }
-        this.ensureQueueMonitoring();
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
@@ -1130,7 +1129,12 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.setAttribute("skip", skip);
         let arr: T[] = [];
         let findoptions: FindOptions = {};
-        findoptions.explain = options.explain;
+        // @ts-ignore
+        if(options.explain === true) {
+            console.log("explain quey");
+            // @ts-ignore
+            findoptions.explain = options.explain;
+        }
         const ot_end = Logger.otel.startTimer();
         let _pipe = this.db.collection(collectionname).find(_query, findoptions);
         if (projection != null) {
@@ -1538,7 +1542,11 @@ export class DatabaseConnection extends events.EventEmitter {
             aggregates.push({ "$limit": 500 });
         }
         const options: AggregateOptions = {};
-        options.explain = explain;
+        if(explain === true) {
+            console.log("explain aggregate")
+            // @ts-ignore
+            options.explain = explain;
+        }
         options.hint = myhint;
         try {
             const ot_end = Logger.otel.startTimer();

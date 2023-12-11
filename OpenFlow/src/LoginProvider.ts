@@ -281,9 +281,16 @@ export class LoginProvider {
                         }
                     }
                     const originalUrl: any = req.cookies.originalUrl;
-                    res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                    try {
+                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });    
+                    } catch (error) {                        
+                    }
+                    
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                        res.cookie("originalUrl", "", { expires: new Date(0) });
+                        try {
+                            res.cookie("originalUrl", "", { expires: new Date(0) });    
+                        } catch (error) {                            
+                        }                        
                         LoginProvider.redirect(res, originalUrl);
                     } else {
                         res.redirect("/");
@@ -323,9 +330,16 @@ export class LoginProvider {
                         }
                     }
                     const originalUrl: any = req.cookies.originalUrl;
-                    res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                    try {
+                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });    
+                    } catch (error) {                        
+                    }
+                    
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                        res.cookie("originalUrl", "", { expires: new Date(0) });
+                        try {
+                            res.cookie("originalUrl", "", { expires: new Date(0) });    
+                        } catch (error) {                            
+                        }                        
                         LoginProvider.redirect(res, originalUrl);
                     } else {
                         res.redirect("/");
@@ -436,9 +450,16 @@ export class LoginProvider {
                         }
                     }
                     const originalUrl: any = req.cookies.originalUrl;
-                    res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                    try {
+                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });    
+                    } catch (error) {                        
+                    }
+                    
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                        res.cookie("originalUrl", "", { expires: new Date(0) });
+                        try {
+                            res.cookie("originalUrl", "", { expires: new Date(0) });    
+                        } catch (error) {                            
+                        }                        
                         LoginProvider.redirect(res, originalUrl);
                     } else {
                         res.redirect("/");
@@ -595,7 +616,10 @@ export class LoginProvider {
                                 return next();
                             } else if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
-                                    res.cookie("originalUrl", "", { expires: new Date(0) });
+                                    try {
+                                        res.cookie("originalUrl", "", { expires: new Date(0) });    
+                                    } catch (error) {                                        
+                                    }                                    
                                     LoginProvider.redirect(res, originalUrl);
                                     Logger.instanse.debug("redirect: " + originalUrl, null, {cls: "LoginProvider", func: "Localauthenticate"});
                                     return;
@@ -1168,7 +1192,8 @@ export class LoginProvider {
             ping_clients_interval: Config.ping_clients_interval,
             validlicense: Logger.License.validlicense,
             forceddomains: forceddomains,
-            grafana_url: Config.grafana_url
+            grafana_url: Config.grafana_url,
+            llmchat_queue: Config.llmchat_queue
         }
         return res2;
     }
@@ -1214,40 +1239,41 @@ export class LoginProvider {
     static async get_GetTokenRequest(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
         try {
-            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            const remoteip = LoginProvider.remoteip(req);
+            span?.setAttribute("remoteip", remoteip);
             const key = req.query.key;
             let exists: TokenRequest = null;
             exists = await Logger.DBHelper.FindRequestTokenID(key, span);
             if (NoderedUtil.IsNullUndefinded(exists)) {
-                Logger.instanse.error("Unknown key " + key, span, {cls: "LoginProvider", func: "GetTokenRequest"});
+                Logger.instanse.error("Unknown key " + key + " from " + remoteip, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                 res.status(200).send({ message: "Illegal key" });
                 return;
             }
 
             if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
-                Logger.instanse.info("Token " + key + " has been forfilled", span, {cls: "LoginProvider", func: "GetTokenRequest"});
+                Logger.instanse.info("Token " + key + " has been forfilled from " + remoteip, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                 if (Config.validate_user_form != "") {
                     try {
                         var tuser = await await Crypt.verityToken(exists.jwt);
                         var user = await Logger.DBHelper.FindById(tuser._id, span);
                         if (user.validated == true) {
                             await Logger.DBHelper.RemoveRequestTokenID(key, span);
-                            Logger.instanse.debug("return jwt for " + key, span, {cls: "LoginProvider", func: "GetTokenRequest"});
+                            Logger.instanse.debug("return jwt for " + key, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                             res.status(200).send(Object.assign(exists, { message: "ok" }));
                         } else {
-                            Logger.instanse.debug("User not validated yet, for key " + key + " user " + user.name + " " + user._id, span, {cls: "LoginProvider", func: "GetTokenRequest"});
+                            Logger.instanse.debug("User not validated yet, for key " + key + " user " + user.name + " " + user._id, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                             res.status(200).send({ message: "ok" });
                         }
                     } catch (error) {
-                        Logger.instanse.error(error, span, {cls: "LoginProvider", func: "GetTokenRequest"});
+                        Logger.instanse.error(error, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                     }
                 } else {
-                    Logger.instanse.debug("return jwt for " + key, span, {cls: "LoginProvider", func: "GetTokenRequest"});
+                    Logger.instanse.debug("return jwt for " + key, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                     res.status(200).send(Object.assign(exists, { message: "ok" }));
                     await Logger.DBHelper.RemoveRequestTokenID(key, span);
                 }
             } else {
-                Logger.instanse.debug("No jwt for " + key, span, {cls: "LoginProvider", func: "GetTokenRequest"});
+                Logger.instanse.debug("No jwt for " + key, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                 res.status(200).send(Object.assign(exists, { message: "ok" }));
             }
         } catch (error) {
@@ -1278,10 +1304,16 @@ export class LoginProvider {
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
                         Logger.instanse.debug("adding jwt for request token " + key, span, {cls: "LoginProvider", func: "getlogin"});
                         await Logger.DBHelper.AddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
-                        res.cookie("requesttoken", "", { expires: new Date(0) });
+                        try {
+                            res.cookie("requesttoken", "", { expires: new Date(0) });    
+                        } catch (error) {                            
+                        }                        
                     }
                 } else {
-                    res.cookie("requesttoken", key, { maxAge: 36000, httpOnly: true });
+                    try {
+                        res.cookie("requesttoken", key, { maxAge: 36000, httpOnly: true });    
+                    } catch (error) {                        
+                    }                    
                 }
             }
             if (!NoderedUtil.IsNullEmpty(req.query.key)) {
@@ -1316,7 +1348,10 @@ export class LoginProvider {
             const validateurl: any = req.cookies.validateurl;
             if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
                 Logger.instanse.debug("Save originalUrl as " + originalUrl, span, {cls: "LoginProvider", func: "getlogin"});
-                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                try {
+                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                } catch (error) {
+                }                
             }
             if (!NoderedUtil.IsNullEmpty(validateurl)) {
                 if (tuser != null) {

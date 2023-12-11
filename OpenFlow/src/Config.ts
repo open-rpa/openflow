@@ -224,6 +224,7 @@ export class Config {
         enable_openai: false,
         enable_openapi: true,
         enable_openapiauth: true,
+        llmchat_queue: "",
         log_with_colors: true,
         cache_store_type: "memory",
         cache_store_max: 1000,
@@ -492,6 +493,7 @@ export class Config {
     public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai"));
     public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi"));
     public static enable_openapiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openapiauth"));
+    public static llmchat_queue: string = Config.getEnv("llmchat_queue");
     public static openai_token: string = Config.getEnv("openai_token");
     public static version: string = Config.getversion();
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors"));

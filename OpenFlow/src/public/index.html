@@ -16,17 +16,22 @@
   data-dm-shortcut-enabled="true" data-set-preferred-mode-onload="true">
   <div class="page-wrapper with-navbar halfmoon-overrides" ng-class="{'with-sidebar': menuctrl.signedin}">
     <div class="sidebar" ng-show="menuctrl.signedin">
-      <div class="sidebar-menu">
+      <!-- <div class="sidebar-menu">
         <div class="sidebar-content">
           <input type="text" class="form-control" placeholder="Search" ng-model="menuctrl.searchstring"
             ng-model-options="{ debounce: 500 }" ng-change="menuctrl.Search()" id="menusearch">
         </div>
-      </div>
+      </div> -->
       <!-- <a href="#/Nodered" class="sidebar-link" id="menunodered" ng-class="{active: menuctrl.PathIs(['/Nodered'])}"
         ng-show="menuctrl.WebSocketClientService.allow_personal_nodered == true && menuctrl.hasrole('personal nodered users')">
         <span translate lib="web">nodered</span></a> -->
+      <a href="#/Chat" class="sidebar-link" id="menuchat" ng-class="{active: menuctrl.PathIs(['/Chat'])}"
+        ng-show="menuctrl.WebSocketClientService.llmchat_queue != null && menuctrl.WebSocketClientService.llmchat_queue != ''">
+        <span translate lib="web">chat</span></a>
       <a href="#/Agents" class="sidebar-link" id="menuagents" ng-class="{active: menuctrl.PathIs(['/Agent'])}">
         <span translate lib="web">agents</span></a>
+  
+        
 
       <a href="#/Workitems" class="sidebar-link" id="menuworkitems"
         ng-class="{active: menuctrl.PathIs(['/Workitems', '/Workitem', '/Workitem/'])}"
@@ -139,7 +144,12 @@
       <a href="#" class="navbar-brand">
         <span translate lib="web">sitename</span>
       </a>
-      <span class="navbar-text text-monospace">v{{menuctrl.WebSocketClientService.version}}</span>
+      <span class="navbar-text text-monospace">v{{menuctrl.majorversion}}</span>
+      <input type="text" class="form-control m-10 w-350" placeholder="Search" ng-model="menuctrl.searchstring"
+       ng-model-options="{ debounce: 500 }" rows="1"
+       ng-change="menuctrl.Search()" id="menusearch" ng-show="menuctrl.PathIs(menuctrl.searchpaths)">
+
+
       <ul class="navbar-nav d-none d-md-flex">
       </ul>
       <form class="form-inline d-none d-md-flex ml-auto">

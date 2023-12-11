@@ -107,7 +107,10 @@ export class SamlProvider {
                         try {
                             // tslint:disable-next-line: max-line-length
                             samlp.parseRequest(req, samlpoptions, async (_err: any, samlRequestDom: any): Promise<void> => {
-                                res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                                try {
+                                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });    
+                                } catch (error) {                                    
+                                }                                
                                 res.redirect("/");
                             });
                         } catch (error) {
