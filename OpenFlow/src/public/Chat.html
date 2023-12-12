@@ -108,7 +108,7 @@
       <input ng-model="ctrl.chatmessage" id="chatmessage" class="form-control input-md" ng-disabled="ctrl.loadingollama != false"
       ng-keyup="$event.keyCode === 13 && ctrl.Search()" 
         placeholder="Chat with openflow, ask about data or tell it to do something" />
-        <select ng-model="ctrl.llmmodel">
+        <!-- <select ng-model="ctrl.llmmodel">
           <option value="openai/gpt-3.5-turbo-1106">ChatGPT 3.5</option>
           <option value="openai/gpt-4-1106-preview">ChatGPT 4</option>
           <option value="ollama/functionary">Functionary</option>
@@ -116,7 +116,7 @@
           <option value="ollama/llama2">llama2</option>
           <option value="ollama/codellama">codellama</option>
           <option value="ollama/wizardcoder">wizardcoder</option>
-        </select>
+        </select> -->
         <a href ng-click="ctrl.Reset()" class="btn btn-info" title="Resubmit this message" ng-show="ctrl.messages.length != 0">restart</a>
         <a href ng-href="#/ChatThreads" class="btn btn-info" title="Show older threads">Hist</a>
         
