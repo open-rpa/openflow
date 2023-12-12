@@ -93,6 +93,21 @@ export class WebSocketClientService {
             }
             try {
                 const result = await NoderedUtil.SigninWithToken({ jwt: data.jwt, rawAssertion: data.rawAssertion });
+                // @ts-ignore
+                if(result == null || (result.message && result.message.includes("not validated")) || result.user == null) {
+                    this.setCookie("validateurl", this.$location.path(), 365);
+                    setTimeout(() => {
+                        top.location.href = '/login';
+                        document.write('<script>top.location = "/login";</script>')
+                    }, 500);
+                    try {
+                        document.write(error);
+                        document.write("<br/><a href=\"/Signout\">Signout</a>");
+                    } catch (error) {
+    
+                    }
+                    return;
+                }
 
                 this.customer = null;
                 if (!NoderedUtil.IsNullUndefinded(WebSocketClient.instance.user) && !NoderedUtil.IsNullEmpty(WebSocketClient.instance.user.selectedcustomerid)) {
