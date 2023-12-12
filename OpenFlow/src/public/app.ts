@@ -7,7 +7,7 @@ import {
     hdrobotsCtrl, ClientsCtrl, AuditlogsCtrl, CredentialsCtrl, CredentialCtrl, DuplicatesCtrl,
     OAuthClientsCtrl, OAuthClientCtrl, DeletedCtrl, CustomerCtrl, EntityRestrictionsCtrl, EntityRestrictionCtrl, CustomersCtrl, ResourcesCtrl,
     ResourceCtrl, WorkitemsCtrl, WorkitemCtrl, WorkitemQueuesCtrl, WorkitemQueueCtrl, MailHistCtrl, MailHistsCtrl, FormResourcesCtrl, FormResourceCtrl, 
-    WebsocketClientsCtrl, ConsoleCtrl, AgentsCtrl, AgentCtrl, PackagesCtrl, PackageCtrl, RunPackageCtrl, ConfigCtrl, QueryCtrl, ChatCtrl
+    WebsocketClientsCtrl, ConsoleCtrl, AgentsCtrl, AgentCtrl, PackagesCtrl, PackageCtrl, RunPackageCtrl, ConfigCtrl, QueryCtrl, ChatCtrl, ChatThreadsCtrl
 } from "./Controllers";
 
 require('angular-route');
@@ -103,7 +103,9 @@ module openflow {
                 .when('/Query', { templateUrl: 'Query.html', controller: QueryCtrl, controllerAs: 'ctrl' })
                 .when('/Query/:collection', { templateUrl: 'Query.html', controller: QueryCtrl, controllerAs: 'ctrl' })
 
+                .when('/ChatThreads', { templateUrl: 'ChatThreads.html', controller: ChatThreadsCtrl, controllerAs: 'ctrl' })
                 .when('/Chat', { templateUrl: 'Chat.html', controller: ChatCtrl, controllerAs: 'ctrl' })
+                .when('/Chat/:threadid', { templateUrl: 'Chat.html', controller: ChatCtrl, controllerAs: 'ctrl' })
                 
                 
 

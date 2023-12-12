@@ -101,7 +101,8 @@ export class MenuCtrl {
         "/WebsocketClients",
         "/MailHists",
         "/Agents",
-        "/Packages"
+        "/Packages",
+        "/ChatThreads"
     ];
     public static $inject = [
         "$rootScope",
@@ -9226,6 +9227,9 @@ export class ChatCtrl {
         console.debug("QueryCtrl");
         console.log(WebSocketClientService.llmchat_queue);
 
+        this.threadid = $routeParams.threadid;
+        if(this.threadid == null) this.threadid = "";
+
         this.starters = [
             "Find the email of user named macuser",
             "What are the last 20 audit entries ?",
@@ -9262,11 +9266,13 @@ export class ChatCtrl {
                 "What is the top 20 most failed openrpa workflow grouped by name?",
                 "What is the top 10 most run openrpa workflow grouped by name, and then write a short story about OpenRPA the happy robot"
             ]
+            this.LoadThread();
             this.collections = await NoderedUtil.ListCollections({});
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             await this.RegisterQueue();
             this.$scope.$on('signin', async (event, data) => {
                 this.collections = await NoderedUtil.ListCollections({});
+                this.LoadThread();
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 this.RegisterQueue();
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -9283,6 +9289,16 @@ export class ChatCtrl {
             $timeout(this.scrollToBottom, 100); // Scroll after the DOM update
         }
     });
+    }
+    async LoadThread() {
+        if(this.threadid != "") {
+            var _messages = await NoderedUtil.Query({ collectionname: "llmchat", query: { threadid: this.threadid, "_type": "message" }, top:100 });
+            _messages.sort((a, b) => {
+                return a.message.index - b.message.index;
+             });
+            this.messages = _messages.map((x) => x.message);;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
     }
     Reset() {
         this.errormessage = "";
@@ -9492,6 +9508,7 @@ export class ChatCtrl {
                     if(data.data != null) data = data.data;
                     if(data.threadid != null && data.threadid != "") {
                         this.threadid = data.threadid;
+                        this.$location.path("/Chat/" + this.threadid);
                     }
                     if(data.error != null && data.error != "") {
                         console.log("ERROR")
@@ -9575,4 +9592,45 @@ export class ChatCtrl {
         return;
     }
 
+}
+export class ChatThreadsCtrl extends entitiesCtrl<Provider> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("ChatThreadsCtrl");
+        this.basequery = { _type: "thread" };
+        this.collection = "llmchat";
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, dbusage: 1 };
+        this.postloadData = this.processData;
+        if (this.userdata.data.ChatThreadsCtrl) {
+            this.basequery = this.userdata.data.ChatThreadsCtrl.basequery;
+            this.collection = this.userdata.data.ChatThreadsCtrl.collection;
+            this.baseprojection = this.userdata.data.ChatThreadsCtrl.baseprojection;
+            this.orderby = this.userdata.data.ChatThreadsCtrl.orderby;
+            this.searchstring = this.userdata.data.ChatThreadsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.ChatThreadsCtrl.basequeryas;
+        }
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.ChatThreadsCtrl) this.userdata.data.ChatThreadsCtrl = {};
+        this.userdata.data.ChatThreadsCtrl.basequery = this.basequery;
+        this.userdata.data.ChatThreadsCtrl.collection = this.collection;
+        this.userdata.data.ChatThreadsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.ChatThreadsCtrl.orderby = this.orderby;
+        this.userdata.data.ChatThreadsCtrl.searchstring = this.searchstring;
+        this.userdata.data.ChatThreadsCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
 }
