@@ -9508,7 +9508,7 @@ export class ChatCtrl {
                     if(data.data != null) data = data.data;
                     if(data.threadid != null && data.threadid != "") {
                         this.threadid = data.threadid;
-                        this.$location.path("/Chat/" + this.threadid);
+                        // this.$location.path("/Chat/" + this.threadid);
                     }
                     if(data.error != null && data.error != "") {
                         console.log("ERROR")
