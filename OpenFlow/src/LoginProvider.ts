@@ -1536,7 +1536,8 @@ export class LoginProvider {
 
                                 // https://disposable.debounce.io/?email=info@example.com
                                 email = email.toLowerCase();
-                                var exists = await Config.db.query<User>({ query: { "_id": { "$ne": tuser._id }, "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                                var exists = await Config.db.query<User>({ query: { "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
+                                exists = exists.filter(x => x._id != tuser._id);
                                 if (exists.length > 0) {
                                     Logger.instanse.error(tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")", span, {cls: "LoginProvider", func: "validateuserform"})
                                     email = "";
