@@ -156,5 +156,6 @@
     "formresources": "Form resources",
     "formresource": "Form resource",
     "addformresource": "Add form resource",
-    "chat": "Chat"
+    "chat": "Chat",
+    "newchat": "New chat"
 }
