@@ -78,10 +78,19 @@
       <div ng-bind-html="ctrl.Markdown(message.content)"></div>
       <a href ng-click="ctrl.Resubmit(message)" class="btn btn-info" title="Resubmit this message" ng-show="message.role === 'user'"><em class="fas fa-undo"></em></a>
     </div>
-    
-
-    <button ng-click="ctrl.errormessage = '';ctrl.runtool(message)" ng-show="message.role === 'tool'">Run {{ message.name }} / collection {{ message.collectionname }} </button>
+    <div ng-show="message.role === 'tool' && message.name != 'RunOpenRPAWorkflow'">
+      <button ng-click="ctrl.errormessage = '';ctrl.runtool(message)">Run {{ message.name }} / collection {{ message.collectionname }} </button>
+    </div>
+    <div ng-show="message.role === 'tool' && message.name == 'RunOpenRPAWorkflow'">
+      <button ng-click="ctrl.errormessage = '';ctrl.runtool(message)">Run {{ message.name }}</button>
+      <div id="{{message.correlationId}}"></div>
+    </div>
   </div>
+  <div ng-show="ctrl.messages.length == 0" class="message assistant">
+    Ask about data inside openflow. or tell the system to run openrpa workflows to connected robots. See below buttons for example conversation starters.<br>
+    Sometimes the robot will not get the answer, then try resetting the conversation with the reset button, and try again.<br>
+  </div>
+
 </div>
 <!-- <div class="chat-container">
   <div class="message" ng-repeat="message in ctrl.messages" 

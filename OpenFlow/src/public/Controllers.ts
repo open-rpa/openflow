@@ -9347,7 +9347,6 @@ export class ChatCtrl {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
             if(message.name == "MongoAggregate") {
-                console.log(message);
                 var pipeline = message.pipeline;
                 var collectionname = message.collectionname;
                 this.collectionname = collectionname;
@@ -9359,7 +9358,6 @@ export class ChatCtrl {
                     this.errormessage = message.content;
                 }
             } else if(message.name == "MongoQuery") {
-                console.log(message);
                 var query = message.query;
                 var top = message.top;
                 var collectionname = message.collectionname;
@@ -9374,6 +9372,34 @@ export class ChatCtrl {
                 }                
             } else if(message.name == "GetCollections") {
                 this.models = await NoderedUtil.ListCollections({});
+            } else if(message.name == "RunOpenRPAWorkflow") {
+                console.log("runtool RunOpenRPAWorkflow", message);
+                if(message.correlationId == null || message.correlationId == "") {
+                    message.correlationId = NoderedUtil.GetUniqueIdentifier();
+                }
+                var div = document.getElementById(message.correlationId);
+                if(div != null) {
+                    div.innerText = "Sending invoke command to " + message.robotid + "\n";
+                } else {
+                    this.$timeout(()=> {
+                        var div = document.getElementById(message.correlationId);
+                        if(div != null) {
+                            div.innerText = "Sending invoke command to " + message.robotid + "\n";
+                        }
+                    }, 200);
+                }
+
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: message.workflowid,
+                    data: message.parameters                                        
+                }
+                await NoderedUtil.Queue({
+                    correlationId: message.correlationId,
+                    data: rpacommand,
+                    queuename: message.robotid,
+                    replyto: this.queuename,
+                })
             }    
             if(this.models.length > 0) {
                 var __keys = Object.keys(this.models[0]);
@@ -9476,8 +9502,11 @@ export class ChatCtrl {
                 queuename: this.WebSocketClientService.llmchat_queue, replyto: this.queuename, 
                 data: payload });
         } catch (error) {
-            this.errormessage = error.message ? error.message : error;            
+            this.loadingollama = false;
+            this.errormessage = error.message ? error.message : error;
+            console.error(error);            
         }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     lasttoolindex = 0;
     async checkForNewTools() {
@@ -9498,92 +9527,113 @@ export class ChatCtrl {
     }
     async RegisterQueue() {
         if(this.queuename != "") return;
-        this.queuename = await NoderedUtil.RegisterQueue({
-            callback: async (_data: QueueMessage, ack: any) => {
-                ack();
-                try {
-                    if(_data == null) return;
-                    var correlationId = _data.correlationId;
-                    var data: any = _data;
-                    if(data.data != null) data = data.data;
-                    if(data.threadid != null && data.threadid != "") {
-                        this.threadid = data.threadid;
-                        // this.$location.path("/Chat/" + this.threadid);
-                    }
-                    if(data.error != null && data.error != "") {
-                        console.log("ERROR")
-                        console.error(data.error);
-                        this.errormessage = data.error;
-                        this.loadingollama = false;
-                        if(data.messages != null) {
-                            this.messages = data.messages;
+        try {
+            this.queuename = await NoderedUtil.RegisterQueue({
+                callback: async (_data: QueueMessage, ack: any) => {
+                    ack();
+                    try {
+                        if(_data == null) return;
+                        var correlationId = _data.correlationId;
+                        var data: any = _data;
+                        if(data.data != null) data = data.data;
+                        if(data.threadid != null && data.threadid != "") {
+                            this.threadid = data.threadid;
+                            // this.$location.path("/Chat/" + this.threadid);
                         }
-                        this.checkForNewTools()
-                        return;
-                    }
-                    if(data.func == "chat") {
-                        console.log(data);
-                        if(data.messages != null) {
-                            this.messages = data.messages;
-                            console.log(this.messages);
-                        } else if(data.message != null) {
-                            console.log(data.message);
-                            // @ts-ignore
-                            this.messages = this.messages.filter(x => x.temp != true);
-                            this.messages.push(data.message);
-                            if(data.message.role == "tool") {
-                                this.runtool(data.message);
-                            }                            
-                        }                        
-                        this.chatmessage = "";
-                        this.loadingollama = false;
-                        this.errormessage = "";
-                        this.checkForNewTools()
-                        return;
-                    }
-                    if(data.func == "message") {
-                        if(data.message != null) {
-                            // @ts-ignore
-                            this.messages = this.messages.filter(x => x.temp != true);
-                            this.messages.push(data.message);
-                            if(data.message.role == "tool") {
-                                this.runtool(data.message);
-                            }                            
+                        if(data.error != null && data.error != "") {
+                            console.log("ERROR")
+                            console.error(data.error);
+                            this.errormessage = data.error;
+                            this.loadingollama = false;
+                            if(data.messages != null) {
+                                this.messages = data.messages;
+                            }
+                            this.checkForNewTools()
+                            return;
+                        }
+                        if(data.func == "chat") {
+                            console.log(data);
+                            if(data.messages != null) {
+                                this.messages = data.messages;
+                                console.log(this.messages);
+                            } else if(data.message != null) {
+                                console.log(data.message);
+                                // @ts-ignore
+                                this.messages = this.messages.filter(x => x.temp != true);
+                                this.messages.push(data.message);
+                                if(data.message.role == "tool") {
+                                    if(data.message.name != "RunOpenRPAWorkflow") {
+                                        this.runtool(data.message);
+                                    }                                    
+                                }                            
+                            }                        
+                            this.chatmessage = "";
+                            this.loadingollama = false;
                             this.errormessage = "";
-                        }
-                    }
-                    if(data.func == "messages") {
-                        if(data.messages != null) {
-                            this.messages = data.messages;
-                        }
-                        console.log(this.messages);
-                        this.errormessage = "";
-                        this.checkForNewTools()
-                    }
-                    if(data.func == "generating") {
-                        // @ts-ignore
-                        var temp = this.messages.find(x => x.temp == true);
-                        if(temp == null) {
+                            this.checkForNewTools()
+                            return;
+                        } else if(data.func == "message") {
+                            if(data.message != null) {
+                                // @ts-ignore
+                                this.messages = this.messages.filter(x => x.temp != true);
+                                this.messages.push(data.message);
+                                if(data.message.role == "tool") {
+                                    if(data.message.name != "RunOpenRPAWorkflow") {
+                                        this.runtool(data.message);
+                                    }                                    
+                                }                            
+                                this.errormessage = "";
+                            }
+                        } else if(data.func == "messages") {
+                            if(data.messages != null) {
+                                this.messages = data.messages;
+                            }
+                            console.log(this.messages);
+                            this.errormessage = "";
+                            this.checkForNewTools()
+                        } else if(data.func == "generating") {
                             // @ts-ignore
-                            temp = {"role": "assistant", "content": "", temp: true};
-                            this.messages.push(temp);
+                            var temp = this.messages.find(x => x.temp == true);
+                            if(temp == null) {
+                                // @ts-ignore
+                                temp = {"role": "assistant", "content": "", temp: true};
+                                this.messages.push(temp);
+                            }
+                            temp.content += data.response;
+                            this.$timeout(this.scrollToBottom, 100); 
+                        } else {
+                            if(correlationId != null && correlationId != "") {
+                                var div = document.getElementById(correlationId);
+                                if(div != null) {
+                                    let m = "";
+                                    if(data.command == "invokesuccess" || data.command == "invokecompleted" ) {
+                                        try {
+                                            m = JSON.stringify(data.data);
+                                        } catch (error) {                                        
+                                        }
+                                    } else if(data.command == "timeout") {
+                                        m = "TIMEOUT! is robot running ?"
+                                    }
+                                    div.innerText += data.command + ": " + m + "\n";
+                                }
+                            }
+                            console.log(data);
                         }
-                        temp.content += data.response;
-                        this.$timeout(this.scrollToBottom, 100); 
-                    } else {
-                        console.log(data);
-                    }
-                } catch (error) {
-                    this.errormessage = error.message ? error.message : error;
-                    this.loadingollama = false;
-                } finally {
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
-                }                
-            }, closedcallback: (msg) => {
-                this.queuename = "";
-                setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
-            }
-        });
+                    } catch (error) {
+                        this.errormessage = error.message ? error.message : error;
+                        this.loadingollama = false;
+                    } finally {
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }                
+                }, closedcallback: (msg) => {
+                    this.queuename = "";
+                    setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
+            });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+            console.error(error);            
+        }
         console.log("RegisterQueue", this.queuename);
     }
     OpenEntity(model) {
