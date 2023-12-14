@@ -4485,12 +4485,31 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
-export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
+export class ClientsCtrl  {
     public showinactive: boolean = false;
     public show: string = "all";
+    public models: any[] = [];
+    public orderby: any = {};
+    public loading: boolean = false;
+    public errormessage: string = "";
+    public searchstring: string = "";
+    public static $inject = [
+        "$sce",
+        "$rootScope",
+        "$scope",
+        "$timeout",
+        "$location",
+        "$routeParams",
+        "$interval",
+        "WebSocketClientService",
+        "api",
+        "userdata"
+    ];
     constructor(
+        public $sce: ng.ISCEService,
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
+        public $timeout: ng.ITimeoutService,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
@@ -4498,24 +4517,12 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
-        this.autorefresh = true;
         console.debug("RobotsCtrl");
-        this.basequery = {};
-        this.searchfields = [];
-        this.collection = "entities";
-        this.pagesize = 1;
-        this.postloadData = this.processdata;
-        if (this.userdata.data.ClientsCtrl) {
-            this.basequery = this.userdata.data.ClientsCtrl.basequery;
-            this.collection = this.userdata.data.ClientsCtrl.collection;
-            this.baseprojection = this.userdata.data.ClientsCtrl.baseprojection;
-            this.orderby = this.userdata.data.ClientsCtrl.orderby;
-            this.searchstring = this.userdata.data.ClientsCtrl.searchstring;
-            this.basequeryas = this.userdata.data.ClientsCtrl.basequeryas;
-            this.showinactive = this.userdata.data.ClientsCtrl.showinactive;
-            this.show = this.userdata.data.ClientsCtrl.show;
-        }
+        this.$scope.$on('search', (event, data) => {
+            this.searchstring = data;
+            this.processdata();
+        });
+
         WebSocketClientService.onSignedin((user: TokenUser) => {
             // this.loadData();
             this.processdata()
@@ -4525,14 +4532,16 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         var result = await NoderedUtil.CustomCommand({ "command": "getclients" });
         this.models = result as any;
         if (!this.userdata.data.ClientsCtrl) this.userdata.data.ClientsCtrl = {};
-        this.userdata.data.ClientsCtrl.basequery = this.basequery;
-        this.userdata.data.ClientsCtrl.collection = this.collection;
-        this.userdata.data.ClientsCtrl.baseprojection = this.baseprojection;
-        this.userdata.data.ClientsCtrl.orderby = this.orderby;
-        this.userdata.data.ClientsCtrl.searchstring = this.searchstring;
-        this.userdata.data.ClientsCtrl.basequeryas = this.basequeryas;
         this.userdata.data.ClientsCtrl.showinactive = this.showinactive;
         this.userdata.data.ClientsCtrl.show = this.show;
+
+        if(this.searchstring != "") {
+            this.models = this.models.filter(x => 
+                x.name.toLowerCase().indexOf(this.searchstring.toLowerCase()) > -1
+                || x.username.toLowerCase().indexOf(this.searchstring.toLowerCase()) > -1
+                || x.user?.email?.toLowerCase().indexOf(this.searchstring.toLowerCase()) > -1
+                );
+        }
 
 
         if (this.orderby != null) {
@@ -4578,7 +4587,6 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         try {
             this.loading = true;
             await this.WebSocketClientService.impersonate(model._id);
-            this.loadData();
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
