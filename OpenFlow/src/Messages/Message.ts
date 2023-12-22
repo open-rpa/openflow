@@ -5186,6 +5186,14 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
         msg = AddWorkitemQueueMessage.assign(this.data);
+
+
+        var skiprole = msg.skiprole;
+        // @ts-ignore
+        if(this.data.skiprole != null) {
+            // @ts-ignore
+            skiprole = this.data.skiprole;
+        }
         // @ts-ignore
         if(this.data.workitemqueue != null) msg = this.data.workitemqueue;
         if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
@@ -5201,7 +5209,7 @@ export class Message {
 
         var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
         const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
-        if (!msg.skiprole) {
+        if (!skiprole) {
             const wiqusers: Role = await Logger.DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
             Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
@@ -5222,6 +5230,10 @@ export class Message {
         wiq.projectid = msg.projectid;
         wiq.amqpqueue = msg.amqpqueue;
         wiq.maxretries = msg.maxretries;
+        if(msg._acl != null) {
+            // @ts-ignore
+            wiq._acl = JSON.parse(JSON.stringify(msg._acl));
+        }        
         if(wiq.maxretries < 1) wiq.maxretries = 3;
         wiq.retrydelay = msg.retrydelay;
         wiq.initialdelay = msg.initialdelay;
