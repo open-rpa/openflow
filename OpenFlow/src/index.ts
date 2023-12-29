@@ -82,10 +82,12 @@ async function initDatabase(parent: Span): Promise<boolean> {
         const rootuser = Crypt.rootUser();
         Config.dbConfig = await dbConfig.Load(jwt, false, span);
         try {
-            var lic = Logger.License;
-            await lic?.validate();
+            if(Config.license_key != null && Config.license_key != "") {
+                var lic = Logger.License;
+                await lic?.validate();
+            }
         } catch (error) {
-            console.log(error);            
+            // console.log(error);
         }
         try {
             await Logger.configure(false, true);
@@ -434,7 +436,6 @@ let OpenAIProxy: any = null;
 try {
     OpenAIProxy = require("./ee/OpenAIProxy");
 } catch (error) {
-    cerror(error);
 }
 
 

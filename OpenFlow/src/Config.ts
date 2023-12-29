@@ -379,7 +379,7 @@ export class Config {
         amqp_requeue_time: 1000, // 1 seconds
         amqp_dlx: "openflow-dlx", // Dead letter exchange, used to pickup dead or timeout messages
 
-        mongodb_url: "mongodb://localhost:27017",
+        mongodb_url: "mongodb://127.0.0.1:27017",
         mongodb_db: "openflow",
         mongodb_minpoolsize: 25,
         mongodb_maxpoolsize: 25,
