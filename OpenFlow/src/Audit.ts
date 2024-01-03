@@ -183,6 +183,7 @@ export class Audit {
             log.success = success;
             log.months = months;
             log.customerid = customerid;
+            log.domain = domain;
             if(success) {
                 log.name = domain + " " + months + " months";
             } else {
@@ -190,7 +191,7 @@ export class Audit {
                     log.name = error;
                 } else {
                     log.name = domain + " failed";
-                }                
+                }
             }
             log.username = username;
             log.userid = userid;
