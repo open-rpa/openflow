@@ -28,6 +28,10 @@
       <label for="checkbox-3"><span translate lib="web">pending</span></label>
     </span>
 
+    <!-- <a ng-href="#/Query/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"
+      title="Chat with the {{ctrl.collection}} collection"><em
+        class="fas fa-comments"></em></a> -->
+    <em class="fas fa-undo btn disabled" ng-show="ctrl.loading == true"></em>
     <a ng-href="#/Deleted/{{ctrl.collection}}" class="btn btn-info" ng-show="ctrl.loading == false"
       title="Show deleted items, if history is not disabled for this collection"><em
         class="fas fa-undo"></em></a>

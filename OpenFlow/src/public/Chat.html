@@ -1,0 +1,163 @@
+<style>
+.chat-container {
+    /* width: 300px; */
+    height: 500px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    overflow-y: scroll;
+}
+.chat-container  *:not(button):not(a):not(em):not(br)  {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    /* all: initial;
+    vertical-align: baseline;
+    background: transparent;
+    color: black;
+    text-align: left;
+    text-decoration: none;
+    box-sizing: border-box; */
+}
+
+.message_old {
+    /* margin-bottom: 10px;
+    padding: 5px; */
+    border-radius: 5px;
+}
+.message {
+    /* Your existing styles */
+    display: flex; /* Added for aligning content and button */
+    justify-content: space-between; /* Aligns items on opposite ends */
+    align-items: center; /* Aligns items vertically */
+    text-align: left;
+}
+.user {
+    /* text-align: left; */
+    background-color: #DFF0D8;
+}
+
+.error {
+  color: #a52323;
+  /* text-align: right; */
+  background-color: #D9EDF7;
+}
+
+.assistant {
+    /* text-align: right; */
+    background-color: #D9EDF7;
+}
+
+.system {
+    text-align: center;
+    background-color: #F2DEDE;
+}
+
+.message-content_old {
+    word-wrap: break-word;
+}
+.message-content {
+    /* Your existing styles */
+    flex-grow: 1; /* Allows the message content to take available space */
+}
+.btn-info {
+    /* Adjust the size of the button as needed */
+    font-size: 0.8em; /* Smaller font size */
+    padding: 5px 10px; /* Smaller padding */
+}
+
+</style>
+
+<div class="chat-container">
+  <div class="message" ng-repeat="message in ctrl.messages" 
+  ng-class="{'user': message.role === 'user', 'assistant': message.role === 'assistant', 'system': message.role === 'system'}"
+    ng-hide="message.role === 'system' || message.content == '' || message.content == null ">
+    <div class="message-content" ng-show="message.role !== 'tool'"
+    ng-class="{'error': message.error === true}">
+      <div ng-bind-html="ctrl.Markdown(message.content)"></div>
+      <a href ng-click="ctrl.Resubmit(message)" class="btn btn-info" title="Resubmit this message" ng-show="message.role === 'user'"><em class="fas fa-undo"></em></a>
+    </div>
+    <div ng-show="message.role === 'tool' && message.name != 'RunOpenRPAWorkflow'">
+      <button ng-click="ctrl.errormessage = '';ctrl.runtool(message)">Run {{ message.name }} / collection {{ message.collectionname }} </button>
+    </div>
+    <div ng-show="message.role === 'tool' && message.name == 'RunOpenRPAWorkflow'">
+      <button ng-click="ctrl.errormessage = '';ctrl.runtool(message)">Run {{ message.name }}</button>
+      <div id="{{message.correlationId}}"></div>
+    </div>
+  </div>
+  <div ng-show="ctrl.messages.length == 0" class="message assistant">
+    Ask about data inside openflow. or tell the system to run openrpa workflows to connected robots. See below buttons for example conversation starters.<br>
+    Sometimes the robot will not get the answer, then try resetting the conversation with the reset button, and try again.<br>
+  </div>
+
+</div>
+<!-- <div class="chat-container">
+  <div class="message" ng-repeat="message in ctrl.messages" 
+       ng-class="{'user': message.role === 'user', 'assistant': message.role === 'assistant', 'system': message.role === 'system'}"
+       ng-hide="message.role === 'system' || message.content == '' || message.content == null ">
+    
+    <div class="message-content" ng-show="message.role !== 'tool'"
+         ng-class="{'error': message.error === true}">
+      <div ng-bind-html="ctrl.Markdown(message.content)"></div>
+    </div>
+
+    <a href ng-click="ctrl.Resubmit(message)" class="btn btn-info" title="Resubmit this message" 
+       ng-show="message.role === 'user'">
+      <em class="fas fa-undo"></em>
+    </a>
+  </div>
+</div> -->
+
+
+<div class="form-group form-horizontal">
+  <div class="col-sm">
+    <label class="sr-only">Query</label>
+    <div class="input-group unframed-addons">
+      <input ng-model="ctrl.chatmessage" id="chatmessage" class="form-control input-md" ng-disabled="ctrl.loadingollama != false"
+      ng-keyup="$event.keyCode === 13 && ctrl.Search()" 
+        placeholder="Chat with openflow, ask about data or tell it to do something" />
+        <!-- <select ng-model="ctrl.llmmodel">
+          <option value="openai/gpt-3.5-turbo-1106">ChatGPT 3.5</option>
+          <option value="openai/gpt-4-1106-preview">ChatGPT 4</option>
+          <option value="ollama/functionary">Functionary</option>
+          <option value="ollama/mistral">Mistal</option>
+          <option value="ollama/llama2">llama2</option>
+          <option value="ollama/codellama">codellama</option>
+          <option value="ollama/wizardcoder">wizardcoder</option>
+        </select> -->
+        <a href ng-click="ctrl.Reset()" class="btn btn-info" title="Resubmit this message" ng-show="ctrl.messages.length != 0">restart</a>
+        <a href ng-href="#/ChatThreads" class="btn btn-info" title="Show older threads">Hist</a>
+        
+
+      </div>
+    </div>
+  </div>
+</div>
+<div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<div class="nav nav-tabs" ng-show="ctrl.loadingollama == false && ctrl.messages.length == 0">
+  <a class="btn" href ng-click="ctrl.chatmessage=starter; ctrl.Search()" ng-repeat="starter in ctrl.starters">{{starter}}</a>
+</div>
+<div class="nav nav-tabs" ng-show="ctrl.toolmessage != null">
+  {{ ctrl.toolmessage.name }} / {{ ctrl.toolmessage.collectionname }}
+  <textarea json-text class="form-control" rows="10" id="pipeline" ng-model="ctrl.toolmessage.pipeline" ng-show="ctrl.toolmessage.pipeline != null" ng-blur="ctrl.runtool(ctrl.toolmessage)"></textarea>
+  <textarea json-text class="form-control" rows="10" id="query" ng-model="ctrl.toolmessage.query" ng-show="ctrl.toolmessage.query != null" ng-blur="ctrl.runtool(ctrl.toolmessage)"></textarea>
+</div>    
+
+<table id="table1" class="table table-striped table-hover table-sm" style="width: 100%;" aria-label="List of duplicated items">
+  <thead class="thead-dark">
+    <tr>
+      <th scope="col" class="w-50" ng-click="ctrl.ToggleOrder(key)" ng-repeat="key in ctrl.keys"><strong>{{key}}</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="model in ctrl.models">
+      <td ng-repeat="key in ctrl.keys">
+        
+        <a ng-show="model._id != null" ng-href="#/Entity/{{ctrl.collectionname}}/{{model._id}}" 
+        class="table-btn">{{model[key]}}</a>
+        <span ng-show="model._id == null">{{model[key]}}</span>
+      </td>
+    </tr>
+  </tbody>
+</table>

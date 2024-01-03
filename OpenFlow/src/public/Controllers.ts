@@ -11,7 +11,13 @@ import * as ofurl from "./formsio_of_provider";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { RegisterExchangeResponse } from "@openiap/openflow-api/lib/node/nodeclient/NoderedUtil";
 
+var showdown = require('showdown');
 
+export type chatmessage = {
+    role: "user" | "assistant" | "system" | "tool";
+    content: string;
+  }
+  
 declare let $: any;
 
 function treatAsUTC(date): number {
@@ -67,6 +73,37 @@ export class MenuCtrl {
     public path: string = "";
     public searchstring: string = "";
     public halfmoon: any;
+    public version: string;
+    public majorversion: string;
+    public searchpaths: any[] = [
+        "/Providers",
+        "/Users",
+        "/Roles",
+        "/RPAWorkflows",
+        "/Workflows",
+        "/Forms",
+        "/FormResources",
+        "/Files",
+        "/Entities/",
+        "/Duplicates",
+        "/History/",
+        "/hdrobots",
+        "/Clients",
+        "/Auditlogs",
+        "/Credentials",
+        "/OAuthClients",
+        "/Customers",
+        "/EntityRestrictions",
+        "/Resources",
+        "/Workitems",
+        "/Workitems/",
+        "/WorkitemQueues",
+        "/WebsocketClients",
+        "/MailHists",
+        "/Agents",
+        "/Packages",
+        "/ChatThreads"
+    ];
     public static $inject = [
         "$rootScope",
         "$scope",
@@ -90,28 +127,50 @@ export class MenuCtrl {
     ) {
 
         document.addEventListener(
-            "click",
-            (event) => {
-                try {
-                    if (!this.allowclick) {
-                        // event.cancelBubble = true;
-                        event.stopImmediatePropagation();
-                        return event.preventDefault();
-                    }
-                } catch (error) {
-                    console.error(error);
+        "click",
+        (event) => {
+            try {
+                if (!this.allowclick) {
+                    // event.cancelBubble = true;
+                    event.stopImmediatePropagation();
+                    return event.preventDefault();
                 }
-            });
+            } catch (error) {
+                console.error(error);
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if(!this.PathIs(this.searchpaths)) return;
+            // Check if 'Ctrl' or 'Command' (for MacOS) is pressed along with 'F'
+            if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+                event.preventDefault(); // Prevent the default Ctrl+F behavior
+                document.getElementById('menusearch').focus(); // Focus on your search field
+            }
+        });
+            
         this.halfmoon = require("halfmoon");
         console.debug("MenuCtrl::constructor");
         $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
+
+        this.$scope.$on('search', (event, data) => {
+            this.searchstring = data;
+        });
 
         this.halfmoon.onDOMContentLoaded();
         const cleanup = this.$scope.$on('signin', async (event, data) => {
             if (event && data) { }
             this.user = data;
             this.signedin = true;
+
+            this.version = this.WebSocketClientService.version;
+            this.majorversion = this.version;
+            const dotCount = this.version.split('.').length - 1;
+            if(dotCount == 3){
+                this.majorversion = this.version.substring(0, this.version.lastIndexOf('.'));
+            }
+            console.log(this.version)
+        
 
             this.customer = this.WebSocketClientService.customer;
 
@@ -228,7 +287,7 @@ export class MenuCtrl {
         // this.WebSocketClientService.loadToken();
         this.WebSocketClientService.impersonate("-1");
     }
-    PathIs(path: string) {
+    PathIs(path: string | string[]) {
         if (path == null && path == undefined) return false;
         if (this.path == null && this.path == undefined) return false;
         if (Array.isArray(path)) {
@@ -1278,7 +1337,6 @@ export class MenuCtrl {
             console.error(error);
         }
     }
-
 }
 export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
     public arguments: any;
@@ -1464,9 +1522,7 @@ export class RPAWorkflowsCtrl extends entitiesCtrl<Base> {
                 workflow.chart = chart;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
-
         }
-
     }
     download(data, filename, type) {
         const file = new Blob([data], { type: type });
@@ -4429,12 +4485,31 @@ export class hdrobotsCtrl extends entitiesCtrl<unattendedclient> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }
-export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
+export class ClientsCtrl  {
     public showinactive: boolean = false;
     public show: string = "all";
+    public models: any[] = [];
+    public orderby: any = {};
+    public loading: boolean = false;
+    public errormessage: string = "";
+    public searchstring: string = "";
+    public static $inject = [
+        "$sce",
+        "$rootScope",
+        "$scope",
+        "$timeout",
+        "$location",
+        "$routeParams",
+        "$interval",
+        "WebSocketClientService",
+        "api",
+        "userdata"
+    ];
     constructor(
+        public $sce: ng.ISCEService,
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
+        public $timeout: ng.ITimeoutService,
         public $location: ng.ILocationService,
         public $routeParams: ng.route.IRouteParamsService,
         public $interval: ng.IIntervalService,
@@ -4442,24 +4517,12 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         public api: api,
         public userdata: userdata
     ) {
-        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
-        this.autorefresh = true;
         console.debug("RobotsCtrl");
-        this.basequery = {};
-        this.searchfields = [];
-        this.collection = "entities";
-        this.pagesize = 1;
-        this.postloadData = this.processdata;
-        if (this.userdata.data.ClientsCtrl) {
-            this.basequery = this.userdata.data.ClientsCtrl.basequery;
-            this.collection = this.userdata.data.ClientsCtrl.collection;
-            this.baseprojection = this.userdata.data.ClientsCtrl.baseprojection;
-            this.orderby = this.userdata.data.ClientsCtrl.orderby;
-            this.searchstring = this.userdata.data.ClientsCtrl.searchstring;
-            this.basequeryas = this.userdata.data.ClientsCtrl.basequeryas;
-            this.showinactive = this.userdata.data.ClientsCtrl.showinactive;
-            this.show = this.userdata.data.ClientsCtrl.show;
-        }
+        this.$scope.$on('search', (event, data) => {
+            this.searchstring = data;
+            this.processdata();
+        });
+
         WebSocketClientService.onSignedin((user: TokenUser) => {
             // this.loadData();
             this.processdata()
@@ -4469,14 +4532,16 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         var result = await NoderedUtil.CustomCommand({ "command": "getclients" });
         this.models = result as any;
         if (!this.userdata.data.ClientsCtrl) this.userdata.data.ClientsCtrl = {};
-        this.userdata.data.ClientsCtrl.basequery = this.basequery;
-        this.userdata.data.ClientsCtrl.collection = this.collection;
-        this.userdata.data.ClientsCtrl.baseprojection = this.baseprojection;
-        this.userdata.data.ClientsCtrl.orderby = this.orderby;
-        this.userdata.data.ClientsCtrl.searchstring = this.searchstring;
-        this.userdata.data.ClientsCtrl.basequeryas = this.basequeryas;
         this.userdata.data.ClientsCtrl.showinactive = this.showinactive;
         this.userdata.data.ClientsCtrl.show = this.show;
+
+        if(this.searchstring != "") {
+            this.models = this.models.filter(x => 
+                x.name.toLowerCase().indexOf(this.searchstring.toLowerCase()) > -1
+                || x.username.toLowerCase().indexOf(this.searchstring.toLowerCase()) > -1
+                || x.user?.email?.toLowerCase().indexOf(this.searchstring.toLowerCase()) > -1
+                );
+        }
 
 
         if (this.orderby != null) {
@@ -4522,7 +4587,6 @@ export class ClientsCtrl extends entitiesCtrl<unattendedclient> {
         try {
             this.loading = true;
             await this.WebSocketClientService.impersonate(model._id);
-            this.loadData();
         } catch (error) {
             this.errormessage = JSON.stringify(error);
         }
@@ -7348,6 +7412,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "enable_openai", "type": "boolean", "default": "false"},
             {"name": "enable_openapi", "type": "boolean", "default": "true"},
             {"name": "enable_openapiauth", "type": "boolean", "default": "true"},
+            {"name": "llmchat_queue", "type": "string", "default": ""},
             {"name": "openai_token", "type": "string", "default": ""},
             {"name": "log_with_colors", "type": "boolean", "default": "true"},
             {"name": "log_database_queries_to_collection", "type": "string", "default": ""},
@@ -8843,5 +8908,787 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         });
         var _a = this.agents.find(x => x._id == this.id);
         await NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent" });
+    }
+}
+
+export class QueryCtrl {
+    public queuename: string = "";
+    public pipeline: string = "";
+    public model: any = null;
+    public models: any[] = [];
+    public collections: any[] = [];
+    public keys: string[] = [];
+    public collection: string = "";
+    public searchstring: string = "";
+    public reasoning: string = "";
+    public errormessage: string = "";
+    public errorcount: number = 0;
+    public loadingollama: boolean = false;
+    public loadingdata: boolean = false;
+    
+    public static $inject = [
+        "$rootScope",
+        "$scope",
+        "$location",
+        "$routeParams",
+        "$interval",
+        "WebSocketClientService",
+        "api",
+        "userdata"
+    ];
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        console.debug("QueryCtrl");
+        console.log(WebSocketClientService.llmchat_queue);
+        this.collection = $routeParams.collection;
+        if(this.collection == null || this.collection == "") {
+            this.collection = "entities";
+        }
+        this.$scope.$on('search', (event, data) => {
+            this.searchstring = data;
+        });
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.collections = await NoderedUtil.ListCollections({});
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            await this.RegisterQueue();
+            this.$scope.$on('signin', async (event, data) => {
+                this.collections = await NoderedUtil.ListCollections({});
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                this.RegisterQueue();
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            });
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        });
+    }
+    SelectCollection() {
+        // if (!this.userdata.data.EntitiesCtrl) this.userdata.data.EntitiesCtrl = {};
+        // this.userdata.data.EntitiesCtrl.collection = this.collection;
+        this.$location.path("/Query/" + this.collection);
+        this.searchstring = "";
+        this.errormessage = "";
+        this.pipeline = "";
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        // this.loadData();
+    }
+    private lastsearch = "";
+    private messages: chatmessage[] = [];
+    async Search() {
+        this.$rootScope.$broadcast("search", this.searchstring);
+        if(this.searchstring == null || this.searchstring.trim() == "") return;
+        if(this.lastsearch != this.searchstring) {
+            this.errormessage = "";
+            this.pipeline = "";
+            this.lastsearch = this.searchstring
+        }
+        if(this.errorcount > 3) {
+            this.errormessage = "Too many errors, please rephrase your question\n" + this.errormessage;
+            this.errorcount = 0;
+            return;
+        }
+        if(this.errormessage.includes("Too many errors")) {
+            this.errormessage = "";
+            this.pipeline = "";
+        }
+        this.loadingollama = true;
+        if(this.errormessage != "") {
+        } else {
+            this.errormessage = "";
+            this.pipeline = "";
+        }
+        this.models = [];
+        this.keys = [];
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        let prompt = "";
+        const lastweek = new Date();
+        prompt = "Generate mongodb aggregation pipeline, based on the user input, reply with the generated pipeline in json format using syntax `{\"pipeline\": [${pipeline}], \"reasoning\": \"explain why you choose this query\": }`\n" +
+        `Today is ${new Date().toISOString()}\n`;
+
+        prompt += 
+        `## Formatting Standards for ASCII Tables
+        - Standardize column widths and text alignment.
+        - Include headers for columns.
+        - Handle long text through truncation or wrapping, as appropriate.
+        ## Additional Notes
+        - Use case-insensitive searches for matching operations.
+        - We are creating a query toward a the '${this.collection}' collection`
+        if (this.WebSocketClientService.timeseries_collections.indexOf(this.collection) != -1) {
+            prompt += ` - '${this.collection}' is a time series collection and has a lot of data, so always use '$group' if there is a chance of returning many results\n`
+        }
+        prompt += `## object schema
+        All objects in the collection have a _type and name property, for instance in openrpa collection, we have "_type": "workflow", "_type": "project" and in users collection we have "_type": "user" "_type": "role" etc.
+        - '_created': date field for when created
+        - '_createdby': string, with name of user who created this object
+        - '_createdbyid': string with the _id of the user who created this object
+        - '_modified': date field for when modified
+        - '_modifiedby': string, with name of user who modified this object
+        - '_modifiedbyid': string with the _id of the user who modified this object
+        - '_type': string, with the type of object, for instance 'user', 'role', 'workflow', 'project' etc.
+        - 'name': string, with the name of the object`
+        // if (this.WebSocketClientService.timeseries_collections.indexOf(this.collection) != -1) {
+        // // } else if(this.WebSocketClientService.collections_with_text_index.indexOf(this.collection) != -1) {
+        //     prompt += `We are querying the time series collection '${this.collection}' that has a lot of data, so always use aggregates if there is a chance of returning many results\n`
+        // } else {
+        //     prompt +=  `We are querying the ''${this.collection}' collection. All objects in the collection have a _type and name property, for instance in openrpa collection, we have "_type": "workflow", "_type": "project" and in users collection we have "_type": "user" "_type": "role" etc.\n`
+        // }
+        // prompt += `All objects have a datatime filed '_created' and '_modified' so decided if you need to use one of those fields. If user asks for all new users created the last week we use "_created": {"$gt": "${lastweek.toISOString()}"} \n` +
+        // "Carefully decided if we should use a group by or not\n" +
+        // "if user asks you to use type or _type, user most likely mean the field `_type`\n" +
+        // "if user asks for created, use field `_created`\n" +
+        // "if user asks for modified or updated, use field `_modified`\n" +
+        // "IMPORTANT! Never use $loopup. Never remove `_` from field names! \n"
+        // "IMPORTANT! Never use $loopup. Never remove _ if field has _ in it\n"
+        prompt += "### User prompt: " + this.searchstring; 
+        if(this.errormessage != "") {
+            console.log("Adding last error and pipeline to prompt")
+            this.errorcount++;
+            prompt += "### Last Query: " + this.pipeline
+            prompt += "### Last Error: " + this.errormessage
+            // this.errormessage = "";
+            this.pipeline = "";
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        } else {
+        }
+
+        lastweek.setDate(lastweek.getDate() - 7);
+        var payload = {
+            func: "generate",
+            model: "mistral",
+            prompt,
+            raw: false,
+            json: true,
+        }
+        try {
+            const result: any = await NoderedUtil.Queue({ 
+                queuename: this.WebSocketClientService.llmchat_queue, replyto: this.queuename, 
+                data: payload, 
+                 striptoken: true });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;            
+        }
+    }
+    async RunQuery() {
+        try {
+            let pipeline = null;
+            try {
+                pipeline = JSON.parse(this.pipeline);
+            } catch (error) {
+                this.errormessage = error.message ? error.message : error;
+                return;
+            }
+            if(pipeline == null) {
+                console.log("pipeline is null")
+                return;
+            }
+            this.loadingdata = true;
+            this.models = [];
+            this.keys = [];
+            this.errormessage = "";
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    
+            this.models = await NoderedUtil.Aggregate({ collectionname: this.collection, 
+                aggregates: pipeline
+            });
+            if(this.models.length > 0) {
+                var __keys = Object.keys(this.models[0]);
+                var _keys = __keys.filter(x => x != "name" && x.startsWith("_") == false);
+    
+                if(__keys.includes("_created")) {
+                    _keys.unshift("_created");
+                }
+                if(__keys.includes("_type")) {
+                    _keys.unshift("_type");
+                }
+                if(__keys.includes("name")) {
+                    _keys.unshift("name");
+                }
+                if(__keys.includes("_id")) {
+                    _keys.unshift("_id");
+                }
+                if(_keys.length > 7) {
+                    _keys = _keys.slice(0, 7);
+                }
+                this.keys = _keys;
+            }
+            if(this.models.length == 0) {
+                this.models = [{name: "No results"}]
+                this.keys = ["name"]
+            }
+            this.errorcount = 0;
+            this.loadingdata = false
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        this.loadingdata = false
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    async RegisterQueue() {
+        if(this.queuename != "") return;
+        this.queuename = await NoderedUtil.RegisterQueue({
+            callback: async (_data: QueueMessage, ack: any) => {
+                ack();
+                try {
+                    if(_data == null) return;
+                    var correlationId = _data.correlationId;
+                    var data: any = _data;
+                    if(data.data != null) data = data.data;
+                    if(data.error != null && data.error != "") {
+                        this.errormessage = data.error;
+                        this.loadingollama = false;
+                        return;
+                    }
+                    if(data.func == "generating") {
+                        // console.log(data);
+                        this.pipeline += data.response;
+                    } else if(data.func == "generate") {
+                        if(data.response == null || data.response == "") {
+                            this.errormessage = "No response from LLM";
+                            this.loadingollama = false;
+                            return;
+                        }
+                        try {
+                            var pipeline = JSON.parse(data.response);
+                            this.pipeline =JSON.stringify(pipeline.pipeline, null, 2);
+                            this.reasoning = pipeline.reasoning;
+                            this.loadingollama = false
+                            this.RunQuery()
+                        } catch (error) {
+                            this.errormessage = error.message ? error.message : error;
+                            this.loadingollama = false;
+                            this.errorcount =0;
+                            console.log(data.response);
+                            console.error(error);                        
+                        }
+                    } else {
+                        console.log(data);
+                    }
+                } catch (error) {
+                    this.errormessage = error.message ? error.message : error;
+                    this.loadingollama = false;
+                } finally {
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                }                
+            }, closedcallback: (msg) => {
+                this.queuename = "";
+                setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+            }
+        });
+        console.log("RegisterQueue", this.queuename);
+    }
+    OpenEntity(model) {
+        this.$location.path("/Entity/" + this.collection + "/" + model._id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        return;
+    }
+
+}
+
+
+
+export class ChatCtrl {
+    public queuename: string = "";
+    public llmmodel: string = "openai/gpt-3.5-turbo-1106";
+    public model: any = null;
+    public models: any[] = [];
+    public collections: any[] = [];
+    public keys: string[] = [];
+    public chatmessage: string = "";
+    public errormessage: string = "";
+    public errorcount: number = 0;
+    public loadingollama: boolean = false;
+    public loadingdata: boolean = false;
+    public starters: string[] = [];
+    
+    public static $inject = [
+        "$sce",
+        "$rootScope",
+        "$scope",
+        "$timeout",
+        "$location",
+        "$routeParams",
+        "$interval",
+        "WebSocketClientService",
+        "api",
+        "userdata"
+    ];
+    constructor(
+        public $sce: ng.ISCEService,
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $timeout: ng.ITimeoutService,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api: api,
+        public userdata: userdata
+    ) {
+        console.debug("QueryCtrl");
+        console.log(WebSocketClientService.llmchat_queue);
+
+        this.threadid = $routeParams.threadid;
+        if(this.threadid == null) this.threadid = "";
+
+        this.starters = [
+            "Find the email of user named macuser",
+            "What are the last 20 audit entries ?",
+            "list the number of audit entries, grouped by month",
+            "get then top 20 OpenRPA workflows grouped by created user",
+            "What is the top 10 most run openrpa workflow grouped by name?",
+            "What is the top 10 most run openrpa workflow grouped by name, and then write a short story about OpenRPA the happy robot"
+        ]
+        var _llmmodel = this.getCookie("llmchatmodel");
+        if(_llmmodel != null && _llmmodel != "") {
+            this.llmmodel = _llmmodel;
+        }
+        // this.collection = $routeParams.collection;
+        WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            var workflows = await NoderedUtil.Query({ collectionname: "openrpa", query: { _type: "workflow" }, top:1 });
+            var workflow = "WhoAmI";
+            var robotuser = user.username;
+            if(workflows.length > 0) {
+                workflow = workflows[0].name;
+            }
+            console.log("signed in", user)
+            if(user.username == "az") {
+                workflow = "WhoAmI";
+                robotuser = "macuser"
+            }
+            this.starters = [
+                "Find the email of user named " + user.username,
+                "what is the most run openrpa workflow ?",
+                "Run `" + workflow + "` on `" + robotuser + "`",
+                "What are the last 20 audit entries ?",
+                "list the number of audit entries, grouped by month",
+                "get then number of OpenRPA workflows grouped by created user",
+                "What is the top 10 most run openrpa workflow grouped by name?",
+                "What is the top 20 most failed openrpa workflow grouped by name?",
+                "What is the top 10 most run openrpa workflow grouped by name, and then write a short story about OpenRPA the happy robot"
+            ]
+            this.LoadThread();
+            this.collections = await NoderedUtil.ListCollections({});
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            await this.RegisterQueue();
+            this.$scope.$on('signin', async (event, data) => {
+                this.collections = await NoderedUtil.ListCollections({});
+                this.LoadThread();
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                this.RegisterQueue();
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            });
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+            this.$timeout(()=> {
+                var input = document.getElementById('chatmessage');
+                input.focus();
+            }, 200)
+        });
+        // Watch for changes in your messages array
+        $scope.$watchCollection('ctrl.messages', (newMessages: any, oldMessages: any) => {
+        if (newMessages.length !== oldMessages.length) {
+            $timeout(this.scrollToBottom, 100); // Scroll after the DOM update
+        }
+    });
+    }
+    async LoadThread() {
+        if(this.threadid != "") {
+            var _messages = await NoderedUtil.Query({ collectionname: "llmchat", query: { threadid: this.threadid, "_type": "message" }, top:100 });
+            _messages.sort((a, b) => {
+                return a.message.index - b.message.index;
+             });
+            this.messages = _messages.map((x) => x.message);;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        }
+    }
+    Reset() {
+        this.errormessage = "";
+        this.errorcount = 0;
+        this.chatmessage = "";
+        this.threadid = "";
+        this.toolmessage = null;
+        this.messages = [];
+        this.models = [];
+        this.keys = [];
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    scrollToBottom() {
+        var chatContainer = document.querySelector('.chat-container');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    setCookie(cname, cvalue, exdays) {
+        const d = new Date();
+        d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+        const expires = "expires=" + d.toUTCString();
+        document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+    getCookie(cname) {
+        const name = cname + "=";
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const ca = decodedCookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+    private collectionname: string = "";
+    private toolmessage:chatmessage = null;
+    async runtool(message: any) {
+        try {
+            this.loadingdata = true;
+            this.models = [];
+            this.keys = [];
+            this.toolmessage = message;
+            if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+            if(message.name == "MongoAggregate") {
+                var pipeline = message.pipeline;
+                var collectionname = message.collectionname;
+                this.collectionname = collectionname;
+                if(pipeline != null && collectionname != null) {
+                    this.models = await NoderedUtil.Aggregate({ collectionname: message.collectionname, 
+                        aggregates: pipeline
+                    });
+                } else {
+                    this.errormessage = message.content;
+                }
+            } else if(message.name == "MongoQuery") {
+                var query = message.query;
+                var top = message.top;
+                var collectionname = message.collectionname;
+                this.collectionname = collectionname;
+                var projection = message.projection;
+                if(query == null) query = {};
+                console.log(collectionname, query, top, projection);
+                if(query != null && collectionname != null) {
+                    this.models = await NoderedUtil.Query({ collectionname, query, top, projection });
+                } else {
+                    this.errormessage = message.content;
+                }                
+            } else if(message.name == "GetCollections") {
+                this.models = await NoderedUtil.ListCollections({});
+            } else if(message.name == "RunOpenRPAWorkflow") {
+                console.log("runtool RunOpenRPAWorkflow", message);
+                if(message.correlationId == null || message.correlationId == "") {
+                    message.correlationId = NoderedUtil.GetUniqueIdentifier();
+                }
+                var div = document.getElementById(message.correlationId);
+                if(div != null) {
+                    div.innerText = "Sending invoke command to " + message.robotid + "\n";
+                } else {
+                    this.$timeout(()=> {
+                        var div = document.getElementById(message.correlationId);
+                        if(div != null) {
+                            div.innerText = "Sending invoke command to " + message.robotid + "\n";
+                        }
+                    }, 200);
+                }
+
+                const rpacommand = {
+                    command: "invoke",
+                    workflowid: message.workflowid,
+                    data: message.parameters                                        
+                }
+                await NoderedUtil.Queue({
+                    correlationId: message.correlationId,
+                    data: rpacommand,
+                    queuename: message.robotid,
+                    replyto: this.queuename,
+                })
+            }    
+            if(this.models.length > 0) {
+                var __keys = Object.keys(this.models[0]);
+                var _keys = __keys.filter(x => x != "name" && x.startsWith("_") == false);
+    
+                if(__keys.includes("_created")) {
+                    _keys.unshift("_created");
+                }
+                if(__keys.includes("_type")) {
+                    _keys.unshift("_type");
+                }
+                if(__keys.includes("name")) {
+                    _keys.unshift("name");
+                }
+                if(__keys.includes("_id")) {
+                    _keys.unshift("_id");
+                }
+                if(_keys.length > 7) {
+                    _keys = _keys.slice(0, 7);
+                }
+                this.keys = _keys;
+            }
+            if(this.models.length == 0) {
+                this.models = [{name: "No results"}]
+                this.keys = ["name"]
+            }
+            this.errorcount = 0;
+            this.loadingdata = false
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        this.$timeout(()=> {
+            var table = document.getElementById('table1'); // Adjust the ID if necessary
+            table.scrollTop = table.scrollHeight;
+        }, 200)
+
+        this.loadingdata = false
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+
+    Markdown(text) {
+        // @ts-ignore
+        var converter = new showdown.Converter(),
+        html = converter.makeHtml(text)
+        if(html != null) {
+            html = html.split("\n").join("<br/>");
+        }
+        return this.$sce.trustAsHtml(html);
+    }
+
+    async Resubmit(message) {
+        var index = this.messages.findIndex(x => x == message);
+        if(index == -1) return;
+        // delete this message and everythig after
+        this.messages = this.messages.slice(0, index);
+        this.chatmessage = message.content;
+        this.Search();
+    }
+
+    private lastmessage = "";
+    private messages: chatmessage[] = [];
+    private threadid: string = "";
+    async Search() {
+        if(this.chatmessage == null || this.chatmessage.trim() == "") return;
+        if(this.lastmessage != this.chatmessage) {
+            this.errormessage = "";
+            this.lastmessage = this.chatmessage
+        }
+        if(this.errorcount > 3) {
+            this.errormessage = "Too many errors, please rephrase your question\n" + this.errormessage;
+            this.errorcount = 0;
+            return;
+        }
+        // if new question was sent, clear error
+        if(this.errormessage.includes("Too many errors")) {
+            this.errormessage = "";
+        }
+        this.loadingollama = true;
+        if(this.errormessage != "") {
+        } else {
+            this.errormessage = "";
+        }
+        this.models = [];
+        this.keys = [];
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+
+        this.setCookie("llmchatmodel", this.llmmodel, 365);
+
+        var payload = {
+            func: "chat",
+            model: this.llmmodel, 
+            // model: "ollama/mistral",
+            // model: "ollama/functionary",
+            message: this.chatmessage,
+            threadid: this.threadid,
+            // json: true,
+        }
+        try {
+            const result: any = await NoderedUtil.Queue({ 
+                queuename: this.WebSocketClientService.llmchat_queue, replyto: this.queuename, 
+                data: payload });
+        } catch (error) {
+            this.loadingollama = false;
+            this.errormessage = error.message ? error.message : error;
+            console.error(error);            
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
+    lasttoolindex = 0;
+    async checkForNewTools() {
+        this.$timeout(()=> {
+            var input = document.getElementById('chatmessage');
+            input.focus();
+        }, 200)
+        // if one of the last 4 messages is from role "tool" then
+        // for(let y = this.messages.length - 1; y > this.lasttoolindex; y--) {
+        //     console.log(y);
+        //     var toolmessage = this.messages[y];
+        //     if(toolmessage.role == "tool") {
+        //         this.lasttoolindex = y;
+        //         this.runtool(toolmessage);
+        //         break;
+        //     }                            
+        // }
+    }
+    async RegisterQueue() {
+        if(this.queuename != "") return;
+        try {
+            this.queuename = await NoderedUtil.RegisterQueue({
+                callback: async (_data: QueueMessage, ack: any) => {
+                    ack();
+                    try {
+                        if(_data == null) return;
+                        var correlationId = _data.correlationId;
+                        var data: any = _data;
+                        if(data.data != null) data = data.data;
+                        if(data.threadid != null && data.threadid != "") {
+                            this.threadid = data.threadid;
+                            // this.$location.path("/Chat/" + this.threadid);
+                        }
+                        if(data.error != null && data.error != "") {
+                            console.log("ERROR")
+                            console.error(data.error);
+                            this.errormessage = data.error;
+                            this.loadingollama = false;
+                            if(data.messages != null) {
+                                this.messages = data.messages;
+                            }
+                            this.checkForNewTools()
+                            return;
+                        }
+                        if(data.func == "chat") {
+                            console.log(data);
+                            if(data.messages != null) {
+                                this.messages = data.messages;
+                                console.log(this.messages);
+                            } else if(data.message != null) {
+                                console.log(data.message);
+                                // @ts-ignore
+                                this.messages = this.messages.filter(x => x.temp != true);
+                                this.messages.push(data.message);
+                                if(data.message.role == "tool") {
+                                    if(data.message.name != "RunOpenRPAWorkflow") {
+                                        this.runtool(data.message);
+                                    }                                    
+                                }                            
+                            }                        
+                            this.chatmessage = "";
+                            this.loadingollama = false;
+                            this.errormessage = "";
+                            this.checkForNewTools()
+                            return;
+                        } else if(data.func == "message") {
+                            if(data.message != null) {
+                                // @ts-ignore
+                                this.messages = this.messages.filter(x => x.temp != true);
+                                this.messages.push(data.message);
+                                if(data.message.role == "tool") {
+                                    if(data.message.name != "RunOpenRPAWorkflow") {
+                                        this.runtool(data.message);
+                                    }                                    
+                                }                            
+                                this.errormessage = "";
+                            }
+                        } else if(data.func == "messages") {
+                            if(data.messages != null) {
+                                this.messages = data.messages;
+                            }
+                            console.log(this.messages);
+                            this.errormessage = "";
+                            this.checkForNewTools()
+                        } else if(data.func == "generating") {
+                            // @ts-ignore
+                            var temp = this.messages.find(x => x.temp == true);
+                            if(temp == null) {
+                                // @ts-ignore
+                                temp = {"role": "assistant", "content": "", temp: true};
+                                this.messages.push(temp);
+                            }
+                            temp.content += data.response;
+                            this.$timeout(this.scrollToBottom, 100); 
+                        } else {
+                            if(correlationId != null && correlationId != "") {
+                                var div = document.getElementById(correlationId);
+                                if(div != null) {
+                                    let m = "";
+                                    if(data.command == "invokesuccess" || data.command == "invokecompleted" ) {
+                                        try {
+                                            m = JSON.stringify(data.data);
+                                        } catch (error) {                                        
+                                        }
+                                    } else if(data.command == "timeout") {
+                                        m = "TIMEOUT! is robot running ?"
+                                    }
+                                    div.innerText += data.command + ": " + m + "\n";
+                                }
+                            }
+                            console.log(data);
+                        }
+                    } catch (error) {
+                        this.errormessage = error.message ? error.message : error;
+                        this.loadingollama = false;
+                    } finally {
+                        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    }                
+                }, closedcallback: (msg) => {
+                    this.queuename = "";
+                    setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
+                }
+            });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+            console.error(error);            
+        }
+        console.log("RegisterQueue", this.queuename);
+    }
+    OpenEntity(model) {
+        this.$location.path("/Entity/" + this.collectionname + "/" + model._id);
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+        return;
+    }
+
+}
+export class ChatThreadsCtrl extends entitiesCtrl<Provider> {
+    constructor(
+        public $rootScope: ng.IRootScopeService,
+        public $scope: ng.IScope,
+        public $location: ng.ILocationService,
+        public $routeParams: ng.route.IRouteParamsService,
+        public $interval: ng.IIntervalService,
+        public WebSocketClientService: WebSocketClientService,
+        public api,
+        public userdata: userdata
+    ) {
+        super($rootScope, $scope, $location, $routeParams, $interval, WebSocketClientService, api, userdata);
+        console.debug("ChatThreadsCtrl");
+        this.basequery = { _type: "thread" };
+        this.collection = "llmchat";
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, dbusage: 1 };
+        this.postloadData = this.processData;
+        if (this.userdata.data.ChatThreadsCtrl) {
+            this.basequery = this.userdata.data.ChatThreadsCtrl.basequery;
+            this.collection = this.userdata.data.ChatThreadsCtrl.collection;
+            this.baseprojection = this.userdata.data.ChatThreadsCtrl.baseprojection;
+            this.orderby = this.userdata.data.ChatThreadsCtrl.orderby;
+            this.searchstring = this.userdata.data.ChatThreadsCtrl.searchstring;
+            this.basequeryas = this.userdata.data.ChatThreadsCtrl.basequeryas;
+        }
+        WebSocketClientService.onSignedin((user: TokenUser) => {
+            this.loadData();
+        });
+    }
+    async processData(): Promise<void> {
+        if (!this.userdata.data.ChatThreadsCtrl) this.userdata.data.ChatThreadsCtrl = {};
+        this.userdata.data.ChatThreadsCtrl.basequery = this.basequery;
+        this.userdata.data.ChatThreadsCtrl.collection = this.collection;
+        this.userdata.data.ChatThreadsCtrl.baseprojection = this.baseprojection;
+        this.userdata.data.ChatThreadsCtrl.orderby = this.orderby;
+        this.userdata.data.ChatThreadsCtrl.searchstring = this.searchstring;
+        this.userdata.data.ChatThreadsCtrl.basequeryas = this.basequeryas;
+        this.loading = false;
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
 }

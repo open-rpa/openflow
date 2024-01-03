@@ -68,7 +68,8 @@ export class dbConfig extends Base {
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
             "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-            "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size"].indexOf(key) > -1 ) {
+            "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
+            "stripe_api_secret", "stripe_api_key"].indexOf(key) > -1 ) {
             
                 if(os.hostname().toLowerCase() == "nixos") {
                     continue;
@@ -119,7 +120,8 @@ export class dbConfig extends Base {
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
                 "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-                "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size" ].indexOf(key) > -1 ) {
+                "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
+                "stripe_api_secret", "stripe_api_key" ].indexOf(key) > -1 ) {
                     if(os.hostname().toLowerCase() == "nixos") {
                         continue;
                     }
@@ -222,6 +224,7 @@ export class Config {
         enable_openai: false,
         enable_openapi: true,
         enable_openapiauth: true,
+        llmchat_queue: "",
         log_with_colors: true,
         cache_store_type: "memory",
         cache_store_max: 1000,
@@ -490,6 +493,7 @@ export class Config {
     public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai"));
     public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi"));
     public static enable_openapiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openapiauth"));
+    public static llmchat_queue: string = Config.getEnv("llmchat_queue");
     public static openai_token: string = Config.getEnv("openai_token");
     public static version: string = Config.getversion();
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors"));

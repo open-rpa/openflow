@@ -1,0 +1,35 @@
+<style type="text/css">
+  .dbusage {
+    /* width: 80px; */
+    white-space:nowrap
+  }
+</style>
+<div class="col-sm-12 text-right">
+  <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
+<a href="#/Chat" class="btn btn-info" translate lib="web">newchat</a>
+</div>
+<div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+<table id="table1" class="table table-striped" when-scrolled="ctrl.more()" style="width: 100%;" aria-label="List of customers">
+  <thead class="thead-dark">
+    <tr>
+      <th ng-click="ctrl.ToggleOrder('name')" scope="col"><strong translate lib="web">name</strong></th>
+      <th class="w-150" ng-click="ctrl.ToggleOrder('_created')" scope="col"><strong translate lib="web">created</strong>
+      </th>
+      <th class="w-150" scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="model in ctrl.models">
+      <td><a style="color: inherit; text-decoration: inherit;" ng-href="#/Chat/{{model._id}}">{{model.name}}</a></td>
+      <td>
+        <timesince ng-model="model._created" />
+      </td>
+      <td>
+        <a class="btn" ng-href="#/Chat/{{model._id}}" ng-disabled="ctrl.loading==true"><em class="fas fa-edit"></em></a>
+        <a class="btn" href ng-click="ctrl.DeleteOne(model)" ng-disabled="ctrl.loading==true"
+        ng-class="{'btn-danger': ctrl.shiftdown==true && ctrl.collection == 'users' && (model._type == 'user' || model._type == 'customer')}"><em
+            class="fas fa-trash"></em></a>
+      </td>
+    </tr>
+  </tbody>
+</table>

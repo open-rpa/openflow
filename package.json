@@ -1,7 +1,7 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.5.6",
-  "description": "Simple wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
+  "version": "1.5.7.20",
+  "description": "Simple  wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
     "test": "_mocha 'test/**/*.test.ts'",
@@ -15,7 +15,10 @@
     "build": "docker-compose up registry -d && docker-compose push --ignore-push-failures  && docker-compose up -d",
     "updateapilocal": "npm uninstall @openiap/nodeapi && npm i ../nodeapi",
     "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
-    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi"
+    "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
+    "spec": "tsoa spec",
+    "routes": "tsoa routes",
+    "generate": "tsoa spec && tsoa routes"
   },
   "repository": {
     "type": "git",
@@ -35,7 +38,7 @@
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "^0.19.0",
     "@node-saml/passport-saml": "^4.0.1",
-    "@openiap/nodeapi": "^0.0.30",
+    "@openiap/nodeapi": "^0.0.31",
     "@openiap/openflow-api": "^2.1.11",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.43.0",
     "@opentelemetry/sdk-node": "^0.43.0",
@@ -80,9 +83,11 @@
     "request": "^2.88.2",
     "saml20": "^0.1.14",
     "samlp": "^6.0.2",
+    "showdown": "^2.1.0",
     "swagger-autogen": "^2.23.1",
     "swagger-ui-express": "^4.6.3",
     "systeminformation": "^5.21.9",
+    "tsoa": "^5.1.1",
     "web-push": "^3.5.0",
     "ws": "^8.11.0",
     "xml2js": "^0.4.23"

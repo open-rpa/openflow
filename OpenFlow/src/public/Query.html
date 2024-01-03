@@ -1,0 +1,48 @@
+<!-- <div class="row">
+  <h1 translate lib="web">duplicates tracking</h1>
+</div> -->
+
+<div class=" col-md-6 text-right">
+</div>
+
+
+<div class="form-group form-horizontal">
+  <div class="col-sm">
+    <label class="sr-only">Query</label>
+    <div class="input-group unframed-addons">
+      <input ng-model="ctrl.searchstring"  class="form-control input-md" ng-show="ctrl.loadingollama == false"
+      ng-keyup="$event.keyCode === 13 && ctrl.Search()" 
+        placeholder="Filter result by mongodb query" />
+        <span ng-show="ctrl.loadingollama == true">{{ctrl.searchstring}}</span>
+        <select id="menucollections" ng-model="ctrl.collection" ng-show="ctrl.loadingollama == false"
+        ng-options="item.name as item.name for item in ctrl.collections" ng-change="ctrl.SelectCollection()">
+      </select>
+
+      </div>
+    </div>
+  </div>
+</div>
+<div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+
+<textarea class="form-control" rows="10" id="pipeline" ng-model="ctrl.pipeline" ng-show="ctrl.loadingdata == false && ctrl.loadingollama == false" ng-blur="ctrl.RunQuery()"></textarea>
+</div>
+<pre ng-show="ctrl.loadingollama == true" style="white-space: pre-wrap;">{{ctrl.pipeline}}</pre>
+<pre ng-show="ctrl.reasoning != ''" style="white-space: pre-wrap;">{{ctrl.reasoning}}</pre>
+
+<table id=" table1" class="table table-striped table-hover table-sm" style="width: 100%;" aria-label="List of duplicated items">
+  <thead class="thead-dark">
+    <tr>
+      <th scope="col" class="w-50" ng-click="ctrl.ToggleOrder(key)" ng-repeat="key in ctrl.keys"><strong>{{key}}</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr ng-repeat="model in ctrl.models">
+      <td ng-repeat="key in ctrl.keys">
+        
+        <a ng-show="model._id != null" ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}" 
+        class="table-btn">{{model[key]}}</a>
+        <span ng-show="model._id == null">{{model[key]}}</span>
+      </td>
+    </tr>
+  </tbody>
+</table>

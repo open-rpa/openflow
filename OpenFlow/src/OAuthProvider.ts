@@ -178,6 +178,24 @@ export class OAuthProvider {
                     }
                 )
             }
+            var agent = instance.clients.find(x => x.client_id == "openapi");
+            if(agent == null) {
+                // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
+                instance.clients.push({
+                        grants: ['password', 'refresh_token', 'authorization_code'],
+                        defaultrole : "Viewer",
+                        rolemappings : { "admins": "Admin" },
+                        clientId: "openapi",client_id: "openapi", 
+                        client_secret: "openapi",
+                        token_endpoint_auth_method: "client_secret_post",
+                        response_types: ['code', 'id_token', 'code id_token'],
+                        grant_types: ['implicit', 'authorization_code'],
+                        post_logout_redirect_uris: [],
+                        redirect_uris: [],
+                        openflowsignout: true
+                    }
+                )
+            }
             // var grafana = instance.clients.find(x => x.client_id == "grafana");
             // if(grafana == null) {
             //     instance.clients.push({
@@ -287,6 +305,11 @@ export class OAuthProvider {
                 instance.oidc.callback(req, res);
                 // return next();
                 // if (req.originalUrl.indexOf('/oidc') > -1) return next();
+            });
+
+            instance.app.use('/oidc/*', async (req, res, next) => {
+                console.log(req);
+                next();
             });
 
             instance.app.use('/oidclogin', async (req, res, next) => {

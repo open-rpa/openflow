@@ -701,7 +701,7 @@ export class WebServer {
                 }
                 // if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
                 // if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
-                if(res.result) res.result = JSON.stringify(res.result);
+                if(res.result && result.command != "createindex") res.result = JSON.stringify(res.result);
                 if(res.workitem && !NoderedUtil.IsNullUndefinded(res.workitem.payload) ) {
                     res.workitem.payload = JSON.stringify(res.workitem.payload);
                 }
