@@ -168,17 +168,31 @@ export class DatabaseConnection extends events.EventEmitter {
         Logger.instanse.silly("Really connected to mongodb", span);
         const errEvent = (error) => {
             this.isConnected = false;
+            this.streams = [];
+            Logger.instanse.info("mongodb.error", span);
+            Logger.instanse.error(error, span);
+            this.emit("disconnected");
+        }
+        const parseErrEvent = (error) => {
+            this.isConnected = false;
+            this.streams = [];
+            Logger.instanse.info("mongodb.parseError", span);
             Logger.instanse.error(error, span);
             this.emit("disconnected");
         }
         const closeEvent = () => {
+            this.streams = [];
             this.isConnected = false;
+            Logger.instanse.info("mongodb.close", span);
             Logger.instanse.silly("Disconnected from mongodb", span);
             this.emit("disconnected");
         }
         this.cli
+            .on('connectionReady', () => {
+                Logger.instanse.info("mongodb.connectionRead", span);
+            })
             .on('error', errEvent)
-            .on('parseError', errEvent)
+            .on('parseError', parseErrEvent)
             .on('timeout', errEvent)
             .on('close', closeEvent)
             // .on("commandStarted", (event) => {
@@ -251,14 +265,7 @@ export class DatabaseConnection extends events.EventEmitter {
         // Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
         // if (Config.supports_watch && this.registerGlobalWatches) {
             // let collections = await DatabaseConnection.toArray(this.db.listCollections());
-            let collections = await Logger.DBHelper.GetCollections(span);
-            collections = collections.filter(x => x.name.indexOf("system.") === -1);
-            for (var c = 0; c < collections.length; c++) {
-                if(["agents", "config", "mq", "nodered", "openrpa", "users", "workflow", "workitems"].indexOf(collections[c].name) == -1) continue;
-                if (collections[c].type != "collection") continue;
-                if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
-                this.registerGlobalWatch(collections[c].name, span);
-            }
+        this.doRegisterGlobalWatches(span);
         // }
         this.isConnected = true;
         Logger.otel.endSpan(span);
@@ -596,6 +603,16 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error(error, span, { collection: collectionname });
         } finally {
             if (!discardspan) span?.end();
+        }
+    }
+    async doRegisterGlobalWatches(span: Span) {
+        let collections = await Logger.DBHelper.GetCollections(span);
+        collections = collections.filter(x => x.name.indexOf("system.") === -1);
+        for (var c = 0; c < collections.length; c++) {
+            if(["agents", "config", "mq", "nodered", "openrpa", "users", "workflow", "workitems"].indexOf(collections[c].name) == -1) continue;
+            if (collections[c].type != "collection") continue;
+            if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
+            this.registerGlobalWatch(collections[c].name, span);
         }
     }
     registerGlobalWatch(collectionname: string, span: Span) {
@@ -4896,11 +4913,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
             // if (Config.supports_watch) {
                 Logger.instanse.info("Register global watches for each collection", span);
-                for (var c = 0; c < collections.length; c++) {
-                    if (collections[c].type != "collection") continue;
-                    if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
-                    this.registerGlobalWatch(collections[c].name, span);
-                }
+                this.doRegisterGlobalWatches(span);
             // }
 
             DatabaseConnection.timeseries_collections = [];
