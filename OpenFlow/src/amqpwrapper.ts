@@ -399,7 +399,8 @@ export class amqpwrapper extends events.EventEmitter {
         if(exclusive == null || exclusive == "") exclusive = true
         const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
         AssertExchangeOptions.exclusive = exclusive;
-        if (exchange.name != Config.amqp_dlx && exchange.name != "openflow" && exchange.name != "openflow_logs") AssertExchangeOptions.autoDelete = true;
+        // if (exchange.name != Config.amqp_dlx && exchange.name != "openflow" && exchange.name != "openflow_logs") AssertExchangeOptions.autoDelete = true;
+        AssertExchangeOptions.autoDelete = false;
 
         // try and create exchange
         if(! await this.PreAssertExchange(exchange.name, algorithm, AssertExchangeOptions)) {
