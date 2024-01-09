@@ -157,5 +157,22 @@
     "formresource": "Form resource",
     "addformresource": "Add form resource",
     "chat": "Chat",
-    "newchat": "New chat"
-}
+    "newchat": "New chat",
+    "pods": "pods",
+    "docker": "docker",
+    "assistant": "assistant",
+    "daemon": "daemon",
+    "packages": "Packages",
+    "addagent": "Add agent",
+    "os": "OS",
+    "cpu": "CPU",
+    "mem": "Mem",
+    "arch": "arch",
+    "options": "options",
+    "addschedule": "Add schedule",
+    "cron": "cron",
+    "enabled": "enabled",
+    "terminateifrunning": "Terminate if running",
+    "allowconcurrentruns": "Allow concurrent runs",
+    "removeschedule": "Remove schedule"
+ }

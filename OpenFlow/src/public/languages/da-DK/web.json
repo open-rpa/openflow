@@ -158,5 +158,22 @@
     "formresource": "Form ressource",
     "addformresource": "Tilføj form ressource",
     "chat": "Chat",
-    "newchat": "Ny chat"
+    "newchat": "Ny chat",
+    "pods": "pods",
+    "docker": "docker",
+    "assistant": "assistent",
+    "daemon": "dæmon",
+    "packages": "Pakker",
+    "addagent": "Tilføj agent",
+    "os": "OS",
+    "cpu": "CPU",
+    "mem": "Mem",
+    "arch": "arch",
+    "options": "Indstillinger",
+    "addschedule": "Tilføj tidsplan",
+    "cron": "cron",
+    "enabled": "Aktiveret",
+    "terminateifrunning": "Afslut hvis kørende",
+    "allowconcurrentruns": "Tillad samtidige kørsler",
+    "removeschedule": "Fjern tidsplan"
 }

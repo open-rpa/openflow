@@ -706,7 +706,7 @@
 
     <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
       <div class="input-group-prepend">
-        <span class="input-group-text" translate lib="web">terminateIfRunning</span>
+        <span class="input-group-text" translate lib="web">terminateifrunning</span>
       </div>
       <div class="custom-checkbox">
         <input type="checkbox" id="schedule-{{$index}}-terminateIfRunning" value="{{schedule.terminateIfRunning}}" ng-model="schedule.terminateIfRunning"
@@ -717,7 +717,7 @@
 
     <div class="input-group col-sm-8" ng-show="!ctrl.isdaemon(schedule.packageid)">
       <div class="input-group-prepend">
-        <span class="input-group-text" translate lib="web">allowConcurrentRuns</span>
+        <span class="input-group-text" translate lib="web">allowconcurrentruns</span>
       </div>
       <div class="custom-checkbox">
         <input type="checkbox" id="schedule-{{$index}}-allowConcurrentRuns" value="{{schedule.allowConcurrentRuns}}" ng-model="schedule.allowConcurrentRuns"
@@ -737,7 +737,7 @@
       <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
           <button type="button" ng-disabled="ctrl.loading==true" class="ml-auto btn btn-danger" translate
-          ng-click="ctrl.removepackage(schedule)" lib="web">Remove schedule</button>
+          ng-click="ctrl.removepackage(schedule)" lib="web">removeschedule</button>
           </div>
       </div>
   
@@ -762,7 +762,7 @@
         </select>
         
         <button type="button" ng-disabled="ctrl.loading==true && ctrl.newpackage==''" class="ml-auto btn btn-success" translate
-        ng-click="ctrl.addpackage(ctrl.newpackage._id)" lib="web">Add schedule</button>
+        ng-click="ctrl.addpackage(ctrl.newpackage._id)" lib="web">addschedule</button>
       </div>
 
       <div class="input-group col-sm-8" ng-show="ctrl.newpackage.daemon != true && ctrl.newpackage._id != ''">
