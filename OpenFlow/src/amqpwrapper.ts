@@ -347,6 +347,69 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
+    async checkAndDeleteExchange(exchangeName) {
+        let conn = await amqplib.connect(this.connectionstring);
+        try {
+            const channel = await conn.createChannel();
+            try {
+                // Try to check if exchange exists by declaring it passively
+                await channel.checkExchange(exchangeName);
+    
+                // If no error is thrown, exchange exists, so delete it
+                await channel.deleteExchange(exchangeName);
+                console.log(`Exchange '${exchangeName}' deleted.`);
+            } catch (err) {
+                // Error means exchange does not exist
+                console.log(`Exchange '${exchangeName}' does not exist or there was an error checking it.`);
+            }
+        } catch (error) {
+            console.error('Error connecting to RabbitMQ:', error);
+        } finally {
+            conn.close();
+      }
+    }
+    async PreAssertExchange(exchangeName: string, algorithm: string, ExchangeOptions: any): Promise<boolean> {
+        let conn = await amqplib.connect(this.connectionstring);
+        try {
+            const channel = await conn.createChannel();
+            try {
+                const _ok = await channel.assertExchange(exchangeName, algorithm, ExchangeOptions);
+                console.log(`Exchange '${exchangeName}' exists.`);
+                return true;
+            } catch (err) {
+                // Error means exchange does not exist
+                console.log(`Exchange '${exchangeName}' has wrong config`);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error connecting to RabbitMQ:', error);
+        } finally {
+            conn.close();
+      }
+        
+    }
+    async PreRegisterExchange(exchange: any, parent: Span) {
+        if(exchange.name == "openflow") {
+            return
+        }
+        // @ts-ignore
+        let { algorithm, routingkey, exclusive } = exchange;
+        if(algorithm == null || algorithm == "") algorithm = "fanout"
+        if(routingkey == null || routingkey == "") routingkey = ""
+        if(exclusive == null || exclusive == "") exclusive = true
+        const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
+        AssertExchangeOptions.exclusive = exclusive;
+        if (exchange.name != Config.amqp_dlx && exchange.name != "openflow" && exchange.name != "openflow_logs") AssertExchangeOptions.autoDelete = true;
+
+        // try and create exchange
+        if(! await this.PreAssertExchange(exchange.name, algorithm, AssertExchangeOptions)) {
+            // config differs, so delete and recreate
+            await this.checkAndDeleteExchange(exchange.name);
+            await this.PreAssertExchange(exchange.name, algorithm, AssertExchangeOptions);
+        }
+        // await amqpwrapper.Instance().AddExchangeConsumer(
+        //     Crypt.rootUser(), exchange.name, algorithm, routingkey, AssertExchangeOptions, Crypt.rootToken(), false, null, parent);
+    }
     async AddExchangeConsumer(user: TokenUser | User, exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, addqueue: boolean, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddExchangeConsumer", parent);
         try {

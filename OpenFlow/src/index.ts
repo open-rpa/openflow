@@ -348,6 +348,13 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Logger.otel.endSpan(span);
     }
 }
+async function PreRegisterExchanges(span: Span) {
+    var exchanges = await Config.db.query<Base>({ query: { _type: "exchange" }, collectionname: "mq", jwt: Crypt.rootToken() }, span);
+    for(let i = 0; i < exchanges.length; i++) {
+        const exchange = exchanges[i];
+        await amqpwrapper.Instance().PreRegisterExchange(exchange, span);
+    }
+}
 
 process.on('beforeExit', (code) => {
     Logger.instanse.error(code as any, null);
@@ -461,6 +468,7 @@ var server: http.Server = null;
     try {
         await Config.db.connect(span);
         await initamqp(span);
+        await PreRegisterExchanges(span);
         Logger.instanse.info("VERSION: " + Config.version, span);
         server = await WebServer.configure(Config.baseurl(), span);
         if (GrafanaProxy != null) {
@@ -487,3 +495,4 @@ var server: http.Server = null;
         Logger.otel.endSpan(span);
     }
 })();
+

@@ -189,7 +189,6 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         this.cli
             .on('connectionReady', () => {
-                Logger.instanse.info("mongodb.connectionRead", span);
             })
             .on('error', errEvent)
             .on('parseError', parseErrEvent)
@@ -2057,6 +2056,9 @@ export class DatabaseConnection extends events.EventEmitter {
 
             // @ts-ignore
             item._id = result.insertedId;
+            if (collectionname === "mq" && item._type === "exchange") {
+                await amqpwrapper.Instance().PreRegisterExchange(item, span);
+            }
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
 
@@ -2333,6 +2335,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (item._type == "exchange") item.name = item.name.toLowerCase();
                     if (item._type == "queue") item.name = item.name.toLowerCase();
                     if (item._type == "workitemqueue") { hadWorkitemQueue = true; wiqids.push(item._id); }
+                    if (item._type === "exchange") {
+                        await amqpwrapper.Instance().PreRegisterExchange(item, span);
+                    }        
                 }
                 if (collectionname == "workitems" && item._type == "workitem") {
                     // @ts-ignore
@@ -2988,6 +2993,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!NoderedUtil.IsNullEmpty(q.item.name)) {
                         if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
                         if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
+                        if (q.item._type === "exchange") {
+                            await amqpwrapper.Instance().PreRegisterExchange(q.item, span);
+                        }
                     }
                 }
                 if (!DatabaseConnection.usemetadata(q.collectionname)) {
