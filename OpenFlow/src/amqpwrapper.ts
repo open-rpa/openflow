@@ -418,7 +418,8 @@ export class amqpwrapper extends events.EventEmitter {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
             const q: amqpexchange = new amqpexchange();
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
-            if (exchange != Config.amqp_dlx && exchange != "openflow" && exchange != "openflow_logs") q.ExchangeOptions.autoDelete = true;
+            // if (exchange != Config.amqp_dlx && exchange != "openflow" && exchange != "openflow_logs") q.ExchangeOptions.autoDelete = true;
+            q.ExchangeOptions.autoDelete = false;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             if (addqueue) {
@@ -538,6 +539,10 @@ export class amqpwrapper extends events.EventEmitter {
                 WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: queue });
         } else {
             if (NoderedUtil.IsNullEmpty(routingkey)) routingkey = "";
+            if(exchange != "openflow" && exchange != "openflow_logs") {
+                console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
+            }
+            this.PreRegisterExchange
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
@@ -585,6 +590,9 @@ export class amqpwrapper extends events.EventEmitter {
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
                 WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: queue });
         } else {
+            if(exchange != "openflow" && exchange != "openflow_logs") {
+                console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
+            }
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
