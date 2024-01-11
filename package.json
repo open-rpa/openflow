@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.5.8.5",
+  "version": "1.5.8.6",
   "description": "Simple  wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -38,7 +38,7 @@
     "@fortawesome/fontawesome-free": "^5.15.3",
     "@kubernetes/client-node": "^0.19.0",
     "@node-saml/passport-saml": "^4.0.1",
-    "@openiap/nodeapi": "^0.0.31",
+    "@openiap/nodeapi": "^0.0.33",
     "@openiap/openflow-api": "^2.1.11",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.43.0",
     "@opentelemetry/sdk-node": "^0.43.0",

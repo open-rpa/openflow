@@ -896,6 +896,7 @@ export class Message {
         var res = await cli.RegisterExchange(tuser, msg.exchangename, msg.algorithm, msg.routingkey, addqueue, parent);
         msg.queuename = res.queuename;
         msg.exchangename = res.exchangename;
+        if(msg.queuename == null) msg.queuename = "";
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
