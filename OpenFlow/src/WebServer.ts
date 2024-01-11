@@ -24,7 +24,7 @@ import { flowclient } from "./proto/client";
 import { WebSocketServer } from "./WebSocketServer";
 import { Message } from "./Messages/Message";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse, Workitem } from "@openiap/nodeapi";
+import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse, Workitem, RegisterExchangeRequest } from "@openiap/nodeapi";
 const { info, warn, err } = config;
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
 import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp";
@@ -431,6 +431,9 @@ export class WebServer {
         try {
             [command, msg, reply] = protowrap.unpack(message);
             if(message.command == "") throw new Error("Invalid/empty command");
+            if(command == "registerexchange") {
+                msg = RegisterExchangeRequest.decode(message.data.value);
+            }
         } catch (error) {
             err(error);
             message.command = "error";
