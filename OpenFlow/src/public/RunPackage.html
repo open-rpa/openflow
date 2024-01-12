@@ -69,7 +69,9 @@ pre.expanded {
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
         <button type="submit" ng-disabled="ctrl.loading==true || (ctrl.agent == '' || ctrl.package == '' )" class="ml-auto btn btn-success" translate
-          lib="web">Run</button>
+          lib="web">run</button>
+        <button type="button" ng-disabled="ctrl.loading==true || (ctrl.agent == '' || ctrl.package == '' )" class="ml-auto btn btn-danger" ng-click="ctrl.Reinstall()" translate
+          lib="web">reinstall</button>
       </div>
     </div>
 

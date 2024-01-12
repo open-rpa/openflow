@@ -8849,6 +8849,19 @@ export class RunPackageCtrl extends entityCtrl<Base> {
 
         await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
     }
+    async Reinstall() : Promise<void> {
+        var _a = this.agents.find(x => x._id == this.id);
+        if (_a == null) return;
+        const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        var payload ={
+            "command": "reinstallpackage",
+            "id": this.package,
+            "stream": true,
+            "queuename": this.queuename
+        }
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+
+    }
     async submit(): Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);
         if (_a == null) return;

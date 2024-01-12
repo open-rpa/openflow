@@ -52,6 +52,8 @@
     "webserver": "WebServer",
     "sleep": "Sleep",
     "runas": "Run as",
+    "run": "Run",
+    "reinstall": "Reinstall",
     "openrpa": "OpenRPA",
     "audit": "Audit",
     "empty": "Empty",
