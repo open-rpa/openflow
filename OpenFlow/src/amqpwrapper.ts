@@ -357,7 +357,7 @@ export class amqpwrapper extends events.EventEmitter {
     
                 // If no error is thrown, exchange exists, so delete it
                 await channel.deleteExchange(exchangeName);
-                console.log(`Exchange '${exchangeName}' deleted.`);
+                // console.log(`Exchange '${exchangeName}' deleted.`);
             } catch (err) {
                 // Error means exchange does not exist
                 console.log(`Exchange '${exchangeName}' does not exist or there was an error checking it.`);
@@ -374,7 +374,7 @@ export class amqpwrapper extends events.EventEmitter {
             const channel = await conn.createChannel();
             try {
                 const _ok = await channel.assertExchange(exchangeName, algorithm, ExchangeOptions);
-                console.log(`Exchange '${exchangeName}' exists.`);
+                // console.log(`Exchange '${exchangeName}' exists.`);
                 return true;
             } catch (err) {
                 // Error means exchange does not exist
@@ -540,7 +540,7 @@ export class amqpwrapper extends events.EventEmitter {
         } else {
             if (NoderedUtil.IsNullEmpty(routingkey)) routingkey = "";
             if(exchange != "openflow" && exchange != "openflow_logs") {
-                console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
+                // console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
             }
             this.PreRegisterExchange
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
@@ -591,7 +591,7 @@ export class amqpwrapper extends events.EventEmitter {
                 WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: queue });
         } else {
             if(exchange != "openflow" && exchange != "openflow_logs") {
-                console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
+                // console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
             }
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
