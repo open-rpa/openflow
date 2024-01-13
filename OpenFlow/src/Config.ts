@@ -69,7 +69,7 @@ export class dbConfig extends Base {
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
             "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
             "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
-            "stripe_api_secret", "stripe_api_key"].indexOf(key) > -1 ) {
+            "stripe_api_secret", "stripe_api_key", "enable_openflow_amqp"].indexOf(key) > -1 ) {
             
                 if(os.hostname().toLowerCase() == "nixos") {
                     continue;
@@ -121,7 +121,7 @@ export class dbConfig extends Base {
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
                 "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
                 "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
-                "stripe_api_secret", "stripe_api_key" ].indexOf(key) > -1 ) {
+                "stripe_api_secret", "stripe_api_key", "enable_openflow_amqp" ].indexOf(key) > -1 ) {
                     if(os.hostname().toLowerCase() == "nixos") {
                         continue;
                     }
