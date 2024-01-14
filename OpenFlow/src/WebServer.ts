@@ -335,12 +335,19 @@ export class WebServer {
         return new Promise<string>((resolve, reject) => {
             const bucket = new GridFSBucket(Config.db.db);
             var metadata = new Base();
-            metadata.name = msg.filename;
             metadata._acl = [];
             metadata._createdby = "root";
             metadata._createdbyid = WellknownIds.root;
             metadata._modifiedby = "root";
             metadata._modifiedbyid = WellknownIds.root;
+            if(msg.metadata != null && msg.metadata != null) {
+                try {
+                    metadata = Object.assign(metadata, JSON.parse(msg.metadata));
+                } catch (error) {
+                    Logger.instanse.error(error, null);
+                }
+            }
+            if(metadata.name == null || metadata.name == "") metadata.name = msg.filename;
             if(client.user)
             {
                 Base.addRight(metadata, client.user._id , client.user.name, [Rights.full_control]);
