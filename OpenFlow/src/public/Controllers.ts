@@ -1413,21 +1413,94 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         });
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    public parseBoolean(s: any): boolean {
+        let val: string;
+        if (typeof s === "number") {
+            val = s.toString();
+        } else if (typeof s === "string") {
+            val = s.toLowerCase().trim();
+        } else if (typeof s === "boolean") {
+            val = s.toString();
+        } else {
+            throw new Error("Unknown type!");
+        }
+        switch (val) {
+            case "true": case "yes": case "1": return true;
+            case "false": case "no": case "0": case null: return false;
+            default: return Boolean(s);
+        }
+    }
     async submit(): Promise<void> {
         try {
             this.errormessage = "";
+            if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
+
+            var keys = Object.keys(this.arguments);
+            for(let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                const param = this.model.Parameters.find(x=> x.name == key);
+                if(param && param.type == "System.String") this.arguments[key] = this.arguments[key] ?? "";
+                if(param && param.type == "System.Int32") this.arguments[key] = parseInt(this.arguments[key]);
+                if(param && param.type == "System.Boolean") this.arguments[key] = this.parseBoolean(this.arguments[key]);
+                if(param && param.type == "System.DateTime") {
+                    if(this.arguments[key] != null && this.arguments[key] != "") {
+                        this.arguments[key] = new Date(this.arguments[key]).toISOString();
+                    } else {
+                        this.arguments[key] = undefined;
+                    }
+                }
+                if(param && param.type == "System.String[]" && Array.isArray(this.arguments[key]) == false ) {
+                    var arr = this.arguments[key].split(",");
+                    this.arguments[key] = arr;
+                }
+                if(param && param.type == "System.Int32[]" && Array.isArray(this.arguments[key]) == false ) {
+                    var arr = this.arguments[key].split(",");
+                    arr = arr.map(x=> parseInt(x));
+                    this.arguments[key] = arr;
+                }
+                if(param && param.type == "System.Boolean[]" && Array.isArray(this.arguments[key]) == false ) {
+                    var arr = this.arguments[key].split(",");
+                    arr = arr.map(x=> this.parseBoolean(x));
+                    this.arguments[key] = arr;
+                }
+                if(param && param.type == "System.DateTime[]" && Array.isArray(this.arguments[key]) == false ) {
+                    var arr = this.arguments[key].split(",");
+                    arr = arr.map(x=> new Date(x).toISOString());
+                    this.arguments[key] = arr;
+                }
+                console.log(key, this.arguments[key])
+            }
+
             const rpacommand = {
                 command: "invoke",
                 workflowid: this.model._id,
-                data: this.arguments
+                data: {...this.arguments}
             }
-            if (this.arguments === null || this.arguments === undefined) { this.arguments = {}; }
+            for(let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                const param = this.model.Parameters.find(x=> x.name == key);
+                // console.log(key, this.arguments[key])
+                if(param && param.type == "System.String[]" && Array.isArray(this.arguments[key]) == true ) {
+                    this.arguments[key] = this.arguments[key].join(",");
+                }
+                if(param && param.type == "System.Int32[]" && Array.isArray(this.arguments[key]) == true ) {
+                    this.arguments[key] = this.arguments[key].join(",");
+                }
+                if(param && param.type == "System.Boolean[]" && Array.isArray(this.arguments[key]) == true ) {
+                    this.arguments[key] = this.arguments[key].join(",");
+                }
+                if(param && param.type == "System.DateTime[]" && Array.isArray(this.arguments[key]) == true ) {
+                    this.arguments[key] = this.arguments[key].join(",");
+                }
+                console.log(key, this.arguments[key])
+            }
             const result: any = await NoderedUtil.Queue({ queuename: this.user._id, replyto: this.queuename, data: rpacommand, expiration: parseInt(this.timeout), striptoken: true });
             try {
                 // result = JSON.parse(result);
             } catch (error) {
             }
         } catch (error) {
+            console.error(error);
             this.errormessage = error.message ? error.message : error;
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -8848,6 +8921,19 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         runs.prepend(div);
 
         await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+    }
+    async Reinstall() : Promise<void> {
+        var _a = this.agents.find(x => x._id == this.id);
+        if (_a == null) return;
+        const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        var payload ={
+            "command": "reinstallpackage",
+            "id": this.package,
+            "stream": true,
+            "queuename": this.queuename
+        }
+        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+
     }
     async submit(): Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);

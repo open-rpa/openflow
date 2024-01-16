@@ -321,7 +321,7 @@ export class flowclient extends client {
         }
         for (let i = this._exchanges.length - 1; i >= 0; i--) {
             const e = this._exchanges[i];
-            if (e && (e.queue != null && e.queue.queue == queuename || e.queue.queuename == queuename)) {
+            if (e && (e.queue != null && e.queue?.queue == queuename || e.queue?.queuename == queuename)) {
                 try {
                     amqpwrapper.Instance().RemoveQueueConsumer(user, this._exchanges[i].queue, span).catch((err) => {
                         Logger.instanse.error(err, span, Logger.parsecli(this as any));

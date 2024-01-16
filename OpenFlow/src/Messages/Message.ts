@@ -896,6 +896,7 @@ export class Message {
         var res = await cli.RegisterExchange(tuser, msg.exchangename, msg.algorithm, msg.routingkey, addqueue, parent);
         msg.queuename = res.queuename;
         msg.exchangename = res.exchangename;
+        if(msg.queuename == null) msg.queuename = "";
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
@@ -2043,6 +2044,11 @@ export class Message {
             if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
             if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
             msg.enable_analytics = Config.enable_analytics;
+            if(msg.user != null) {
+                if(msg.user.email == null || msg.user.email == "") {
+                    msg.user.email = "";
+                }
+            }
             this.data = JSON.stringify(msg);
             // hrend = process.hrtime(hrstart)
         } finally {
@@ -5041,10 +5047,13 @@ export class Message {
                 await this.DuplicateWorkitem(wi, failed_wiq, failed_wiqid, this.jwt, parent);
             }
         }
+        if(msg.result != null) {
+            if(msg.result.nextrun == null) delete msg.result.nextrun;
+            if(msg.result.lastrun == null) delete msg.result.lastrun;
+        }
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
-
 
 
 
@@ -5140,6 +5149,10 @@ export class Message {
         //     }
         // }
         delete msg.jwt;
+        if(msg.result != null) {
+            if(msg.result.nextrun == null) delete msg.result.nextrun;
+            if(msg.result.lastrun == null) delete msg.result.lastrun;
+        }
         this.data = JSON.stringify(msg);
     }
 
