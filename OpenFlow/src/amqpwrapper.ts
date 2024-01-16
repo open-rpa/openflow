@@ -392,6 +392,8 @@ export class amqpwrapper extends events.EventEmitter {
         if(exchange.name == "openflow") {
             return
         }
+        var exchangename = exchange;
+        if(exchange.name != null) exchangename = exchange.name;
         // @ts-ignore
         let { algorithm, routingkey, exclusive } = exchange;
         if(algorithm == null || algorithm == "") algorithm = "fanout"
@@ -399,14 +401,14 @@ export class amqpwrapper extends events.EventEmitter {
         if(exclusive == null || exclusive == "") exclusive = true
         const AssertExchangeOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertExchangeOptions));
         AssertExchangeOptions.exclusive = exclusive;
-        // if (exchange.name != Config.amqp_dlx && exchange.name != "openflow" && exchange.name != "openflow_logs") AssertExchangeOptions.autoDelete = true;
+        // if (exchangename != Config.amqp_dlx && exchangename != "openflow" && exchangename != "openflow_logs") AssertExchangeOptions.autoDelete = true;
         AssertExchangeOptions.autoDelete = false;
 
         // try and create exchange
-        if(! await this.PreAssertExchange(exchange.name, algorithm, AssertExchangeOptions)) {
+        if(! await this.PreAssertExchange(exchangename, algorithm, AssertExchangeOptions)) {
             // config differs, so delete and recreate
-            await this.checkAndDeleteExchange(exchange.name);
-            await this.PreAssertExchange(exchange.name, algorithm, AssertExchangeOptions);
+            await this.checkAndDeleteExchange(exchangename);
+            await this.PreAssertExchange(exchangename, algorithm, AssertExchangeOptions);
         }
         // await amqpwrapper.Instance().AddExchangeConsumer(
         //     Crypt.rootUser(), exchange.name, algorithm, routingkey, AssertExchangeOptions, Crypt.rootToken(), false, null, parent);
@@ -421,6 +423,7 @@ export class amqpwrapper extends events.EventEmitter {
             // if (exchange != Config.amqp_dlx && exchange != "openflow" && exchange != "openflow_logs") q.ExchangeOptions.autoDelete = true;
             q.ExchangeOptions.autoDelete = false;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
+            await this.PreRegisterExchange(exchange, span)
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             if (addqueue) {
                 let AssertQueueOptions = null;
@@ -542,7 +545,7 @@ export class amqpwrapper extends events.EventEmitter {
             if(exchange != "openflow" && exchange != "openflow_logs") {
                 // console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
             }
-            this.PreRegisterExchange
+            await this.PreRegisterExchange(exchange, span)
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
@@ -593,6 +596,7 @@ export class amqpwrapper extends events.EventEmitter {
             if(exchange != "openflow" && exchange != "openflow_logs") {
                 // console.log("publishing to exchange: " + exchange + " routingkey: " + routingkey + " correlationId: " + correlationId);
             }
+            await this.PreRegisterExchange(exchange, span)
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
     }
