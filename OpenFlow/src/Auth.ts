@@ -36,7 +36,6 @@ export class Auth {
         if (jwt.indexOf(" ") > 1 && (jwt.toLowerCase().startsWith("bearer") || jwt.toLowerCase().startsWith("jwt"))) {
             const token = jwt.split(" ")[1].toString();
             jwt = token;
-            tuser = await Crypt.verityToken(jwt);
         } else if(jwt.indexOf(" ") > 1 && jwt.toLowerCase().startsWith("basic")) {
             jwt = jwt.split(' ')[1].toString() || '';
             user = await Logger.DBHelper.FindJWT(jwt, parent);

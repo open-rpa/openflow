@@ -293,15 +293,14 @@ export class dockerdriver implements i_agent_driver {
         }
     }
     public async InstanceCleanup(parent: Span): Promise<void> {
-        // const noderedresource: any = await Config.db.GetResource("Nodered Instance", parent);
         const resource: any = await Config.db.GetResource("Agent Instance", parent);
+        if (NoderedUtil.IsNullUndefinded(resource)) return;
         let runtime: number = resource?.defaultmetadata?.runtime_hours;
         if (NoderedUtil.IsNullUndefinded(runtime)) {
             // If agent resource does not exists, dont turn off agents
             runtime = 0;
-            // If agent resource does exists, but have no default, use 24 hours
-            if (!NoderedUtil.IsNullUndefinded(resource)) runtime = 24;
         }
+        if (runtime < 1) return;
         parent?.addEvent("init Docker()");
         const docker = new Docker();
         parent?.addEvent("listContainers()");
@@ -309,31 +308,28 @@ export class dockerdriver implements i_agent_driver {
         const rootjwt = Crypt.rootToken()
         const rootuser = Crypt.rootUser();
         var result = [];
-        if (!NoderedUtil.IsNullUndefinded(resource) && runtime > 0) {
-            for (let i = 0; i < list.length; i++) {
-                const item = list[i];
-                var Created = new Date(item.Created * 1000);
-                item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
-                item.status = { phase: item.State }
-                const image = item.Image;
-                const openiapagent = item.Labels["openiapagent"];
-                const billed = item.Labels["billed"];
-                if (!NoderedUtil.IsNullEmpty(openiapagent)) {
-                    const date = new Date();
-                    const a: number = (date as any) - (Created as any);
-                    const diffhours = a / (1000 * 60 * 60);
-                    if (billed != "true" && diffhours > runtime) {
-                        Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed agent instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
-                        var agent = await Config.db.GetOne<iAgent>({ query: { slug: item.metadata.name }, collectionname: "agents", jwt: rootjwt }, parent);
-                        if(agent != null) {
-                            await this.RemoveInstance(rootuser, rootjwt, agent, false, parent);
-                        } else {
-                            Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name , parent, { user: item.metadata.name });
-                        }
+        for (let i = 0; i < list.length; i++) {
+            const item = list[i];
+            var Created = new Date(item.Created * 1000);
+            item.metadata = { creationTimestamp: Created, name: (item.Names[0] as string).substr(1) };
+            item.status = { phase: item.State }
+            const image = item.Image;
+            const openiapagent = item.Labels["openiapagent"];
+            const billed = item.Labels["billed"];
+            if (!NoderedUtil.IsNullEmpty(openiapagent)) {
+                const date = new Date();
+                const a: number = (date as any) - (Created as any);
+                const diffhours = a / (1000 * 60 * 60);
+                if (billed != "true" && diffhours > runtime) {
+                    Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed agent instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
+                    var agent = await Config.db.GetOne<iAgent>({ query: { slug: item.metadata.name }, collectionname: "agents", jwt: rootjwt }, parent);
+                    if(agent != null) {
+                        await this.RemoveInstance(rootuser, rootjwt, agent, false, parent);
+                    } else {
+                        Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name , parent, { user: item.metadata.name });
                     }
                 }
             }
-    
         }
     }
     public async GetInstancePods(user: User, jwt: string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]> {

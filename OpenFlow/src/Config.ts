@@ -67,7 +67,7 @@ export class dbConfig extends Base {
             if(["db", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
             if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
-            "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
+            "domain", "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
             "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
             "stripe_api_secret", "stripe_api_key", "enable_openflow_amqp"].indexOf(key) > -1 ) {
             
@@ -119,7 +119,7 @@ export class dbConfig extends Base {
 
                 if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", "api_ws_url",
-                "domain", "enable_openapi", "enable_openapiauth", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
+                "domain", "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
                 "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
                 "stripe_api_secret", "stripe_api_key", "enable_openflow_amqp" ].indexOf(key) > -1 ) {
                     if(os.hostname().toLowerCase() == "nixos") {
@@ -221,9 +221,8 @@ export class dbConfig extends Base {
 export class Config {
     public static dbConfig: dbConfig;
     public static default_config: dbConfig = {
-        enable_openai: false,
         enable_openapi: true,
-        enable_openapiauth: true,
+        enable_grafanaapi: true,
 
         llmchat_queue: "",
         log_with_colors: true,
@@ -349,6 +348,9 @@ export class Config {
 
         multi_tenant: false,
         enable_guest: false, 
+        enable_gitserver: false, 
+        enable_gitserver_guest: false, 
+        enable_gitserver_guest_create: false, 
         cleanup_on_delete_customer: false,
         cleanup_on_delete_user: false,
         api_bypass_perm_check: false,
@@ -492,12 +494,10 @@ export class Config {
     public static unittesting: boolean = false;
     public static db: DatabaseConnection = null;
     public static license_key: string = Config.getEnv("license_key");
-    public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai"));
     public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi"));
-    public static enable_openapiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openapiauth"));
+    public static enable_grafanaapi: boolean = Config.parseBoolean(Config.getEnv("enable_grafanaapi"));
     
     public static llmchat_queue: string = Config.getEnv("llmchat_queue");
-    public static openai_token: string = Config.getEnv("openai_token");
     public static version: string = Config.getversion();
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors"));
 
@@ -637,6 +637,10 @@ export class Config {
 
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant"));
     public static enable_guest: boolean = Config.parseBoolean(Config.getEnv("enable_guest"));
+    public static enable_gitserver: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver"));
+    public static enable_gitserver_guest: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest"));
+    public static enable_gitserver_guest_create: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest_create"));    
+
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check"));

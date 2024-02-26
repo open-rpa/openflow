@@ -7453,11 +7453,9 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             // {"name": "signing_crt", "type": "string", "default": ""}, // ONLY envoriment variable
             // {"name": "singing_key", "type": "string", "default": ""}, // ONLY envoriment variable
             {"name": "license_key", "type": "string", "default": ""},
-            {"name": "enable_openai", "type": "boolean", "default": "false"},
             {"name": "enable_openapi", "type": "boolean", "default": "true"},
-            {"name": "enable_openapiauth", "type": "boolean", "default": "true"},
+            {"name": "enable_grafanaapi", "type": "boolean", "default": "true"},
             {"name": "llmchat_queue", "type": "string", "default": ""},
-            {"name": "openai_token", "type": "string", "default": ""},
             {"name": "log_with_colors", "type": "boolean", "default": "true"},
             {"name": "log_database_queries_to_collection", "type": "string", "default": ""},
             {"name": "cache_store_type", "type": "string", "default": "memory"},
@@ -7555,6 +7553,11 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
         
             {"name": "multi_tenant", "type": "boolean", "default": "false"},
             {"name": "enable_guest", "type": "boolean", "default": "false"},
+            {"name": "enable_gitserver", "type": "boolean", "default": "false"},
+            {"name": "enable_gitserver_guest", "type": "boolean", "default": "false"},
+            {"name": "enable_gitserver_guest_create", "type": "boolean", "default": "false"},
+            
+        
             {"name": "cleanup_on_delete_customer", "type": "boolean", "default": "false"},
             {"name": "cleanup_on_delete_user", "type": "boolean", "default": "false"},
             {"name": "api_bypass_perm_check", "type": "boolean", "default": "false"},
