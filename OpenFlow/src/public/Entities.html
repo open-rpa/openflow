@@ -17,8 +17,7 @@
     <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true" title="Hang on, loading data"></em>
     <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
       ng-show="menuctrl.WebSocketClientService.multi_tenant">
-    <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
-        all</span></label>
+    <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">showall</span></label>
     <span ng-show="ctrl.collection == 'openrpa_instances'">
       <input type="checkbox" id="checkbox-2" ng-model="ctrl.showrunning" ng-change="ctrl.loadData()">
       <label for="checkbox-2"><span translate lib="web">running</span></label>
@@ -64,14 +63,16 @@ style="width: 100%;" aria-label="List items in seletected collection">
   <tbody>
     <tr ng-repeat="model in ctrl.models">
       <td class="text-truncate"><a style="color: inherit; text-decoration: inherit;" 
-        ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}">{{model.name}}</a></td>
-      <td><span translate lib="web">{{model._type}}</span></td>
-      <td class="text-truncate">{{model._createdby}}</td>
+        ng-href="#/Entity/{{ctrl.collection}}/{{model._id}}">{{model.name || model.metadata.name}}</a></td>
+      <td><span>{{model._type || model.metadata._type }}</span></td>
+      <td class="text-truncate">{{model._createdby || model.metadata._createdby}}</td>
       <td class="text-truncate">
         <timesince ng-model="model._created" />
+        <timesince ng-model="model.metadata._created" />
       </td>
       <td class="text-truncate">
         <timesince ng-model="model._modified" />
+        <timesince ng-model="model.metadata._modified" />
       </td>
       <td >
         <a ng-href="#/History/{{ctrl.collection}}/{{model._id}}" class="btn" ng-show="ctrl.loading == false"

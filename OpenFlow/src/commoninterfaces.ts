@@ -1,5 +1,5 @@
 import { HrTime, Meter, Histogram, Span } from "@opentelemetry/api";
-import { Ace, TokenUser } from "@openiap/openflow-api";
+import { Ace, User } from "@openiap/openflow-api";
 import * as express from "express";
 
 export interface i_license_data {
@@ -23,7 +23,7 @@ export interface i_license_file {
      *
      * @param options
     */
-    generate2(options: any, remoteip: string, tuser: TokenUser, span: Span): Promise<any>;
+    generate2(options: any, remoteip: string, user: User, span: Span): Promise<any>;
     /**
      *  Generate license file
      *
@@ -79,11 +79,11 @@ export interface i_otel {
 export interface i_agent_driver {
     detect(): Promise<boolean>;
     NodeLabels(parent: Span): Promise<any>;
-    EnsureInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, parent: Span): Promise<void>;
-    GetInstancePods(tokenUser: TokenUser, jwt:string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]>;
-    RemoveInstance(tokenUser: TokenUser, jwt:string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void>;
-    GetInstanceLog(tokenUser: TokenUser, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<string>;
-    RemoveInstancePod(tokenUser: TokenUser, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<void>;
+    EnsureInstance(user: User, jwt:string, agent: iAgent, parent: Span): Promise<void>;
+    GetInstancePods(user: User, jwt:string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]>;
+    RemoveInstance(user: User, jwt:string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void>;
+    GetInstanceLog(user: User, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<string>;
+    RemoveInstancePod(user: User, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<void>;
     InstanceCleanup(parent: Span): Promise<void>;
 }
 

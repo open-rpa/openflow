@@ -177,5 +177,8 @@
     "enabled": "Aktiveret",
     "terminateifrunning": "Afslut hvis kørende",
     "allowconcurrentruns": "Tillad samtidige kørsler",
-    "removeschedule": "Fjern tidsplan"
+    "removeschedule": "Fjern tidsplan",
+    "object": "Objekt",
+    "pending": "Afventer",
+    "running": "Kører"
 }

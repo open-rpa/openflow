@@ -112,6 +112,11 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.removeRight(root, WellknownIds.root, [Rights.delete]);
         await Logger.DBHelper.Save(root, jwt, span);
 
+        const guest: User = await Logger.DBHelper.EnsureUser(jwt, "guest", "guest", "65cb30c40ff51e174095573c", null, null, span);
+        Base.removeRight(guest, "65cb30c40ff51e174095573c", [Rights.full_control]);
+        Base.addRight(guest, "65cb30c40ff51e174095573c", "guest", [Rights.read]);
+        await Logger.DBHelper.Save(guest, jwt, span);
+        
         const robot_agent_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
         Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
@@ -444,6 +449,13 @@ try {
     OpenAPIProxy = require("./ee/OpenAPIProxy");
 } catch (error) {
 }
+let GitProxy: any = null;
+try {
+    GitProxy = require("./ee/GitProxy");
+} catch (error) {
+    console.error(error.message);
+}
+var t = GitProxy;
 
 
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
@@ -476,6 +488,9 @@ var server: http.Server = null;
         }
         if (OpenAPIProxy != null) {
             const OpenAI = await OpenAPIProxy.OpenAPIProxy.configure(WebServer.app, span);
+        }
+        if (GitProxy != null) {
+            const Git = await GitProxy.GitProxy.configure(WebServer.app, span);
         }
         OAuthProvider.configure(WebServer.app, span);
         WebSocketServer.configure(server, span);

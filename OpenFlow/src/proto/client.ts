@@ -5,7 +5,7 @@ import * as  WebSocket from "ws";
 import { amqpexchange, amqpqueue, amqpwrapper, exchangealgorithm, QueueMessageOptions } from "../amqpwrapper";
 import { Logger } from "../Logger";
 import { Span } from "@opentelemetry/api";
-import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
+import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Config } from "../Config";
 import { RegisterExchangeResponse } from "../WebSocketServerClient";
 import { client, config, protowrap, QueueEvent, RefreshToken, WatchEvent } from "@openiap/nodeapi";
@@ -14,6 +14,7 @@ import { clientAgent } from "@openiap/nodeapi/lib/client";
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
 import { Message } from "../Messages/Message";
 import { Crypt } from "../Crypt";
+import { Auth } from "../Auth";
 const Semaphore = (n) => ({
   n,
   async down() {
@@ -116,9 +117,9 @@ export class flowclient extends client {
       }
   }
     public async RefreshToken(parent: Span): Promise<boolean> {
-        const tuser: TokenUser = await Message.DoSignin(this as any, null, parent);
+        const tuser: User = await Message.DoSignin(this as any, null, parent);
         if (tuser == null) return false;
-        this.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+        this.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, parent);
         const data = Any.create({type_url: "type.googleapis.com/openiap.RefreshToken", value: RefreshToken.encode(
             RefreshToken.create({jwt: this.jwt, user: tuser as any, username: tuser.username })).finish() })
         var paylad = {"command": "refreshtoken", "data": data}
@@ -238,7 +239,7 @@ export class flowclient extends client {
         Logger.otel.endSpan(span);
     }
   }
-  public async RegisterExchange(user: TokenUser | User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
+  public async RegisterExchange(user: User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
     const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.RegisterExchange", parent);
     try {
         let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
@@ -300,7 +301,7 @@ export class flowclient extends client {
         Logger.otel.endSpan(span);
     }
   }
-  public async CloseConsumer(user: TokenUser | User, queuename: string, parent: Span): Promise<void> {
+  public async CloseConsumer(user: User, queuename: string, parent: Span): Promise<void> {
     const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
     await semaphore.down();
     try {

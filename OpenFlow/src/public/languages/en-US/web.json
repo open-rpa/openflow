@@ -176,5 +176,8 @@
     "enabled": "enabled",
     "terminateifrunning": "Terminate if running",
     "allowconcurrentruns": "Allow concurrent runs",
-    "removeschedule": "Remove schedule"
+    "removeschedule": "Remove schedule",
+    "object": "Object",
+    "pending": "Pending",
+    "running": "Running"
  }

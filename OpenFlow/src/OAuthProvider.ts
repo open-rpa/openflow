@@ -1,6 +1,6 @@
 // import * as OAuthServer from "oauth2-server";
 import * as express from "express";
-import { TokenUser, Base, NoderedUtil, User, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
+import { Base, NoderedUtil, User, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
 import { Provider, KoaContextWithOIDC } from "oidc-provider";
@@ -8,6 +8,7 @@ import { MongoAdapter } from "./MongoAdapter";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { Audit } from "./Audit";
+import { Auth } from "./Auth";
 
 // const Request = OAuthServer.Request;
 // const Response = OAuthServer.Response;
@@ -352,15 +353,15 @@ export class OAuthProvider {
                     if (req.user) {
                         const client = await this.instance.clients.filter(x => x.clientId == params.client_id)[0];
                         let _user: User = req.user as any;
-                        let tuser: TokenUser = TokenUser.From(_user);
+                        let tuser: User = _user;
 
                         if (!NoderedUtil.IsNullEmpty(_user.impersonating)) {
-                            const tempjwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                            const tempjwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, span);
                             const items = await Config.db.query({ query: { _id: _user.impersonating }, top: 1, collectionname: "users", jwt: tempjwt }, span);
                             if (items.length == 1) {
                                 const tuserimpostor = tuser;
                                 _user = User.assign(items[0] as User);
-                                tuser = TokenUser.From(_user);
+                                tuser = _user;
                                 Logger.instanse.info(tuser.username + " successfully impersonated", span);
                                 await Audit.ImpersonateSuccess(tuser, tuserimpostor, "browser", Config.version, span);
                             }
@@ -438,7 +439,7 @@ export class OAuthProvider {
 
 
 export class Account {
-    constructor(public accountId: string, public user: TokenUser) {
+    constructor(public accountId: string, public user: User) {
         Logger.DBHelper.UserRoleUpdateId(accountId, false, null);
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
@@ -471,10 +472,10 @@ export class Account {
         if (acc == null) {
             acc = await Logger.DBHelper.FindById(id, undefined);
         }
-        var res = new Account(id, TokenUser.From(acc))
+        var res = new Account(id, acc)
         return res;
     }
-    static AddAccount(tuser: TokenUser, client: any) {
+    static AddAccount(tuser: User, client: any) {
         try {
             let role = client.defaultrole;
             const keys: string[] = Object.keys(client.rolemappings);

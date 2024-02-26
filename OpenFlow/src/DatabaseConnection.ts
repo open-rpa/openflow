@@ -15,6 +15,7 @@ import { LoginProvider } from "./LoginProvider";
 import { WebServer } from "./WebServer";
 import { iAgent } from "./commoninterfaces";
 import * as os from "os";
+import { Auth } from "./Auth";
 
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -610,7 +611,7 @@ export class DatabaseConnection extends events.EventEmitter {
         for (var c = 0; c < collections.length; c++) {
             if(["agents", "config", "mq", "nodered", "openrpa", "users", "workflow", "workitems"].indexOf(collections[c].name) == -1) continue;
             if (collections[c].type != "collection") continue;
-            if (collections[c].name == "fs.files" || collections[c].name == "fs.chunks") continue;
+            if (collections[c].name.endsWith(".files") || collections[c].name.endsWith(".chunks")) continue;
             this.registerGlobalWatch(collections[c].name, span);
         }
     }
@@ -651,13 +652,14 @@ export class DatabaseConnection extends events.EventEmitter {
             result = result.filter(x => x.name.indexOf("system.") === -1);
         }
         result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-        await Crypt.verityToken(jwt);
+        if(await Auth.Token2User(jwt, null)==null) throw new Error("Access denied");
         return result;
     }
     async DropCollection(collectionname: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
         try {
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: User = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
@@ -671,7 +673,8 @@ export class DatabaseConnection extends events.EventEmitter {
     async CreateCollection(collectionname: string, options: any, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("db.CreateCollection", parent);
         try {
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: User = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
@@ -736,7 +739,7 @@ export class DatabaseConnection extends events.EventEmitter {
         "reseller", "resellers"
     ]
 
-    async CleanACL<T extends Base>(item: T, user: TokenUser, collectionname: string, parent: Span, skipNameLookup: boolean = false): Promise<T> {
+    async CleanACL<T extends Base>(item: T, user: TokenUser | User, collectionname: string, parent: Span, skipNameLookup: boolean = false): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.CleanACL", parent);
         try {
             if (item._acl.length > Config.max_ace_count) {
@@ -1115,7 +1118,8 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         }
         span?.addEvent("verityToken");
-        const user: TokenUser = await Crypt.verityToken(jwt);
+        const user: User = await Auth.Token2User(jwt, span);
+        if(user == null) throw new Error("Access denied");
 
         span?.addEvent("getbasequery");
         if (collectionname === "files") { collectionname = "fs.files"; }
@@ -1254,7 +1258,8 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         }
         span?.addEvent("verityToken");
-        const user: TokenUser = await Crypt.verityToken(jwt);
+        const user: User = await Auth.Token2User(jwt, span);
+        if(user == null) throw new Error("Access denied");
 
         span?.addEvent("getbasequery");
         if (collectionname === "files") { collectionname = "fs.files"; }
@@ -1331,7 +1336,8 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         }
         span?.addEvent("verityToken");
-        const user: TokenUser = await Crypt.verityToken(jwt);
+        const user: User = await Auth.Token2User(jwt, span);
+        if(user == null) throw new Error("Access denied");
 
         span?.addEvent("getbasequery");
         if (collectionname === "files") { collectionname = "fs.files"; }
@@ -1518,7 +1524,8 @@ export class DatabaseConnection extends events.EventEmitter {
             } else
                 return value; // leave any other value as-is
         });
-        const user: TokenUser = await Crypt.verityToken(jwt);
+        const user: User = await Auth.Token2User(jwt, span);
+        if(user == null) throw new Error("Access denied");
         if (Config.otel_trace_include_query) span?.setAttribute("aggregates", JSON.stringify(aggregates));
         span?.setAttribute("collection", collectionname);
         span?.setAttribute("username", user.username);
@@ -1616,7 +1623,8 @@ export class DatabaseConnection extends events.EventEmitter {
             });
         } else { aggregates = null; }
 
-        const user: TokenUser = await Crypt.verityToken(jwt);
+        const user: User = await Auth.Token2User(jwt, null);
+        if(user == null) throw new Error("Access denied");
         // TODO: Should we filter on rights other than read ? should a person with reade be allowed to know when it was updated ?
         // a person with read, would beablt to know anyway, so guess read should be enough for now ... 
         const base = this.getbasequery(user, [Rights.read], "fullDocument._acl");
@@ -1648,7 +1656,9 @@ export class DatabaseConnection extends events.EventEmitter {
             if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
             span?.addEvent("verityToken");
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: User = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
+            if(user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
@@ -2161,7 +2171,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 throw new Error("jwt is null");
             }
             await this.connect(span);
-            const user = await Crypt.verityToken(jwt);
+            const user = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
@@ -2542,7 +2553,8 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
             if(typeof q.item === "string") q.item = JSON.parse(q.item);
             await this.connect(span);
-            const user: TokenUser = await Crypt.verityToken(q.jwt);
+            const user: User = await Auth.Token2User(q.jwt, span);
+            if(user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (q.query === null || q.query === undefined) {
                 if (!DatabaseConnection.usemetadata(q.collectionname)) {
@@ -3162,7 +3174,8 @@ export class DatabaseConnection extends events.EventEmitter {
             // @ts-ignore
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
             await this.connect();
-            const user: TokenUser = await Crypt.verityToken(q.jwt);
+            const user: User = await Auth.Token2User(q.jwt, span);
+            if(user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             // if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
@@ -3279,11 +3292,12 @@ export class DatabaseConnection extends events.EventEmitter {
     async _InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
         if (NoderedUtil.IsNullUndefinded(q)) return;
         const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
-        let user: TokenUser = (q as any).user;
+        let user: TokenUser | User = (q as any).user;
         try {
             user = (q as any).user;
             if (NoderedUtil.IsNullUndefinded(user)) {
-                user = await Crypt.verityToken(q.jwt);
+                user = await Auth.Token2User(q.jwt, span);
+                if(user == null) throw new Error("Access denied");
             } else {
                 delete (q as any).user;
             }
@@ -3372,7 +3386,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 throw new Error("jwt is null");
             }
             await this.connect(span);
-            const user = await Crypt.verityToken(jwt);
+            const user = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
@@ -3471,11 +3486,12 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return result;
     }
-    private async _DeleteFile(id: string): Promise<void> {
+    private async _DeleteFile(id: string, collectionname:string): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
             try {
                 const _id = new ObjectId(id);
-                const bucket = new GridFSBucket(this.db);
+                let bucketName = collectionname.substring(0, collectionname.indexOf(".files"));
+                const bucket = new GridFSBucket(this.db, { bucketName });
                 bucket.delete(_id, (error) => {
                     if (error) return reject(error);
                     resolve();
@@ -3498,7 +3514,8 @@ export class DatabaseConnection extends events.EventEmitter {
         try {
 
             await this.connect();
-            const user: TokenUser = await Crypt.verityToken(jwt);
+            const user: User = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
             let _query: any = {};
             if (typeof id === 'string' || id instanceof String) {
                 _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
@@ -3538,7 +3555,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
 
                     const ot_end = Logger.otel.startTimer();
-                    await this._DeleteFile(id);
+                    await this._DeleteFile(id, collectionname);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_delete, DatabaseConnection.otel_label(collectionname, user, "delete"));
                     return 1;
                 } else {
@@ -3703,8 +3720,8 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
             await this.connect();
-            const user: TokenUser = await Crypt.verityToken(jwt);
-
+            const user: User = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
 
             let baseq: any = {};
             if (collectionname === "files") { collectionname = "fs.files"; }
@@ -3794,7 +3811,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const ot_end = Logger.otel.startTimer();
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
                 let deletecounter = 0;
-                if(collectionname == "fs.files" || collectionname == "files"){
+                if(collectionname.endsWith(".files") || collectionname == "files"){
                     const cursor = await this.db.collection(collectionname).find(_query)
                         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
                         Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
@@ -3805,7 +3822,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         deletecounter++;
                         const ot_end = Logger.otel.startTimer();
                         try {
-                            await this._DeleteFile(c._id.toString());
+                            await this._DeleteFile(c._id.toString(), collectionname);
                         } catch (error) {
                         }
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_deletemany, DatabaseConnection.otel_label(collectionname, user, "deletemany"));
@@ -4056,7 +4073,7 @@ export class DatabaseConnection extends events.EventEmitter {
         finalor.push(q);
         return { $or: finalor.concat() };
     }
-    private async getbasequeryuserid(calluser: TokenUser, userid: string, bits: number[], collectionname: string, parent: Span): Promise<Object> {
+    private async getbasequeryuserid(calluser: TokenUser | User, userid: string, bits: number[], collectionname: string, parent: Span): Promise<Object> {
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
         if (user._type == "user" || user._type == "role") {
@@ -4137,7 +4154,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return item;
     }
-    async CheckEntityRestriction(user: TokenUser, collection: string, item: Base, parent: Span): Promise<boolean> {
+    async CheckEntityRestriction(user: TokenUser | User, collection: string, item: Base, parent: Span): Promise<boolean> {
         if (!Config.enable_entity_restriction) return true;
         var EntityRestrictions = await Logger.DBHelper.GetEntityRestrictions(parent);
         const defaultAllow: boolean = false;
@@ -4167,7 +4184,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {Rights} action Permission wanted (create, update, delete)
      * @returns boolean Is allowed
      */
-    static hasAuthorization(user: TokenUser, item: Base, action: number): boolean {
+    static hasAuthorization(user: TokenUser | User, item: Base, action: number): boolean {
         if (Config.api_bypass_perm_check) { return true; }
         if (user._id === WellknownIds.root) { return true; }
         if (action === Rights.create || action === Rights.delete) {
@@ -4332,7 +4349,7 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error(error, null, { collection: collection, user: user?.username, ms: ms, query: query });
         }
     }
-    async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage, user: TokenUser, parent: Span) {
+    async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage, user: TokenUser | User, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.SaveUpdateDiff", parent);
         try {
             const _skip_array: string[] = Config.skip_history_collections.split(",");
@@ -4612,7 +4629,7 @@ export class DatabaseConnection extends events.EventEmitter {
         return false;
     }
     static usemetadata(collectionname: string) {
-        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+        if (collectionname == "files" || collectionname.endsWith(".files") || collectionname.endsWith(".chunks")) {
             return true;
         }
         if(collectionname == "fullDocument._acl") return true;
@@ -4627,7 +4644,7 @@ export class DatabaseConnection extends events.EventEmitter {
         return false;
     }
     static metadataname(collectionname: string) {
-        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+        if (collectionname == "files" || collectionname.endsWith(".files") || collectionname.endsWith(".chunks")) {
             return "metadata";
         }
         if(collectionname == "fullDocument._acl") return "fullDocument._acl";
@@ -4635,7 +4652,7 @@ export class DatabaseConnection extends events.EventEmitter {
         return metadataname;
     }
     static timefield(collectionname: string) {
-        if (collectionname == "files" || collectionname == "fs.chunks" || collectionname == "fs.files") {
+        if (collectionname == "files" || collectionname.endsWith(".files") || collectionname.endsWith(".chunks")) {
             return "_created";
         }
         if(collectionname == "fullDocument._acl") return "fullDocument._created";
@@ -4672,7 +4689,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const indexes = await this.db.collection(collection.name).indexes();
                 for (let y = 0; y < indexes.length; y++) {
                     var idx = indexes[y];
-                    if (idx.textIndexVersion && idx.textIndexVersion > 1 && collection.name != "fs.files") {
+                    if (idx.textIndexVersion && idx.textIndexVersion > 1 && !collection.name.endsWith(".files")) {
                         DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
                         DatabaseConnection.collections_with_text_index.push(collection.name);
                     }
@@ -4937,7 +4954,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const indexes = await this.db.collection(collection.name).indexes();
                 for (let y = 0; y < indexes.length; y++) {
                     var idx = indexes[y];
-                    if (idx.textIndexVersion && idx.textIndexVersion > 1 && collection.name != "fs.files") {
+                    if (idx.textIndexVersion && idx.textIndexVersion > 1 && !collection.name.endsWith(".files")) {
                         DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
                         DatabaseConnection.collections_with_text_index.push(collection.name);
                     }
@@ -5015,5 +5032,5 @@ export declare type DistinctOptions = {
     query: any;
     field: string;
     collectionname: string;
-    queryas: string;
+    queryas?: string;
 };

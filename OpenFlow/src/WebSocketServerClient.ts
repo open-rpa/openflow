@@ -12,6 +12,7 @@ import express = require("express");
 import { WebSocketServer } from "./WebSocketServer";
 import { WebServer } from "./WebServer";
 import { Crypt } from "./Crypt";
+import { Auth } from "./Auth";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -223,12 +224,12 @@ export class WebSocketServerClient {
         }
     }
     public async RefreshToken(parent: Span): Promise<boolean> {
-        const tuser: TokenUser = await Message.DoSignin(this, null, parent);
+        const tuser: User = await Message.DoSignin(this, null, parent);
         if(tuser == null) return false;
         const l: SigninMessage = new SigninMessage();
-        this.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+        this.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, parent);
         l.jwt = this.jwt;
-        l.user = tuser;
+        l.user = TokenUser.From(tuser);
         const m: Message = new Message(); m.command = "refreshtoken";
         m.data = JSON.stringify(l);
         this.Send(m);
@@ -320,7 +321,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    public async CloseConsumer(user: TokenUser | User, queuename: string, parent: Span): Promise<void> {
+    public async CloseConsumer(user: User, queuename: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.CloseConsumer", parent);
         await semaphore.down();
         try {
@@ -357,7 +358,7 @@ export class WebSocketServerClient {
             Logger.otel.endSpan(span);
         }
     }
-    public async RegisterExchange(user: TokenUser | User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
+    public async RegisterExchange(user: User, exchangename: string, algorithm: exchangealgorithm, routingkey: string = "", addqueue: boolean, parent: Span): Promise<RegisterExchangeResponse> {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.RegisterExchange", parent);
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles

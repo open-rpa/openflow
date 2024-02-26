@@ -59,7 +59,7 @@ export class Message {
     public cb: any;
     public priority: number = 1;
     public options: QueueMessageOptions;
-    public tuser: TokenUser;
+    public tuser: User;
     public clientagent: string;
     public clientversion: string;
     public async QueueProcess(options: QueueMessageOptions, parent: Span): Promise<void> {
@@ -194,37 +194,6 @@ export class Message {
         this.replyto = this.id;
         this.id = NoderedUtil.GetUniqueIdentifier();
     }
-    public static async verityToken(token:string, cli?: WebSocketServerClient, ) {
-        if(token == null || token == "") return null;
-        var user = null;
-        var AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(token);
-        if (NoderedUtil.IsNullUndefinded(AccessToken)) {
-            try {
-                user = User.assign(await Crypt.verityToken(token, cli));
-                if(user!=null) return user;
-            } catch (error) {
-            }
-        }
-        if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
-            user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
-        } else {
-            var c = OAuthProvider.instance.clients;
-            for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
-                try {
-                    var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
-                    var AccessToken2 = await OAuthProvider.instance.oidc.IdToken.validate(token, _cli);
-                    if (!NoderedUtil.IsNullEmpty(AccessToken2)) {
-                        user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken2.payload.sub);
-                        break;
-                    }
-                } catch (error) {
-                }
-            }
-        }
-        if(user && user.user) return user.user;
-        return user;
-    }
-
     public async EnsureJWT(cli: WebSocketServerClient, jwtrequired: boolean): Promise<boolean> {
         if (!NoderedUtil.IsNullUndefinded(this.data)) {
             var obj: any = this.data;
@@ -246,7 +215,8 @@ export class Message {
             // return false;
         } else if (!NoderedUtil.IsNullEmpty(this.jwt)) {
             try {
-                this.tuser = User.assign(await Message.verityToken(this.jwt, cli));
+                this.tuser = await Auth.Token2User(this.jwt, null);
+                if(this.tuser == null) throw new Error("Access denied");
             } catch (error) {
                 if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, Logger.parsecli(cli));
                 if (this.command == "signin") {
@@ -1142,8 +1112,9 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                const tuser = await Message.verityToken(msg.jwt, cli);
-                msg.user = tuser;
+                const tuser = await Auth.Token2User(msg.jwt, span);
+                if(tuser == null) throw new Error("Access denied");
+                msg.user = TokenUser.From(tuser);
             }
             if (typeof sendthis === "object") {
                 sendthis.__jwt = msg.jwt;
@@ -1223,10 +1194,7 @@ export class Message {
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
                 }
-                msg.result = msg.result.filter(x => x.name != "fs.chunks");
-                // msg.result = msg.result.filter(x => x.name != "fs.files");
-                msg.result = msg.result.filter(x => x.name != "uploads.files");
-                msg.result = msg.result.filter(x => x.name != "uploads.chunks");
+                msg.result = msg.result.filter(x => !x.name.endsWith(".chunks"));
                 const result = [];
                 // filter out collections that are empty, or we don't have access too
                 for (let i = 0; i < msg.result.length; i++) {
@@ -1619,22 +1587,23 @@ export class Message {
             Logger.otel.endSpan(span);
         }
     }
-    public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string, parent: Span): Promise<TokenUser> {
+    public static async DoSignin(cli: WebSocketServerClient, rawAssertion: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("message.DoSignin", parent);
-        let tuser: TokenUser;
+        let tuser: User;
         let type: tokenType = "jwtsignin";
         if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
             type = "samltoken";
             cli.user = await LoginProvider.validateToken(rawAssertion, span);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
-            tuser = TokenUser.From(cli.user);
+            tuser = cli.user;
         } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
-            tuser = await this.verityToken(cli.jwt, cli);
-            const impostor: string = tuser.impostor;
+            tuser = await Auth.Token2User(cli.jwt, span);
+            if(tuser == null) throw new Error("Access denied");
+            const impostor: string = (tuser as any).impostor;
             cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
-            tuser = TokenUser.From(cli.user);
-            tuser.impostor = impostor;
+            tuser = cli.user;
+            (tuser as any).impostor = impostor;
         }
         span?.setAttribute("type", type);
         span?.setAttribute("clientid", cli.id);
@@ -1647,7 +1616,7 @@ export class Message {
                 if (!cli.user.emailvalidated) validated = false;
             }
             if (!validated) {
-                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty(tuser.impostor)) {
+                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty((tuser as any).impostor)) {
                     Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, Logger.parsecli(cli));
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     tuser = null;
@@ -1711,7 +1680,7 @@ export class Message {
             }
 
             let originialjwt = msg.jwt;
-            let tuser: TokenUser = null;
+            let tuser: User = null;
             let user: User = null;
             if(NoderedUtil.IsNullEmpty(msg.jwt) && NoderedUtil.IsNullEmpty(msg.username) && NoderedUtil.IsNullEmpty(msg.password) && msg.validate_only == true) {
                 msg.jwt = cli.jwt;
@@ -1721,8 +1690,7 @@ export class Message {
                 span?.addEvent("using jwt, verify token");
                 tokentype = "jwtsignin";
                 try {
-                    tuser = await Message.verityToken(msg.jwt, cli);
-
+                    tuser = await Auth.Token2User(msg.jwt, span);
                     if(tuser == null) {
                         tuser = User.assign(await Crypt.verityToken(msg.jwt, cli, true));
                         Logger.instanse.warn("[" + tuser.username + "] validated with expired token!", span);
@@ -1762,13 +1730,13 @@ export class Message {
                     throw new Error("User " + user.username + " is dblocked, please login to openflow and buy more storage and try again");
                 }
 
-                if (tuser.impostor !== null && tuser.impostor !== undefined && tuser.impostor !== "") {
-                    impostor = tuser.impostor;
+                if ((tuser as any).impostor !== null && (tuser as any).impostor !== undefined && (tuser as any).impostor !== "") {
+                    impostor = (tuser as any).impostor;
                 }
 
                 if (user !== null && user !== undefined) {
                     // refresh, for roles and stuff
-                    tuser = TokenUser.From(user);
+                    tuser = user;
                 } else { // Autocreate user .... safe ?? we use this for autocreating nodered service accounts
                     if (Config.auto_create_user_from_jwt) {
                         const jwt: string = Crypt.rootToken();
@@ -1779,9 +1747,9 @@ export class Message {
                             validated: true
                         }
                         user = await Logger.DBHelper.EnsureUser(jwt, tuser.name, tuser.username, null, msg.password, extraoptions, span);
-                        if (user != null) tuser = TokenUser.From(user);
+                        if (user != null) tuser = user;
                         if (user == null) {
-                            tuser = new TokenUser();
+                            tuser = new User();
                             tuser.username = msg.username;
                         }
                     } else {
@@ -1789,7 +1757,7 @@ export class Message {
                     }
                 }
                 if (impostor !== "") {
-                    tuser.impostor = impostor;
+                    (tuser as any).impostor = impostor;
                 }
             } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
                 span?.addEvent("using rawAssertion, verify token");
@@ -1820,14 +1788,13 @@ export class Message {
                 }
                 if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
                     user = User.user;
-                    span?.addEvent("TokenUser.From");
-                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                    if (user !== null && user != undefined) { tuser = user; }
                 } else {
                     tokentype = "samltoken";
                     span?.addEvent("LoginProvider.validateToken");
                     user = await LoginProvider.validateToken(msg.rawAssertion, span);
                     // refresh, for roles and stuff
-                    if (user !== null && user != undefined) { tuser = TokenUser.From(user); }
+                    if (user !== null && user != undefined) { tuser = user; }
                 }
                 delete msg.rawAssertion;
             } else {
@@ -1835,10 +1802,10 @@ export class Message {
                 user = await Auth.ValidateByPassword(msg.username, msg.password, span);
                 tuser = null;
                 // refresh, for roles and stuff
-                if (user != null) tuser = TokenUser.From(user);
+                if (user != null) tuser = user;
                 if (user == null) {
                     span?.addEvent("using username/password, failed, check for exceptions");
-                    tuser = new TokenUser();
+                    tuser = new User();
                     tuser.username = msg.username;
                 }
             }
@@ -1865,11 +1832,11 @@ export class Message {
                     user = await Logger.DBHelper.FindById(impostor, span);
                     if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                     user.impersonating = undefined;
-                    if (!NoderedUtil.IsNullEmpty(tuser.impostor)) {
-                        tuser = TokenUser.From(user);
+                    if (!NoderedUtil.IsNullEmpty((tuser as any).impostor)) {
+                        tuser = user;
                         tuser.validated = true;
                     } else {
-                        tuser = TokenUser.From(user);
+                        tuser = user;
                     }
                     msg.impersonate = undefined;
                     impostor = undefined;
@@ -1887,14 +1854,14 @@ export class Message {
                 span?.setAttribute("username", tuser.username);
                 if (msg.longtoken) {
                     span?.addEvent("createToken for longtoken");
-                    msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+                    msg.jwt = await Auth.User2Token(tuser, Config.longtoken_expires_in, span);
                     originialjwt = msg.jwt;
                 } else {
                     span?.addEvent("createToken for shorttoken");
-                    msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                    msg.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, span);
                     originialjwt = msg.jwt;
                 }
-                msg.user = tuser;
+                msg.user = TokenUser.From(tuser);
                 if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
                     span?.addEvent("Lookup impersonating user " + user.impersonating);
                     const items = await Config.db.query({ query: { _id: user.impersonating }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
@@ -1915,10 +1882,9 @@ export class Message {
                         span?.addEvent("Lookup failed, lookup as root");
                         const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
                         const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        let imp: TokenUser = TokenUser.From(impb);
+                        let imp: User = impb;
                         if (impostors.length == 1) {
-                            imp = TokenUser.From(impostors[0]);
-
+                            imp = impostors[0];
                         }
                         await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " view and impersonating " + msg.impersonate);
@@ -1937,18 +1903,18 @@ export class Message {
                     } catch (error) {
                         const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
                         const impb: User = new User(); impb.name = "unknown"; impb._id = msg.impersonate;
-                        let imp: TokenUser = TokenUser.From(impb);
+                        let imp: User = impb;
                         if (impostors.length == 1) {
-                            imp = TokenUser.From(impostors[0]);
+                            imp = impostors[0];
                         }
 
                         await Audit.ImpersonateFailed(imp, tuser, cli?.clientagent, cli?.clientversion, span);
                         throw new Error("Permission denied, " + tuser.name + "/" + tuser._id + " updating and impersonating " + msg.impersonate);
                     }
-                    tuser.impostor = tuserimpostor._id;
+                    (tuser as any).impostor = tuserimpostor._id;
 
-                    tuser = TokenUser.From(user);
-                    tuser.impostor = userid;
+                    tuser = user;
+                    (tuser as any).impostor = userid;
                     (user as any).impostor = userid;
                     span?.setAttribute("impostername", tuserimpostor.name);
                     span?.setAttribute("imposterusername", tuserimpostor.username);
@@ -1956,12 +1922,12 @@ export class Message {
                     span?.setAttribute("username", tuser.username);
                     if (msg.longtoken) {
                         span?.addEvent("createToken for longtoken");
-                        msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+                        msg.jwt = await Auth.User2Token(tuser, Config.longtoken_expires_in, span);
                     } else {
                         span?.addEvent("createToken for shorttoken");
-                        msg.jwt = Crypt.createToken(tuser, Config.shorttoken_expires_in);
+                        msg.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, span);
                     }
-                    msg.user = tuser;
+                    msg.user = TokenUser.From(tuser);
                     Logger.instanse.debug(tuser.username + " successfully impersonated", span);
                     await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                 }
@@ -2004,9 +1970,9 @@ export class Message {
                 }
                 span?.addEvent("memoryCache.delete users" + user._id);
                 await Logger.DBHelper.CheckCache("users", user, false, false, span);
-                if (!NoderedUtil.IsNullEmpty(tuser.impostor) && tuser.impostor != user._id) {
+                if (!NoderedUtil.IsNullEmpty((tuser as any).impostor) && (tuser as any).impostor != user._id) {
                     await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
-                    span?.addEvent("memoryCache.delete users" + tuser.impostor);
+                    span?.addEvent("memoryCache.delete users" + (tuser as any).impostor);
                 }
             }
             if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
@@ -2061,7 +2027,8 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceName", parent);
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
-            const user: TokenUser = await Message.verityToken(jwt);
+            const user: User = await Auth.Token2User(jwt, span);
+            if(user == null) throw new Error("Access denied");
             var qs: any[] = [{ _id: _id }];
             qs.push(Config.db.getbasequery(user, [Rights.update], "users"))
             const res = await Config.db.query<User>({ query: { "$and": qs }, top: 1, collectionname: "users", jwt }, span);
@@ -2162,7 +2129,8 @@ export class Message {
         file = null;
         if (metadata == null) { metadata = new Base(); }
         metadata = Base.assign(metadata);
-        const user: TokenUser = await Message.verityToken(jwt);
+        const user: User = await Auth.Token2User(jwt, null);
+        if(user == null) throw new Error("Access denied");
         if (NoderedUtil.IsNullUndefinded(metadata._acl)) {
             metadata._acl = [];
             Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
@@ -2192,7 +2160,7 @@ export class Message {
             Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
         }
         metadata = Config.db.ensureResource(metadata, "fs.files");
-        if (!NoderedUtil.hasAuthorization(user, metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
+        if (!DatabaseConnection.hasAuthorization(user, metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
         var id = await this._SaveFile(readable, filename, mimeType, metadata);
         return id;
     }
@@ -2318,7 +2286,7 @@ export class Message {
         (msg.metadata as any).filename = file.metadata.filename;
         (msg.metadata as any).path = file.metadata.path;
 
-        const user: TokenUser = this.tuser;
+        const user: User = this.tuser;
         msg.metadata._modifiedby = user.name;
         msg.metadata._modifiedbyid = user._id;
         msg.metadata._modified = new Date(new Date().toISOString());;
@@ -2330,7 +2298,7 @@ export class Message {
             Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
         }
         Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-        if (!NoderedUtil.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
+        if (!DatabaseConnection.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
         msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
         const fsc = Config.db.db.collection("fs.files");
@@ -2353,7 +2321,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             const tuser = this.tuser;
-            msg.jwt = Crypt.createToken(tuser, Config.longtoken_expires_in);
+            msg.jwt = await Auth.User2Token(tuser, Config.longtoken_expires_in, span);
             let workflow: any = null;
             if (NoderedUtil.IsNullEmpty(msg.queue)) {
                 const res = await Config.db.query({ query: { "_id": msg.workflowid }, top: 1, collectionname: "workflow", jwt: msg.jwt }, span);
@@ -2447,12 +2415,13 @@ export class Message {
             if (customer == null) throw new Error("Unknown usage or Access Denied (customer)");
             // @ts-ignore
             if(usage.mode == "one_time") throw new Error("Cannot cancel a one time purchase");
-            let user: TokenUser;
+            let user: User;
             if (!NoderedUtil.IsNullEmpty(usage.userid)) {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
-            const tuser = await Message.verityToken(jwt);
+            const tuser = await Auth.Token2User(jwt, span);
+            if(tuser == null) throw new Error("Access denied");
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -2584,7 +2553,8 @@ export class Message {
             }
 
 
-            const user = await Message.verityToken(cli.jwt, cli);
+            const user = await Auth.Token2User(msg.jwt, span);
+            if(user == null) throw new Error("Access denied");
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
                 throw new Error("Access denied, getting invoice (not in '" + customer.name + " admins')");
             }
@@ -2806,7 +2776,8 @@ export class Message {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
 
-            const tuser = await Message.verityToken(jwt);
+            const tuser = await Auth.Token2User(jwt, span);
+            if(tuser == null) throw new Error("Access denied");
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
             }
@@ -2831,7 +2802,7 @@ export class Message {
             const product: ResourceVariant = resource.products.filter(x => x.stripeprice == stripeprice)[0];
 
             if (resource.target == "user" && NoderedUtil.IsNullEmpty(userid)) throw new Error("Missing userid for user targeted resource");
-            let user: TokenUser = null
+            let user: User = null
             if (resource.target == "user") {
                 user = await Config.db.getbyid(userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown user or Access Denied");
@@ -3199,7 +3170,7 @@ export class Message {
         const options = {
             headers: {
                 'Content-type': 'application/x-www-form-urlencoded',
-                'Authorization': auth
+                "authorization": auth
             }
         };
         if (payload != null && method != "GET" && method != "DELETE") {
@@ -3243,7 +3214,8 @@ export class Message {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
                 if (msg.object == "billing_portal/sessions") {
-                    const tuser = await Message.verityToken(cli.jwt, cli);
+                    const tuser = await Auth.Token2User(msg.jwt, null);
+                    if(tuser == null) throw new Error("Access denied");
                     let customer: Customer;
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
@@ -3281,7 +3253,8 @@ export class Message {
             msg = EnsureCustomerMessage.assign(this.data);
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
-            let user: TokenUser = User.assign(await Crypt.verityToken(msg.jwt));
+            let user: User = await Auth.Token2User(msg.jwt, span);
+            if(user == null) throw new Error("Access denied");
             // @ts-ignore
             var ensureas = msg.ensureas;
             if(!NoderedUtil.IsNullEmpty(ensureas)) {
@@ -3637,7 +3610,7 @@ export class Message {
         const l: SigninMessage = new SigninMessage();
         await Logger.DBHelper.CheckCache("users", cli.user, false, false, parent);
         cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
-        cli.jwt = Crypt.createToken(cli.user, Config.shorttoken_expires_in);
+        cli.jwt = await Auth.User2Token(cli.user, Config.shorttoken_expires_in, parent);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
         l.jwt = cli.jwt;
         l.user = TokenUser.From(cli.user);
@@ -4067,7 +4040,7 @@ export class Message {
 
                 const usemetadata = DatabaseConnection.usemetadata("dbusage");
                 const user = Crypt.rootUser();
-                const tuser = TokenUser.From(user);
+                const tuser = user;
                 const jwt: string = Crypt.rootToken();
                 let collections = await Config.db.ListCollections(false, jwt);
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -4491,8 +4464,8 @@ export class Message {
         }
         Logger.otel.endSpan(span);
     }
-    async SelectCustomer(parent: Span): Promise<TokenUser> {
-        let user: TokenUser = null;
+    async SelectCustomer(parent: Span): Promise<User> {
+        let user: User = null;
         this.Reply();
         let msg: SelectCustomerMessage;
         msg = SelectCustomerMessage.assign(this.data);
@@ -4522,7 +4495,7 @@ export class Message {
         let msg: AddWorkitemMessage;
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
-        const user: TokenUser = this.tuser;
+        const user: User = this.tuser;
 
         msg = AddWorkitemMessage.assign(this.data);
         if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
@@ -4709,7 +4682,7 @@ export class Message {
         let msg: AddWorkitemsMessage;
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
-        const user: TokenUser = this.tuser;
+        const user: User = this.tuser;
         let isRelevant: boolean = false;
 
         let end: number = new Date().getTime();
@@ -4856,7 +4829,7 @@ export class Message {
         let msg: UpdateWorkitemMessage;
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
-        const user: TokenUser = this.tuser;
+        const user: User = this.tuser;
 
         let retry: boolean = false;
 
@@ -5062,7 +5035,7 @@ export class Message {
         let msg: PopWorkitemMessage;
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
-        const user: TokenUser = this.tuser;
+        const user: User = this.tuser;
 
         msg = PopWorkitemMessage.assign(this.data);
         if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
@@ -5161,7 +5134,7 @@ export class Message {
         let msg: DeleteWorkitemMessage;
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
-        const user: TokenUser = this.tuser;
+        const user: User = this.tuser;
 
         msg = DeleteWorkitemMessage.assign(this.data);
 
@@ -5193,7 +5166,7 @@ export class Message {
     }
 
     async AddWorkitemQueue(cli: WebSocketServerClient, parent: Span): Promise<void> {
-        let user: TokenUser = null;
+        let user: User = null;
         this.Reply();
         let msg: AddWorkitemQueueMessage;
         const rootjwt = Crypt.rootToken();
@@ -5285,7 +5258,7 @@ export class Message {
     }
 
     async UpdateWorkitemQueue(parent: Span): Promise<void> {
-        let user: TokenUser = null;
+        let user: User = null;
         this.Reply();
         let msg: UpdateWorkitemQueueMessage;
         const jwt = this.jwt;
@@ -5352,7 +5325,7 @@ export class Message {
         this.data = JSON.stringify(msg);
     }
     async DeleteWorkitemQueue(parent: Span): Promise<void> {
-        let user: TokenUser = null;
+        let user: User = null;
         this.Reply();
         let msg: DeleteWorkitemQueueMessage;
         const jwt = this.jwt;
@@ -5617,7 +5590,7 @@ export class Message {
                 }
                 if (agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
                     // @ts-ignore
-                    agent.jwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);;
+                    agent.jwt = await Auth.User2Token(agentuser, Config.personalnoderedtoken_expires_in);;
                 }
 
                 msg.result = agent

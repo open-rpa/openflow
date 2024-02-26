@@ -2996,7 +2996,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         this.basequery = {};
         this.searchfields = ["metadata.name"];
         this.orderby = { "metadata._created": -1 }
-        this.collection = "files";
+        this.collection = "fs.files";
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, length: 1 };
         const elem = document.getElementById("myBar");
         elem.style.width = '0%';
@@ -3097,7 +3097,11 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         this.autorefresh = true;
         this.basequery = {};
         this.collection = $routeParams.collection;
-        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
+        if(this.collection?.endsWith(".files")) {
+            this.searchfields = ["filename", "metadata.name"];
+        }
+        this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, 
+            "metadata.name": 1, "metadata._type": 1, "metadata._created": 1, "metadata._createdby": 1, "metadata._modified": 1 };
         this.postloadData = this.processdata;
         if (this.userdata.data.EntitiesCtrl) {
             this.basequery = this.userdata.data.EntitiesCtrl.basequery;
@@ -4119,7 +4123,7 @@ export class EntityCtrl extends entityCtrl<Base> {
     }
     processdata() {
         const ids: string[] = [];
-        if (this.collection == "files") {
+        if (this.collection == "files" || this.collection?.endsWith(".files")) {
             for (let i: number = 0; i < (this.model as any).metadata._acl.length; i++) {
                 ids.push((this.model as any).metadata._acl[i]._id);
             }
@@ -4201,7 +4205,7 @@ export class EntityCtrl extends entityCtrl<Base> {
         this.newkey = '';
     }
     removeuser(_id) {
-        if (this.collection == "files") {
+        if (this.collection == "files" || this.collection?.endsWith(".files")) {
             for (let i = 0; i < (this.model as any).metadata._acl.length; i++) {
                 if ((this.model as any).metadata._acl[i]._id == _id) {
                     (this.model as any).metadata._acl.splice(i, 1);
@@ -4222,11 +4226,12 @@ export class EntityCtrl extends entityCtrl<Base> {
         ace.deny = false;
         ace._id = this.searchSelectedItem._id;
         ace.name = this.searchSelectedItem.name;
-        if (this.collection == "files") {
+        if (this.collection == "files" || this.collection?.endsWith(".files")) {
             (this.model as any).metadata._acl.push(ace);
         } else {
             this.model._acl.push(ace);
         }
+        console.log("adduser", JSON.parse(JSON.stringify(this.model)));
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
@@ -4302,7 +4307,7 @@ export class EntityCtrl extends entityCtrl<Base> {
     async handlefilter(e) {
         this.e = e;
         let ids: string[];
-        if (this.collection == "files") {
+        if (this.collection == "files" || this.collection?.endsWith(".files")) {
             ids = (this.model as any).metadata._acl.map(item => item._id);
         } else {
             ids = this.model._acl.map(item => item._id);
@@ -4863,21 +4868,12 @@ export class CredentialCtrl extends entityCtrl<Base> {
 
 
     removeuser(_id) {
-        if (this.collection == "files") {
-            for (let i = 0; i < (this.model as any).metadata._acl.length; i++) {
-                if ((this.model as any).metadata._acl[i]._id == _id) {
-                    (this.model as any).metadata._acl.splice(i, 1);
-                }
-            }
-        } else {
-            for (let i = 0; i < this.model._acl.length; i++) {
-                if (this.model._acl[i]._id == _id) {
-                    this.model._acl.splice(i, 1);
-                    //this.model._acl = this.model._acl.splice(index, 1);
-                }
+        for (let i = 0; i < this.model._acl.length; i++) {
+            if (this.model._acl[i]._id == _id) {
+                this.model._acl.splice(i, 1);
+                //this.model._acl = this.model._acl.splice(index, 1);
             }
         }
-
     }
     adduser() {
         const ace = new Ace();
@@ -4888,11 +4884,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
             Ace.resetnone(ace);
             this.setBit(ace, 2);
         }
-        if (this.collection == "files") {
-            (this.model as any).metadata._acl.push(ace);
-        } else {
-            this.model._acl.push(ace);
-        }
+        this.model._acl.push(ace);
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
@@ -4968,11 +4960,7 @@ export class CredentialCtrl extends entityCtrl<Base> {
     async handlefilter(e) {
         this.e = e;
         let ids: string[];
-        if (this.collection == "files") {
-            ids = (this.model as any).metadata._acl.map(item => item._id);
-        } else {
-            ids = this.model._acl.map(item => item._id);
-        }
+        ids = this.model._acl.map(item => item._id);
         this.searchFilteredList = await NoderedUtil.Query({
             collectionname: "users",
             query: {
@@ -6218,21 +6206,12 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
 
 
     removeuser(_id) {
-        if (this.collection == "files") {
-            for (let i = 0; i < (this.model as any).metadata._acl.length; i++) {
-                if ((this.model as any).metadata._acl[i]._id == _id) {
-                    (this.model as any).metadata._acl.splice(i, 1);
-                }
-            }
-        } else {
-            for (let i = 0; i < this.model._acl.length; i++) {
-                if (this.model._acl[i]._id == _id) {
-                    this.model._acl.splice(i, 1);
-                    //this.model._acl = this.model._acl.splice(index, 1);
-                }
+        for (let i = 0; i < this.model._acl.length; i++) {
+            if (this.model._acl[i]._id == _id) {
+                this.model._acl.splice(i, 1);
+                //this.model._acl = this.model._acl.splice(index, 1);
             }
         }
-
     }
     adduser() {
         const ace = new Ace();
@@ -6244,11 +6223,7 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
             this.setBit(ace, 1);
         }
 
-        if (this.collection == "files") {
-            (this.model as any).metadata._acl.push(ace);
-        } else {
-            this.model._acl.push(ace);
-        }
+        this.model._acl.push(ace);
         this.searchSelectedItem = null;
         this.searchtext = "";
     }
@@ -6328,11 +6303,7 @@ export class EntityRestrictionCtrl extends entityCtrl<Base> {
     async handlefilter(e) {
         this.e = e;
         let ids: string[];
-        if (this.collection == "files") {
-            ids = (this.model as any).metadata._acl.map(item => item._id);
-        } else {
-            ids = this.model._acl.map(item => item._id);
-        }
+        ids = this.model._acl.map(item => item._id);
         this.searchFilteredList = await NoderedUtil.Query({
             collectionname: "users",
             query: {
@@ -7583,6 +7554,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "allow_merge_acl", "type": "boolean", "default": "false"},
         
             {"name": "multi_tenant", "type": "boolean", "default": "false"},
+            {"name": "enable_guest", "type": "boolean", "default": "false"},
             {"name": "cleanup_on_delete_customer", "type": "boolean", "default": "false"},
             {"name": "cleanup_on_delete_user", "type": "boolean", "default": "false"},
             {"name": "api_bypass_perm_check", "type": "boolean", "default": "false"},

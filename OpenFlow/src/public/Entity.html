@@ -61,7 +61,7 @@
     </div>
     
     
-    <section ng-repeat="ace in ctrl.model._acl" ng-show="ctrl.collection!='files'" id="entitypermissions">
+    <section ng-repeat="ace in ctrl.model._acl" ng-show="ctrl.collection!='files' || ctrl.collection.endsWith('.files'" id="entitypermissions">
         <!-- make a look like normal text and not links -->
         <div class="form-inline">
             <label class="col-sm-4 control-label">{{ace.name}}: </label>
@@ -79,7 +79,7 @@
                 lib="web">delete</button>
         </div>
     </section>
-    <section ng-repeat="ace in ctrl.model.metadata._acl" ng-show="ctrl.collection=='files'">
+    <section ng-repeat="ace in ctrl.model.metadata._acl" ng-show="ctrl.collection=='files' || ctrl.collection.endsWith('.files')">
         <div class="form-group">
             <div class="col-sm-9 input-group">
                 <label class="col-sm-3 control-label">{{ace.name}}: </label>

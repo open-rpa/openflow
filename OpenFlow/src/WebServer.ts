@@ -12,7 +12,7 @@ import * as flash from "flash";
 import { SamlProvider } from "./SamlProvider";
 import { LoginProvider } from "./LoginProvider";
 import { Config } from "./Config";
-import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, TokenUser, WellknownIds } from "@openiap/openflow-api";
+import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, User, TokenUser, WellknownIds } from "@openiap/openflow-api";
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -28,6 +28,7 @@ import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse
 const { info, warn, err } = config;
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
 import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp";
+import { Auth } from "./Auth";
 
 
 var _hostname = "";
@@ -212,7 +213,7 @@ export class WebServer {
                             return res.status(500).json({ "error": "no subscription" });
                         }
                         const jwt = subscription.jwt;
-                        const tuser: TokenUser = await Crypt.verityToken(jwt);
+                        const tuser: User = await Auth.Token2User(jwt, span);
                         if (NoderedUtil.IsNullUndefinded(tuser)) {
                             Logger.instanse.error("jwt is invalid", null);
                             return res.status(500).json({ "error": "no subscription" });
@@ -405,7 +406,7 @@ export class WebServer {
         });
       }
 
-    public static async ProcessMessage(req: any, tuser: TokenUser, jwt: string): Promise<any> {
+    public static async ProcessMessage(req: any, tuser: User, jwt: string): Promise<any> {
         const client:any = {user: tuser, jwt: jwt};
         const msg = new Message();
         const urlPath = req.path;

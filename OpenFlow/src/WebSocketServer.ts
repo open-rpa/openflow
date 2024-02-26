@@ -5,7 +5,7 @@ import { WebSocketServerClient } from "./WebSocketServerClient";
 import { Crypt } from "./Crypt";
 import { Message } from "./Messages/Message";
 import { Config } from "./Config";
-import { SigninMessage, NoderedUtil, TokenUser, Base, Rights, WellknownIds } from "@openiap/openflow-api";
+import { SigninMessage, NoderedUtil, TokenUser, User, Base, Rights, WellknownIds } from "@openiap/openflow-api";
 import { Span, Histogram, Counter, Observable } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
@@ -169,7 +169,7 @@ export class WebSocketServer {
         }
 
     }
-    public static getclients(user: TokenUser): WebSocketServerClient[] {
+    public static getclients(user: TokenUser | User): WebSocketServerClient[] {
         var result = [];
         if (Config.enable_openflow_amqp && WebSocketServer._remoteclients != null && WebSocketServer._remoteclients.length > 0) {
             for (var x = 0; x < WebSocketServer._remoteclients.length; x++) {

@@ -10,12 +10,13 @@ import { Crypt } from "./Crypt";
 import { Audit } from "./Audit";
 import * as saml from "saml20";
 import { GridFSBucket, ObjectId } from "mongodb";
-import { Base, User, NoderedUtil, TokenUser, Role, FederationId } from "@openiap/openflow-api";
+import { Base, User, NoderedUtil, Role, FederationId } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 import { DatabaseConnection } from "./DatabaseConnection";
 import { TokenRequest } from "./TokenRequest";
 import { WebServer } from "./WebServer";
+import { Auth } from "./Auth";
 var nodemailer = require('nodemailer');
 var dns = require('dns');
 const got = require("got");
@@ -135,7 +136,7 @@ export class LoginProvider {
         app.use(passport.initialize());
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
-            const tuser: TokenUser = TokenUser.From(user);
+            const tuser: User = user;
             // await Auth.AddUser(tuser as any, tuser._id, "passport");
             done(null, user._id);
         });
@@ -518,13 +519,13 @@ export class LoginProvider {
                     }
                     Logger.instanse.info("Clear cache", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
                     await Logger.DBHelper.clearCache("Initialized", span);
-                    await Audit.LoginSuccess(TokenUser.From(user), "weblogin", "local", remoteip, "browser", "unknown", span);
+                    await Audit.LoginSuccess(user, "weblogin", "local", remoteip, "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
                     Logger.instanse.info("Saving local provider", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
                     Logger.instanse.info("local provider created as " + result._id, span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
                     await Logger.DBHelper.CheckCache("config", result, false, false, span);
-                    const tuser: TokenUser = TokenUser.From(user);
+                    const tuser: User = user;
                     done(null, tuser);
                     if (Logger.License.validlicense) {
                         var model = new Base();
@@ -566,7 +567,7 @@ export class LoginProvider {
                         return done(null, false);
                     }
                 }
-                const tuser: TokenUser = TokenUser.From(user);
+                const tuser = user;
                 await Audit.LoginSuccess(tuser, "weblogin", "local", remoteip, "browser", "unknown", span);
                 // tuser.roles.splice(40, tuser.roles.length)
                 Logger.otel.endSpan(span);
@@ -741,7 +742,7 @@ export class LoginProvider {
                 return;
             }
 
-            const tuser: TokenUser = TokenUser.From(_user);
+            const tuser = _user;
             await Audit.LoginSuccess(tuser, "weblogin", "saml", remoteip, "unknown", "unknown", span);
             Logger.otel.endSpan(span);
             done(null, tuser);
@@ -808,7 +809,7 @@ export class LoginProvider {
                 done("Disabled user " + username, null);
                 return;
             }
-            const tuser: TokenUser = TokenUser.From(_user);
+            const tuser: User = _user;
             await Audit.LoginSuccess(tuser, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
             done(null, tuser);
         } catch (error) {
@@ -872,7 +873,7 @@ export class LoginProvider {
                 done("Disabled user " + username, null);
                 return;
             }
-            const tuser: TokenUser = TokenUser.From(_user);
+            const tuser = _user;
             await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "unknown", "unknown", span);
             done(null, tuser);
         } catch (error) {
@@ -955,7 +956,7 @@ export class LoginProvider {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             if (req.user) {
                 Logger.instanse.verbose("User is signed in", span, {cls: "LoginProvider", func: "dashboardauth"});
-                const user: TokenUser = TokenUser.From(req.user);
+                const user: User = req.user;
                 span?.setAttribute("username", user.username);
                 if (user != null) {
                     const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
@@ -1078,16 +1079,16 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
         }
     }
-    static get_jwt(req: any, res: any, next: any): void {
+    static async get_jwt(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.jwt", req);
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
-                const user: TokenUser = TokenUser.From(req.user);
+                const user: User = req.user;
                 span?.setAttribute("username", user.username);
                 Logger.instanse.debug("return token for user " + req.user._id + " " + user.name, span, {cls: "LoginProvider", func: "getjwt"});
-                res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.shorttoken_expires_in), user: user }));
+                res.end(JSON.stringify({ jwt: await Auth.User2Token(user, Config.shorttoken_expires_in, span), user: user }));
             } else {
                 Logger.instanse.verbose("return nothing, not signed in", span, {cls: "LoginProvider", func: "getjwt"});
                 res.end(JSON.stringify({ jwt: "" }));
@@ -1100,13 +1101,13 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
         }
     }
-    static get_jwtlong(req: any, res: any, next: any): void {
+    static async get_jwtlong(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.jwtlong", req);
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
-                const user: TokenUser = TokenUser.From(req.user);
+                const user: User = req.user;
                 span?.setAttribute("username", user.username);
 
                 if (!(user.validated == true) && Config.validate_user_form != "") {
@@ -1114,7 +1115,7 @@ export class LoginProvider {
                     res.end(JSON.stringify({ jwt: "" }));
                 } else {
                     Logger.instanse.debug("return token for user " + req.user._id + " " + user.name, span, {cls: "LoginProvider", func: "getjwtlong"});
-                    res.end(JSON.stringify({ jwt: Crypt.createToken(user, Config.longtoken_expires_in), user: user }));
+                    res.end(JSON.stringify({ jwt: await Auth.User2Token(user, Config.longtoken_expires_in, span), user: user }));
                 }
             } else {
                 Logger.instanse.error("return nothing, not signed in", span, {cls: "LoginProvider", func: "getjwtlong"});
@@ -1135,11 +1136,11 @@ export class LoginProvider {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             const rawAssertion = req.body.token;
             const user: User = await LoginProvider.validateToken(rawAssertion, span);
-            const tuser: TokenUser = TokenUser.From(user);
+            const tuser: User = user;
             span?.setAttribute("username", user.username);
             res.setHeader("Content-Type", "application/json");
             Logger.instanse.debug("Recreating jwt token", span, {cls: "LoginProvider", func: "postjwt"});
-            res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.shorttoken_expires_in) }));
+            res.end(JSON.stringify({ jwt: await Auth.User2Token(tuser, Config.shorttoken_expires_in, span) }));
         } catch (error) {
             Logger.instanse.error(error, span, {cls: "LoginProvider", func: "postjwt"});
             return res.status(500).send({ message: error.message ? error.message : error });
@@ -1202,7 +1203,7 @@ export class LoginProvider {
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             if (req.user) {
-                const user: TokenUser = TokenUser.From(req.user);
+                const user: User = req.user;
                 span?.setAttribute("username", user.username);
             }
             const res2 = await LoginProvider.config();
@@ -1254,7 +1255,8 @@ export class LoginProvider {
                 Logger.instanse.info("Token " + key + " has been forfilled from " + remoteip, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                 if (Config.validate_user_form != "") {
                     try {
-                        var tuser = await await Crypt.verityToken(exists.jwt);
+                        var tuser = await await Auth.Token2User(exists.jwt, span);
+                        if(tuser == null) throw new Error("Access denied");
                         var user = await Logger.DBHelper.FindById(tuser._id, span);
                         if (user.validated == true) {
                             await Logger.DBHelper.RemoveRequestTokenID(key, span);
@@ -1303,7 +1305,7 @@ export class LoginProvider {
                     var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
                         Logger.instanse.debug("adding jwt for request token " + key, span, {cls: "LoginProvider", func: "getlogin"});
-                        await Logger.DBHelper.AddRequestTokenID(key, { jwt: Crypt.createToken(user, Config.longtoken_expires_in) }, span);
+                        await Logger.DBHelper.AddRequestTokenID(key, { jwt: await Auth.User2Token(user, Config.longtoken_expires_in, span) }, span);
                         try {
                             res.cookie("requesttoken", "", { expires: new Date(0) });    
                         } catch (error) {                            
@@ -1331,7 +1333,7 @@ export class LoginProvider {
                 }
             }
             let user: User;
-            let tuser: TokenUser;
+            let tuser: User;
             if (req.user) {
                 await Logger.DBHelper.CheckCache("users", req.user, false, false, span);
                 user = await Logger.DBHelper.FindById(req.user._id, span);
@@ -1342,7 +1344,7 @@ export class LoginProvider {
                 if (Config.validate_emails) {
                     if (!user.emailvalidated) user.validated = false;
                 }
-                tuser = TokenUser.From(user);
+                tuser = user;
             }
             const originalUrl: any = req.cookies.originalUrl;
             const validateurl: any = req.cookies.validateurl;
@@ -1471,7 +1473,7 @@ export class LoginProvider {
             if (req.user) {
                 var u: User = req.user;
                 if (!NoderedUtil.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, span);
-                var tuser: TokenUser = TokenUser.From(u);
+                var tuser: User = u;
                 if (req.body && req.body.data) {
                     if (!tuser.formvalidated || tuser.formvalidated) {
                         delete req.body.data._id;
@@ -1575,7 +1577,7 @@ export class LoginProvider {
                         res.end(JSON.stringify({ jwt: "" }));
                     } else {
                         Logger.instanse.debug("Return new jwt for user " + tuser.name, span, {cls: "LoginProvider", func: "validateuserform"});
-                        res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
+                        res.end(JSON.stringify({ jwt: await Auth.User2Token(tuser, Config.longtoken_expires_in, span), user: tuser }));
                     }
                 } else if (req.body) {
                     if (req.body.resend) {
@@ -1614,7 +1616,7 @@ export class LoginProvider {
                                 // UpdateDoc.$set["emailvalidated"] = true;
                                 // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                                 await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
-                                res.end(JSON.stringify({ jwt: Crypt.createToken(tuser, Config.longtoken_expires_in), user: tuser }));
+                                res.end(JSON.stringify({ jwt: await Auth.User2Token(tuser, Config.longtoken_expires_in, span), user: tuser }));
                                 return;
                             } else {
                                 throw new Error("Wrong validation code for " + tuser.name)
@@ -1738,16 +1740,17 @@ export class LoginProvider {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.download", req);
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
-            let user: TokenUser = null;
+            let user: User = null;
             let jwt: string = null;
             const authHeader = req.headers.authorization;
             if (authHeader) {
-                user = await Crypt.verityToken(authHeader);
-                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                user = await Auth.Token2User(authHeader, span);
+                if(user == null) throw new Error("Access denied");
+                jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
             }
             else if (req.user) {
-                user = TokenUser.From(req.user as any);
-                jwt = Crypt.createToken(user, Config.downloadtoken_expires_in);
+                user = req.user;
+                jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
             }
             if (user == null) {
                 return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });

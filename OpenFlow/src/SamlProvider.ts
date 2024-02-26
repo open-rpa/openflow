@@ -2,7 +2,7 @@ import * as express from "express";
 import * as samlp from "samlp";
 import { Config } from "./Config";
 import { Audit } from "./Audit";
-import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
 
@@ -84,7 +84,7 @@ export class SamlProvider {
                 getUserFromRequest: (req: any) => {
                     const span: Span = Logger.otel.startSpanExpress("SAML.getUserFromRequest", req);
                     try {
-                        const tuser: TokenUser = TokenUser.From(req.user);
+                        const tuser: User = req.user;
                         const remoteip = SamlProvider.remoteip(req);
                         span?.setAttribute("remoteip", remoteip);
                         Audit.LoginSuccess(tuser,  "tokenissued", "saml", remoteip, "unknown", "unknown", span).catch((e) => {

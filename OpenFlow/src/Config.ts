@@ -224,6 +224,7 @@ export class Config {
         enable_openai: false,
         enable_openapi: true,
         enable_openapiauth: true,
+
         llmchat_queue: "",
         log_with_colors: true,
         cache_store_type: "memory",
@@ -347,6 +348,7 @@ export class Config {
         allow_merge_acl: false,
 
         multi_tenant: false,
+        enable_guest: false, 
         cleanup_on_delete_customer: false,
         cleanup_on_delete_user: false,
         api_bypass_perm_check: false,
@@ -493,6 +495,7 @@ export class Config {
     public static enable_openai: boolean = Config.parseBoolean(Config.getEnv("enable_openai"));
     public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi"));
     public static enable_openapiauth: boolean = Config.parseBoolean(Config.getEnv("enable_openapiauth"));
+    
     public static llmchat_queue: string = Config.getEnv("llmchat_queue");
     public static openai_token: string = Config.getEnv("openai_token");
     public static version: string = Config.getversion();
@@ -633,6 +636,7 @@ export class Config {
     public static allow_merge_acl: boolean = Config.parseBoolean(Config.getEnv("allow_merge_acl"));
 
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant"));
+    public static enable_guest: boolean = Config.parseBoolean(Config.getEnv("enable_guest"));
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check"));

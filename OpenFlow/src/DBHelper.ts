@@ -1013,6 +1013,34 @@ export class DBHelper {
     public async ClearGetCollections() {
         await this.memoryCache.del("collections");
     }
+    public async FindJWT(key: string, parent: Span): Promise<User> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindJWT", parent);
+        try {
+            if (NoderedUtil.IsNullEmpty(key)) return null;
+            return await this.memoryCache.get("jwt_" + key);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async AddJWT(key: string, data: any, parent: Span): Promise<void> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.AddJWT", parent);
+        try {
+            return await this.memoryCache.set("jwt_" + key, data);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async RemoveJWT(key: string, parent: Span): Promise<void> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.RemoveJWT", parent);
+        try {
+            return await this.memoryCache.del("jwt_" + key);
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     static toArray(iterator): Promise<any[]> {
         return new Promise((resolve, reject) => {
             iterator.toArray((err, res) => {

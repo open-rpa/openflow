@@ -1,7 +1,7 @@
 import * as amqplib from "amqplib";
 import { Config } from "./Config";
 import { Crypt } from "./Crypt";
-import { NoderedUtil, TokenUser, User } from "@openiap/openflow-api";
+import { NoderedUtil, User } from "@openiap/openflow-api";
 import { WebSocketServer } from "./WebSocketServer";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger";
@@ -286,7 +286,7 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
-    async RemoveQueueConsumer(user: TokenUser | User, queue: amqpqueue, parent: Span): Promise<void> {
+    async RemoveQueueConsumer(user: User, queue: amqpqueue, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.RemoveQueueConsumer", parent);
         try {
             if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
@@ -314,7 +314,7 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
-    async AddQueueConsumer(user: TokenUser | User, queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
+    async AddQueueConsumer(user: User, queuename: string, QueueOptions: any, jwt: string, callback: QueueOnMessage, parent: Span): Promise<amqpqueue> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddQueueConsumer", parent);
         try {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
@@ -413,7 +413,7 @@ export class amqpwrapper extends events.EventEmitter {
         // await amqpwrapper.Instance().AddExchangeConsumer(
         //     Crypt.rootUser(), exchange.name, algorithm, routingkey, AssertExchangeOptions, Crypt.rootToken(), false, null, parent);
     }
-    async AddExchangeConsumer(user: TokenUser | User, exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, addqueue: boolean, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
+    async AddExchangeConsumer(user: User, exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, addqueue: boolean, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddExchangeConsumer", parent);
         try {
             if (NoderedUtil.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");

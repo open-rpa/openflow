@@ -1,4 +1,4 @@
-import { Base, NoderedUser, NoderedUtil, ResourceUsage, TokenUser, WellknownIds } from "@openiap/openflow-api";
+import { Base, NoderedUser, NoderedUtil, ResourceUsage, User, WellknownIds } from "@openiap/openflow-api";
 import { iAgent, i_agent_driver } from "./commoninterfaces";
 import { Logger } from "./Logger";
 import { Span } from "@opentelemetry/api";
@@ -8,6 +8,7 @@ import * as url from "url";
 const Docker = require("dockerode");
 import Dockerode = require("dockerode");
 import { Audit } from "./Audit";
+import { Auth } from "./Auth";
 export class dockerdriver implements i_agent_driver {
     public async detect(): Promise<boolean> {
         try {
@@ -45,7 +46,7 @@ export class dockerdriver implements i_agent_driver {
     public async NodeLabels(parent: Span): Promise<any> {
         return null;
     }
-    public async EnsureInstance(tokenUser: TokenUser, jwt: string, agent: iAgent, parent: Span): Promise<void> {
+    public async EnsureInstance(user: User, jwt: string, agent: iAgent, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
         Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
 
@@ -63,14 +64,14 @@ export class dockerdriver implements i_agent_driver {
 
         var agentjwt = "";
         if(NoderedUtil.IsNullEmpty(agent.runas)) {
-            agentjwt = Crypt.createToken(tokenUser, Config.personalnoderedtoken_expires_in);
+            agentjwt = await Auth.User2Token(user, Config.personalnoderedtoken_expires_in, parent);
         } else {
             var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
             if(agentuser!= null){
-                agentuser = TokenUser.From(agentuser);
-                agentjwt = Crypt.createToken(agentuser, Config.personalnoderedtoken_expires_in);
+                agentuser = agentuser;
+                agentjwt = await Auth.User2Token(agentuser, Config.personalnoderedtoken_expires_in, parent);
             } else {
-                agentjwt = Crypt.createToken(tokenUser, Config.personalnoderedtoken_expires_in);
+                agentjwt = await Auth.User2Token(user, Config.personalnoderedtoken_expires_in, parent);
             }
         }
 
@@ -222,17 +223,17 @@ export class dockerdriver implements i_agent_driver {
                 Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
             })
             await instance.start();
-            Audit.NoderedAction(tokenUser, true, "Created agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
+            Audit.NoderedAction(user, true, "Created agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
         } else {
             const container = docker.getContainer(instance.Id);
             if (instance.State != "running") {
                 container.start();
-                Audit.NoderedAction(tokenUser, true, "Updated agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
+                Audit.NoderedAction(user, true, "Updated agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
             }
 
         }
     }
-    public async RemoveInstance(tokenUser: TokenUser, jwt: string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void> {
+    public async RemoveInstance(user: User, jwt: string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstance", parent);
         try {
             Logger.instanse.debug("[" + agent.slug + "] RemoveInstance", span);
@@ -249,14 +250,14 @@ export class dockerdriver implements i_agent_driver {
                     if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
-                    Audit.NoderedAction(tokenUser, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
+                    Audit.NoderedAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
                 }
             }
         } finally {
             Logger.otel.endSpan(span);
         }
     }
-    public async GetInstanceLog(tokenUser: TokenUser, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<string> {
+    public async GetInstanceLog(user: User, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<string> {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceLog", parent);
         try {
             var result: string = null;
@@ -283,7 +284,7 @@ export class dockerdriver implements i_agent_driver {
                 const container = docker.getContainer(instance.Id);
                 var s = await container.logs((logOpts as any) as Dockerode.ContainerLogsOptions);
                 result = s.toString();
-                Audit.NoderedAction(tokenUser, true, "Get agentlog " + agent.name, "getagentlog", agent.image, agent.slug, parent);
+                Audit.NoderedAction(user, true, "Get agentlog " + agent.name, "getagentlog", agent.image, agent.slug, parent);
             }
             if (result == null) result = "";
             return result;
@@ -306,7 +307,7 @@ export class dockerdriver implements i_agent_driver {
         parent?.addEvent("listContainers()");
         var list = await docker.listContainers({ all: 1 });
         const rootjwt = Crypt.rootToken()
-        const rootuser = TokenUser.From(Crypt.rootUser());
+        const rootuser = Crypt.rootUser();
         var result = [];
         if (!NoderedUtil.IsNullUndefinded(resource) && runtime > 0) {
             for (let i = 0; i < list.length; i++) {
@@ -335,7 +336,7 @@ export class dockerdriver implements i_agent_driver {
     
         }
     }
-    public async GetInstancePods(tokenUser: TokenUser, jwt: string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]> {
+    public async GetInstancePods(user: User, jwt: string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         try {
 
@@ -406,7 +407,7 @@ export class dockerdriver implements i_agent_driver {
             Logger.otel.endSpan(span);
         }
     }
-    public async RemoveInstancePod(tokenUser: TokenUser, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<void> {
+    public async RemoveInstancePod(user: User, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstancePod", parent);
         try {
             Logger.instanse.debug("[" + agent.slug + "] RemoveInstancePod", span);
@@ -423,7 +424,7 @@ export class dockerdriver implements i_agent_driver {
                     if (item.State == "running") await container.stop({t: 0});
                     span?.addEvent("remove()");
                     await container.remove();
-                    Audit.NoderedAction(tokenUser, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
+                    Audit.NoderedAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
                 }
             }
         } finally {

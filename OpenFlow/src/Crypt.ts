@@ -16,6 +16,12 @@ export class Crypt {
         result.roles = []; result.roles.push(new Rolemember("admins", WellknownIds.admins));
         return result;
     }
+    static guestUser(): User {
+        const result: User = new User();
+        result._type = "user"; result.name = "guest"; result.username = "guest"; result._id = "65cb30c40ff51e174095573c";
+        result.roles = [];
+        return result;
+    }
     static rootToken(): string {
         return Crypt.createToken(this.rootUser(), Config.shorttoken_expires_in);
     }
@@ -97,6 +103,16 @@ export class Crypt {
                 Logger.otel.endSpan(span);
             }
         });
+    }
+    static createSlimToken(id: string, impostor: string, expiresIn: string): string {
+        if (NoderedUtil.IsNullEmpty(id)) throw new Error("id is mandatory");
+        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+        const key = Crypt.encryption_key;
+        if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
+        if (NoderedUtil.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
+        const user = {_id: id, impostor: impostor}
+        return jsonwebtoken.sign({ data: user }, key,
+            { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
     static createToken(item: User | TokenUser, expiresIn: string): string {
         const user: TokenUser = new TokenUser();
