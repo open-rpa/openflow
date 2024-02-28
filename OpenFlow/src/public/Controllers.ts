@@ -8842,7 +8842,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
-    async addprocess(streamid:string, schedulename:string = undefined): Promise<void> {
+    async addprocess(streamid:string, setstream: boolean, schedulename:string = undefined): Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);
         if (_a == null) return;
         var pretest = document.getElementById(streamid);
@@ -8895,7 +8895,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         var runs = document.getElementById("runs");
         runs.prepend(div);
 
-        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+        if(setstream == true) await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
     }
     async Reinstall() : Promise<void> {
         var _a = this.agents.find(x => x._id == this.id);
@@ -8928,19 +8928,20 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             callback: (_data: QueueMessage, ack: any) => {
                 ack();
                 if(_data == null) return;
+                console.log(data)
                 var correlationId = _data.correlationId;
                 var data: any = _data;
                 while(data.data != null && data.data != "") data = data.data;
                 if(data.command == "listprocesses") {
                     for(var i = 0; i < data.processes.length; i++) {
                         console.log("add process " + data.processes[i].id)
-                        this.addprocess(data.processes[i].id, data.processes[i].schedulename);
+                        this.addprocess(data.processes[i].id, true, data.processes[i].schedulename);
                     }
                 }
                 if(data.command == "runpackage" && data.completed == true && data.success == false) {
                     var pre = document.getElementById(correlationId);
                     if(pre == null) {
-                        this.addprocess(correlationId);
+                        this.addprocess(correlationId, false);
                         pre = document.getElementById(correlationId);
                     }
                     var killbutton = document.getElementById(correlationId + "_kill");
@@ -8958,13 +8959,14 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                 if(data.command == null) {
                     var pre = document.getElementById(correlationId);
                     if(pre == null) {
-                        this.addprocess(correlationId);
+                        this.addprocess(correlationId, false);
                         pre = document.getElementById(correlationId);
                     }
                     // if(pre == null) return;
                     const decoder = new TextDecoder("utf-8");
                     const _string = decoder.decode(new Uint8Array(data as any));
                     const string = ansi_up.ansi_to_html(_string);
+                    console.log(string)
                     var strings = string.split("\n").reverse();
 
                     pre.innerHTML = strings.join("<br/>") + pre.innerHTML;
