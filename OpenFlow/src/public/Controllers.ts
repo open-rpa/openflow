@@ -8937,6 +8937,16 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                         this.addprocess(data.processes[i].id, data.processes[i].schedulename);
                     }
                 }
+                if(data.command == "runpackage" && data.completed == true && data.success == false) {
+                    var pre = document.getElementById(correlationId);
+                    if(pre == null) {
+                        this.addprocess(correlationId);
+                        pre = document.getElementById(correlationId);
+                    }
+                    var killbutton = document.getElementById(correlationId + "_kill");
+                    if(killbutton != null) killbutton.remove();
+                    pre.innerHTML = data.error + pre.innerHTML;
+                }
                 if(data.command != null) {
                     console.log(data.command + " " + data.completed, data)
                 }
