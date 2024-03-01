@@ -8785,6 +8785,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             }
         });
     }
+    firstlist: boolean = true;
     async processData() {
         this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "package" }, top:100 });
         if (this.id !== null && this.id !== undefined) {
@@ -8803,6 +8804,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         console.log("send message to " + _a.slug )
         const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         try {
+            this.firstlist = true;
             var processes = await NoderedUtil.Queue({ data: {"command": "listprocesses"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename })
 
             this.re_addcommandstream = this.$interval(() => {
@@ -8928,15 +8930,14 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             callback: (_data: QueueMessage, ack: any) => {
                 ack();
                 if(_data == null) return;
-                console.log(data)
                 var correlationId = _data.correlationId;
                 var data: any = _data;
                 while(data.data != null && data.data != "") data = data.data;
                 if(data.command == "listprocesses") {
                     for(var i = 0; i < data.processes.length; i++) {
-                        console.log("add process " + data.processes[i].id)
-                        this.addprocess(data.processes[i].id, true, data.processes[i].schedulename);
+                        this.addprocess(data.processes[i].id, this.firstlist, data.processes[i].schedulename);
                     }
+                    this.firstlist = false;
                 }
                 if(data.command == "runpackage" && data.completed == true && data.success == false) {
                     var pre = document.getElementById(correlationId);
@@ -8947,9 +8948,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                     var killbutton = document.getElementById(correlationId + "_kill");
                     if(killbutton != null) killbutton.remove();
                     pre.innerHTML = data.error + pre.innerHTML;
-                }
-                if(data.command != null) {
-                    console.log(data.command + " " + data.completed, data)
                 }
                 if(data.command == "completed" || (data.command == "runpackage" && data.completed == true)) {
                     var killbutton = document.getElementById(correlationId + "_kill");
@@ -8966,7 +8964,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                     const decoder = new TextDecoder("utf-8");
                     const _string = decoder.decode(new Uint8Array(data as any));
                     const string = ansi_up.ansi_to_html(_string);
-                    console.log(string)
                     var strings = string.split("\n").reverse();
 
                     pre.innerHTML = strings.join("<br/>") + pre.innerHTML;
