@@ -1,11 +1,10 @@
-import { Crypt } from "./Crypt";
+import { Crypt } from "./Crypt.js";
 import { TokenUser, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { OAuthProvider } from "./OAuthProvider";
-import { use } from "passport";
-import { LoginProvider } from "./LoginProvider";
-import { Config } from "./Config";
+import { Logger } from "./Logger.js";
+import { OAuthProvider } from "./OAuthProvider.js";
+import { LoginProvider } from "./LoginProvider.js";
+import { Config } from "./Config.js";
 export class Auth {
     public static async ValidateByPassword(username: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("Auth.ValidateByPassword", parent);

@@ -1,5 +1,5 @@
 import { WebSocketClientService } from "./WebSocketClientService";
-import angular = require("angular");
+import angular from "angular";
 import { timesince, timetoo, translate, textarea, fileread, userdata, api, copytext, jsonText, formatBytes, whenScrolled, ngtype } from "./CommonControllers";
 import {
     MenuCtrl, ProvidersCtrl, MainCtrl, LoginCtrl, ProviderCtrl, UsersCtrl, UserCtrl, RolesCtrl, RoleCtrl, RPAWorkflowsCtrl, RPAWorkflowCtrl,

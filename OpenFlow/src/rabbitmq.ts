@@ -1,9 +1,9 @@
-import { Config } from "./Config";
-import * as url from "url";
-import { AssertQueue } from "./amqpwrapper";
+import { Config } from "./Config.js";
+import url from "url";
+import { AssertQueue } from "./amqpwrapper.js";
 import { NoderedUtil } from "@openiap/openflow-api";
-import { Logger, promiseRetry } from "./Logger";
-const got = require("got");
+import { Logger, promiseRetry } from "./Logger.js";
+import got from "got";
 
 export class rabbitmq {
     static parseurl(amqp_url): url.UrlWithParsedQuery {

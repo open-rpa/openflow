@@ -1,16 +1,16 @@
-import { Crypt } from "./Crypt";
+import { Crypt } from "./Crypt.js";
 import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue, Resource, ResourceUsage } from "@openiap/openflow-api";
-import { Config } from "./Config";
+import { Config } from "./Config.js";
 import { Span, Observable } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { Auth } from "./Auth";
-import { WebSocketServerClient } from "./WebSocketServerClient";
-import { LoginProvider, Provider } from "./LoginProvider";
+import { Logger } from "./Logger.js";
+import { Auth } from "./Auth.js";
+import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { LoginProvider, Provider } from "./LoginProvider.js";
 import { caching } from 'cache-manager';
-import { TokenRequest } from "./TokenRequest";
-import { amqpwrapper } from "./amqpwrapper";
-import { EntityRestriction } from "./EntityRestriction";
-import { iAgent } from "./commoninterfaces";
+import { TokenRequest } from "./TokenRequest.js";
+import { amqpwrapper } from "./amqpwrapper.js";
+import { EntityRestriction } from "./EntityRestriction.js";
+import { iAgent } from "./commoninterfaces.js";
 import { CollectionInfo } from "mongodb";
 import { redisStore } from 'cache-manager-ioredis-yet'
 

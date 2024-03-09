@@ -1,10 +1,10 @@
-import * as express from "express";
-import * as samlp from "samlp";
-import { Config } from "./Config";
-import { Audit } from "./Audit";
+import express from "express";
+import samlp from "samlp";
+import { Config } from "./Config.js";
+import { Audit } from "./Audit.js";
 import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
+import { Logger } from "./Logger.js";
 
 export class SamlProvider {
     public static profileMapper(pu: any): any {

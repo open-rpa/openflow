@@ -1,4 +1,7 @@
-import angular = require("angular");
+// import angular from "angular";
+// angular.isArray([]);
+require('angular');
+import angular from "angular";
 import { WebSocketClientService } from "./WebSocketClientService";
 import { NoderedUtil } from "@openiap/openflow-api";
 

@@ -1,26 +1,30 @@
-import * as url from "url";
-import * as express from "express";
-import * as path from "path";
-import * as OpenIDConnectStrategy from "passport-openidconnect";
-import * as GoogleStrategy from "passport-google-oauth20";
-import * as LocalStrategy from "passport-local";
-import * as passport from "passport";
-import { Config } from "./Config";
-import { Crypt } from "./Crypt";
-import { Audit } from "./Audit";
-import * as saml from "saml20";
+import url from "url";
+import express from "express";
+import path from "path";
+import passportsaml from "@node-saml/passport-saml";
+import OpenIDConnectStrategy from "passport-openidconnect";
+import GoogleStrategy from "passport-google-oauth20";
+import LocalStrategy from "passport-local";
+import passport from "passport";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
+import { Audit } from "./Audit.js";
+import saml from "saml20";
 import { GridFSBucket, ObjectId } from "mongodb";
 import { Base, User, NoderedUtil, Role, FederationId } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { TokenRequest } from "./TokenRequest";
-import { WebServer } from "./WebServer";
-import { Auth } from "./Auth";
-var nodemailer = require('nodemailer');
-var dns = require('dns');
-const got = require("got");
+import { Logger } from "./Logger.js";
+import { DatabaseConnection } from "./DatabaseConnection.js";
+import { TokenRequest } from "./TokenRequest.js";
+import { Auth } from "./Auth.js";
+import nodemailer from "nodemailer";
+import dns from "dns";
+import got from "got";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface IVerifyFunction { (error: any, profile: any): void; }
 export class Provider extends Base {
@@ -250,7 +254,7 @@ export class LoginProvider {
 
     static async CreateOpenIDStrategy(app: express.Express, discoveryurl: string, key: string, clientID: string, clientSecret: string, baseurl: string, span: Span): Promise<any> {
         Logger.instanse.debug("Adding new google strategy " + key, span, {cls: "LoginProvider", func: "CreateOpenIDStrategy"});
-        const response = await got.get(discoveryurl, options);
+        const response = await got.get(discoveryurl, options as any);
         const document = JSON.parse(response.body);
         var options = {
             issuer: document.issuer,
@@ -368,8 +372,8 @@ export class LoginProvider {
         options.callbackUrl = url.parse(baseurl).protocol + "//" + url.parse(baseurl).host + "/" + key + "/";
         options.verify = (LoginProvider.samlverify).bind(this);
         options.wantAuthnResponseSigned = false;
-        const SamlStrategy = require('@node-saml/passport-saml').Strategy
-        const strategy: passport.Strategy = new SamlStrategy(options, options.verify);
+        const SamlStrategy = passportsaml.Strategy
+        const strategy: passport.Strategy = new SamlStrategy(options, options.verify, undefined);
         passport.use(key, strategy);
         strategy.name = key;
 

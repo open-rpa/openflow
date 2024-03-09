@@ -1,20 +1,19 @@
-import express = require("express");
-import * as  net from "net";
-import * as  grpc from "@grpc/grpc-js";
-import * as  WebSocket from "ws";
-import { amqpexchange, amqpqueue, amqpwrapper, exchangealgorithm, QueueMessageOptions } from "../amqpwrapper";
-import { Logger } from "../Logger";
+import express from "express";
+import  net from "net";
+import  grpc from "@grpc/grpc-js";
+import  WebSocket from "ws";
+import { amqpexchange, amqpqueue, amqpwrapper, exchangealgorithm, QueueMessageOptions } from "../amqpwrapper.js";
+import { Logger } from "../Logger.js";
 import { Span } from "@opentelemetry/api";
 import { NoderedUtil, User } from "@openiap/openflow-api";
-import { Config } from "../Config";
-import { RegisterExchangeResponse } from "../WebSocketServerClient";
+import { Config } from "../Config.js";
+import { RegisterExchangeResponse } from "../WebSocketServerClient.js";
 import { client, config, protowrap, QueueEvent, RefreshToken, WatchEvent } from "@openiap/nodeapi";
 const { info, warn, err } = config;
-import { clientAgent } from "@openiap/nodeapi/lib/client";
-import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
-import { Message } from "../Messages/Message";
-import { Crypt } from "../Crypt";
-import { Auth } from "../Auth";
+import { clientAgent } from "@openiap/nodeapi/lib/client.js";
+import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any.js";
+import { Message } from "../Messages/Message.js";
+import { Auth } from "../Auth.js";
 const Semaphore = (n) => ({
   n,
   async down() {
@@ -37,30 +36,30 @@ export class flowclient extends client {
   public id: string = "";
   public seq: number = 0;
   public remoteip: string = "unknown";
-  public agent: clientAgent;
-  public protocol: clientType;
-  public version: string;
-  public doping: boolean;
+  declare public agent: clientAgent;
+  declare public protocol: clientType;
+  declare public version: string;
+  declare public doping: boolean;
   public created: Date = new Date();
   public lastheartbeat: Date = new Date();
   public lastheartbeatstr: string = new Date().toISOString();
   public lastheartbeatsec: string = "0";
-  public user: any; // User
-  public jwt: string;
+  declare public user: any; // User
+  declare public jwt: string;
   public signedin: boolean = false;
   public connected: boolean = false;
   public connecting: boolean = false;
   public queues: any[] = []; // amqpqueue[]
   public exchanges: any[] = []; // amqpexchange[]
   public watches: changestream[] = [];
-  public url: string;
-  public ws: WebSocket;
-  public stream: net.Socket;
-  public grpc: any;
-  public call: any;
-  public grpcStream: grpc.ClientDuplexStream<any, any>;
-  public replies: any;
-  public streams: any;
+  declare public url: string;
+  declare public ws: WebSocket;
+  declare public stream: net.Socket;
+  declare public grpc: any;
+  declare public call: any;
+  declare public grpcStream: grpc.ClientDuplexStream<any, any>;
+  declare public replies: any;
+  declare public streams: any;
 
   public _queues: amqpqueue[] = [];
   public _queuescounter: number = 0;

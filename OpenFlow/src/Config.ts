@@ -1,16 +1,18 @@
-var xml2js = require('xml2js');
-import * as https from "https";
-import * as http from "http";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { Logger } from "./Logger";
+import xml2js from 'xml2js';
+import https from "https";
+import http from "http";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { DatabaseConnection } from "./DatabaseConnection.js";
+import { Logger } from "./Logger.js";
 import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
-import { promiseRetry } from "./Logger";
+import { promiseRetry } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
-
-
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 export class dbConfig extends Base {
     constructor() {
         super();
@@ -246,6 +248,7 @@ export class Config {
         log_database_queries_to_collection: "",
         log_database_queries_ms: 0,
         log_grafana: false,
+        log_git: false,
         log_housekeeping: false,
         log_otel: false,
         log_blocked_ips: true,
@@ -523,6 +526,7 @@ export class Config {
     public static log_database_queries_ms: number = parseInt(Config.getEnv("log_database_queries_ms"));
 
     public static log_grafana: boolean = Config.parseBoolean(Config.getEnv("log_grafana"));
+    public static log_git: boolean = Config.parseBoolean(Config.getEnv("log_git"));
     public static log_housekeeping: boolean = Config.parseBoolean(Config.getEnv("log_housekeeping"));
     public static log_otel: boolean = Config.parseBoolean(Config.getEnv("log_otel"));
     public static log_blocked_ips: boolean = Config.parseBoolean(Config.getEnv("log_blocked_ips"));

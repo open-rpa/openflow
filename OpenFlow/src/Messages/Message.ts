@@ -1,29 +1,30 @@
-var mimetype = require('mimetype');
-import { SocketMessage } from "../SocketMessage";
-import { Auth } from "../Auth";
-import { Crypt } from "../Crypt";
-import { Config } from "../Config";
-import { Audit, tokenType, clientType } from "../Audit";
-import { LoginProvider } from "../LoginProvider";
+import mimetype from "mimetype";
+import webpush from "web-push";
+import { SocketMessage } from "../SocketMessage.js";
+import { Auth } from "../Auth.js";
+import { Crypt } from "../Crypt.js";
+import { Config } from "../Config.js";
+import { Audit, tokenType, clientType } from "../Audit.js";
+import { LoginProvider } from "../LoginProvider.js";
 import { Readable, Stream } from "stream";
 import { GridFSBucket, ObjectId, Binary, FindCursor, GridFSFile, Filter } from "mongodb";
-import * as path from "path";
-import { DatabaseConnection } from "../DatabaseConnection";
+import path from "path";
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import { StripeMessage, NoderedUtil, QueuedMessage, RegisterQueueMessage, QueueMessage, CloseQueueMessage, ListCollectionsMessage, DropCollectionMessage, QueryMessage, AggregateMessage, InsertOneMessage, UpdateOneMessage, Base, UpdateManyMessage, InsertOrUpdateOneMessage, DeleteOneMessage, MapReduceMessage, SigninMessage, TokenUser, User, Rights, SaveFileMessage, WellknownIds, GetFileMessage, UpdateFileMessage, NoderedUser, WatchMessage, GetDocumentVersionMessage, DeleteManyMessage, InsertManyMessage, RegisterExchangeMessage, EnsureCustomerMessage, Customer, stripe_tax_id, Role, SelectCustomerMessage, Rolemember, ResourceUsage, Resource, ResourceVariant, stripe_subscription, GetNextInvoiceMessage, stripe_invoice, stripe_price, stripe_plan, stripe_invoice_line, GetKubeNodeLabelsMessage, CreateWorkflowInstanceMessage, WorkitemFile, InsertOrUpdateManyMessage, Ace, stripe_base, CountMessage, CreateCollectionMessage } from "@openiap/openflow-api";
 import { stripe_customer, stripe_list, StripeAddPlanMessage, StripeCancelPlanMessage, stripe_subscription_item, stripe_coupon } from "@openiap/openflow-api";
-import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper";
-import { WebSocketServerClient } from "../WebSocketServerClient";
-import { WebSocketServer } from "../WebSocketServer";
-import { OAuthProvider } from "../OAuthProvider";
+import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper.js";
+import { WebSocketServerClient } from "../WebSocketServerClient.js";
+import { WebSocketServer } from "../WebSocketServer.js";
+import { OAuthProvider } from "../OAuthProvider.js";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "../Logger";
-import { QueueClient } from "../QueueClient";
+import { Logger } from "../Logger.js";
+import { QueueClient } from "../QueueClient.js";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, CustomCommandMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
-import { WebServer } from "../WebServer";
-import { iAgent } from "../commoninterfaces";
+import { WebServer } from "../WebServer.js";
+import { iAgent } from "../commoninterfaces.js";
 import { RateLimiterMemory } from "rate-limiter-flexible";
-const pako = require('pako');
-const got = require("got");
+import got from "got";
+import pako from "pako";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -769,15 +770,12 @@ export class Message {
             msg = JSON.stringify(this.data)
         }
         try {
-            let _lic_require: any = null;
             try {
-                _lic_require = require("../ee/license-file");
+                let _lic_require: any = await import("../ee/license-file.js");
+                Logger.License = new _lic_require.LicenseFile();
             } catch (error) {
+                console.error(error.message);
             }
-            if (_lic_require == null) {
-                throw new Error("License module not found");
-            }
-            Logger.License = new _lic_require.LicenseFile();
             // @ts-ignore
             var data = msg.data;
             try {
@@ -4562,7 +4560,6 @@ export class Message {
                         readable.push(buf);
                         readable.push(null);
                     } else {
-                        // const zlib = require('zlib');
                         let result: Buffer;
                         try {
                             var data = Buffer.from(file.file, 'base64')
@@ -4762,7 +4759,6 @@ export class Message {
                             readable.push(buf);
                             readable.push(null);
                         } else {
-                            // const zlib = require('zlib');
                             let result: Buffer;
                             try {
                                 var data = Buffer.from(file.file, 'base64')
@@ -5435,7 +5431,7 @@ export class Message {
                 const payload = JSON.stringify(data);
                 for (var i = 0; i < subscriptions.length; i++) {
                     var subscription = subscriptions[i];
-                    WebServer.webpush.sendNotification(subscription, payload)
+                    webpush.sendNotification(subscription, payload)
                         .then(() => Logger.instanse.info("send wep push message to " + wpuser.name + " with payload " + payload, parent))
                         .catch(err => Logger.instanse.error(err, parent));
                 }
@@ -5621,7 +5617,8 @@ export class Message {
             case "issuelicense":
                 let _lic_require: any = null;
                 try {
-                    _lic_require = require("../ee/license-file");
+                    _lic_require = await import("../ee/license-file.js");
+                    Logger.License = new _lic_require.LicenseFile();
                 } catch (error) {
                 }
                 if (_lic_require == null) {

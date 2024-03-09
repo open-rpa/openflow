@@ -1,26 +1,26 @@
 import { MongoClient, ObjectId, Db, Binary, GridFSBucket, ChangeStream, MongoClientOptions, AggregateOptions, InsertOneOptions, InsertOneResult, UpdateOptions, FindOptions } from "mongodb";
-import { Crypt } from "./Crypt";
-import { Config, dbConfig } from "./Config";
+import { Crypt } from "./Crypt.js";
+import { Config, dbConfig } from "./Config.js";
 import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFunc, reduceFunc, Ace, UpdateOneMessage, UpdateManyMessage, InsertOrUpdateOneMessage, Role, Rolemember, User, Customer, WatchEventMessage, Workitem, WorkitemQueue, QueryOptions, CountOptions, Resource, ResourceUsage } from "@openiap/openflow-api";
-import { OAuthProvider } from "./OAuthProvider";
+import { OAuthProvider } from "./OAuthProvider.js";
 import { Span, ObservableUpDownCounter, Histogram } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-const { JSONPath } = require('jsonpath-plus');
-import events = require("events");
-import { amqpwrapper } from "./amqpwrapper";
-import { WebSocketServer } from "./WebSocketServer";
-import { clsstream } from "./WebSocketServerClient";
-import { SocketMessage } from "./SocketMessage";
-import { LoginProvider } from "./LoginProvider";
-import { WebServer } from "./WebServer";
-import { iAgent } from "./commoninterfaces";
-import * as os from "os";
-import { Auth } from "./Auth";
+import { Logger } from "./Logger.js";
+import { JSONPath } from 'jsonpath-plus';
+import events from "events";
+import { amqpwrapper } from "./amqpwrapper.js";
+import { WebSocketServer } from "./WebSocketServer.js";
+import { clsstream } from "./WebSocketServerClient.js";
+import { LoginProvider } from "./LoginProvider.js";
+import { WebServer } from "./WebServer.js";
+import { iAgent } from "./commoninterfaces.js";
+import os from "os";
+import { Auth } from "./Auth.js";
 
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
-const jsondiffpatch = require('jsondiffpatch').create({
+import _jsondiffpatch from 'jsondiffpatch';
+const jsondiffpatch = _jsondiffpatch.create({
     objectHash: function (obj, index) {
         // try to find an id property, otherwise just use the index in the array
         return obj.name || obj.id || obj._id || '$$index:' + index;

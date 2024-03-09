@@ -24,8 +24,7 @@
   <em class="fas fa-cog fa-spin" ng-show="ctrl.loading==true"></em>
   <input type="checkbox" id="checkbox-1" ng-model="ctrl.skipcustomerfilter" ng-change="ctrl.Search()"
     ng-show="menuctrl.WebSocketClientService.multi_tenant">
-  <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">show
-      all</span></label>
+  <label for="checkbox-1" ng-show="menuctrl.WebSocketClientService.multi_tenant"><span translate lib="web">showall</span></label>
   <a href="#/User" class="btn btn-info" translate lib="web">Adduser</a>
 </div>
 <div ng-show="ctrl.errormessage != ''"" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>

@@ -1,34 +1,38 @@
-var mimetype = require('mimetype');
-import * as  stream from "stream";
-import * as os from "os";
-import * as path from "path";
-import * as http from "http";
-import * as https from "https";
-import * as express from "express";
-import * as compression from "compression";
-import * as cookieParser from "cookie-parser";
-import * as cookieSession from "cookie-session";
-import * as flash from "flash";
-import { SamlProvider } from "./SamlProvider";
-import { LoginProvider } from "./LoginProvider";
-import { Config } from "./Config";
+import mimetype from "mimetype";
+import webpush from "web-push";
+import stream from "stream";
+import os from "os";
+import path from "path";
+import http from "http";
+import https from "https";
+import express from "express";
+import compression from "compression";
+import cookieParser from "cookie-parser";
+import cookieSession from "cookie-session";
+import { SamlProvider } from "./SamlProvider.js";
+import { LoginProvider } from "./LoginProvider.js";
+import { Config } from "./Config.js";
 import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, User, TokenUser, WellknownIds } from "@openiap/openflow-api";
-const { RateLimiterMemory } = require('rate-limiter-flexible')
+import { RateLimiterMemory } from "rate-limiter-flexible";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { WebSocketServerClient } from "./WebSocketServerClient";
-import { Crypt } from "./Crypt";
+import { Logger } from "./Logger.js";
+import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { Crypt } from "./Crypt.js";
 
-import * as WebSocket from "ws";
-import { flowclient } from "./proto/client";
-import { WebSocketServer } from "./WebSocketServer";
-import { Message } from "./Messages/Message";
+import WebSocket from "ws";
+import { flowclient } from "./proto/client.js";
+import { WebSocketServer } from "./WebSocketServer.js";
+import { Message } from "./Messages/Message.js";
 import { GridFSBucket, ObjectId } from "mongodb";
 import { config, protowrap, GetElementResponse, UploadResponse, DownloadResponse, BeginStream, EndStream, Stream, ErrorResponse, Workitem, RegisterExchangeRequest } from "@openiap/nodeapi";
 const { info, warn, err } = config;
-import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any";
-import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp";
-import { Auth } from "./Auth";
+import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any.js";
+import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp.js";
+import { Auth } from "./Auth.js";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 
 var _hostname = "";
@@ -73,7 +77,6 @@ export class WebServer {
     public static app: express.Express;
     public static BaseRateLimiter: any;
     public static server: http.Server = null;
-    public static webpush = require('web-push');
     public static wss: WebSocket.Server;
     public static async isBlocked(req: express.Request): Promise<boolean> {
         try {
@@ -143,7 +146,6 @@ export class WebServer {
             this.app.use(cookieSession({
                 name: "session", secret: Config.cookie_secret, httpOnly: true
             }));
-            this.app.use(flash());
             if (Config.api_rate_limit) this.app.use(rateLimiter);
 
             this.app.get("/livenessprobe", WebServer.get_livenessprobe.bind(this));
@@ -202,7 +204,7 @@ export class WebServer {
                 span?.addEvent("Setting openflow for WebPush");
                 var mail = Config.wapid_mail;
                 if (NoderedUtil.IsNullEmpty(mail)) mail = "me@email.com"
-                this.webpush.setVapidDetails('mailto:' + mail, Config.wapid_pub, Config.wapid_key);
+                webpush.setVapidDetails('mailto:' + mail, Config.wapid_pub, Config.wapid_key);
                 this.app.post('/webpushsubscribe', async (req, res) => {
                     var subspan = Logger.otel.startSpanExpress("webpushsubscribe", req);
                     try {
@@ -244,18 +246,13 @@ export class WebServer {
 
             span?.addEvent("Configure LoginProvider");
             await LoginProvider.configure(this.app, baseurl, span);
-            try {
-                span?.addEvent("Configure FormioEP");
+            span?.addEvent("Configure FormioEP");
 
-                let FormioEPProxy: any = null;
-                try {
-                    FormioEPProxy = require("./ee/FormioEP");
-                } catch (error) {
-                }
-                if (!NoderedUtil.IsNullUndefinded(FormioEPProxy)) {
-                    await FormioEPProxy.FormioEP.configure(this.app, baseurl);
-                }
+            try {
+                let FormioEPProxy: any = await import("./ee/FormioEP.js");
+                await FormioEPProxy.FormioEP.configure(this.app, baseurl);
             } catch (error) {
+                console.error(error.message);
             }
             span?.addEvent("Configure SamlProvider");
             await SamlProvider.configure(this.app, baseurl);
@@ -518,7 +515,6 @@ export class WebServer {
                 }
             } else if (command == "clientconsole") {
                 throw new Error("Access denied")
-                // var Readable = require('stream').Readable;
                 // var rs = new Readable;
                 // rs._read = function () { };
                 // protowrap.SetStream(client, rs, reply.rid);

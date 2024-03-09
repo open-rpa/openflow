@@ -1,9 +1,8 @@
-import { Config } from "./Config";
+import { Config } from "./Config.js";
 import { User, Base, Rights, NoderedUtil, WorkitemQueue } from "@openiap/openflow-api";
-import { Crypt } from "./Crypt";
+import { Crypt } from "./Crypt.js";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { DatabaseConnection } from "./DatabaseConnection";
+import { Logger } from "./Logger.js";
 import { UpDownCounter } from "@opentelemetry/api";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";

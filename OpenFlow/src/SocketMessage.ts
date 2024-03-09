@@ -1,5 +1,5 @@
 import { NoderedUtil } from "@openiap/openflow-api";
-import { Message } from "./Messages/Message";
+import { Message } from "./Messages/Message.js";
 
 function isNumber(value: string | number): boolean {
     return ((value != null) && !isNaN(Number(value.toString())));

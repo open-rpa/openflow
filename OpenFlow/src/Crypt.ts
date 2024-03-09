@@ -1,11 +1,11 @@
-import * as crypto from "crypto";
-import * as bcrypt from "bcryptjs";
-import * as jsonwebtoken from "jsonwebtoken";
-import { Config } from "./Config";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import jsonwebtoken from "jsonwebtoken";
+import { Config } from "./Config.js";
 import { NoderedUtil, TokenUser, WellknownIds, Rolemember, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { WebSocketServerClient } from "./WebSocketServerClient";
+import { Logger } from "./Logger.js";
+import { WebSocketServerClient } from "./WebSocketServerClient.js";
 export class Crypt {
     static encryption_key: string = null; // must be 256 bytes (32 characters))
     static iv_length: number = 16; // for AES, this is always 16

@@ -1,7 +1,8 @@
 var wtf = require('wtfnode');
-const path = require("path");
+import * as wtf from "wtfnode";
 const env = path.join(process.cwd(), 'config', '.env');
-const crypto = require('crypto');
+import * as crypto from "crypto";
+import * as path from "path";
 require("dotenv").config({ path: env }); // , debug: false 
 import { AddWorkitem, ApiConfig, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
 import { suite, test, timeout } from '@testdeck/mocha';

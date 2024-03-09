@@ -1,17 +1,17 @@
-import * as os from "os";
-import * as http from "http";
-import * as WebSocket from "ws";
-import { WebSocketServerClient } from "./WebSocketServerClient";
-import { Crypt } from "./Crypt";
-import { Message } from "./Messages/Message";
-import { Config } from "./Config";
-import { SigninMessage, NoderedUtil, TokenUser, User, Base, Rights, WellknownIds } from "@openiap/openflow-api";
+import os from "os";
+import http from "http";
+import WebSocket from "ws";
+import url from "url";
+import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { Crypt } from "./Crypt.js";
+import { Config } from "./Config.js";
+import { NoderedUtil, TokenUser, User, Base, Rights, WellknownIds } from "@openiap/openflow-api";
 import { Span, Histogram, Counter, Observable } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { WebServer } from "./WebServer";
-import { amqpwrapper } from "./amqpwrapper";
-const { RateLimiterMemory } = require('rate-limiter-flexible')
+import { Logger } from "./Logger.js";
+import { DatabaseConnection } from "./DatabaseConnection.js";
+import { WebServer } from "./WebServer.js";
+import { amqpwrapper } from "./amqpwrapper.js";
+import { RateLimiterMemory } from "rate-limiter-flexible";
 
 export class WebSocketServer {
     // private static _socketserver: WebSocket.Server;
@@ -47,7 +47,6 @@ export class WebSocketServer {
 
             WebServer.wss.on("connection", async (socketObject: WebSocket, req: any): Promise<void> => {
                 try {
-                    const url = require('url');
                     const location = url.parse(req.url, true);
                     if (location.pathname == "/" || location.pathname == "/ws" || location.pathname == "/ws/v1") {
                         var sock = new WebSocketServerClient();

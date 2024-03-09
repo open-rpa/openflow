@@ -1,14 +1,19 @@
-import * as os from "os";
+import os from "os";
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 import { NoderedUtil } from "@openiap/openflow-api";
-import { i_license_file, i_agent_driver, i_otel } from "./commoninterfaces";
-import { Config } from "./Config";
-import { dockerdriver } from "./dockerdriver";
-import { DBHelper } from './DBHelper';
-import { amqpwrapper } from "./amqpwrapper";
-import { WebSocketServerClient } from "./WebSocketServerClient";
-const fs = require('fs');
-const path = require('path');
+import { i_license_file, i_agent_driver, i_otel } from "./commoninterfaces.js";
+import { Config } from "./Config.js";
+import { dockerdriver } from "./dockerdriver.js";
+import { DBHelper } from './DBHelper.js';
+import { amqpwrapper } from "./amqpwrapper.js";
+import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { Span } from "@opentelemetry/api";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const MAX_RETRIES_DEFAULT = 5
 export async function promiseRetry<T>(
@@ -338,6 +343,7 @@ export class Logger {
         if (Config.log_webserver) Logger.enabled["WebServer"] = level.Verbose;
         if (Config.log_database) Logger.enabled["DatabaseConnection"] = level.Verbose;
         if (Config.log_grafana) Logger.enabled["grafana-proxy"] = level.Verbose;
+        if (Config.log_git) Logger.enabled["GitProxy"] = level.Verbose;
         if (Config.log_housekeeping) Logger.enabled["Housekeeping"] = level.Verbose;
         if (Config.log_otel) Logger.enabled["otel"] = level.Verbose;
         if (Config.otel_debug_log) Logger.enabled["WebSocketServerClient"] = level.Verbose;
@@ -392,8 +398,10 @@ export class Logger {
         if(Logger.License == null) {
             let _lic_require: any = null;
             try {
-                if (!skiplic && _lic_require == null) _lic_require = require("./ee/license-file");
+                if (!skiplic && _lic_require == null) _lic_require = await import("./ee/license-file.js");
+                Logger.License = new _lic_require.LicenseFile();
             } catch (error) {
+                console.error(error.message);
             }
             if (_lic_require != null) {
                 Logger.License = new _lic_require.LicenseFile();
@@ -406,9 +414,9 @@ export class Logger {
 
         if(Logger.otel == null) {
             try {
-                if (!skipotel && Logger._otel_require == null) Logger._otel_require = require("./ee/otel");
+                if (!skipotel && Logger._otel_require == null) Logger._otel_require = await import("./ee/otel.js");
             } catch (error) {
-    
+                console.error(error.message);
             }
             if (Logger._otel_require != null) {
                 Logger.otel = await Logger._otel_require.otel.configure();
@@ -466,26 +474,11 @@ export class Logger {
                 }
             }
             if (this.agentdriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
-                let _driver: any = null;
                 try {
-                    _driver = require("./ee/kubedriver");
+                    let _driver: any = await import("./ee/kubedriver.js");
+                    this.agentdriver = new _driver.kubedriver();
                 } catch (error) {
-                    console.log(error)
-                }
-                try {
-                    if (_driver != null) {
-                        this.agentdriver = new _driver.kubedriver();
-                    } else {
-                        this.agentdriver = new dockerdriver();
-                    }
-                    if (_driver != null) {
-                        if (!(await this.agentdriver.detect())) {
-                            this.agentdriver = null;
-                        }
-                    }
-                } catch (error) {
-                    this.agentdriver = null;
-                    Logger.instanse.error(error, null);
+                    console.error(error.message);
                 }
             }
             if (this.agentdriver == null) {
@@ -505,7 +498,6 @@ export class Logger {
     private static _ofid = null;
     static ofid() {
         if (!NoderedUtil.IsNullEmpty(Logger._ofid)) return Logger._ofid;
-        var crypto = require('crypto');
         const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash('md5').update(Config.domain).digest("hex");
         Config.openflow_uniqueid = openflow_uniqueid;
         Logger._ofid = openflow_uniqueid;

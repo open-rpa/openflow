@@ -1,17 +1,14 @@
-// import * as OAuthServer from "oauth2-server";
-import * as express from "express";
+import express from "express";
 import { Base, NoderedUtil, User, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
-import { Config } from "./Config";
-import { Crypt } from "./Crypt";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
 import { Provider, KoaContextWithOIDC } from "oidc-provider";
-import { MongoAdapter } from "./MongoAdapter";
+import { MongoAdapter } from "./MongoAdapter.js";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { Audit } from "./Audit";
-import { Auth } from "./Auth";
-
-// const Request = OAuthServer.Request;
-// const Response = OAuthServer.Response;
+import { Logger } from "./Logger.js";
+import { Audit } from "./Audit.js";
+import { Auth } from "./Auth.js";
+import jose from "jose";
 export class OAuthProvider {
     private app: express.Express;
     public static instance: OAuthProvider = null;
@@ -98,7 +95,6 @@ export class OAuthProvider {
     static store = new Map();
     public static generatekeys() {
         return new Promise((resolve, reject) => {
-            const jose = require('jose');
             const keystore = new jose.JWKS.KeyStore();
             Promise.all([
                 keystore.generate('RSA', 2048, { use: 'sig' }),

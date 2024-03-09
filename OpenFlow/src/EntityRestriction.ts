@@ -1,7 +1,7 @@
 import { Base, NoderedUtil, Rights, TokenUser, User } from "@openiap/openflow-api";
 import { JSONPath } from "jsonpath-plus";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { Logger } from "./Logger";
+import { DatabaseConnection } from "./DatabaseConnection.js";
+import { Logger } from "./Logger.js";
 
 export class EntityRestriction extends Base {
     public collection: string;

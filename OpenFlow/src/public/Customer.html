@@ -83,8 +83,7 @@
         <div class="col-sm">
         </div>
         <div class="col-sm">
-            <br> <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">
-                Save</button>
+            <br> <button type="submit" ng-disabled="ctrl.loading==true" class="btn btn-success" translate lib="web">save</button>
 
             <button ng-click="ctrl.AddHours(support)" ng-repeat="support in ctrl.support"
                 ng-disabled="ctrl.loading==true" ng-show="menuctrl.hasrole('admins') && ctrl.loading==false"
@@ -101,9 +100,9 @@
                 translate lib="web">Portal</button>
         </div>
         <div class="col-sm">
-            <label for="vatnumber">Next Invoice</label>
+            <label for="vatnumber" translate lib="web">nextinvoice</label>
             <button type="button" ng-click="ctrl.NextInvoice()" ng-disabled="ctrl.loading==true" class="btn btn-success"
-                translate lib="web">Next Invoice</button>
+                translate lib="web">nextinvoice</button>
         </div>
 
     </div>

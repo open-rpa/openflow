@@ -1,13 +1,13 @@
-import * as amqplib from "amqplib";
-import { Config } from "./Config";
-import { Crypt } from "./Crypt";
+import amqplib from "amqplib";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
 import { NoderedUtil, User } from "@openiap/openflow-api";
-import { WebSocketServer } from "./WebSocketServer";
+import { WebSocketServer } from "./WebSocketServer.js";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import * as events from "events";
-import { Message } from "./Messages/Message";
-import { WebSocketServerClient } from "./WebSocketServerClient";
+import { Logger } from "./Logger.js";
+import events from "events";
+import { Message } from "./Messages/Message.js";
+import { WebSocketServerClient } from "./WebSocketServerClient.js";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;

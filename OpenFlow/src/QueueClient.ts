@@ -1,10 +1,10 @@
 import { NoderedUtil } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { amqpqueue, amqpwrapper, QueueMessageOptions } from "./amqpwrapper";
-import { Config } from "./Config";
-import { Crypt } from "./Crypt";
-import { Logger } from "./Logger";
-import { Message } from "./Messages/Message";
+import { amqpqueue, amqpwrapper, QueueMessageOptions } from "./amqpwrapper.js";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
+import { Logger } from "./Logger.js";
+import { Message } from "./Messages/Message.js";
 export class QueueClient {
     static async configure(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("QueueClient.configure", parent);

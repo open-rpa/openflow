@@ -1,14 +1,14 @@
 import { Base, NoderedUser, NoderedUtil, ResourceUsage, User, WellknownIds } from "@openiap/openflow-api";
-import { iAgent, i_agent_driver } from "./commoninterfaces";
-import { Logger } from "./Logger";
+import { iAgent, i_agent_driver } from "./commoninterfaces.js";
+import { Logger } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
-import { Crypt } from "./Crypt";
-import { Config } from "./Config";
-import * as url from "url";
-const Docker = require("dockerode");
-import Dockerode = require("dockerode");
-import { Audit } from "./Audit";
-import { Auth } from "./Auth";
+import { Crypt } from "./Crypt.js";
+import { Config } from "./Config.js";
+import os from 'os';
+import Docker from 'dockerode';
+// const { Docker, Dockerode } = dockerode;
+import { Audit } from "./Audit.js";
+import { Auth } from "./Auth.js";
 export class dockerdriver implements i_agent_driver {
     public async detect(): Promise<boolean> {
         try {
@@ -21,7 +21,7 @@ export class dockerdriver implements i_agent_driver {
         }
         return false;
     }
-    async _pullImage(docker: Dockerode, imagename: string, span: Span) {
+    async _pullImage(docker: Docker, imagename: string, span: Span) {
         var imageep = docker.getImage(imagename)
         var image
         try {
@@ -75,8 +75,8 @@ export class dockerdriver implements i_agent_driver {
             }
         }
 
-        const docker: Dockerode = new Docker();
-        const myhostname = require('os').hostname();
+        const docker: Docker = new Docker();
+        const myhostname = os.hostname();
         let me = null;
         let list = await docker.listContainers({ all: 1 });
         let instance: any = null;
@@ -112,8 +112,8 @@ export class dockerdriver implements i_agent_driver {
                 "billed": hasbilling.toString(),
                 "agentid": agent._id
             };
-            let NetworkingConfig: Dockerode.EndpointsConfig = undefined;
-            let HostConfig: Dockerode.HostConfig = undefined;
+            let NetworkingConfig: Docker.EndpointsConfig = undefined;
+            let HostConfig: Docker.HostConfig = undefined;
             HostConfig = {
                 "RestartPolicy": {
                     "Name": "always"
@@ -239,7 +239,7 @@ export class dockerdriver implements i_agent_driver {
             Logger.instanse.debug("[" + agent.slug + "] RemoveInstance", span);
 
             span?.addEvent("init Docker()");
-            const docker: Dockerode = new Docker();
+            const docker: Docker = new Docker();
             span?.addEvent("listContainers()");
             var list = await docker.listContainers({ all: 1 });
             for (let i = 0; i < list.length; i++) {
@@ -261,10 +261,10 @@ export class dockerdriver implements i_agent_driver {
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceLog", parent);
         try {
             var result: string = null;
-            const docker: Dockerode = new Docker();
+            const docker: Docker = new Docker();
             let me = null;
             let list = await docker.listContainers({ all: 1 });
-            let instance: Dockerode.ContainerInfo = null;
+            let instance: Docker.ContainerInfo = null;
             for (let i = 0; i < list.length; i++) {
                 const item = list[i];
                 var Created = new Date(item.Created * 1000);
@@ -282,7 +282,7 @@ export class dockerdriver implements i_agent_driver {
                     follow: 0
                 };
                 const container = docker.getContainer(instance.Id);
-                var s = await container.logs((logOpts as any) as Dockerode.ContainerLogsOptions);
+                var s = await container.logs((logOpts as any) as Docker.ContainerLogsOptions);
                 result = s.toString();
                 Audit.NoderedAction(user, true, "Get agentlog " + agent.name, "getagentlog", agent.image, agent.slug, parent);
             }
@@ -409,7 +409,7 @@ export class dockerdriver implements i_agent_driver {
             Logger.instanse.debug("[" + agent.slug + "] RemoveInstancePod", span);
 
             span?.addEvent("init Docker()");
-            const docker: Dockerode = new Docker();
+            const docker: Docker = new Docker();
             span?.addEvent("listContainers()");
             var list = await docker.listContainers({ all: 1 });
             for (let i = 0; i < list.length; i++) {

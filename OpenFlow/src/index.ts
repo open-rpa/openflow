@@ -9,19 +9,20 @@ function cerror(error) {
     console.error(dts, error.message ? error.message : error);
 }
 clog("Starting @openiap/openflow");
-import { Logger } from "./Logger";
-import * as http from "http";
-import { WebServer } from "./WebServer";
-import { WebSocketServer } from "./WebSocketServer";
-import { DatabaseConnection } from "./DatabaseConnection";
-import { Crypt } from "./Crypt";
-import { Config, dbConfig } from "./Config";
-import { amqpwrapper } from "./amqpwrapper";
+import { Logger } from "./Logger.js";
+import http from "http";
+import { WebServer } from "./WebServer.js";
+import { WebSocketServer } from "./WebSocketServer.js";
+import { DatabaseConnection } from "./DatabaseConnection.js";
+import { Crypt } from "./Crypt.js";
+import { Config, dbConfig } from "./Config.js";
+import { amqpwrapper } from "./amqpwrapper.js";
 import { WellknownIds, Role, Rights, User, Base, NoderedUtil } from "@openiap/openflow-api";
-import { OAuthProvider } from "./OAuthProvider";
+import { OAuthProvider } from "./OAuthProvider.js";
 import { Span } from "@opentelemetry/api";
-import { QueueClient } from "./QueueClient";
-import { Message } from "./Messages/Message";
+import { QueueClient } from "./QueueClient.js";
+import { Message } from "./Messages/Message.js";
+import crypto from "crypto";
 clog("Done loading imports");
 let amqp: amqpwrapper = null;
 async function initamqp(parent: Span) {
@@ -304,7 +305,6 @@ async function initDatabase(parent: Span): Promise<boolean> {
         await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
 
         // if (Config.auto_hourly_housekeeping) {
-            const crypto = require('crypto');
             const randomNum = crypto.randomInt(1, 100);
             // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
             Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds", span);
@@ -438,26 +438,6 @@ async function handle(signal, value) {
 }
 Object.keys(signals).forEach((signal) => process.on(signal, handle));
 
-let GrafanaProxy: any = null;
-try {
-    GrafanaProxy = require("./ee/grafana-proxy");
-} catch (error) {
-
-}
-let OpenAPIProxy: any = null;
-try {
-    OpenAPIProxy = require("./ee/OpenAPIProxy");
-} catch (error) {
-}
-let GitProxy: any = null;
-try {
-    GitProxy = require("./ee/GitProxy");
-} catch (error) {
-    console.error(error.message);
-}
-var t = GitProxy;
-
-
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
 (process.stdout.write as any) = (chunk: string, encoding?: string, callback?: (err?: Error | null) => void): boolean => {
@@ -483,14 +463,23 @@ var server: http.Server = null;
         await PreRegisterExchanges(span);
         Logger.instanse.info("VERSION: " + Config.version, span);
         server = await WebServer.configure(Config.baseurl(), span);
-        if (GrafanaProxy != null) {
+        try {
+            let GrafanaProxy: any = await import("./ee/grafana-proxy.js");
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
+        } catch (error) {
+            console.error(error.message);
         }
-        if (OpenAPIProxy != null) {
+        try {
+            let OpenAPIProxy: any = await import("./ee/OpenAPIProxy.js");
             const OpenAI = await OpenAPIProxy.OpenAPIProxy.configure(WebServer.app, span);
+        } catch (error) {
+            console.error(error.message);
         }
-        if (GitProxy != null) {
+        try {
+            let GitProxy: any = await import("./ee/GitProxy.js");
             const Git = await GitProxy.GitProxy.configure(WebServer.app, span);
+        } catch (error) {
+            console.error(error.message);
         }
         OAuthProvider.configure(WebServer.app, span);
         WebSocketServer.configure(server, span);

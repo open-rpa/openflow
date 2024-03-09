@@ -1,6 +1,6 @@
 import { HrTime, Meter, Histogram, Span } from "@opentelemetry/api";
 import { Ace, User } from "@openiap/openflow-api";
-import * as express from "express";
+import express from "express";
 
 export interface i_license_data {
     licenseVersion: number;

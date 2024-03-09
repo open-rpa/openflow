@@ -1,18 +1,17 @@
-import * as WebSocket from "ws";
-import { SocketMessage } from "./SocketMessage";
-import { Message, JSONfn } from "./Messages/Message";
-import { Config } from "./Config";
-import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper";
-import { NoderedUtil, Base, InsertOneMessage, QueueMessage, MapReduceMessage, QueryMessage, UpdateOneMessage, UpdateManyMessage, DeleteOneMessage, User, mapFunc, reduceFunc, finalizeFunc, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser, SigninMessage } from "@openiap/openflow-api";
+import WebSocket from "ws";
+import { SocketMessage } from "./SocketMessage.js";
+import { Message, JSONfn } from "./Messages/Message.js";
+import { Config } from "./Config.js";
+import { amqpwrapper, QueueMessageOptions, amqpqueue, amqpexchange, exchangealgorithm } from "./amqpwrapper.js";
+import { NoderedUtil, QueueMessage, User, QueuedMessage, QueuedMessageCallback, WatchEventMessage, QueueClosedMessage, ExchangeClosedMessage, TokenUser, SigninMessage } from "@openiap/openflow-api";
 import { ChangeStream } from "mongodb";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger";
-import { clientAgent } from "./Audit";
-import express = require("express");
-import { WebSocketServer } from "./WebSocketServer";
-import { WebServer } from "./WebServer";
-import { Crypt } from "./Crypt";
-import { Auth } from "./Auth";
+import { Logger } from "./Logger.js";
+import { clientAgent } from "./Audit.js";
+import express from "express";
+import { WebSocketServer } from "./WebSocketServer.js";
+import { WebServer } from "./WebServer.js";
+import { Auth } from "./Auth.js";
 interface IHashTable<T> {
     [key: string]: T;
 }

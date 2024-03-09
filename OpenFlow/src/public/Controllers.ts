@@ -11,7 +11,7 @@ import * as ofurl from "./formsio_of_provider";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, Workitem, WorkitemQueue } from "@openiap/openflow-api";
 import { RegisterExchangeResponse } from "@openiap/openflow-api/lib/node/nodeclient/NoderedUtil";
 
-var showdown = require('showdown');
+import showdown from "showdown";
 
 export type chatmessage = {
     role: "user" | "assistant" | "system" | "tool";
@@ -9358,7 +9358,7 @@ export class ChatCtrl {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.$timeout(()=> {
                 var input = document.getElementById('chatmessage');
-                input.focus();
+                if(input != null && input.focus != null) input.focus();
             }, 200)
         });
         // Watch for changes in your messages array
@@ -9590,7 +9590,7 @@ export class ChatCtrl {
     async checkForNewTools() {
         this.$timeout(()=> {
             var input = document.getElementById('chatmessage');
-            input.focus();
+            if(input != null && input.focus != null) input.focus();
         }, 200)
         // if one of the last 4 messages is from role "tool" then
         // for(let y = this.messages.length - 1; y > this.lasttoolindex; y--) {
