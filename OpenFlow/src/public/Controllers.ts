@@ -8023,10 +8023,6 @@ export class AgentCtrl extends entityCtrl<any> {
             // var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Nodered Instance" }, top: 1 });
             var products = await NoderedUtil.Query({ collectionname: "config", query: { _type: "resource", "name": "Agent Instance" }, top: 1 });
             // this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package", "daemon": true } });
-            this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package" } });
-            if(this.allpackages.length > 0){
-                this.newpackage = this.allpackages[0];
-            }
             if (products.length > 0) {
                 this.resource = products[0];
                 if (this.resource.defaultmetadata) {
@@ -8059,6 +8055,7 @@ export class AgentCtrl extends entityCtrl<any> {
                 this.model.docker = true;
                 this.searchtext = user.name;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                this.RunasUpdated();
             }
         });
     }
@@ -8066,6 +8063,8 @@ export class AgentCtrl extends entityCtrl<any> {
     async processData(): Promise<void> {
         if (this.model.stripeprice == null) this.model.stripeprice = "";
         if ( this.model.schedules == null) this.model.schedules = [];
+        
+        // v1.5 to 1.5.1 upgrade, hack
         if(this.model.package != null && this.model.package != ""){
             var p = this.allpackages.find(x=>x._id == this.model.package)
             delete this.model.package;
@@ -8075,7 +8074,39 @@ export class AgentCtrl extends entityCtrl<any> {
         } 
         this.searchtext = this.model.runasname
         this.ImageUpdated();
+        this.RunasUpdated();
         this.loadInstances()
+    }
+    async RunasUpdated() {
+        let queryas = undefined;
+        if(this.model != null && this.model.runas != null) {
+            queryas = this.model.runas;
+        }
+        console.log("RunasUpdated queryas:", queryas)
+        this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package" }, queryas });
+        console.log("newpackage", this.newpackage);
+        if (this.model?.languages == null || this.model?.languages.length == 0) {
+            this.packages = [];
+        } else {
+            this.packages = this.allpackages.filter(x => this.model.languages.indexOf(x.language) > -1)
+            if (!this.model.haschromium && !this.model.haschrome) {
+                this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
+            }
+        }
+        if(this.newpackage != null) {
+            var exists = this.packages.find(x=>x._id == this.newpackage._id);
+            if(exists == null) {
+                this.newpackage = null;
+            }
+        }
+        if(this.newpackage == null || this.newpackage._id == "") {
+            if(this.packages.length > 0){
+                this.newpackage = this.packages[0];
+            } else {
+                this.newpackage = null;
+            }
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async getStatus(model) {
         this.instances = await NoderedUtil.CustomCommand({ command: "getagentpods", id: this.model._id, name: this.model.slug })
@@ -8162,15 +8193,8 @@ export class AgentCtrl extends entityCtrl<any> {
         if (image != null && image.chrome == true) {
             haschrome = true
         }
-        if (languages == null || languages.length == 0) {
-            this.packages = [];
-        } else {
-            this.packages = this.allpackages.filter(x => languages.indexOf(x.language) > -1)
-            if (!haschromium && !haschrome) {
-                this.packages = this.packages.filter(x => x.chrome != true && x.chromium != true)
-            }
-            this.packages.unshift({ _id: "", name: "None" })
-        }
+        this.RunasUpdated() // update packages list
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
 
         if (this.model._id != null && this.model._id != "") {
             this.PlanUpdated()
@@ -8528,7 +8552,7 @@ export class AgentCtrl extends entityCtrl<any> {
                         this.model.runas = this.searchSelectedItem._id
                     }
                     this.searchFilteredList = [];
-                    if (!this.$scope.$$phase) { this.$scope.$apply(); }
+                    if (!this.$scope.$$phase) { this.$scope.$apply(); }                    
                 }
                 return;
             } else if (this.e.keyCode == 27) { // esc
@@ -8787,7 +8811,6 @@ export class RunPackageCtrl extends entityCtrl<Base> {
     }
     firstlist: boolean = true;
     async processData() {
-        this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "package" }, top:100 });
         if (this.id !== null && this.id !== undefined) {
             this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _id: this.id } });
             var temp = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", _id: {"$nin": [this.id]}, languages: {"$exists": true} }, top:100 });
@@ -8795,6 +8818,13 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         } else {
             this.agents = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "agent", languages: {"$exists": true} }, top:100 });
         }
+        var queryas = undefined;
+        if(this.agents.length > 0) {
+            queryas = this.agents[0].runas;
+        }
+        console.log("queryas", queryas)
+        this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { _type: "package" }, top:100, queryas });
+
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         await this.RegisterQueue();
         this.AgentUpdated()
@@ -8810,8 +8840,11 @@ export class RunPackageCtrl extends entityCtrl<Base> {
             this.re_addcommandstream = this.$interval(() => {
                 NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename }).catch((error) => {
                     console.error(error);
+                    this.errormessage = error.message ? error.message : error
                 }).then(() => {
                     console.debug("Keep " + this.queuename + " in commandqueue on " + _a.slug + "agent")
+                }).catch((error) => {
+                    this.errormessage = error.message ? error.message : error
                 });
             }, 10000);
             this.$scope.$on('$destroy', () => {
@@ -8819,6 +8852,7 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                 console.debug("removing streamid from " + _a.slug + "agent")
                 NoderedUtil.Queue({ data: {"command": "removecommandstreamid"}, queuename: _a.slug + "agent", correlationId: streamid,replyto: this.queuename }).catch((error) => {
                     console.error(error);
+                    this.errormessage = error.message ? error.message : error
                 }).then(() => {
                     console.debug("removed streamid from " + _a.slug + "agent")
                 });
@@ -8845,84 +8879,99 @@ export class RunPackageCtrl extends entityCtrl<Base> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     async addprocess(streamid:string, setstream: boolean, schedulename:string = undefined): Promise<void> {
-        var _a = this.agents.find(x => x._id == this.id);
-        if (_a == null) return;
-        var pretest = document.getElementById(streamid);
-        if(pretest != null) return;
+        try {
+            var _a = this.agents.find(x => x._id == this.id);
+            if (_a == null) return;
+            var pretest = document.getElementById(streamid);
+            if(pretest != null) return;
 
-        var payload ={
-            "command": "setstreamid",
-            "id": streamid,
-            "streamqueue": this.queuename
-        }
-        var div = document.createElement("div");
-        div.id = streamid + "_div";
-        div.classList.add("shadow"); div.classList.add("card");
-        var label = document.createElement("label");
-        label.innerText = "Stream " + streamid;
-        if(schedulename != null) {
-            label.innerText = schedulename + " (#" + streamid + ")";
-        }
-        div.appendChild(label);
-        const togglebutton = document.createElement("button");
-        togglebutton.id = "toggle" + streamid;
-        togglebutton.innerText = "toggle";
-        togglebutton.onclick = function () {
+            var payload ={
+                "command": "setstreamid",
+                "id": streamid,
+                "streamqueue": this.queuename
+            }
+            var div = document.createElement("div");
+            div.id = streamid + "_div";
+            div.classList.add("shadow"); div.classList.add("card");
+            var label = document.createElement("label");
+            label.innerText = "Stream " + streamid;
+            if(schedulename != null) {
+                label.innerText = schedulename + " (#" + streamid + ")";
+            }
+            div.appendChild(label);
+            const togglebutton = document.createElement("button");
+            togglebutton.id = "toggle" + streamid;
+            togglebutton.innerText = "toggle";
+            togglebutton.onclick = function () {
+                pre.classList.toggle('collapsed');
+                pre.classList.toggle('expanded');
+                if (pre.classList.contains('collapsed')) {
+                    pre.style.height = '100px'; // height for 4 lines
+                } else {
+                    pre.style.height = 'auto'; // show everything
+                }
+            }
+            div.appendChild(togglebutton);
+            var killbutton = document.createElement("button");
+            killbutton.innerText = "Kill";
+            killbutton.id = streamid + "_kill";
+            killbutton.onclick = async () => {
+                try {
+                    await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
+                } catch (error) {
+                    console.error(error);
+                    this.errormessage = error.message ? error.message : error
+                }
+            }
+            div.appendChild(killbutton);
+            var pre = document.createElement("pre");
+            pre.id = streamid;
             pre.classList.toggle('collapsed');
-            pre.classList.toggle('expanded');
-            if (pre.classList.contains('collapsed')) {
-                pre.style.height = '100px'; // height for 4 lines
-            } else {
-                pre.style.height = 'auto'; // show everything
-            }
-        }
-        div.appendChild(togglebutton);
-        var killbutton = document.createElement("button");
-        killbutton.innerText = "Kill";
-        killbutton.id = streamid + "_kill";
-        killbutton.onclick = async () => {
-            try {
-                await NoderedUtil.Queue({ data: { command: "kill", "id": streamid }, queuename: _a.slug + "agent", correlationId: streamid })
-            } catch (error) {
-                console.error(error);                
-            }
-        }
-        div.appendChild(killbutton);
-        var pre = document.createElement("pre");
-        pre.id = streamid;
-        pre.classList.toggle('collapsed');
-        // pre.classList.toggle('expanded');
-        // pre.style.display = pre.classList.contains('collapsed') ? 'block' : 'none';
-        div.appendChild(pre);
-        var runs = document.getElementById("runs");
-        runs.prepend(div);
+            // pre.classList.toggle('expanded');
+            // pre.style.display = pre.classList.contains('collapsed') ? 'block' : 'none';
+            div.appendChild(pre);
+            var runs = document.getElementById("runs");
+            runs.prepend(div);
 
-        if(setstream == true) await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+            if(setstream == true) await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error
+        }
     }
     async Reinstall() : Promise<void> {
-        var _a = this.agents.find(x => x._id == this.id);
-        if (_a == null) return;
-        const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        var payload ={
-            "command": "reinstallpackage",
-            "id": this.package,
-            "stream": true,
-            "queuename": this.queuename
+        try {
+            var _a = this.agents.find(x => x._id == this.id);
+            if (_a == null) return;
+            const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            var payload ={
+                "command": "reinstallpackage",
+                "id": this.package,
+                "stream": true,
+                "queuename": this.queuename
+            }
+            await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error
         }
-        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
-
     }
     async submit(): Promise<void> {
-        var _a = this.agents.find(x => x._id == this.id);
-        if (_a == null) return;
-        const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        var payload ={
-            "command": "runpackage",
-            "id": this.package,
-            "stream": true,
-            "queuename": this.queuename
+        try {
+            var _a = this.agents.find(x => x._id == this.id);
+            if (_a == null) return;
+            const streamid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            var payload ={
+                "command": "runpackage",
+                "id": this.package,
+                "stream": true,
+                "queuename": this.queuename
+            }
+            await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error
         }
-        await NoderedUtil.Queue({ data: payload, queuename: _a.slug + "agent", correlationId: streamid })
     }
     async RegisterQueue() {
         if(this.queuename != "") return;
@@ -8976,8 +9025,13 @@ export class RunPackageCtrl extends entityCtrl<Base> {
                 setTimeout(this.RegisterQueue.bind(this), (Math.floor(Math.random() * 6) + 1) * 500);
             }
         });
-        var _a = this.agents.find(x => x._id == this.id);
-        await NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent" });
+        try {
+            var _a = this.agents.find(x => x._id == this.id);
+            await NoderedUtil.Queue({ data: {"command": "addcommandstreamid"}, queuename: _a.slug + "agent" });
+        } catch (error) {
+            console.error(error);
+            this.errormessage = error.message ? error.message : error
+        }
     }
 }
 

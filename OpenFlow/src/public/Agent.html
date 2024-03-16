@@ -647,7 +647,7 @@
         ng-keypress="ctrl.restrictInput($event)" />
 
         <div class="input-group-append">
-          <a href ng-click="ctrl.searchtext = ctrl.currentusername; ctrl.model.runas=ctrl.currentuser;ctrl.model.runasname=ctrl.currentusername" class="btn">clear</a>
+          <a href ng-click="ctrl.searchtext = ctrl.currentusername; ctrl.model.runas=ctrl.currentuser;ctrl.model.runasname=ctrl.currentusername; ctrl.RunasUpdated();" class="btn">clear</a>
           <a ng-show="ctrl.model.runas != '' && ctrl.model.runas != null" ng-href="#/User/{{ctrl.model.runas}}" class="btn"><em class="fas fa-user"></em></a>
         </div>
 
@@ -761,7 +761,7 @@
           ng-options="item as item.name for item in ctrl.packages">
         </select>
         
-        <button type="button" ng-disabled="ctrl.loading==true && ctrl.newpackage==''" class="ml-auto btn btn-success" translate
+        <button type="button" ng-disabled="ctrl.loading==true || ctrl.newpackage=='' || ctrl.newpackage==null || ctrl.newpackage.name == 'None'" class="ml-auto btn btn-success" translate
         ng-click="ctrl.addpackage(ctrl.newpackage._id)" lib="web">addschedule</button>
       </div>
 
