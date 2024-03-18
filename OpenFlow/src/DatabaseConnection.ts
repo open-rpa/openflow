@@ -1875,32 +1875,37 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     
                     if (!NoderedUtil.IsNullEmpty(agent.runas)) {
-                        var agentcount = 1;
-                        const resource: Resource = await Config.db.GetResource("Agent Instance", span);
-                        if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
-                            agentcount = parseInt(resource.defaultmetadata.agentcount);
-                        } else {
-                            agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
-                        }
-                        var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-                        if (agentuser.customerid != null && agentuser.customerid != "") {
-                            const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                            if (assigned != null) {
-                                for (let i = 0; i < assigned.length; i++) {
-                                    const element = assigned[i];
-                                    agentcount += element.quantity
-                                }
-                            }
-                            var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
-                            if (agents.length >= agentcount) {
-                                throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                            }
-                        } else {
-                            var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
-                            if (agents.length >= agentcount) {
-                                throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                            }
-                        }
+                        // SKIP !!!
+                        // We do the check on docker/kubernetes driver level
+
+                        // var agentcount = 1;
+                        // const resource: Resource = await Config.db.GetResource("Agent Instance", span);
+                        // if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
+                        //     agentcount = parseInt(resource.defaultmetadata.agentcount);
+                        // } else {
+                        //     agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
+                        // }
+                        // var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                        // if (agentuser.customerid != null && agentuser.customerid != "") {
+                        //     const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
+                        //     if (assigned != null) {
+                        //         for (let i = 0; i < assigned.length; i++) {
+                        //             const element = assigned[i];
+                        //             agentcount += element.quantity
+                        //         }
+                        //     }
+                        //     var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
+                        //     if (agents.length >= agentcount) {
+                        //         if(agent.stripeprice != null && agent.stripeprice != "") {
+                        //         }
+                        //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                        //     }
+                        // } else {
+                        //     var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
+                        //     if (agents.length >= agentcount) {
+                        //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                        //     }
+                        // }
                     }
 
                 }
@@ -2308,32 +2313,35 @@ export class DatabaseConnection extends events.EventEmitter {
                             agent.runas = user._id
                         }
                         if (!NoderedUtil.IsNullEmpty(agent.runas)) {
-                            var agentcount = 1;
-                            const resource: Resource = await Config.db.GetResource("Agent Instance", span);
-                            if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
-                                agentcount = parseInt(resource.defaultmetadata.agentcount);
-                            } else {
-                                agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
-                            }
-                            var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-                            if (agentuser.customerid != null && agentuser.customerid != "") {
-                                const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                                if (assigned != null) {
-                                    for (let i = 0; i < assigned.length; i++) {
-                                        const element = assigned[i];
-                                        agentcount += element.quantity
-                                    }
-                                }
-                                var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
-                                if (agents.length >= agentcount) {
-                                    throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                                }
-                            } else {
-                                var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent" , "image": {"$exists": false}}, collectionname: "agents", jwt }, parent);
-                                if (agents.length >= agentcount) {
-                                    throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                                }
-                            }
+                            // SKIP !!!
+                            // We do the check on docker/kubernetes driver level
+
+                            // var agentcount = 1;
+                            // const resource: Resource = await Config.db.GetResource("Agent Instance", span);
+                            // if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
+                            //     agentcount = parseInt(resource.defaultmetadata.agentcount);
+                            // } else {
+                            //     agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
+                            // }
+                            // var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
+                            // if (agentuser.customerid != null && agentuser.customerid != "") {
+                            //     const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
+                            //     if (assigned != null) {
+                            //         for (let i = 0; i < assigned.length; i++) {
+                            //             const element = assigned[i];
+                            //             agentcount += element.quantity
+                            //         }
+                            //     }
+                            //     var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
+                            //     if (agents.length >= agentcount) {
+                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            //     }
+                            // } else {
+                            //     var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent" , "image": {"$exists": false}}, collectionname: "agents", jwt }, parent);
+                            //     if (agents.length >= agentcount) {
+                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            //     }
+                            // }
                         }
                     }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
@@ -2682,32 +2690,35 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
 
                         if (!NoderedUtil.IsNullEmpty(agent.runas)) {
-                            var agentcount = 1;
-                            const resource: Resource = await Config.db.GetResource("Agent Instance", span);
-                            if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
-                                agentcount = parseInt(resource.defaultmetadata.agentcount);
-                            } else {
-                                agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
-                            }
-                            var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt: q.jwt }, parent);
-                            if (agentuser.customerid != null && agentuser.customerid != "") {
-                                const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                                if (assigned != null) {
-                                    for (let i = 0; i < assigned.length; i++) {
-                                        const element = assigned[i];
-                                        agentcount += element.quantity
-                                    }
-                                }
-                                var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt: q.jwt }, parent);
-                                if (agents.length > agentcount) {
-                                    throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                                }
-                            } else {
-                                var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt: q.jwt }, parent);
-                                if (agents.length > agentcount) {
-                                    throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                                }
-                            }
+                            // SKIP !!!
+                            // We do the check on docker/kubernetes driver level
+
+                            // var agentcount = 1;
+                            // const resource: Resource = await Config.db.GetResource("Agent Instance", span);
+                            // if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
+                            //     agentcount = parseInt(resource.defaultmetadata.agentcount);
+                            // } else {
+                            //     agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
+                            // }
+                            // var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt: q.jwt }, parent);
+                            // if (agentuser.customerid != null && agentuser.customerid != "") {
+                            //     const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
+                            //     if (assigned != null) {
+                            //         for (let i = 0; i < assigned.length; i++) {
+                            //             const element = assigned[i];
+                            //             agentcount += element.quantity
+                            //         }
+                            //     }
+                            //     var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt: q.jwt }, parent);
+                            //     if (agents.length > agentcount) {
+                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            //     }
+                            // } else {
+                            //     var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt: q.jwt }, parent);
+                            //     if (agents.length > agentcount) {
+                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
+                            //     }
+                            // }
                         }
 
                     }
