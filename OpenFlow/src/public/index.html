@@ -104,7 +104,7 @@
           ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
             lib="web">forms</span></a>
         <a class="sidebar-link" href="#/FormResources" id="menuadminformresources"
-          ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers')"
+          ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers') || menuctrl.hasrole('admins')"
           ng-class="{active: menuctrl.PathIs(['/FormResources', '/FormResource', '/FormResource/'])}"><span translate
             lib="web">formresources</span></a>
         <a class="sidebar-link" href="#/Config"
