@@ -7571,7 +7571,6 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "websocket_disconnect_out_of_sync", "type": "boolean", "default": "false"},
             {"name": "protocol", "type": "string", "default": "http"},
             {"name": "port", "type": "number", "default": "3000"},
-            {"name": "domain", "type": "string", "default": "localhost.openiap.io"},
             {"name": "cookie_secret", "type": "string", "default": "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu"},
             {"name": "max_ace_count", "type": "number", "default": "128"},
         
@@ -7592,8 +7591,6 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "amqp_requeue_time", "type": "number", "default": "1000"},
             {"name": "amqp_dlx", "type": "string", "default": "openflow-dlx"},
         
-            {"name": "mongodb_url", "type": "string", "default": "mongodb://localhost:27017"},
-            {"name": "mongodb_db", "type": "string", "default": "openflow"},
             {"name": "mongodb_minpoolsize", "type": "number", "default": "25"},
             {"name": "mongodb_maxpoolsize", "type": "number", "default": "25"},
 
@@ -7622,7 +7619,6 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "agent_oidc_authorization_endpoint", "type": "string", "default": ""},
             {"name": "agent_oidc_token_endpoint", "type": "string", "default": ""},
             {"name": "saml_federation_metadata", "type": "string", "default": ""},
-            {"name": "api_ws_url", "type": "string", "default": ""},
             {"name": "agent_docker_entrypoints", "type": "string", "default": "web"},
             {"name": "agent_docker_use_project", "type": "boolean", "default": "false"},
             {"name": "agent_docker_certresolver", "type": "string", "default": ""},

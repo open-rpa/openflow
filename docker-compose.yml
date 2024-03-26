@@ -9,25 +9,26 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-  # redis:
-  #   image: redis
-  #   command: >
-  #     --requirepass pass!word2
-  #   ports:
-  #     - "6379:6379"
+  redis:
+    image: redis
+    command: >
+      --requirepass pass!word2
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
   # registry:
   #   image: registry:2
   #   ## network_mode: "host"
   #   ports:
   #     - "5000:5000"
-  # mongodb:
-  #   image: "mongo"
-  #   restart: unless-stopped
-  #   volumes:
-  #     - mongodb_data:/data/db
-  #   # network_mode: "host"
-  #   ports:
-  #     - "27017:27017"
+  mongodb:
+    image: "mongo"
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    # network_mode: "host"
+    ports:
+      - "27017:27017"
   # traefik:
   #   image: "traefik"
   #   command:
