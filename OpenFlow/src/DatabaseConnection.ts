@@ -682,7 +682,8 @@ export class DatabaseConnection extends events.EventEmitter {
             delete options.jwt;
             delete options.priority;
             delete options.collectionname;
-            await this.db.createCollection(collectionname, options);
+            var _options = JSON.parse(JSON.stringify(options))
+            await this.db.createCollection(collectionname, _options);
             await Logger.DBHelper.ClearGetCollections();
         } finally {
             Logger.otel.endSpan(span);
