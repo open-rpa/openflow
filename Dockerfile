@@ -5,7 +5,7 @@ RUN npm install gulp typescript browserify tsify -g
 RUN mkdir /app
 WORKDIR /app
 COPY package*.json /app/
-RUN npm install 
+RUN npm install --verbose
 COPY . /app/
 RUN gulp sass
 
@@ -23,7 +23,7 @@ COPY --from=builder /app/dist/ .
 # RUN npm install --omit=dev 
 # RUN npm install mongodb
 ENV HOME=.
-RUN npm install --omit=dev --production
+RUN npm install --omit=dev --production --verbose
 
 # ENTRYPOINT ["/usr/local/bin/node", "index.js"]
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
