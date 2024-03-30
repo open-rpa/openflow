@@ -491,10 +491,15 @@ export class WebServer {
                 // // @ts-ignore
                 // info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
             } else if (command == "download") {
-                if(msg.id && msg.id != "") {
+                if((msg.id && msg.id != "") || (msg.filename != null && msg.filename != "")) {
                     reply.command = "downloadreply"
-                    let rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
-                    if(msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") {
+                    let rows =[];
+                    if(msg.id != null && msg.id != "") {
+                        rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
+                    } else if (msg.filename != null && msg.filename != "") {
+                        rows = await Config.db.query({ query: { filename: msg.filename }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
+                    }
+                    if((msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") && (msg.id != null && msg.id != "")) {
                         if(rows.length == 0) {
                             const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package"}, top:1, collectionname: "agents", jwt: client.jwt }, null);
                             if(rows2.length > 0) {
@@ -504,7 +509,7 @@ export class WebServer {
                     }
                     if(rows.length > 0) {
                         result = rows[0];
-                        await WebServer.sendFileContent(client, reply.rid, msg.id, msg.collectionname)
+                        await WebServer.sendFileContent(client, reply.rid, result._id, msg.collectionname)
                         result = rows[0];
                         reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadResponse",
                             value: DownloadResponse.encode(DownloadResponse.create({
