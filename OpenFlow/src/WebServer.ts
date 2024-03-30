@@ -494,6 +494,9 @@ export class WebServer {
                 if((msg.id && msg.id != "") || (msg.filename != null && msg.filename != "")) {
                     reply.command = "downloadreply"
                     let rows =[];
+                    if(msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") {
+                        msg.collectionname = "fs.files";
+                    }
                     if(msg.id != null && msg.id != "") {
                         rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
                     } else if (msg.filename != null && msg.filename != "") {
