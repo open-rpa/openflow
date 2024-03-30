@@ -381,9 +381,16 @@ export class WebServer {
             rs.pipe(uploadStream);
         });
     }
-    static sendFileContent(client:flowclient, rid, id):Promise<void> {
+    static sendFileContent(client:flowclient, rid, id, collectionname):Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
-            const bucket = new GridFSBucket(Config.db.db);
+            if(collectionname != null && collectionname != "") {
+                if(collectionname.endsWith(".files")) {
+                    collectionname = collectionname.substring(0, collectionname.length - 6);
+                }
+            } else {
+                collectionname = "fs";
+            }
+            const bucket = new GridFSBucket(Config.db.db, { bucketName: collectionname });
             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
             const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
             protowrap.sendMesssag(client, { rid, command: "beginstream", data: data }, null, true);
@@ -486,16 +493,18 @@ export class WebServer {
             } else if (command == "download") {
                 if(msg.id && msg.id != "") {
                     reply.command = "downloadreply"
-                    let rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: client.jwt }, null);
-                    if(rows.length == 0) {
-                        const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package"}, top:1, collectionname: "agents", jwt: client.jwt }, null);
-                        if(rows2.length > 0) {
-                            rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: Crypt.rootToken() }, null);
+                    let rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
+                    if(msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") {
+                        if(rows.length == 0) {
+                            const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package"}, top:1, collectionname: "agents", jwt: client.jwt }, null);
+                            if(rows2.length > 0) {
+                                rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: Crypt.rootToken() }, null);
+                            }
                         }
-                    }                    
+                    }
                     if(rows.length > 0) {
                         result = rows[0];
-                        await WebServer.sendFileContent(client, reply.rid, msg.id)
+                        await WebServer.sendFileContent(client, reply.rid, msg.id, msg.collectionname)
                         result = rows[0];
                         reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadResponse",
                             value: DownloadResponse.encode(DownloadResponse.create({
