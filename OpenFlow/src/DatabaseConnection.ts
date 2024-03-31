@@ -685,6 +685,7 @@ export class DatabaseConnection extends events.EventEmitter {
             var _options = JSON.parse(JSON.stringify(options))
             await this.db.createCollection(collectionname, _options);
             await Logger.DBHelper.ClearGetCollections();
+            await this.UpdateIndexTypes(span);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -2163,6 +2164,10 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.addEvent("traversejsondecode");
             DatabaseConnection.traversejsondecode(item);
             Logger.instanse.debug("inserted " + item.name, span, { collection: collectionname, user: user.username });
+            let collections = await Logger.DBHelper.GetCollections(span);
+            if(collections.find(x => x.name == collectionname) == null) {
+                await Logger.DBHelper.ClearGetCollections()
+            }
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -2517,6 +2522,10 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             result = items;            
             Logger.instanse.verbose("inserted " + counter + " items in database", span, { collection: collectionname, user: user.username, count: counter });
+            let collections = await Logger.DBHelper.GetCollections(span);
+            if(collections.find(x => x.name == collectionname) == null) {
+                await Logger.DBHelper.ClearGetCollections()
+            }
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -2591,6 +2600,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 if (NoderedUtil.IsNullUndefinded((q as any).original)) {
                     original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, false, span);
+                    if(q.item._id !== original._id) {
+                        q.item._id = original._id;
+                    }                    
                 } else {
                     original = (q as any).original;
                 }
@@ -2929,7 +2941,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                 }
-            } else {
+            } else { // if (q.query === null || q.query === undefined) {
                 let json: string = q.item as any;
                 if (typeof json !== 'string') {
                     json = JSON.stringify(json);
