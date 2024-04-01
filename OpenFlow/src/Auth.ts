@@ -1,10 +1,12 @@
 import { Crypt } from "./Crypt.js";
-import { TokenUser, User } from "@openiap/openflow-api";
+import os from "os";
+import { FederationId, TokenUser, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Logger } from "./Logger.js";
 import { OAuthProvider } from "./OAuthProvider.js";
 import { LoginProvider } from "./LoginProvider.js";
 import { Config } from "./Config.js";
+import { use } from "passport";
 export class Auth {
     public static async ValidateByPassword(username: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("Auth.ValidateByPassword", parent);
@@ -123,6 +125,56 @@ export class Auth {
             }
         }
         if (tuser == null && user == null) {
+            const providers = await Logger.DBHelper.GetProviders(parent);
+            for(let i = 0; i < providers.length; i++) {
+                const provider = providers[i];
+                if(provider.enabled === false) continue;
+                const introspection_endpoint = provider.introspection_endpoint
+                const client_id = provider.introspection_client_id || provider.consumerKey
+                const client_secret = provider.introspection_client_secret || provider.consumerSecret
+                if(introspection_endpoint != null && introspection_endpoint != "") {
+                    try {
+                        var json:string = await Config.post_x_www_form_data_urlencoded(introspection_endpoint, {
+                            client_id,
+                            client_secret,
+                            token: jwt
+                        }, []);
+                        const valid = JSON.parse(json)
+                        if(valid.active == true && valid.sub != null && valid.email != null && valid.email != "") {
+                            console.log(valid.name, "->", valid.email, "->", valid.company);
+                            let _user = await Logger.DBHelper.FindByUsernameOrFederationid(valid.sub, valid.iss, parent);
+                            if(_user == null) {
+                                _user = await Logger.DBHelper.FindByUsernameOrFederationid(valid.email, valid.client_id, parent);
+                            }
+                            let createUser: boolean = Config.auto_create_users;
+                            if (Config.auto_create_domains.map(x => valid.email.endsWith(x)).length > 0) { createUser = true; }
+                            if(createUser == true && _user == null) {
+                                _user = new User(); 
+                                _user.name = valid.name;
+                                _user.email = valid.email.toLowerCase();
+                                _user.username = valid.email.toLowerCase();
+                                let extraoptions = {
+                                    federationids: [new FederationId(valid.sub, valid.iss)],
+                                    emailvalidated: true,
+                                    formvalidated: true, // TODO: Is this an security issue?
+                                    validated: true
+                                }
+                                _user = await Logger.DBHelper.EnsureUser(Crypt.rootToken(), _user.name, _user.username, null, null, extraoptions, parent);
+                            }
+                            if(_user != null) {
+                                
+                                if(os.hostname().toLowerCase() != "nixos") {
+                                    Logger.DBHelper.AddJWT(jwt, _user, parent);
+                                }                                
+                                return _user;
+                            }
+        
+                        }
+                    } catch (error) {
+                        console.error(error)
+                    }
+                }
+            }
             return null;
         }
         // Look up user

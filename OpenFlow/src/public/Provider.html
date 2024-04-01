@@ -44,6 +44,27 @@
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>
+    <div class="form-group" ng-show="ctrl.model.provider=='oidc'">
+        <label for="introspection_endpoint" class="col-sm-2 control-label" translate lib="web">introspection</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.introspection_endpoint" class="form-control input-md"
+                ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.provider=='oidc' && ctrl.model.introspection_endpoint != '' && ctrl.model.introspection_endpoint != null">
+        <label for="introspection_client_id" class="col-sm-2 control-label" translate lib="web">introspection clientid</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.introspection_client_id" class="form-control input-md"
+                ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
+    <div class="form-group" ng-show="ctrl.model.provider=='oidc' && ctrl.model.introspection_endpoint != '' && ctrl.model.introspection_endpoint != null">
+        <label for="introspection_client_secret" class="col-sm-2 control-label" translate lib="web">introspection secret</label>
+        <div class="col-sm-4">
+            <input ng-model="ctrl.model.introspection_client_secret" type="password" class="form-control input-md"
+                ng-disabled="ctrl.loading==true" />
+        </div>
+    </div>
     <div class="form-group" ng-show="ctrl.model.provider=='google' || ctrl.model.provider=='oidc'">
         <label for="consumerKey" class="col-sm-2 control-label" translate lib="web">consumerkey</label>
         <div class="col-sm-4">
@@ -53,7 +74,7 @@
     <div class="form-group" ng-show="ctrl.model.provider=='google' || ctrl.model.provider=='oidc'">
         <label for="consumerSecret" class="col-sm-2 control-label" translate lib="web">consumersecret</label>
         <div class="col-sm-4">
-            <input ng-model="ctrl.model.consumerSecret" class="form-control input-md"
+            <input ng-model="ctrl.model.consumerSecret" type="password" class="form-control input-md"
                 ng-disabled="ctrl.loading==true" />
         </div>
     </div>

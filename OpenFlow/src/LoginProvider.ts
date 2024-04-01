@@ -32,6 +32,7 @@ export class Provider extends Base {
         super();
         this._type = "provider";
     }
+    public enabled: boolean = true;
     public provider: string = "";
     public id: string = "";
     public name: string = "";
@@ -39,6 +40,9 @@ export class Provider extends Base {
     public saml_federation_metadata: string = "";
     public consumerKey: string;
     public consumerSecret: string;
+    public introspection_endpoint: string;
+    public introspection_client_id: string;
+    public introspection_client_secret: string;
     public saml_signout_url: string;
 }
 // tslint:disable-next-line: class-name
@@ -1730,7 +1734,7 @@ export class LoginProvider {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             const result: Provider[] = await Logger.DBHelper.GetProviders(span);
             res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(result));
+            res.end(JSON.stringify(result.filter(x => x.enabled !== false)));
             res.end();
         } catch (error) {
             Logger.instanse.error(error, span, {cls: "LoginProvider", func: "loginproviders"});
