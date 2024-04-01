@@ -1553,11 +1553,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 base = this.getbasequery(user, [Rights.read], collectionname);
             }
         }
-        // if (DatabaseConnection.usemetadata(collectionname)) {
-        //     base = this.getbasequery(user, [Rights.read], collectionname);
-        // } else {
-        //     base = this.getbasequery(user, [Rights.read], collectionname);
-        // }
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
