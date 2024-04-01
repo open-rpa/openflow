@@ -4,6 +4,7 @@ import http from "http";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import querystring from "querystring";
 import { DatabaseConnection } from "./DatabaseConnection.js";
 import { Logger } from "./Logger.js";
 import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
@@ -11,6 +12,7 @@ import { promiseRetry } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 export class dbConfig extends Base {
@@ -801,6 +803,76 @@ export class Config {
             value = this.default_config[name]
         }
         return value;
+    }
+    public static post_x_www_form_data_urlencoded(url: string, data: any, headers: string[][]): Promise<string> {
+        return new Promise((resolve, reject) => {
+            var provider = http;
+            if (url.startsWith('https')) {
+                provider = https as any;
+            }
+            const dataString = querystring.stringify(data);
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Length': dataString.length
+                }
+            };
+            if(headers != null) {
+                headers.forEach(header => {
+                    options.headers[header[0]] = header[1];
+                });
+            }
+            const req = provider.request(url, options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    resolve(data);
+                });
+            });
+            req.on('error', (error) => {
+                reject(error);
+            });
+            req.write(dataString);
+            req.end();
+        });
+    }
+    public static post(url: string, data: any, headers: string[][]): Promise<string> {
+        return new Promise((resolve, reject) => {
+            var provider = http;
+            if (url.startsWith('https')) {
+                provider = https as any;
+            }
+            const dataString = JSON.stringify(data);
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': dataString.length
+                }
+            };
+            if(headers != null) {
+                headers.forEach(header => {
+                    options.headers[header[0]] = header[1];
+                });
+            }
+            const req = provider.request(url, options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    resolve(data);
+                });
+            });
+            req.on('error', (error) => {
+                reject(error);
+            });
+            req.write(dataString);
+            req.end();
+        });
     }
     public static get(url: string): Promise<string> {
         return new Promise((resolve, reject) => {
