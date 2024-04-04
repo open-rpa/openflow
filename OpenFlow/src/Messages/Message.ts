@@ -5415,6 +5415,22 @@ export class Message {
                     Logger.otel.createheapdump(parent);
                 }
                 break;
+            case "shutdown":
+                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                if (Config.enable_openflow_amqp) {
+                    amqpwrapper.Instance().send("openflow", "", { "command": "shutdown" }, 10000, null, "", parent, 1);
+                } else {
+                    // Force exit after 5 seconds
+                    setTimeout(() => {
+                        process.exit(0);
+                    }, 5000);
+                    // clean shutdown
+                    await Config.db.shutdown();
+                    await Logger.otel.shutdown();
+                    await Logger.License.shutdown()
+                    process.exit(0);
+                }
+                break;
             case "webpushmessage":
                 // @ts-ignore
                 var data = msg.data;

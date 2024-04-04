@@ -693,10 +693,15 @@ export class amqpwrapper extends events.EventEmitter {
                             break;
                         case "shutdown":
                             try {
+                                // Force exit after 5 seconds
+                                setTimeout(() => {
+                                    process.exit(0);
+                                }, 5000);
+                                // clean shutdown
                                 await Config.db.shutdown();
                                 await Logger.otel.shutdown();
                                 await Logger.License.shutdown()
-                                // await Auth.shutdown();
+                                process.exit(0);
                             } catch (error) {
                                 Logger.instanse.error(error, span);
                             }
