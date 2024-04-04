@@ -118,18 +118,18 @@ async function initDatabase(parent: Span): Promise<boolean> {
         Base.addRight(guest, "65cb30c40ff51e174095573c", "guest", [Rights.read]);
         await Logger.DBHelper.Save(guest, jwt, span);
         
-        const robot_agent_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
-        Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
-        Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
-        if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self", span);
-            Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
-        } else if (Config.update_acl_based_on_groups) {
-            Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
-            Base.addRight(robot_agent_users, robot_agent_users._id, "robot agent users", [Rights.read]);
-        }
-        await Logger.DBHelper.Save(robot_agent_users, jwt, span);
+        // const robot_agent_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
+        // Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
+        // Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
+        // Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
+        // if (Config.multi_tenant) {
+        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self", span);
+        //     Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
+        // } else if (Config.update_acl_based_on_groups) {
+        //     Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
+        //     Base.addRight(robot_agent_users, robot_agent_users._id, "robot agent users", [Rights.read]);
+        // }
+        // await Logger.DBHelper.Save(robot_agent_users, jwt, span);
 
         Base.addRight(admins, WellknownIds.admins, "admins", [Rights.full_control]);
         Base.removeRight(admins, WellknownIds.admins, [Rights.delete]);
@@ -170,47 +170,47 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
 
 
-        const personal_nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
-        personal_nodered_users.AddMember(admins);
-        Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self", span);
-            Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
-        } else if (Config.update_acl_based_on_groups) {
-            Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
-            Base.addRight(personal_nodered_users, personal_nodered_users._id, "personal nodered users", [Rights.read]);
-        }
-        await Logger.DBHelper.Save(personal_nodered_users, jwt, span);
-        const nodered_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
-        nodered_admins.AddMember(admins);
-        Base.addRight(nodered_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(nodered_admins, WellknownIds.admins, [Rights.delete]);
-        await Logger.DBHelper.Save(nodered_admins, jwt, span);
-        const nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
-        nodered_users.AddMember(admins);
-        Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self", span);
-            Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
-        } else if (Config.update_acl_based_on_groups) {
-            Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
-            Base.addRight(nodered_users, nodered_users._id, "nodered users", [Rights.read]);
-        }
-        await Logger.DBHelper.Save(nodered_users, jwt, span);
-        const nodered_api_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
-        nodered_api_users.AddMember(admins);
-        Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self", span);
-            Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
-        } else if (Config.update_acl_based_on_groups) {
-            Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
-            Base.addRight(nodered_api_users, nodered_api_users._id, "nodered api users", [Rights.read]);
-        }
-        await Logger.DBHelper.Save(nodered_api_users, jwt, span);
+        // const personal_nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
+        // personal_nodered_users.AddMember(admins);
+        // Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
+        // Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
+        // if (Config.multi_tenant) {
+        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self", span);
+        //     Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
+        // } else if (Config.update_acl_based_on_groups) {
+        //     Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
+        //     Base.addRight(personal_nodered_users, personal_nodered_users._id, "personal nodered users", [Rights.read]);
+        // }
+        // await Logger.DBHelper.Save(personal_nodered_users, jwt, span);
+        // const nodered_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
+        // nodered_admins.AddMember(admins);
+        // Base.addRight(nodered_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+        // Base.removeRight(nodered_admins, WellknownIds.admins, [Rights.delete]);
+        // await Logger.DBHelper.Save(nodered_admins, jwt, span);
+        // const nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
+        // nodered_users.AddMember(admins);
+        // Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
+        // Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
+        // if (Config.multi_tenant) {
+        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self", span);
+        //     Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
+        // } else if (Config.update_acl_based_on_groups) {
+        //     Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
+        //     Base.addRight(nodered_users, nodered_users._id, "nodered users", [Rights.read]);
+        // }
+        // await Logger.DBHelper.Save(nodered_users, jwt, span);
+        // const nodered_api_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
+        // nodered_api_users.AddMember(admins);
+        // Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
+        // Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
+        // if (Config.multi_tenant) {
+        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self", span);
+        //     Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
+        // } else if (Config.update_acl_based_on_groups) {
+        //     Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
+        //     Base.addRight(nodered_api_users, nodered_api_users._id, "nodered api users", [Rights.read]);
+        // }
+        // await Logger.DBHelper.Save(nodered_api_users, jwt, span);
 
         if (Config.multi_tenant) {
             try {
@@ -236,24 +236,24 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
 
 
-        const robot_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
-        robot_admins.AddMember(admins);
-        Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(robot_admins, WellknownIds.admins, [Rights.delete]);
-        await Logger.DBHelper.Save(robot_admins, jwt, span);
-        const robot_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
-        robot_users.AddMember(admins);
-        robot_users.AddMember(users);
-        Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self", span);
-            Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-        } else if (Config.update_acl_based_on_groups) {
-            Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-            Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read, Rights.invoke, Rights.update]);
-        }
-        await Logger.DBHelper.Save(robot_users, jwt, span);
+        // const robot_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
+        // robot_admins.AddMember(admins);
+        // Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+        // Base.removeRight(robot_admins, WellknownIds.admins, [Rights.delete]);
+        // await Logger.DBHelper.Save(robot_admins, jwt, span);
+        // const robot_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
+        // robot_users.AddMember(admins);
+        // robot_users.AddMember(users);
+        // Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
+        // Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
+        // if (Config.multi_tenant) {
+        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self", span);
+        //     Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
+        // } else if (Config.update_acl_based_on_groups) {
+        //     Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
+        //     Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read, Rights.invoke, Rights.update]);
+        // }
+        // await Logger.DBHelper.Save(robot_users, jwt, span);
 
         if (!admins.IsMember(root._id)) {
             admins.AddMember(root);
