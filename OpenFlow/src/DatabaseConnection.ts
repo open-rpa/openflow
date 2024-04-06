@@ -621,19 +621,33 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname == "cvr") return;
         try {
             var exists = this.streams.filter(x => x.collectionname == collectionname);
-            if (exists.length > 0) return;
+            if (exists.length > 0 && exists[0].stream == null) return;
             if (collectionname.endsWith("_hist")) return;
             // if (collectionname == "users") return;
             if (collectionname == "dbusage") return;
             if (collectionname == "audit") return;
             Logger.instanse.verbose("register global watch for " + collectionname + " collection", span, { collection: collectionname });
             var stream = new clsstream();
+            if(exists.length > 0) stream = exists[0];
             stream.collectionname = collectionname;
             stream.stream = this.db.collection(collectionname).watch([], { fullDocument: 'updateLookup' });
-            (stream.stream as any).on("error", err => {
+            stream.stream.on("error", err => {
                 Logger.instanse.error(err, span, { collection: collectionname });
+                try {
+                    stream.stream.close();
+                } catch (error) {
+                }
+                stream.stream = null;
+                this.streams = this.streams.filter(x => x.collectionname != collectionname);
+                setTimeout(() => {
+                    try {
+                        Logger.instanse.info("Reconnecting watch for " + collectionname + " collection", span, { collection: collectionname });
+                        this.registerGlobalWatch(collectionname, span);
+                    } catch (error) {
+                    }
+                }, 1000);
             });
-            (stream.stream as any).on("change", async (next) => {
+            stream.stream.on("change", async (next:any) => {
                 if(Config.log_all_watches == true) {
                     Logger.instanse.debug(collectionname + " watch " + next?.fullDocument?._type + " " + next?.operationType + " " + next?.fullDocument?.name, span, { cls: "DatabaseConnection", func: "onchange", collection: collectionname });
                 }
