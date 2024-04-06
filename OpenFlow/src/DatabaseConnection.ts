@@ -621,7 +621,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname == "cvr") return;
         try {
             var exists = this.streams.filter(x => x.collectionname == collectionname);
-            if (exists.length > 0 && exists[0].stream == null) return;
+            if (exists.length > 0 && exists[0].stream != null) return;
             if (collectionname.endsWith("_hist")) return;
             // if (collectionname == "users") return;
             if (collectionname == "dbusage") return;
