@@ -279,7 +279,7 @@ export class Config {
         housekeeping_skip_calculate_size: false,
         housekeeping_skip_update_user_size: false,
         housekeeping_skip_collections: "",
-        housekeeping_remomve_unvalidated_user_days: 0, // if above 0, remove unvalidated users after x days
+        housekeeping_remove_unvalidated_user_days: 0, // if above 0, remove unvalidated users after x days
         housekeeping_cleanup_openrpa_instances: false,
         workitem_queue_monitoring_enabled: true,
         workitem_queue_monitoring_interval: 10 * 1000, // 10 sec
@@ -557,7 +557,7 @@ export class Config {
     public static housekeeping_skip_update_user_size: boolean = Config.parseBoolean(Config.getEnv("housekeeping_skip_update_user_size"));
 
     public static housekeeping_skip_collections: string = Config.getEnv("housekeeping_skip_collections");
-    public static housekeeping_remomve_unvalidated_user_days: number = parseInt(Config.getEnv("housekeeping_remomve_unvalidated_user_days"));
+    public static housekeeping_remove_unvalidated_user_days: number = parseInt(Config.getEnv("housekeeping_remove_unvalidated_user_days"));
     public static housekeeping_cleanup_openrpa_instances: boolean = Config.parseBoolean(Config.getEnv("housekeeping_cleanup_openrpa_instances"));
     public static workitem_queue_monitoring_enabled: boolean = Config.parseBoolean(Config.getEnv("workitem_queue_monitoring_enabled"));
     public static workitem_queue_monitoring_interval: number = parseInt(Config.getEnv("workitem_queue_monitoring_interval"));

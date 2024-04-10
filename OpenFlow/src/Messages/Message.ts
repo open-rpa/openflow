@@ -3725,7 +3725,7 @@ export class Message {
                 Logger.instanse.error(error, span);
             }
 
-            if(Config.housekeeping_remomve_unvalidated_user_days > 0) {
+            if(Config.housekeeping_remove_unvalidated_user_days > 0) {
                 let todate = new Date();
                 todate.setDate(todate.getDate() - 1);
                 let fromdate = new Date();

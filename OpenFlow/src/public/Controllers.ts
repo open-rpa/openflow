@@ -7478,7 +7478,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "housekeeping_skip_calculate_size", "type": "boolean", "default": "false"},
             {"name": "housekeeping_skip_update_user_size", "type": "boolean", "default": "false"},    
             {"name": "housekeeping_skip_collections", "type": "string", "default": ""},
-            {"name": "housekeeping_remomve_unvalidated_user_days", "type": "number", "default": "0"},
+            {"name": "housekeeping_remove_unvalidated_user_days", "type": "number", "default": "0"},
             {"name": "housekeeping_cleanup_openrpa_instances", "type": "boolean", "default": "false"},
             {"name": "workitem_queue_monitoring_enabled", "type": "boolean", "default": "true"},
             {"name": "workitem_queue_monitoring_interval", "type": "number", "default": "10000"},
