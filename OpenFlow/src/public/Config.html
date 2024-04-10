@@ -66,7 +66,7 @@
     <input ng-model="ctrl.model[setting.name]" ng-if="setting.type != 'boolean' && !ctrl.isobject(ctrl.model[setting.name])"
         ng-model="ctrl.model[setting.name]" ng-enabled="ctrl.loading == false"
         ng-type step="{{ctrl.getstep(setting.name, ctrl.model[setting.name])}}"
-        ng-on-blur="ctrl.submit()"
+        ng-on-blur="ctrl.delayedUpdate()"
         ng-class="{'form-control': setting.type != 'boolean', 'secret': ctrl.model._encrypt.indexOf(setting.name) > -1, 'dimmed': ctrl.model[setting.name] == null }" />
     <!-- <three-stage-checkmark ng-if="setting.type == 'boolean' && !ctrl.isobject(ctrl.model[setting.name])"
     ng-model="ctrl.model[setting.name]"
@@ -78,7 +78,9 @@
     ng-class="{'form-control': setting.type != 'boolean', 'secret': ctrl.model._encrypt.indexOf(setting.name) > -1, 'dimmed': ctrl.model[setting.name] == null}" />
 
     <textarea  ng-class="{'dimmed': ctrl.model[setting.name] == null}" json-text class='form-control' rows='1' data-min-rows='1' ng-model="ctrl.model[setting.name]" 
-    ng-enabled="ctrl.loading == false" ng-if="ctrl.isobject(ctrl.model[setting.name])"></textarea>
+    ng-enabled="ctrl.loading == false" ng-if="ctrl.isobject(ctrl.model[setting.name])" 
+    ng-on-blur="ctrl.delayedUpdate()"
+    ></textarea>
     
 
 </div>
