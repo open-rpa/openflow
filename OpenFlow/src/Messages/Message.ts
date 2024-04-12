@@ -771,6 +771,7 @@ export class Message {
         }
         try {
             try {
+                // @ts-ignore
                 let _lic_require: any = await import("../ee/license-file.js");
                 Logger.License = new _lic_require.LicenseFile();
             } catch (error) {
@@ -5633,6 +5634,7 @@ export class Message {
             case "issuelicense":
                 let _lic_require: any = null;
                 try {
+                    // @ts-ignore
                     _lic_require = await import("../ee/license-file.js");
                     Logger.License = new _lic_require.LicenseFile();
                 } catch (error) {
