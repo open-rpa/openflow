@@ -141,6 +141,9 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error(error, null);
         }
     }
+    public hadWatchFault: boolean = false;   
+    public lastWatchFault: Date = new Date();
+    public watchFaultHandler: any = null;
     public replicat: string = null;
     public streams: clsstream[] = [];
     public requests: any = {};
@@ -637,15 +640,19 @@ export class DatabaseConnection extends events.EventEmitter {
                     stream.stream.close();
                 } catch (error) {
                 }
+                this.hadWatchFault = true;
+                this.lastWatchFault = new Date();
                 stream.stream = null;
                 this.streams = this.streams.filter(x => x.collectionname != collectionname);
-                setTimeout(() => {
-                    try {
-                        Logger.instanse.info("Reconnecting watch for " + collectionname + " collection", span, { collection: collectionname });
-                        this.registerGlobalWatch(collectionname, span);
-                    } catch (error) {
-                    }
-                }, 1000);
+                if(this.watchFaultHandler == null) {
+                    this.watchFaultHandler = setTimeout(() => {
+                        try {
+                            this.doRegisterGlobalWatches(null);                            
+                        } catch (error) {  
+                            Logger.instanse.error(error, span, { collection: collectionname });
+                        }
+                    }, 5000);            
+                }
             });
             stream.stream.on("change", async (next:any) => {
                 if(Config.log_all_watches == true) {

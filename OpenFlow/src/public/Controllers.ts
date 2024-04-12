@@ -7502,7 +7502,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "auto_create_users", "type": "boolean", "default": "false"},
             {"name": "auto_create_user_from_jwt", "type": "boolean", "default": "false"},
             {"name": "auto_create_domains", "type": "string[]", "default": ""},
-            {"name": "persist_user_impersonation", "type": "boolean", "default": "true"},
+            {"name": "persist_user_impersonation", "type": "boolean", "default": "false"},
             {"name": "ping_clients_interval", "type": "number", "default": "10000"}, // 10 seconds
             {"name": "use_ingress_beta1_syntax", "type": "boolean", "default": "false"},
             {"name": "use_openshift_routes", "type": "boolean", "default": "false"},
