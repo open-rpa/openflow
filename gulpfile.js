@@ -47,6 +47,7 @@ gulp.task("copyfiles1", function () {
     return merge(openflow, copyspurce, copyproto);
 });
 gulp.task("setwatch", async function () {
+    fs.mkdirSync(publicdestination, { recursive: true });
     minify = false;
     watch = true;
 });
