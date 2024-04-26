@@ -4148,12 +4148,13 @@ export class DatabaseConnection extends events.EventEmitter {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
         }
         if (Config.force_add_admins && item._id != WellknownIds.root) {
-            var fakeadmins: TokenUser = {_id: WellknownIds.admins } as any
-            if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.read)) {
-                Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-            } else if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.update)) {
-                Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-            }
+            Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+            // var fakeadmins: TokenUser = {_id: WellknownIds.admins } as any
+            // if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.read)) {
+            //     Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+            // } else if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.update)) {
+            //     Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+            // }
         }
         if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
             var _searchnames = [];
