@@ -104,10 +104,10 @@ export class dockerdriver implements i_agent_driver {
             domain_schema = domain_schema.split("$nodered_id$").join("$slug$")
             const hostname = domain_schema.replace("$slug$", agent.slug);
 
-            let tzvolume: string = null;
-            if (!NoderedUtil.IsNullEmpty(agent.tz)) {
-                tzvolume = "/usr/share/zoneinfo/" + agent.tz
-            }
+            // let tzvolume: string = null;
+            // if (!NoderedUtil.IsNullEmpty(agent.tz)) {
+            //     tzvolume = "/usr/share/zoneinfo/" + agent.tz
+            // }
             const Labels = {
                 "billed": hasbilling.toString(),
                 "agentid": agent._id
@@ -211,9 +211,9 @@ export class dockerdriver implements i_agent_driver {
                 }
             }
 
-            if (tzvolume != null) {
-                HostConfig.Binds = ["/etc/localtime", tzvolume]
-            }
+            // if (tzvolume != null) {
+            //     HostConfig.Binds = ["/etc/localtime", tzvolume]
+            // }
             let Cmd:any = undefined;
             if(agent.sleep == true) {
                 Cmd = ["/bin/sh", "-c", "while true; do echo sleep 10; sleep 10;done"]
