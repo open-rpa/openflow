@@ -7596,6 +7596,7 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
 
             {"name": "skip_history_collections", "type": "string", "default": "audit,oauthtokens,openrpa_instances,workflow_instances,workitems,mailhist"},
             {"name": "history_delta_count", "type": "number", "default": "1000"},
+            {"name": "history_obj_max_kb_size", "type": "number", "default": "10240"},
             {"name": "allow_skiphistory", "type": "boolean", "default": "false"},
             {"name": "max_memory_restart_mb", "type": "number", "default": "0"},
             {"name": "saml_issuer", "type": "string", "default": "the-issuer"},

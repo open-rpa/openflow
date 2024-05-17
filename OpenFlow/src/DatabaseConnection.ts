@@ -2095,10 +2095,11 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
 
-                await this.db.collection("users").updateOne(
-                    { _id: WellknownIds.users },
-                    { "$push": { members: new Rolemember(item.name, item._id) } }
-                );
+                // Skip, we are adding all users automatically 
+                // await this.db.collection("users").updateOne(
+                //     { _id: WellknownIds.users },
+                //     { "$push": { members: new Rolemember(item.name, item._id) } }
+                // );
                 let user2: User = User.assign(item as any);
                 if (Config.validate_emails && user2.emailvalidated || !Config.validate_emails) {
                     let domain: string = user2.username;
@@ -2504,10 +2505,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     item = await this.CleanACL(item, user, collectionname, span);
                     // span?.addEvent("Save");
                     // await Logger.DBHelper.Save(users, Crypt.rootToken(), span);
-                    await this.db.collection("users").updateOne(
-                        { _id: WellknownIds.users },
-                        { "$push": { members: new Rolemember(item.name, item._id) } }
-                    );
+                    // Skip, we are adding all users automatically 
+                    // await this.db.collection("users").updateOne(
+                    //     { _id: WellknownIds.users },
+                    //     { "$push": { members: new Rolemember(item.name, item._id) } }
+                    // );
                     await Logger.DBHelper.UserRoleUpdateId(WellknownIds.users, false, span);
 
                     const user2: TokenUser = item as any;
@@ -4459,6 +4461,24 @@ export class DatabaseConnection extends events.EventEmitter {
             return (Math.floor(num / precision) * precision);
         };
         if (item._type === 'instance' && collectionname === 'workflows') return 0;
+
+        let roughObjSize1 = -1;
+        let roughObjSize2 = -1;
+        if(original != null) roughObjSize1 = JSON.stringify(original).length;
+        if(item != null) roughObjSize2 = JSON.stringify(item).length;
+        try {
+            if(roughObjSize1 > Config.history_obj_max_kb_size * 1024) {
+                console.error("SaveDiff1: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize1);
+                return item._version;
+            }
+            if(roughObjSize2 > Config.history_obj_max_kb_size * 1024) {
+                console.error("SaveDiff2: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize2);
+                return item._version;
+            }
+        } catch (error) {
+            return 0;            
+        }
+
 
         if (!original && item._id) {
             const rootjwt = Crypt.rootToken()

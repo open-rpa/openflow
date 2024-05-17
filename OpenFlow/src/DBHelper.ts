@@ -635,6 +635,7 @@ export class DBHelper {
                     user.roles.push(new Rolemember("users", WellknownIds.users));
                     Logger.instanse.verbose("also adding user to users " + WellknownIds.users, span);
                     // Logger.instanse.debug(user.name + " missing from users, adding it", span);
+                    // Skip, we are adding all users automatically 
                     // await Config.db.db.collection("users").updateOne(
                     //     { _id: WellknownIds.users },
                     //     { "$push": { members: new Rolemember(user.name, user._id) } }

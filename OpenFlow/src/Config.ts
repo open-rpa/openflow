@@ -398,6 +398,7 @@ export class Config {
 
         skip_history_collections: "audit,oauthtokens,openrpa_instances,workflow_instances,workitems,mailhist", // "audit,openrpa_instances,workflow_instances",
         history_delta_count: 1000,
+        history_obj_max_kb_size: 10240,
         allow_skiphistory: false,
         max_memory_restart_mb: 0,
 
@@ -689,6 +690,8 @@ export class Config {
 
     public static skip_history_collections: string = Config.getEnv("skip_history_collections");
     public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count"));
+    public static history_obj_max_kb_size: number = parseInt(Config.getEnv("history_obj_max_kb_size"));
+    
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory"));
     public static max_memory_restart_mb: number = parseInt(Config.getEnv("max_memory_restart_mb"));
 
