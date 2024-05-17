@@ -404,12 +404,12 @@ export class amqpwrapper extends events.EventEmitter {
         // if (exchangename != Config.amqp_dlx && exchangename != "openflow" && exchangename != "openflow_logs") AssertExchangeOptions.autoDelete = true;
         AssertExchangeOptions.autoDelete = false;
 
-        // try and create exchange
-        if(! await this.PreAssertExchange(exchangename, algorithm, AssertExchangeOptions)) {
-            // config differs, so delete and recreate
-            await this.checkAndDeleteExchange(exchangename);
-            await this.PreAssertExchange(exchangename, algorithm, AssertExchangeOptions);
-        }
+        // // try and create exchange
+        // if(! await this.PreAssertExchange(exchangename, algorithm, AssertExchangeOptions)) {
+        //     // config differs, so delete and recreate
+        //     await this.checkAndDeleteExchange(exchangename);
+        //     await this.PreAssertExchange(exchangename, algorithm, AssertExchangeOptions);
+        // }
         // await amqpwrapper.Instance().AddExchangeConsumer(
         //     Crypt.rootUser(), exchange.name, algorithm, routingkey, AssertExchangeOptions, Crypt.rootToken(), false, null, parent);
     }
@@ -423,7 +423,7 @@ export class amqpwrapper extends events.EventEmitter {
             // if (exchange != Config.amqp_dlx && exchange != "openflow" && exchange != "openflow_logs") q.ExchangeOptions.autoDelete = true;
             q.ExchangeOptions.autoDelete = false;
             q.exchange = exchange; q.algorithm = algorithm; q.routingkey = routingkey; q.callback = callback;
-            await this.PreRegisterExchange(exchange, span)
+            // await this.PreRegisterExchange(exchange, span)
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             if (addqueue) {
                 let AssertQueueOptions = null;
