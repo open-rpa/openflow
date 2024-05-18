@@ -56,7 +56,6 @@ export class dbConfig extends Base {
         if (_a !== _b) return false;
         return true;
       }
-
     public static cleanAndApply(conf: dbConfig, parent: Span): Boolean {
         if(Config.disable_db_config) return false;
         var updated = false;
@@ -86,18 +85,11 @@ export class dbConfig extends Base {
                 let _default:any = Config.default_config[key]; // envorinment variable 
                 if(_default == null) _default = "";
                 let _env:any = process.env[key]; // db value
-                if(_env == null || _env == "") continue;
-                if(typeof Config[key] === "boolean") {
-                    _env = Config.parseBoolean(_env);                        
-                } else if(typeof Config[key] === "number") {
-                    _env = parseInt(_env);
-                } else if(Array.isArray(Config[key])) {
-                    _env = Config.parseArray(_env);
-                } else if(typeof Config[key] === "string") {
-                    _env = _env;
-                } else {
+                if(_env == null || _env == "") {
+                    Config[key] = _default; // reset to original
                     continue;
                 }
+                _env = Config.parse(key, _env);
                 if(key == "HTTP_PROXY") {
                     var b = true;
                 }
@@ -930,6 +922,19 @@ export class Config {
             }
         }, 50, 1000);
         return metadata;
+    }
+    public static parse(key, value: any) {
+        if(typeof Config.default_config[key] === "boolean") {
+            return Config.parseBoolean(value);
+        } else if(typeof Config.default_config[key] === "number") {
+            return  parseInt(value);
+        } else if(Array.isArray(Config.default_config[key])) {
+            return  Config.parseArray(value);
+        } else if(typeof Config.default_config[key] === "string") {
+            return value;
+        } else {
+            return value;
+        }
     }
     public static parseArray(s: string): string[] {
         if(Array.isArray(s)) return s;
