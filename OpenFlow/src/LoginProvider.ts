@@ -1236,7 +1236,7 @@ export class LoginProvider {
                 return res.status(500).send({ message: "Illegal key" });
             }
             await Logger.DBHelper.AddRequestTokenID(key, {}, span);
-            Logger.instanse.info("Added token request " + key + " from " + remoteip, span, {cls: "LoginProvider", func: "AddTokenRequest"});
+            Logger.instanse.debug("Added token request " + key + " from " + remoteip, span, {cls: "LoginProvider", func: "AddTokenRequest"});
             res.status(200).send({ message: "ok" });
         } catch (error) {
             Logger.instanse.error(error, span, {cls: "LoginProvider", func: "AddTokenRequest"});
@@ -1260,7 +1260,7 @@ export class LoginProvider {
             }
 
             if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
-                Logger.instanse.info("Token " + key + " has been forfilled from " + remoteip, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                Logger.instanse.debug("Token " + key + " has been forfilled from " + remoteip, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
                 if (Config.validate_user_form != "") {
                     try {
                         var tuser = await await Auth.Token2User(exists.jwt, span);
@@ -1662,7 +1662,7 @@ export class LoginProvider {
                 const code = NoderedUtil.GetUniqueIdentifier();
                 var key = ("forgotpass_" + id).toString();
                 let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
-                    Logger.instanse.info(`Add forgotpass if ${id} with code ${code} for ${email}`, span, {cls: "LoginProvider", func: "forgotpassword"});
+                    Logger.instanse.debug(`Add forgotpass if ${id} with code ${code} for ${email}`, span, {cls: "LoginProvider", func: "forgotpassword"});
                     return { id, email, code };
                 });
                 if (item.id != id || item.email != email || item.code != code) {
