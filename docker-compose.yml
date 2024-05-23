@@ -28,6 +28,26 @@ services:
     # network_mode: "host"
     ports:
       - "27017:27017"
+  mongosetup:
+    image: mongo
+    depends_on:
+      - mongodb
+    restart: "no"
+    command: >
+      mongosh --host mongodb:27017 --eval 
+      '
+      db = (new Mongo("mongodb:27017")).getDB("openflow");
+      config = {
+      "_id" : "rs0",
+      "members" : [
+        {
+          "_id" : 0,
+          "host" : "mongodb:27017"
+        }
+      ]
+      };
+      rs.initiate(config);
+      '
   # traefik:
   #   image: "traefik"
   #   command:
