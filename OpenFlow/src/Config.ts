@@ -36,8 +36,13 @@ export class dbConfig extends Base {
             this.version = Config.version;
         }
         Base.addRight(this, WellknownIds.admins, "admins", [Rights.full_control]);
-        if (NoderedUtil.IsNullEmpty(this._id)) await Config.db.InsertOne(this, "config", 1, true, jwt, parent);
-        if (!NoderedUtil.IsNullEmpty(this._id)) await Config.db._UpdateOne(null, this, "config", 1, true, jwt, parent);
+        if (NoderedUtil.IsNullEmpty(this._id)) {
+            const result = await Config.db.InsertOne(this, "config", 1, true, jwt, parent);
+            this._id = result._id;
+        }
+        if (!NoderedUtil.IsNullEmpty(this._id)) {
+            await Config.db._UpdateOne(null, this, "config", 1, true, jwt, parent);
+        }
     }
     public compare(version: string): number {
         if(this.version == null) return -1;
@@ -192,20 +197,7 @@ export class dbConfig extends Base {
 
         let updated = dbConfig.cleanAndApply(conf, parent);
         if(updated ) {
-            try {
-                var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
-                msg.collectionname = "config"; msg.jwt = jwt;
-                msg.item = JSON.parse(JSON.stringify(conf));
-                // @ts-ignore
-                delete msg.item.default_config;
-                // @ts-ignore
-                delete msg.item.dbConfig;
-                msg.uniqeness = "_id";
-                await Config.db._InsertOrUpdateOne(msg, parent);
-                // await Config.db.InsertOrUpdateOne(null, conf, "config", 1, true, jwt, parent);
-            } catch (error) {
-                Logger.instanse.error(error, null);
-            }
+            await conf.Save(jwt, parent);
         }
         await Logger.reload();
         return conf;
