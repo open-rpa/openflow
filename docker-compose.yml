@@ -20,9 +20,12 @@ services:
   #   ## network_mode: "host"
   #   ports:
   #     - "5000:5000"
-  mongodb:
+  mongodb: # docker volume rm openflow_mongodb_data core_mongodb_data
     image: "mongo"
     restart: unless-stopped
+    command: "--bind_ip_all --replSet rs0"
+    environment:
+      - MONGO_REPLICA_SET_NAME=rs0
     volumes:
       - mongodb_data:/data/db
     # network_mode: "host"
