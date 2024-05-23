@@ -4762,7 +4762,6 @@ export class DatabaseConnection extends events.EventEmitter {
     async ensureindexes(parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
-            Logger.instanse.info("Begin validating index, this might take a while", span);
             span?.addEvent("Get collections");
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -4779,6 +4778,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 await this.UpdateIndexTypes(span);
                 return;
             }
+            Logger.instanse.info("Begin validating indexes, this might take a while", span);
 
             for (let i = 0; i < collections.length; i++) {
                 try {
