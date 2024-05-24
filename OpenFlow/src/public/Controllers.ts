@@ -7368,6 +7368,17 @@ export class ConsoleCtrl extends entityCtrl<RPAWorkflow> {
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
+    async StartHousekeeping() {
+        try {
+            const skipnodered = false;
+            const skipcalculatesize = false;
+            const skipupdateusersize = false;
+            await NoderedUtil.HouseKeeping({ skipnodered, skipcalculatesize, skipupdateusersize });
+        } catch (error) {
+            this.errormessage = error.message ? error.message : error;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
     hasprop(name) {
         return this.messages.filter(x => !NoderedUtil.IsNullEmpty(x[name])).length > 0
     }
