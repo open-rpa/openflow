@@ -671,6 +671,9 @@ export class DatabaseConnection extends events.EventEmitter {
         let result = await Logger.DBHelper.GetCollections(null);
         if(includesystem == false) {
             result = result.filter(x => x.name.indexOf("system.") === -1);
+        } else {
+            // remove all that starts with system. except system.profile
+            result = result.filter(x => x.name.indexOf("system.") === -1 || x.name == "system.profile");
         }
         result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
         if(await Auth.Token2User(jwt, null)==null) throw new Error("Access denied");
