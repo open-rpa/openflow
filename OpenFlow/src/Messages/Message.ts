@@ -4043,6 +4043,7 @@ export class Message {
                 const jwt: string = Crypt.rootToken();
                 let collections = await Config.db.ListCollections(false, jwt);
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
+                
                 let totalusage = 0;
                 let index = 0;
                 let skip_collections = [];
