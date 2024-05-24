@@ -632,7 +632,7 @@ export class Message {
                 } else {
                     this.command = "error";                    
                 }
-                this.data = "{\"message\": \"" + error.message + "\"}";
+                this.data = JSON.stringify({"message": error.message});
                 if(error.message.indexOf("Not signed in, and missing jwt") > -1) {
                     Logger.instanse.error(error.message, span, Logger.parsecli(cli));
                 } else {
@@ -1188,7 +1188,7 @@ export class Message {
                 msg.result = Message.collectionCache[msg.jwt];
             } else {
                 span?.addEvent("ListCollections");
-                msg.result = await Config.db.ListCollections(false, msg.jwt);
+                msg.result = await Config.db.ListCollections(this.tuser.HasRoleId(WellknownIds.admins), msg.jwt);
                 span?.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
@@ -4043,12 +4043,14 @@ export class Message {
                 const jwt: string = Crypt.rootToken();
                 let collections = await Config.db.ListCollections(false, jwt);
                 collections = collections.filter(x => x.name.indexOf("system.") === -1);
+                
                 let totalusage = 0;
                 let index = 0;
                 let skip_collections = [];
                 if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
                 for (let col of collections) {
-                    if (col.name == "fs.chunks") continue;
+                    var n: string = col.name;
+                    if(n.endsWith(".chunks")) continue;
                     if (skip_collections.indexOf(col.name) > -1) {
                         Logger.instanse.debug("skipped " + col.name + " due to housekeeping_skip_collections setting", span);
                         continue;
@@ -4076,7 +4078,7 @@ export class Message {
                         { $addFields: { "collection": col.name } },
                         { $addFields: { timestamp: timestamp.toISOString() } },
                     ];
-                    if (col.name == "fs.files") {
+                    if (col.name.endsWith(".files")) {
                         aggregates = [
                             {
                                 "$project": {
@@ -5095,29 +5097,6 @@ export class Message {
                 }
             }
         } while (workitems.length > 0 && msg.result == null);
-        // @ts-ignore
-        // let includefiles = msg.includefiles;
-        // // @ts-ignore
-        // let compressed = msg.compressed || false;
-        // if(msg.result && includefiles == true) {
-        //     for(var i = 0; i < msg.result.files.length; i++) {
-        //         var file = msg.result.files[i];
-        //         var b: Buffer = await this._GetFile(file._id, compressed);
-        //         // @ts-ignore
-        //         b = new Uint8Array(b);
-        //         // b = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
-        //         // @ts-ignore
-        //         file.compressed = compressed;
-        //         // @ts-ignore
-        //         file.file = b;
-        //         // @ts-ignore
-        //         msg.result.file = b;
-        //         // Slice (copy) its segment of the underlying ArrayBuffer
-        //         // @ts-ignore
-        //         // file.file = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
-                
-        //     }
-        // }
         delete msg.jwt;
         if(msg.result != null) {
             if(msg.result.nextrun == null) delete msg.result.nextrun;
