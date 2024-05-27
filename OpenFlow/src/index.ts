@@ -21,8 +21,8 @@ import { WellknownIds, Role, Rights, User, Base, NoderedUtil } from "@openiap/op
 import { OAuthProvider } from "./OAuthProvider.js";
 import { Span } from "@opentelemetry/api";
 import { QueueClient } from "./QueueClient.js";
-import { Message } from "./Messages/Message.js";
 import crypto from "crypto";
+import { HouseKeeping } from "./HouseKeeping.js";
 clog("Done loading imports");
 let amqp: amqpwrapper = null;
 async function initamqp(parent: Span) {
@@ -55,23 +55,21 @@ async function ValidateUserForm(parent: Span) {
 }
 function doHouseKeeping(span: Span) {
     // Message.lastHouseKeeping = new Date();
-    if (Message.lastHouseKeeping == null) {
-        Message.lastHouseKeeping = new Date();
-        Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
+    if (HouseKeeping.lastHouseKeeping == null) {
+        HouseKeeping.lastHouseKeeping = new Date();
+        HouseKeeping.lastHouseKeeping.setDate(HouseKeeping.lastHouseKeeping.getDate() - 1);
     }
     amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": (new Date()).toISOString() }, 20000, null, "", span, 1);
-    var dt = new Date(Message.lastHouseKeeping.toISOString());
-    var msg2 = new Message(); msg2.jwt = Crypt.rootToken();
-    var h = dt.getHours();
+    var dt = new Date(HouseKeeping.lastHouseKeeping.toISOString());
     var housekeeping_skip_calculate_size: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
     var housekeeping_skip_update_user_size: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
     if(Config.housekeeping_skip_calculate_size) housekeeping_skip_calculate_size = true;
     if(Config.housekeeping_skip_update_user_size) housekeeping_skip_update_user_size = true;
     if (Config.NODE_ENV == "production") {
-        msg2._Housekeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null));
+        HouseKeeping._Housekeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null));
     } else {
         // While debugging, always do all calculations
-        msg2._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
+        HouseKeeping._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
         // msg2._Housekeeping(true, true, true, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
     }
 }
@@ -310,12 +308,12 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds", span);
             housekeeping = setInterval(async () => {
                 if (Config.enable_openflow_amqp) {
-                    if (!Message.ReadyForHousekeeping()) {
+                    if (!HouseKeeping.ReadyForHousekeeping()) {
                         return;
                     }
                     amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
                     await new Promise(resolve => { setTimeout(resolve, 10000) });
-                    if (Message.ReadyForHousekeeping()) {
+                    if (HouseKeeping.ReadyForHousekeeping()) {
                         doHouseKeeping(span);
                     } else {
                         Logger.instanse.verbose("SKIP housekeeping", span);
@@ -329,12 +327,12 @@ async function initDatabase(parent: Span): Promise<boolean> {
             Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds", span);
             setTimeout(async () => {
                 if (Config.enable_openflow_amqp) {
-                    if (!Message.ReadyForHousekeeping()) {
+                    if (!HouseKeeping.ReadyForHousekeeping()) {
                         return;
                     }
                     amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
                     await new Promise(resolve => { setTimeout(resolve, 10000) });
-                    if (Message.ReadyForHousekeeping()) {
+                    if (HouseKeeping.ReadyForHousekeeping()) {
                         doHouseKeeping(span);
                     } else {
                         Logger.instanse.verbose("SKIP housekeeping", span);

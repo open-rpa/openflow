@@ -8,6 +8,7 @@ import { Logger } from "./Logger.js";
 import events from "events";
 import { Message } from "./Messages/Message.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { HouseKeeping } from "./HouseKeeping.js";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -681,10 +682,10 @@ export class amqpwrapper extends events.EventEmitter {
                             // if (this.IsMyconsumerTag(options.consumerTag)) break;
                             if (msg.lastrun) {
                                 Logger.instanse.debug("[" + options.exchangename + "] " + msg.lastrun, span)
-                                Message.lastHouseKeeping = new Date(msg.lastrun);
+                                HouseKeeping.lastHouseKeeping = new Date(msg.lastrun);
                             } else {
-                                if (Message.lastHouseKeeping != null) {
-                                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": Message.lastHouseKeeping.toISOString() }, 20000, null, "", span, 1);
+                                if (HouseKeeping.lastHouseKeeping != null) {
+                                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping", "lastrun": HouseKeeping.lastHouseKeeping.toISOString() }, 20000, null, "", span, 1);
                                 }
                             }
                             break;

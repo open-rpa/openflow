@@ -25,6 +25,7 @@ import { iAgent } from "../commoninterfaces.js";
 import { RateLimiterMemory } from "rate-limiter-flexible";
 import got from "got";
 import pako from "pako";
+import { HouseKeeping } from "../HouseKeeping.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -2375,11 +2376,11 @@ export class Message {
         }
     }
 
-    isObject(obj) {
+    static isObject(obj) {
         const type = typeof obj;
         return (type === 'function' || type === 'object') && !!obj;
     }
-    flattenAndStringify(data) {
+    static flattenAndStringify(data) {
         const result = {};
 
         const step = (obj, prevKey) => {
@@ -2461,19 +2462,19 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 if (!NoderedUtil.IsNullEmpty(usage.siid)) {
                     if (payload.quantity == 0) {
-                        var sub = await this.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
+                        var sub = await Message.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
                         if (sub.items.total_count < 2) {
-                            const res = await this.Stripe("DELETE", "subscriptions", usage.subid, null, customer.stripeid);
+                            const res = await Message.Stripe("DELETE", "subscriptions", usage.subid, null, customer.stripeid);
                             if (customer.subscriptionid == usage.subid) {
                                 const UpdateDoc: any = { "$set": {} };
                                 UpdateDoc.$set["subscriptionid"] = null;
                                 await Config.db.db.collection("users").updateMany({ "_id": customer._id }, UpdateDoc);
                             }
                         } else {
-                            const res = await this.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
+                            const res = await Message.Stripe("DELETE", "subscription_items", usage.siid, payload, customer.stripeid);
                         }
                     } else {
-                        const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
+                        const res = await Message.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
                     }
                 }
             } else {
@@ -2560,7 +2561,7 @@ export class Message {
 
             let subscription: stripe_subscription;
             if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
-                subscription = await this.Stripe<stripe_subscription>("GET", "subscriptions", customer.subscriptionid, payload, customer.stripeid);
+                subscription = await Message.Stripe<stripe_subscription>("GET", "subscriptions", customer.subscriptionid, payload, customer.stripeid);
                 if (subscription != null) {
                     payload.subscription = customer.subscriptionid;
                 }
@@ -2569,13 +2570,13 @@ export class Message {
 
                 if (msg.subscription_items && msg.subscription_items.length > 0 && msg.subscription_items[0].price && !msg.subscription_items[0].id) {
                     var price = msg.subscription_items[0].price;
-                    msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+                    msg.invoice = await Message.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
 
                     if (msg.invoice.lines.has_more) {
                         payload.limit = 100;
                         payload.starting_after = msg.invoice.lines.data[msg.invoice.lines.data.length - 1].id;
                         do {
-                            var test = await this.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
+                            var test = await Message.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
                             msg.invoice.lines.data = msg.invoice.lines.data.concat(test.data);
                             if (test.has_more) {
                                 payload.starting_after = test.data[msg.invoice.lines.data.length - 1].id;
@@ -2606,7 +2607,7 @@ export class Message {
                         let plan: stripe_plan = null;
                         let metered: boolean = false;
                         if (item.price && item.price.startsWith("price_")) {
-                            price = await this.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
+                            price = await Message.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
                             metered = (price.recurring && price.recurring.usage_type == "metered");
                             if (!price.recurring) {
                                 if (!payload.invoice_items) payload.invoice_items = [];
@@ -2614,7 +2615,7 @@ export class Message {
                                 msg.subscription_items.splice(i, 1);
                             }
                         } else if (item.price && item.price.startsWith("plan_")) {
-                            plan = await this.Stripe<stripe_plan>("GET", "plans", item.price, payload, customer.stripeid);
+                            plan = await Message.Stripe<stripe_plan>("GET", "plans", item.price, payload, customer.stripeid);
                             // metered = (plan.recurring.usage_type == "metered");
                         }
 
@@ -2645,7 +2646,7 @@ export class Message {
                 } else {
                     for (var i = msg.subscription_items.length - 1; i >= 0; i--) {
                         var item = msg.subscription_items[i];
-                        var _price = await this.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
+                        var _price = await Message.Stripe<stripe_price>("GET", "prices", item.price, payload, customer.stripeid);
                         var metered = (_price.recurring && _price.recurring.usage_type == "metered");
                         if (metered) delete item.quantity;
                     }
@@ -2665,7 +2666,7 @@ export class Message {
                 if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
                 customer.country = customer.country.toUpperCase();
                 if (NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
-                    const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
+                    const tax_ids = await Message.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
                     if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
                         tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
                     }
@@ -2679,7 +2680,7 @@ export class Message {
             }
 
             try {
-                msg.invoice = await this.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
+                msg.invoice = await Message.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
             } catch (error) {
                 if(error.message.indexOf("code 404") > -1) {
                     throw new Error("No pending invoice found");
@@ -2691,7 +2692,7 @@ export class Message {
                 payload.limit = 100;
                 payload.starting_after = msg.invoice.lines.data[msg.invoice.lines.data.length - 1].id;
                 do {
-                    var test = await this.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
+                    var test = await Message.Stripe<stripe_list<stripe_invoice_line>>("GET", "invoices_upcoming_lines", customer.subscriptionid, payload, customer.stripeid);
                     msg.invoice.lines.data = msg.invoice.lines.data.concat(test.data);
                     if (test.has_more) {
                         payload.starting_after = test.data[msg.invoice.lines.data.length - 1].id;
@@ -2867,7 +2868,7 @@ export class Message {
 
             // Backward compatability and/or pick up after deleting customer object 
             if (NoderedUtil.IsNullEmpty(usage.siid) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                const stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
+                const stripecustomer = await Message.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
                 if (!NoderedUtil.IsNullUndefinded(stripecustomer) && !NoderedUtil.IsNullUndefinded(stripecustomer.subscriptions)) {
                     for (let sub of stripecustomer.subscriptions.data) {
                         if (sub.id == customer.subscriptionid) {
@@ -2891,14 +2892,14 @@ export class Message {
             _quantity += quantity;
 
             if(!NoderedUtil.IsNullEmpty(product.stripeproduct) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                const stripe_product = await this.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
+                const stripe_product = await Message.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
                 if(stripe_product==null) throw new Error("Unknown product");
                 if(stripe_product.active == false) throw new Error("Product is not active");
             }
             let stripe_price: stripe_price = {type: "payment"} as any;
 
             if(!NoderedUtil.IsNullEmpty(product.stripeprice) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                stripe_price = await this.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
+                stripe_price = await Message.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
                 if(stripe_price==null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
                 if(stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
             }
@@ -2931,7 +2932,7 @@ export class Message {
                 // customer.country = customer.country.toUpperCase();
                 // if (NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
                 //     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                //         const tax_ids = await this.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
+                //         const tax_ids = await Message.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
                 //         if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
                 //             tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
                 //         }
@@ -3005,7 +3006,7 @@ export class Message {
                         }
                         console.log(JSON.stringify(payload, null, 2));
                         if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                            checkout = await this.Stripe("POST", "checkout.sessions", null, payload, null);
+                            checkout = await Message.Stripe("POST", "checkout.sessions", null, payload, null);
                             // @ts-ignore
                             customer.sessionid = checkout.id;
                             // @ts-ignore
@@ -3028,7 +3029,7 @@ export class Message {
                     }
                     if (NoderedUtil.IsNullEmpty(usage.siid)) line_item["subscription"] = customer.subscriptionid;
                     // Add new if usage.siid is null / updates if we have usage.siid
-                    const res = await this.Stripe<stripe_subscription_item>("POST", "subscription_items", usage.siid, line_item, customer.stripeid);
+                    const res = await Message.Stripe<stripe_subscription_item>("POST", "subscription_items", usage.siid, line_item, customer.stripeid);
                     usage.siid = res.id;
                     usage.subid = customer.subscriptionid;
                     await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
@@ -3045,7 +3046,7 @@ export class Message {
                     (resource.target == "customer" && product.customerassign != "metered")) {
                     payload.quantity = _quantity
                     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                        const res = await this.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
+                        const res = await Message.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
                     }
                 }
 
@@ -3068,7 +3069,7 @@ export class Message {
         }
     }
 
-    async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
+    static async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
         let url = "https://api.stripe.com/v1/" + object;
         if (!NoderedUtil.IsNullEmpty(id)) url = url + "/" + id;
         if (object == "tax_ids") {
@@ -3227,7 +3228,7 @@ export class Message {
                 if (msg.object == "plans" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
                 if (msg.object == "invoices_upcoming" && msg.method != "GET") throw new Error("Access to " + msg.object + " is not allowed");
             }
-            msg.payload = await this.Stripe(msg.method, msg.object, msg.id, msg.payload, msg.customerid);
+            msg.payload = await Message.Stripe(msg.method, msg.object, msg.id, msg.payload, msg.customerid);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
@@ -3339,7 +3340,7 @@ export class Message {
             // @ts-ignore
             let sessionid = customer.sessionid
             if (!NoderedUtil.IsNullEmpty(sessionid)) {
-                var session = await this.Stripe<stripe_base>("GET", "checkout.sessions", sessionid, null, null);
+                var session = await Message.Stripe<stripe_base>("GET", "checkout.sessions", sessionid, null, null);
 
                 var onetime = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "mode": "one_time", "sessionid": sessionid }, top: 1, collectionname: "config", jwt: msg.jwt }, span);
                 if (onetime.length > 0) {
@@ -3373,14 +3374,14 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid) || Config.stripe_force_vat) {
 
                 if (NoderedUtil.IsNullUndefinded(msg.stripecustomer) && !NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
-                    msg.stripecustomer = await this.Stripe<stripe_customer>("GET", "customers", msg.customer.stripeid, null, null);
+                    msg.stripecustomer = await Message.Stripe<stripe_customer>("GET", "customers", msg.customer.stripeid, null, null);
                     if (msg.stripecustomer == null) {
                         msg.customer.stripeid = "";
                     }
                 }
                 if (NoderedUtil.IsNullUndefinded(msg.stripecustomer)) {
                     // let payload: any = { name: msg.customer.name, email: msg.customer.email, metadata: { userid: user._id }, description: user.name, address: { country: msg.customer.country }, tax_exempt: tax_exempt };
-                    // msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", null, payload, null);
+                    // msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", null, payload, null);
                     // msg.customer.stripeid = msg.stripecustomer.id;
                     msg.customer.subscriptionid = null;
                     // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
@@ -3401,11 +3402,11 @@ export class Message {
                     }
                     if (msg.stripecustomer.name != msg.customer.name) {
                         const payload: any = { name: msg.customer.name };
-                        msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
+                        msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
                     }
                     // if (msg.stripecustomer.email != msg.customer.email || msg.stripecustomer.name != msg.customer.name || (msg.stripecustomer.address == null || msg.stripecustomer.address.country != msg.customer.country)) {
                     // const payload: any = { email: msg.customer.email, name: msg.customer.name, address: { country: msg.customer.country }, tax_exempt: tax_exempt };
-                    // msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
+                    // msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
                     // }
                     if (!NoderedUtil.IsNullEmpty(msg.stripecustomer?.address?.country)) {
                         msg.customer.country = msg.stripecustomer.address.country;
@@ -3454,39 +3455,39 @@ export class Message {
                 // if (msg.customer.vatnumber) {
                 //     if (msg.stripecustomer.tax_ids.total_count == 0) {
                 //         const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
-                //         await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
+                //         await Message.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
                 //     } else if (msg.stripecustomer.tax_ids.data[0].value != msg.customer.vatnumber) {
-                //         await this.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
+                //         await Message.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
                 //         const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
-                //         await this.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
+                //         await Message.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
                 //     }
                 // } else {
                 //     if (msg.stripecustomer.tax_ids.data.length > 0) {
-                //         await this.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
+                //         await Message.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
                 //     }
                 // }
 
                 // if (!NoderedUtil.IsNullUndefinded(msg.stripecustomer.discount) && !NoderedUtil.IsNullEmpty(msg.stripecustomer.discount.coupon.name)) {
                 //     if (msg.customer.coupon != msg.stripecustomer.discount.coupon.name) {
                 //         const payload: any = { coupon: "" };
-                //         msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
+                //         msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
 
                 //         if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
-                //             const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                //             const coupons: stripe_list<stripe_coupon> = await Message.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
                 //             const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
                 //             if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
 
                 //             const payload2: any = { coupon: coupons.data[0].id };
-                //             msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
+                //             msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
                 //         }
                 //     }
                 // } else if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
-                //     const coupons: stripe_list<stripe_coupon> = await this.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
+                //     const coupons: stripe_list<stripe_coupon> = await Message.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
                 //     const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
                 //     if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
 
                 //     const payload2: any = { coupon: coupons.data[0].id };
-                //     msg.stripecustomer = await this.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
+                //     msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
                 // }
             } else {
                 if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
@@ -3617,30 +3618,17 @@ export class Message {
         m.data = JSON.stringify(l);
         // cli?.Send(m);
     }
-    public static lastHouseKeeping: Date = null;
-    public static ReadyForHousekeeping(): boolean {
-        if (Message.lastHouseKeeping == null) {
-            return true;
-        }
-        const date = new Date();
-        const a: number = (date as any) - (Message.lastHouseKeeping as any);
-        const diffminutes = a / (1000 * 60);
-        // const diffhours = a / (1000 * 60 * 60);
-        Logger.instanse.silly(diffminutes + " minutes since laste house keeping", null);
-        if (diffminutes < 60) return false;
-        return true;
-    }
     private async Housekeeping(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
         let msg: any;
         try {
             msg = JSON.parse(this.data);
-            Message.lastHouseKeeping = null;
+            HouseKeeping.lastHouseKeeping = null;
             if (NoderedUtil.IsNullEmpty(msg.skipnodered)) msg.skipnodered = false;
             if (NoderedUtil.IsNullEmpty(msg.skipcalculatesize)) msg.skipcalculatesize = false;
             if (NoderedUtil.IsNullEmpty(msg.skipupdateusersize)) msg.skipupdateusersize = false;
-            await this._Housekeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
+            await HouseKeeping._Housekeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } finally {
@@ -3648,823 +3636,7 @@ export class Message {
         }        
     }
 
-    public async _Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
-        if (Message.lastHouseKeeping == null) {
-            Message.lastHouseKeeping = new Date();
-            Message.lastHouseKeeping.setDate(Message.lastHouseKeeping.getDate() - 1);
-        }
-        if (!Message.ReadyForHousekeeping()) {
-            const date = new Date();
-            const a: number = (date as any) - (Message.lastHouseKeeping as any);
-            const diffminutes = a / (1000 * 60);
-            Logger.instanse.debug("Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)", parent);
-            return;
-        }
-        Message.lastHouseKeeping = new Date();
-        this.tuser = User.assign(Crypt.rootUser());
-        let rootuser = this.tuser;
-        const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
-        try {
-            try {
-                Logger.instanse.debug("Ensure Indexes", span);
-                await Config.db.ensureindexes(span);
-            } catch (error) {
-            }
-            if(Config.auto_hourly_housekeeping == false) {
-                Logger.instanse.debug("HouseKeeping disabled, quit.", span);
-                return;
-            }
-            try {
-                if(Logger.agentdriver != null) {
-                    try {
-                        Logger.instanse.debug("HouseKeeping Run InstanceCleanup", span);
-                        await Logger.agentdriver.InstanceCleanup(span);
-                    } catch (error) {
-                        Logger.instanse.error(error, span);
-                    }
-                    const jwt: string = Crypt.rootToken();
-                    var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true }, jwt }, span);
-                    Logger.instanse.debug("HouseKeeping ensure " + agents.length + " agents", span);
-                    
-                    for (let i = 0; i < agents.length; i++) {
-                        const agent = agents[i];
-                        var pods = await Logger.agentdriver.GetInstancePods(rootuser, jwt, agent, false, span);
-                        if(pods == null || pods.length == 0) {
-                            if(agent.name != agent.slug) {
-                                Logger.instanse.debug("HouseKeeping ensure " + agent.name + " (" + agent.slug + ")", span);
-                            } else {
-                                Logger.instanse.debug("HouseKeeping ensure " + agent.name, span);
-                            }
-                            try {
-                                await Logger.agentdriver.EnsureInstance(rootuser, jwt, agent, span);
-                            } catch (error) {
-                                Logger.instanse.error(error, span);                                
-                            }
-                        }
-                    }
-                } else {
-                    Logger.instanse.warn("agentdriver is null, skip agent check", span);
-                }
-            } catch (error) {
-                Logger.instanse.error(error, span);
-            }
 
-
-            try {
-                const jwt: string = Crypt.rootToken();
-                Logger.instanse.debug("Begin validating builtin roles", span);
-                for(var i = 0; i < Config.db.WellknownIdsArray.length; i++) {
-                    const item: Role = await Config.db.GetOne<Role>({ 
-                        query: {_id: Config.db.WellknownIdsArray[i], 
-                            "_type": "role"}, collectionname: "users", jwt}, span);
-                    if(item != null) {
-                        Logger.instanse.verbose("Save/validate " + item.name, span);
-                        await Logger.DBHelper.Save(item, jwt, span);
-                    }
-                }
-            } catch (error) {
-                Logger.instanse.error(error, span);
-            }
-
-            if(Config.housekeeping_remove_unvalidated_user_days > 0) {
-                let todate = new Date();
-                todate.setDate(todate.getDate() - 1);
-                let fromdate = new Date();
-                fromdate.setMonth(fromdate.getMonth() - 1);
-                const jwt: string = Crypt.rootToken();
-
-                let query = { "validated": false, "_type": "user", "_id": { "$ne": WellknownIds.root } };
-                query["_modified"] = { "$lt": todate.toISOString(), "$gt": fromdate.toISOString()}
-                let count = await Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
-                if(count > 0) {
-                    Logger.instanse.verbose("Removed " + count + " unvalidated users", span);
-                }                
-            }
-            if(Config.housekeeping_cleanup_openrpa_instances == true) {
-                let msg = new UpdateManyMessage();
-                msg.jwt = Crypt.rootToken();
-                msg.collectionname = "openrpa_instances"; 
-                msg.query = { "state": { "$in": ["idle", "running"] } };
-                msg.item = { "$set": { "state": "completed"}, "$unset": {"xml": ""}} as any;
-                let result = await Config.db.UpdateDocument(msg, span);
-                if(result?.opresult?.nModified > 0) {
-                    Logger.instanse.verbose("Updated " + result.opresult.nModified + " openrpa instances", span);
-                } else if (result?.opresult?.modifiedCount > 0) {
-                    Logger.instanse.verbose("Updated " + result.opresult.modifiedCount + " openrpa instances", span);
-                }
-            }
-            
-        } catch (error) {
-        }
-
-        Logger.instanse.debug("Begin validating prefered timeseries collections", span);
-        let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
-        try {
-            let audit = collections.find(x => x.name == "audit");
-            let audit_old = collections.find(x => x.name == "audit_old");
-            if (audit != null && Config.force_audit_ts && audit.type != "timeseries") {
-                await Config.db.db.collection("audit").rename("audit_old");
-                audit = null;
-            }
-            if (audit == null) {
-                audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "userid", granularity: "minutes" } });
-                // audit = await Config.db.db.createCollection("audit", { timeseries: { timeField: "_created", metaField: "metadata", granularity: "minutes" } });
-            }
-            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
-            audit = collections.find(x => x.name == "audit");
-            audit_old = collections.find(x => x.name == "audit_old");
-            if (Config.migrate_audit_to_ts && Config.force_audit_ts && audit != null && audit_old != null && audit.type == "timeseries") {
-                let bulkInsert = Config.db.db.collection("audit").initializeUnorderedBulkOp();
-                let bulkRemove = Config.db.db.collection("audit_old").initializeUnorderedBulkOp()
-                DatabaseConnection.timeseries_collections = ["audit"]
-
-                let cursor = Config.db.db.collection("audit_old").find({})
-                var count = await Config.db.db.collection("audit_old").countDocuments();
-                var counter = 0;
-                const x = 1000
-                for await (let a of cursor) {
-                    // a.metadata = { _acl: a._acl, name: a.name, userid: a.userid, username: a.username }
-                    // delete a._acl;
-                    // delete a._modifiedby;
-                    // delete a._modifiedbyid;
-                    // delete a._modified;
-                    // delete a.userid;
-                    // delete a.name;
-                    // delete a.username;
-
-                    // a.metadata = await Config.db.CleanACL(a.metadata as any, rootuser as any, "audit", span, true) as any;
-                    a = await Config.db.CleanACL(a as any, rootuser as any, "audit", span, true) as any;
-                    bulkInsert.insert(a);
-                    bulkRemove.find({ _id: a._id }).deleteOne();
-                    counter++
-                    // @ts-ignore
-                    var insertCount = bulkInsert.length;
-                    if (counter % x === 0) {
-                        if (insertCount > 0) {
-                            console.log("migrated " + counter + " of " + count + " audit records " + ((100 * counter) / count).toFixed(2) + "%");
-                            bulkInsert.execute()
-                            bulkRemove.execute()
-                            bulkInsert = Config.db.db.collection("audit").initializeUnorderedBulkOp();
-                            bulkRemove = Config.db.db.collection("audit_old").initializeUnorderedBulkOp()
-                        }
-                    }
-                }
-                // @ts-ignore
-                var insertCount = bulkInsert.length;
-                if (insertCount > 0) {
-                    bulkInsert.execute()
-                    bulkRemove.execute()
-                }
-
-            }
-        } catch (error) {
-            Logger.instanse.error(error, span);
-        }
-
-
-        try {
-            let dbusage = collections.find(x => x.name == "dbusage");
-            let dbusage_old = collections.find(x => x.name == "dbusage_old");
-            if (dbusage != null && Config.force_dbusage_ts && dbusage.type != "timeseries") {
-                await Config.db.db.collection("dbusage").rename("dbusage_old");
-                dbusage = null;
-            }
-            if (dbusage == null) {
-                dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
-                // dbusage = await Config.db.db.createCollection("dbusage", { timeseries: { timeField: "timestamp", metaField: "userid", granularity: "hours" } });
-            }
-
-            collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
-            dbusage = collections.find(x => x.name == "dbusage");
-            dbusage_old = collections.find(x => x.name == "dbusage_old");
-            if (Config.force_dbusage_ts && dbusage != null && dbusage_old != null && dbusage.type == "timeseries") {
-                let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-                let bulkRemove = Config.db.db.collection("dbusage_old").initializeUnorderedBulkOp()
-                DatabaseConnection.timeseries_collections = ["dbusage"]
-
-                let cursor = Config.db.db.collection("dbusage_old").find({})
-                var count = await Config.db.db.collection("dbusage_old").countDocuments();
-                var counter = 0;
-                const x = 1000
-                for await (let a of cursor) {
-                    // a.metadata = { userid: a.userid, collection: a.collection, username: a.username }
-                    // delete a.userid;
-                    // delete a.collection;
-                    delete a.name;
-                    delete a._createdby;
-                    delete a._createdbyid;
-                    delete a._created;
-                    delete a._modifiedby;
-                    delete a._modifiedbyid;
-                    delete a._modified;
-                    delete a._type;
-
-                    a = await Config.db.CleanACL(a as any, rootuser as any, "dbusage", span, true) as any;
-                    bulkInsert.insert(a);
-                    bulkRemove.find({ _id: a._id }).deleteOne();
-                    counter++
-                    // @ts-ignore
-                    var insertCount = bulkInsert.length;
-                    if (counter % x === 0) {
-                        if (insertCount > 0) {
-                            console.log("migrated " + counter + " of " + count + " dbusage records " + ((100 * counter) / count).toFixed(2) + "%");
-                            bulkInsert.execute()
-                            bulkRemove.execute()
-                            bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-                            bulkRemove = Config.db.db.collection("dbusage_old").initializeUnorderedBulkOp()
-                        }
-                    }
-                }
-                // @ts-ignore
-                var insertCount = bulkInsert.length;
-                if (insertCount > 0) {
-                    bulkInsert.execute()
-                    bulkRemove.execute()
-                }
-
-            }
-        } catch (error) {
-            Logger.instanse.error(error, span);
-        }
-
-
-
-
-        const timestamp = new Date(new Date().toISOString());
-        timestamp.setUTCHours(0, 0, 0, 0);
-
-        const yesterday = new Date(new Date().toISOString());;
-        yesterday.setUTCHours(0, 0, 0, 0);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        try {
-            for (let i = 0; i < DatabaseConnection.collections_with_text_index.length; i++) {
-                let collectionname = DatabaseConnection.collections_with_text_index[i];
-                if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) continue;
-                if (DatabaseConnection.usemetadata(collectionname)) {
-                    let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
-                    if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.debug("Start creating metadata._searchnames for collection " + collectionname, span);
-                        await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
-                            [
-                                {
-                                    "$set": {
-                                        "metadata._searchnames":
-                                        {
-                                            $split: [
-                                                {
-                                                    $replaceAll: {
-                                                        input:
-                                                        {
-                                                            $replaceAll: {
-                                                                input:
-                                                                {
-                                                                    $replaceAll: {
-                                                                        input:
-                                                                            { $toLower: "$metadata.name" }
-                                                                        , find: ".", replacement: " "
-                                                                    }
-                                                                }
-                                                                , find: "-", replacement: " "
-                                                            }
-                                                        }
-                                                        , find: "/", replacement: " "
-                                                    }
-                                                }
-                                                , " "]
-                                        }
-                                    }
-                                }
-                                ,
-                                {
-                                    "$set": {
-                                        "_searchname":
-                                        {
-                                            $replaceAll: {
-                                                input:
-                                                {
-                                                    $replaceAll: {
-                                                        input:
-                                                        {
-                                                            $replaceAll: {
-                                                                input:
-                                                                    { $toLower: "$metadata.name" }
-                                                                , find: ".", replacement: " "
-                                                            }
-                                                        }
-                                                        , find: "-", replacement: " "
-                                                    }
-                                                }
-                                                , find: "/", replacement: " "
-                                            }
-                                        }
-                                    }
-                                }
-                                ,
-                                { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
-                            ]
-                        )
-                        Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span);
-                    }
-                } else {
-                    let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
-                    if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.debug("Start creating _searchnames for collection " + collectionname, span);
-                        await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
-                            [
-                                {
-                                    "$set": {
-                                        "_searchnames":
-                                        {
-                                            $split: [
-                                                {
-                                                    $replaceAll: {
-                                                        input:
-                                                        {
-                                                            $replaceAll: {
-                                                                input:
-                                                                {
-                                                                    $replaceAll: {
-                                                                        input:
-                                                                            { $toLower: "$name" }
-                                                                        , find: ".", replacement: " "
-                                                                    }
-                                                                }
-                                                                , find: "-", replacement: " "
-                                                            }
-                                                        }
-                                                        , find: "/", replacement: " "
-                                                    }
-                                                }
-                                                , " "]
-                                        }
-                                    }
-                                }
-                                ,
-                                {
-                                    "$set": {
-                                        "_searchname":
-                                        {
-                                            $replaceAll: {
-                                                input:
-                                                {
-                                                    $replaceAll: {
-                                                        input:
-                                                        {
-                                                            $replaceAll: {
-                                                                input:
-                                                                    { $toLower: "$name" }
-                                                                , find: ".", replacement: " "
-                                                            }
-                                                        }
-                                                        , find: "-", replacement: " "
-                                                    }
-                                                }
-                                                , find: "/", replacement: " "
-                                            }
-                                        }
-                                    }
-                                }
-                                ,
-                                { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
-                            ]
-                        )
-                        Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span);
-                    }
-                }
-            }
-
-            // skipCalculateSize = false;
-            if (!skipCalculateSize) {
-
-                const usemetadata = DatabaseConnection.usemetadata("dbusage");
-                const user = Crypt.rootUser();
-                const tuser = user;
-                const jwt: string = Crypt.rootToken();
-                let collections = await Config.db.ListCollections(false, jwt);
-                collections = collections.filter(x => x.name.indexOf("system.") === -1);
-                
-                let totalusage = 0;
-                let index = 0;
-                let skip_collections = [];
-                if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
-                for (let col of collections) {
-                    var n: string = col.name;
-                    if(n.endsWith(".chunks")) continue;
-                    if (skip_collections.indexOf(col.name) > -1) {
-                        Logger.instanse.debug("skipped " + col.name + " due to housekeeping_skip_collections setting", span);
-                        continue;
-                    }
-
-
-                    index++;
-                    let aggregates: any = [
-                        {
-                            "$project": {
-                                "_modifiedbyid": 1,
-                                "_modifiedby": 1,
-                                "object_size": { "$bsonSize": "$$ROOT" }
-                            }
-                        },
-                        {
-                            "$group": {
-                                "_id": "$_modifiedbyid",
-                                "size": { "$sum": "$object_size" },
-                                "name": { "$first": "$_modifiedby" }
-                            }
-                        },
-                        { $addFields: { "userid": "$_id" } },
-                        { $unset: "_id" },
-                        { $addFields: { "collection": col.name } },
-                        { $addFields: { timestamp: timestamp.toISOString() } },
-                    ];
-                    if (col.name.endsWith(".files")) {
-                        aggregates = [
-                            {
-                                "$project": {
-                                    "_modifiedbyid": "$metadata._modifiedbyid",
-                                    "_modifiedby": "$metadata._modifiedby",
-                                    "object_size": "$length"
-                                }
-                            },
-                            {
-                                "$group": {
-                                    "_id": "$_modifiedbyid",
-                                    "size": { "$sum": "$object_size" },
-                                    "name": { "$first": "$_modifiedby" }
-                                }
-                            },
-                            { $addFields: { "userid": "$_id" } },
-                            { $unset: "_id" },
-                            { $addFields: { "collection": col.name } },
-                            { $addFields: { timestamp: timestamp.toISOString() } },
-                        ]
-                    }
-                    if (col.name == "audit") {
-                        aggregates = [
-                            {
-                                "$project": {
-                                    "userid": 1,
-                                    "name": 1,
-                                    "object_size": { "$bsonSize": "$$ROOT" }
-                                }
-                            },
-                            {
-                                "$group": {
-                                    "_id": "$userid",
-                                    "size": { "$sum": "$object_size" },
-                                    "name": { "$first": "$name" }
-                                }
-                            },
-                            { $addFields: { "userid": "$_id" } },
-                            { $unset: "_id" },
-                            { $addFields: { "collection": col.name } },
-                            { $addFields: { timestamp: timestamp.toISOString() } },
-                        ]
-                    }
-
-                    await Config.db.ParseTimeseries(span);
-                    const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
-                    try {
-                        if (!DatabaseConnection.istimeseries("dbusage")) {
-                            if (usemetadata) {
-                                await Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, "metadata.collection": col.name });
-                            } else {
-                                await Config.db.db.collection("dbusage").deleteMany({ timestamp: timestamp, collection: col.name });
-                            }
-                        }
-                    } catch (error) {
-                        Logger.instanse.error(error, span);
-                    }
-                    let usage = 0;
-                    if (items.length > 0) {
-                        let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-                        for (var i = 0; i < items.length; i++) {
-                            try {
-                                // sometimes the item is "weird", re-serializing it, cleans it, so it works again ... mongodb bug ???
-                                let item = JSON.parse(JSON.stringify(items[i]));
-                                item = Config.db.ensureResource(item, "dbusage");
-                                item = await Config.db.CleanACL(item, tuser, "dbusage", span);
-                                Base.addRight(item, item.userid, item.name, [Rights.read]);
-                                for (let i = item._acl.length - 1; i >= 0; i--) {
-                                    {
-                                        const ace = item._acl[i];
-                                        if (typeof ace.rights === "string") {
-                                            const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
-                                            (ace.rights as any) = b;
-                                        }
-                                    }
-                                }
-                                delete item._id;
-                                if (usemetadata) {
-                                    item.metadata = item.metadata || {};
-                                    item.metadata.collection = item.collection;
-                                    item.metadata.username = item.name;
-                                    delete item.collection;
-                                    delete item.name;
-                                } else {
-                                    item.username = item.name;
-                                    item._type = "metered";
-                                    delete item.name;
-                                    // item.name = item.name + " / " + col.name + " / " + this.formatBytes(item.size);
-                                }
-                                // item._createdby = "root";
-                                // item._createdbyid = WellknownIds.root;
-                                // item._created = new Date(new Date().toISOString());
-                                // item._modifiedby = "root";
-                                // item._modifiedbyid = WellknownIds.root;
-                                // item._modified = item._created;
-                                usage += item.size;
-                                DatabaseConnection.traversejsonencode(item);
-                                item.timestamp = new Date(timestamp.toISOString());
-                                bulkInsert.insert(item);
-                            } catch (error) {
-                                Logger.instanse.error(error, span);
-                            }
-
-                        }
-                        totalusage += usage;
-                        try {
-                            await bulkInsert.execute();
-                            if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + this.formatBytes(usage), span);
-
-                        } catch (error) {
-                            Logger.instanse.error(error, span);
-                        }
-                    }
-                }
-                Logger.instanse.debug("Add stats from " + collections.length + " collections with a total usage of " + this.formatBytes(totalusage), span);
-            }
-
-        } catch (error) {
-            Logger.instanse.error(error, span);
-        }
-        try {
-            if (!skipUpdateUserSize) {
-                var dt = new Date();
-                let index = 0;
-                const fivedaysago = new Date(new Date().toISOString());;
-                fivedaysago.setUTCHours(0, 0, 0, 0);
-                fivedaysago.setDate(fivedaysago.getDate() - 5);
-
-                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": fivedaysago } } }, { $count: "userCount" }]).toArray();
-                if (usercount.length > 0) {
-                    Logger.instanse.debug("Begin updating all users (" + usercount[0].userCount + ") dbusage field", span);
-                }
-                let cursor: FindCursor<any>;
-                if (Config.NODE_ENV == "production") {
-                    cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
-                } else {
-                    cursor = Config.db.db.collection("users").find({ "_type": "user", lastseen: { "$gte": fivedaysago } });
-                }
-                for await (const u of cursor) {
-                    if (u.dbusage == null) u.dbusage = 0;
-                    index++;
-                    const pipe = [
-                        { "$match": { "userid": u._id, timestamp: timestamp } },
-                        {
-                            "$group":
-                            {
-                                "_id": "$userid",
-                                "size": { "$max": "$size" },
-                                "count": { "$sum": 1 }
-                            }
-                        }
-                    ]// "items": { "$push": "$$ROOT" }
-                    const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
-                    if (items.length > 0) {
-                        Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + this.formatBytes(items[0].size) + " from " + items[0].count + " collections", span);
-                        await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
-                    }
-                    if (index % 100 == 0) Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span);
-                }
-                Logger.instanse.debug("Completed updating all users dbusage field", span);
-            }
-        } catch (error) {
-            Logger.instanse.error(error, span);
-        }
-        if (Config.multi_tenant) {
-            try {
-                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
-                if (usercount.length > 0) {
-                    Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field", span);
-                }
-                const pipe = [
-                    { "$match": { "_type": "customer" } },
-                    { "$project": { "name": 1, "dbusage": 1, "stripeid": 1, "dblocked": 1 } },
-                    {
-                        "$lookup": {
-                            "from": "users",
-                            "let": {
-                                "id": "$_id"
-                            },
-                            "pipeline": [
-                                {
-                                    "$match": {
-                                        "$expr": {
-                                            "$and": [
-                                                {
-                                                    "$eq": [
-                                                        "$customerid",
-                                                        "$$id"
-                                                    ]
-                                                },
-                                                {
-                                                    "$eq": [
-                                                        "$_type",
-                                                        "user"
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                {
-                                    $project:
-                                    {
-                                        "name": 1, "dbusage": 1, "_id": 0
-                                    }
-                                }
-                            ],
-                            "as": "users"
-                        }
-
-                    }
-                ]
-                const cursor = await Config.db.db.collection("users").aggregate(pipe)
-                for await (const c of cursor) {
-                    let dbusage: number = 0;
-                    for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
-                    await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
-                    Logger.instanse.debug(c.name + " using " + this.formatBytes(dbusage), span);
-                }
-                var sleep = (ms) => {
-                    return new Promise(resolve => { setTimeout(resolve, ms) })
-                }
-                await sleep(2000);
-
-            } catch (error) {
-                Logger.instanse.error(error, span);
-            }
-        }
-        if (Config.multi_tenant && !skipUpdateUserSize) {
-            try {
-                let index = 0;
-                const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
-                if (usercount.length > 0) {
-                    Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field", span);
-                }
-
-                const pipe = [
-                    { "$match": { "_type": "customer" } },
-                    { "$project": { "name": 1, "dbusage": 1, "stripeid": 1, "dblocked": 1 } },
-                    {
-                        "$lookup": {
-                            "from": "config",
-                            "let": {
-                                "id": "$_id"
-                            },
-                            "pipeline": [
-                                {
-                                    "$match": {
-                                        "$expr": {
-                                            "$and": [
-                                                {
-                                                    "$eq": [
-                                                        "$customerid",
-                                                        "$$id"
-                                                    ]
-                                                },
-                                                {
-                                                    "$eq": [
-                                                        "$_type",
-                                                        "resourceusage"
-                                                    ]
-                                                },
-                                                {
-                                                    "$eq": [
-                                                        "$resource",
-                                                        "Database Usage"
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    }
-                                },
-                                {
-                                    $project:
-                                    {
-                                        "name": 1, "quantity": 1, "siid": 1, "product": 1, "_id": 0
-                                    }
-                                }
-                            ],
-                            "as": "config"
-                        }
-
-                    }
-                ]
-                const cursor = await Config.db.db.collection("users").aggregate(pipe);
-                // @ts-ignore
-                let resources: Resource[] = await Config.db.db.collection("config").find({ "_type": "resource", "name": "Database Usage" }).toArray();
-                if (resources.length > 0) {
-                    let resource: Resource = resources[0];
-
-                    for await (const c of cursor) {
-                        if (c.dbusage == null) c.dbusage = 0;
-                        const config: ResourceUsage = c.config[0];
-                        index++;
-                        if (config == null) {
-                            if (c.dbusage > resource.defaultmetadata.dbusage) {
-                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
-                                if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage), span);
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
-                                }
-                            } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
-                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage), span);
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
-                                }
-                            }
-                        } else if (config.product.customerassign != "metered") {
-                            let quota: number = resource.defaultmetadata.dbusage + (config.quantity * config.product.metadata.dbusage);
-                            if (c.dbusage > quota) {
-                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
-                                if (!c.dblocked || c.dblocked) {
-                                    Logger.instanse.debug("dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota), span);
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
-                                }
-                            } else if (c.dbusage <= quota) {
-                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                if (c.dblocked || !c.dblocked) {
-                                    Logger.instanse.debug("unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(quota), span);
-                                    await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
-                                }
-                            }
-                        } else if (config.product.customerassign == "metered") {
-                            let billabledbusage: number = c.dbusage - resource.defaultmetadata.dbusage;
-                            if (billabledbusage > 0) {
-                                const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);
-
-                                Logger.instanse.debug("Add usage_record for " + c.name + " using " + this.formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + this.formatBytes(config.product.metadata.dbusage), span);
-                                const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
-                                const payload: any = { "quantity": billablecount, "timestamp": dt };
-                                if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
-                                    try {
-                                        await this.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
-                                    } catch (error) {
-                                        if (error.response && error.response.body) {
-                                            Logger.instanse.error("Update usage record error!" + error.response.body, span);
-                                        } else {
-                                            Logger.instanse.error("Update usage record error!" + error, span);
-                                        }
-                                    }
-                                }
-                            }
-                            if (c.dblocked || !c.dblocked) {
-                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
-                            }
-                        }
-                        // await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": c.dbusage } });
-                        if (index % 100 == 0) Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span);
-                    }
-                    Logger.instanse.debug("Completed updating all customers dbusage field", span);
-
-
-                    const pipe2 = [
-                        { "$match": { "_type": "user", "$or": [{ "customerid": { $exists: false } }, { "customerid": "" }] } },
-                        { "$project": { "name": 1, "dbusage": 1, "dblocked": 1 } }];
-                    const cursor2 = await Config.db.db.collection("users").aggregate(pipe2);
-                    for await (const c of cursor2) {
-                        if (Config.db.WellknownIdsArray.indexOf(c._id) > -1) continue;
-                        if (c.dbusage == null) c.dbusage = 0;
-                        if (c.dbusage > resource.defaultmetadata.dbusage) {
-                            Logger.instanse.debug("dbblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage), span);
-                            await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
-                        } else {
-                            if (c.dblocked) {
-                                await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                                Logger.instanse.debug("unblocking " + c.name + " using " + this.formatBytes(c.dbusage) + " allowed is " + this.formatBytes(resource.defaultmetadata.dbusage), span);
-                            }
-
-                        }
-                    }
-                    Logger.instanse.debug("Completed updating all users without a customer dbusage field", span);
-                }
-            } catch (error) {
-                if (error.response && error.response.body) {
-                    Logger.instanse.error(error.response.body, span);
-                } else {
-                    Logger.instanse.error(error, span);
-                }
-            } finally {
-                Logger.instanse.debug("Completed housekeeping", span);
-            }
-        }
-        Logger.otel.endSpan(span);
-    }
     async SelectCustomer(parent: Span): Promise<User> {
         let user: User = null;
         this.Reply();
