@@ -19,22 +19,7 @@ export class HouseKeeping {
     Logger.instanse.silly(`${diffminutes} minutes since last housekeeping`, null, { cls: "Housekeeping" });
     return diffminutes >= 60;
   }
-  public static DoHouseKeeping(parent: Span) {
-    if (HouseKeeping.lastHouseKeeping == null) {
-      HouseKeeping.lastHouseKeeping = new Date();
-      HouseKeeping.lastHouseKeeping.setDate(HouseKeeping.lastHouseKeeping.getDate() - 1);
-    }
-    if (!HouseKeeping.ReadyForHousekeeping()) {
-      const date = new Date();
-      const a: number = (date as any) - (HouseKeeping.lastHouseKeeping as any);
-      const diffminutes = a / (1000 * 60);
-      Logger.instanse.debug("Skipping housekeeping, to early for next run (ran " + diffminutes + " minutes ago)", parent, { cls: "Housekeeping" });
-      return;
-    }
-    HouseKeeping.lastHouseKeeping = new Date();
-    HouseKeeping._Housekeeping(false, false, false, parent);
-  }
-  public static async _Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
+  public static async DoHouseKeeping(skipAgentCleanup: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
     initMemoryUsage();
     let rootuser: User = User.assign(Crypt.rootUser());
     const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
@@ -45,7 +30,7 @@ export class HouseKeeping {
         Logger.instanse.debug("HouseKeeping disabled, quit.", span, { cls: "Housekeeping" });
         return;
       }
-      await HouseKeeping.runInstanceCleanup(rootuser, span);
+      await HouseKeeping.runInstanceCleanup(skipAgentCleanup, rootuser, span);
       await HouseKeeping.validateBuiltinRoles(span);
       await HouseKeeping.removeUnvalidatedUsers(span);
       await HouseKeeping.cleanupOpenRPAInstances(span);
@@ -64,9 +49,9 @@ export class HouseKeeping {
       }      
     }
   }
-  private static async runInstanceCleanup(rootuser: User, span: Span) {
+  private static async runInstanceCleanup(skipAgentCleanup: boolean, rootuser: User, span: Span) {
     try {
-      if (Logger.agentdriver != null) {
+      if (Logger.agentdriver != null && skipAgentCleanup == false) {
         try {
           Logger.instanse.debug("HouseKeeping Run InstanceCleanup", span, { cls: "Housekeeping" });
           await Logger.agentdriver.InstanceCleanup(span);

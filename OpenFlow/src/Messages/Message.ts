@@ -3628,7 +3628,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.skipnodered)) msg.skipnodered = false;
             if (NoderedUtil.IsNullEmpty(msg.skipcalculatesize)) msg.skipcalculatesize = false;
             if (NoderedUtil.IsNullEmpty(msg.skipupdateusersize)) msg.skipupdateusersize = false;
-            await HouseKeeping._Housekeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
+            await HouseKeeping.DoHouseKeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } finally {

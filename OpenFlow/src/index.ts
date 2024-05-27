@@ -67,10 +67,10 @@ function doHouseKeeping(span: Span) {
     if (Config.housekeeping_skip_calculate_size) housekeeping_skip_calculate_size = true;
     if (Config.housekeeping_skip_update_user_size) housekeeping_skip_update_user_size = true;
     if (Config.NODE_ENV == "production") {
-        HouseKeeping._Housekeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null));
+        HouseKeeping.DoHouseKeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null));
     } else {
         // While debugging, always do all calculations
-        HouseKeeping._Housekeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
+        HouseKeeping.DoHouseKeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
         // msg2._Housekeeping(true, true, true, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
     }
 }
