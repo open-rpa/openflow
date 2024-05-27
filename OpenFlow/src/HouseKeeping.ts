@@ -36,7 +36,7 @@ export class HouseKeeping {
   }
   public static async _Housekeeping(skipNodered: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
     initMemoryUsage();
-    let rootuser:User = User.assign(Crypt.rootUser());
+    let rootuser: User = User.assign(Crypt.rootUser());
     const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
     try {
       Logger.instanse.debug("Ensure Indexes", span, { cls: "Housekeeping" });
@@ -415,7 +415,7 @@ export class HouseKeeping {
       Logger.instanse.debug("Begin calculating size and usage", span, { cls: "Housekeeping" });
       const timestamp = new Date(new Date().toISOString());
       timestamp.setUTCHours(0, 0, 0, 0);
-  
+
       const usemetadata = DatabaseConnection.usemetadata("dbusage");
       const user = Crypt.rootUser();
       const tuser = user;
@@ -503,7 +503,7 @@ export class HouseKeeping {
         }
 
         await Config.db.ParseTimeseries(span);
-        const items: any[] = await Config.db.db.collection(col.name).aggregate(aggregates).toArray();
+        const cursor = await Config.db.db.collection(col.name).aggregate(aggregates);
         try {
           if (!DatabaseConnection.istimeseries("dbusage")) {
             if (usemetadata) {
@@ -516,12 +516,11 @@ export class HouseKeeping {
           Logger.instanse.error(error, span, { cls: "Housekeeping" });
         }
         let usage = 0;
-        if (items.length > 0) {
           let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-          for (var i = 0; i < items.length; i++) {
+          for await (const c of cursor) {
             try {
               // sometimes the item is "weird", re-serializing it, cleans it, so it works again ... mongodb bug ???
-              let item = JSON.parse(JSON.stringify(items[i]));
+              let item = JSON.parse(JSON.stringify(c));
               item = Config.db.ensureResource(item, "dbusage");
               item = await Config.db.CleanACL(item, tuser, "dbusage", span);
               Base.addRight(item, item.userid, item.name, [Rights.read]);
@@ -558,16 +557,16 @@ export class HouseKeeping {
           totalusage += usage;
           try {
             await bulkInsert.execute();
-            if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
+            // if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
+            if (usage > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
 
           } catch (error) {
             Logger.instanse.error(error, span, { cls: "Housekeeping" });
           }
-        }
       }
       Logger.instanse.debug("Add stats from " + collections.length + " collections with a total usage of " + formatBytes(totalusage), span, { cls: "Housekeeping" });
       logMemoryUsage('caclulateSizeAndUsage', span);
-    }    
+    }
   }
   private static async updateUserSizeAndUsage(skipUpdateUserSize: boolean, span: Span) {
     if (!skipUpdateUserSize) {
@@ -612,11 +611,11 @@ export class HouseKeeping {
           Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span, { cls: "Housekeeping" });
           logMemoryUsage('updateUserSizeAndUsage', span);
         }
-          
+
       }
       Logger.instanse.debug("Completed updating all users dbusage field", span, { cls: "Housekeeping" });
       logMemoryUsage('updateUserSizeAndUsage', span);
-    }    
+    }
   }
   private static async updateCustomerSizeAndUsage(skipUpdateUserSize: boolean, span: Span) {
     if (Config.multi_tenant) {
@@ -853,11 +852,11 @@ const formatBytes = (bytes, decimals = 2) => {
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  if(bytes < 0) {
+  if (bytes < 0) {
     bytes = bytes * -1;
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return "-" + parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    } else {
+  } else {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   }
