@@ -198,76 +198,8 @@ export class DatabaseConnection extends events.EventEmitter {
             .on('parseError', parseErrEvent)
             .on('timeout', errEvent)
             .on('close', closeEvent)
-            // .on("commandStarted", (event) => {
-            //     if(this.host != "nixos") return;
-            //     let req = this.requests[event.requestId];
-            //     if(req != null) {
-            //         this.requests[event.requestId] = { start: new Date(), command: event.commandName, connectionId: event.connectionId };
-            //     } else {
-            //         this.requests[event.requestId] = { start: new Date(), command: event.commandName, connectionId: event.connectionId };
-            //     }
-            //     if(Config.log_database_queries == true) {
-            //         Logger.instanse.debug(event.requestId + " cmd: " + event.commandName + " started ", span, { requestId: event.requestId, connectionId: event.connectionId, command: event.commandName, cls: "DatabaseConnection" })
-            //     }
-            // })
-            // .on("commandFailed", (event) => {
-            //     if(this.host != "nixos") return;
-            //     if(Config.log_database_queries == true) {
-            //         Logger.instanse.debug(event.requestId + " cmd: " + event.commandName + " failed" , span, { requestId: event.requestId, ms: event.duration, connectionId: event.connectionId, command: event.commandName, failure: event.failure, cls: "DatabaseConnection" })
-            //     }
-            //     // Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms, count: arr.length, collection: "users" });
-            // })
-            // .on("commandSucceeded", (event) => {
-            //     if(this.host != "nixos") return;
-            //     if(Config.log_database_queries == true) {
-            //         // @ts-ignore
-            //         let ns = event.reply?.cursor?.ns;
-            //         // @ts-ignore
-            //         let count = (event.reply?.cursor?.nextBatch?.length !== undefined && event.reply?.cursor?.nextBatch?.length !== null) ? event.reply?.cursor?.nextBatch?.length 
-            //         // @ts-ignore
-            //             : (event.reply?.cursor?.firstBatch?.length !== undefined && event.reply?.cursor?.firstBatch?.length !== null) ? event.reply?.cursor?.firstBatch?.length 
-            //             // @ts-ignore
-            //             : (event.reply?.cursor?.nReturned !== undefined && event.reply?.cursor?.nReturned !== null) ? event.reply?.cursor?.nReturned 
-            //             // @ts-ignore
-            //             : (event.reply?.n !== undefined && event.reply?.n !== null) ? event.reply?.n 
-            //             // @ts-ignore
-            //             : (event.reply?.nModified !== undefined && event.reply?.nModified !== null) ? event.reply?.nModified 
-            //             // @ts-ignore
-            //             : (event.reply?.nUpserted !== undefined && event.reply?.nUpserted !== null) ? event.reply?.nUpserted 
-            //             // @ts-ignore
-            //             : event.reply?.nRemoved;
-
-            //         let req = this.requests[event.requestId];
-            //         if(req != null) {
-            //             req.end = new Date();
-            //             req.duration = req.end - req.start;
-            //             req.count = count;
-            //             req.ns = ns;
-            //             // delete this.requests[event.requestId];
-            //             let command = event.commandName;
-            //             if(command != req.command) command = req.command + "-" + command;
-            //             Logger.instanse.debug(event.requestId + " cmd: " + command + " c: " + req.count + " mq:" + req.duration, span, { requestId: event.requestId, ms: event.duration, connectionId: event.connectionId, command: event.commandName, reply: event.reply, cls: "DatabaseConnection" })
-            //         } else {
-            //             var b = true;
-            //         }
-            //         // Logger.instanse.debug(event.commandName + " " + event.requestId + " " + ns + " " + count, span, { requestId: event.requestId, ms: event.duration, connectionId: event.connectionId, command: event.commandName, reply: event.reply, cls: "DatabaseConnection" })
-            //     }
-            //     // Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms, count: arr.length, collection: "users" });
-            // })
         this.db = this.cli.db(this._dbname);
-        // try {
-        //     var topology = (this.cli as any).topology;
-        //     if (topology.s.description.type == "Single" || topology.s.description.type == "single") {
-        //         Config.supports_watch = false;
-        //     } else {
-        //         Config.supports_watch = true;
-        //     }
-        // } catch (error) {
-        //     Logger.instanse.error(error, span);
-        // }
-        // Logger.instanse.debug("supports_watch: " + Config.supports_watch, span);
-        // if (Config.supports_watch && this.registerGlobalWatches) {
-            // let collections = await DatabaseConnection.toArray(this.db.listCollections());
+        await Config.db.UpdateIndexTypes(span);
         this.doRegisterGlobalWatches(span);
         // }
         this.isConnected = true;
@@ -4666,7 +4598,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         });
     }
-    async ParseTimeseries(span: Span) {
+    private async ParseTimeseries(span: Span) {
         Logger.instanse.debug("Parse timeseries collections", span);
         span?.addEvent("Get collections");
         // let collections = await DatabaseConnection.toArray(this.db.listCollections());
@@ -4727,7 +4659,7 @@ export class DatabaseConnection extends events.EventEmitter {
     public static timeseries_collections: string[] = [];
     public static timeseries_collections_metadata: any = {};
     public static timeseries_collections_time: any = {};
-    public async UpdateIndexTypes(parent: Span) {
+    private async UpdateIndexTypes(parent: Span) {
         try {
             let collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -4759,6 +4691,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
+            await this.ParseTimeseries(parent);
         } catch (error) {
         }
     }
@@ -4766,22 +4699,13 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.ensureindexes", parent);
         try {
             span?.addEvent("Get collections");
-            let collections = await DatabaseConnection.toArray(this.db.listCollections());
-            collections = collections.filter(x => x.name.indexOf("system.") === -1);
-
-            DatabaseConnection.timeseries_collections = [];
-            for (let i = 0; i < collections.length; i++) {
-                var collection = collections[i];
-                if (collection.type == "timeseries") {
-                    DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
-                    DatabaseConnection.timeseries_collections.push(collection.name);
-                }
-            }
             if (!Config.ensure_indexes) {
                 await this.UpdateIndexTypes(span);
                 return;
             }
             Logger.instanse.info("Begin validating indexes, this might take a while", span);
+            let collections = await DatabaseConnection.toArray(this.db.listCollections());
+            collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
             for (let i = 0; i < collections.length; i++) {
                 try {
@@ -5000,30 +4924,10 @@ export class DatabaseConnection extends events.EventEmitter {
             collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
 
-            // if (Config.supports_watch) {
-                Logger.instanse.info("Register global watches for each collection", span);
-                this.doRegisterGlobalWatches(span);
-            // }
+            Logger.instanse.info("Register global watches for each collection", span);
+            this.doRegisterGlobalWatches(span);
 
-            DatabaseConnection.timeseries_collections = [];
-            DatabaseConnection.collections_with_text_index = [];
-            for (let i = 0; i < collections.length; i++) {
-                var collection = collections[i];
-                if (collection.type == "timeseries") {
-                    DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
-                    DatabaseConnection.timeseries_collections.push(collection.name);
-                }
-                if (collection.type != "collection" && collection.type != "timeseries") continue;
-                span?.addEvent("Get indexes for " + collection.name);
-                const indexes = await this.db.collection(collection.name).indexes();
-                for (let y = 0; y < indexes.length; y++) {
-                    var idx = indexes[y];
-                    if (idx.textIndexVersion && idx.textIndexVersion > 1 && !collection.name.endsWith(".files")) {
-                        DatabaseConnection.collections_with_text_index = DatabaseConnection.collections_with_text_index.filter(x => x != collection.name);
-                        DatabaseConnection.collections_with_text_index.push(collection.name);
-                    }
-                }
-            }
+            await this.UpdateIndexTypes(span);
             Logger.instanse.info("completed", span);
         } catch (error) {
             Logger.instanse.error(error, span);

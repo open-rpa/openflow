@@ -39,22 +39,23 @@ async function initamqp(parent: Span) {
     }
 }
 async function ValidateUserForm(parent: Span) {
-    const span: Span = Logger.otel.startSubSpan("ValidateUserForm", parent);
-    try {
-        var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
-        if (forms.length == 0) {
-            Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!", span);
-            Config.validate_user_form = "";
+    if (Config.validate_user_form != null && Config.validate_user_form != "") {
+        const span: Span = Logger.otel.startSubSpan("ValidateUserForm", parent);
+        try {
+            var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
+            if (forms.length == 0) {
+                Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!", span);
+                Config.validate_user_form = "";
+            }
+        } catch (error) {
+            Logger.instanse.error(error, span);
+            return false;
+        } finally {
+            Logger.otel.endSpan(span);
         }
-    } catch (error) {
-        Logger.instanse.error(error, span);
-        return false;
-    } finally {
-        Logger.otel.endSpan(span);
     }
 }
 function doHouseKeeping(span: Span) {
-    // Message.lastHouseKeeping = new Date();
     if (HouseKeeping.lastHouseKeeping == null) {
         HouseKeeping.lastHouseKeeping = new Date();
         HouseKeeping.lastHouseKeeping.setDate(HouseKeeping.lastHouseKeeping.getDate() - 1);
@@ -63,8 +64,8 @@ function doHouseKeeping(span: Span) {
     var dt = new Date(HouseKeeping.lastHouseKeeping.toISOString());
     var housekeeping_skip_calculate_size: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
     var housekeeping_skip_update_user_size: boolean = !(dt.getHours() == 1 || dt.getHours() == 13);
-    if(Config.housekeeping_skip_calculate_size) housekeeping_skip_calculate_size = true;
-    if(Config.housekeeping_skip_update_user_size) housekeeping_skip_update_user_size = true;
+    if (Config.housekeeping_skip_calculate_size) housekeeping_skip_calculate_size = true;
+    if (Config.housekeeping_skip_update_user_size) housekeeping_skip_update_user_size = true;
     if (Config.NODE_ENV == "production") {
         HouseKeeping._Housekeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null));
     } else {
@@ -73,15 +74,53 @@ function doHouseKeeping(span: Span) {
         // msg2._Housekeeping(true, true, true, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
     }
 }
+function initHouseKeeping(span: Span) {
+    const randomNum = crypto.randomInt(1, 100);
+    // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
+    Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds", span);
+    housekeeping = setInterval(async () => {
+        if (Config.enable_openflow_amqp) {
+            if (!HouseKeeping.ReadyForHousekeeping()) {
+                return;
+            }
+            amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
+            await new Promise(resolve => { setTimeout(resolve, 10000) });
+            if (HouseKeeping.ReadyForHousekeeping()) {
+                doHouseKeeping(span);
+            } else {
+                Logger.instanse.verbose("SKIP housekeeping", span);
+            }
+        } else {
+            doHouseKeeping(span);
+        }
+    }, (15 * 60 * 1000) + (randomNum * 1000));
+    // If I'm first and noone else has run it, lets trigger it now
+    const randomNum2 = crypto.randomInt(1, 10);
+    Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds", span);
+    setTimeout(async () => {
+        if (Config.enable_openflow_amqp) {
+            if (!HouseKeeping.ReadyForHousekeeping()) {
+                return;
+            }
+            amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
+            await new Promise(resolve => { setTimeout(resolve, 10000) });
+            if (HouseKeeping.ReadyForHousekeeping()) {
+                doHouseKeeping(span);
+            } else {
+                Logger.instanse.verbose("SKIP housekeeping", span);
+            }
+        } else {
+            doHouseKeeping(span);
+        }
+    }, randomNum2 * 1000);
+}
 async function initDatabase(parent: Span): Promise<boolean> {
     const span: Span = Logger.otel.startSubSpan("initDatabase", parent);
     try {
-        Logger.instanse.info("Begin validating builtin roles", span);
         const jwt: string = Crypt.rootToken();
-        const rootuser = Crypt.rootUser();
         Config.dbConfig = await dbConfig.Load(jwt, false, span);
         try {
-            if(Config.license_key != null && Config.license_key != "") {
+            if (Config.license_key != null && Config.license_key != "") {
                 var lic = Logger.License;
                 await lic?.validate();
             }
@@ -94,255 +133,10 @@ async function initDatabase(parent: Span): Promise<boolean> {
             cerror(error);
             process.exit(404);
         }
-        try {
-            await Config.db.UpdateIndexTypes(span);
-        } catch (error) {            
+        const users = await Config.db.query<User>({ query: { _type: "role" }, top: 4, collectionname: "users", projection: {"name": 1}, jwt: jwt }, span);
+        if(users.length != 4) {
+            await HouseKeeping.ensureBuiltInUsersAndRoles(span);
         }
-    
-
-
-        const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
-        const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
-        const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, null, span);
-
-        Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
-        Base.addRight(root, WellknownIds.root, "root", [Rights.full_control]);
-        Base.removeRight(root, WellknownIds.root, [Rights.delete]);
-        await Logger.DBHelper.Save(root, jwt, span);
-
-        const guest: User = await Logger.DBHelper.EnsureUser(jwt, "guest", "guest", "65cb30c40ff51e174095573c", null, null, span);
-        Base.removeRight(guest, "65cb30c40ff51e174095573c", [Rights.full_control]);
-        Base.addRight(guest, "65cb30c40ff51e174095573c", "guest", [Rights.read]);
-        await Logger.DBHelper.Save(guest, jwt, span);
-        
-        // const robot_agent_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
-        // Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        // Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
-        // Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
-        // if (Config.multi_tenant) {
-        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self", span);
-        //     Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
-        // } else if (Config.update_acl_based_on_groups) {
-        //     Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
-        //     Base.addRight(robot_agent_users, robot_agent_users._id, "robot agent users", [Rights.read]);
-        // }
-        // await Logger.DBHelper.Save(robot_agent_users, jwt, span);
-
-        Base.addRight(admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(admins, WellknownIds.admins, [Rights.delete]);
-        await Logger.DBHelper.Save(admins, jwt, span);
-
-        Base.addRight(users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(users, WellknownIds.admins, [Rights.delete]);
-        users.AddMember(root);
-        if (Config.multi_tenant) {
-            Base.removeRight(users, users._id, [Rights.full_control]);
-        } else {
-            Base.removeRight(users, users._id, [Rights.full_control]);
-            Base.addRight(users, users._id, "users", [Rights.read]);
-        }
-        await Logger.DBHelper.Save(users, jwt, span);
-
-        var config: Base = await Config.db.GetOne({ query: { "_type": "config" }, collectionname: "config", jwt }, span);
-        if (config == null) {
-            config = new Base();
-            config._type = "config";
-            config.name = "Config override";
-        }
-
-        if (Config.dbConfig.compare("1.4.25") == -1) {
-            // Fix queue and exchange names from before 1.4.25 where names would be saved without converting to lowercase
-            var cursor = await Config.db.db.collection("mq").find({ "$or": [{ "_type": "exchange" }, { "_type": "queue" }] });
-            for await (const u of cursor) {
-                if (u.name != u.name.toLowerCase()) {
-                    await Config.db.db.collection("mq").updateOne({ "_id": u._id }, { "$set": { "name": u.name.toLowerCase() } });
-                }
-            }
-            cursor.close();
-        }
-
-
-        if (Config.dbConfig.needsupdate) {
-            await Config.dbConfig.Save(jwt, span);
-        }
-
-
-        // const personal_nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
-        // personal_nodered_users.AddMember(admins);
-        // Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        // Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
-        // if (Config.multi_tenant) {
-        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self", span);
-        //     Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
-        // } else if (Config.update_acl_based_on_groups) {
-        //     Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
-        //     Base.addRight(personal_nodered_users, personal_nodered_users._id, "personal nodered users", [Rights.read]);
-        // }
-        // await Logger.DBHelper.Save(personal_nodered_users, jwt, span);
-        // const nodered_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
-        // nodered_admins.AddMember(admins);
-        // Base.addRight(nodered_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        // Base.removeRight(nodered_admins, WellknownIds.admins, [Rights.delete]);
-        // await Logger.DBHelper.Save(nodered_admins, jwt, span);
-        // const nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
-        // nodered_users.AddMember(admins);
-        // Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        // Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
-        // if (Config.multi_tenant) {
-        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self", span);
-        //     Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
-        // } else if (Config.update_acl_based_on_groups) {
-        //     Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
-        //     Base.addRight(nodered_users, nodered_users._id, "nodered users", [Rights.read]);
-        // }
-        // await Logger.DBHelper.Save(nodered_users, jwt, span);
-        // const nodered_api_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
-        // nodered_api_users.AddMember(admins);
-        // Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        // Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
-        // if (Config.multi_tenant) {
-        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self", span);
-        //     Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
-        // } else if (Config.update_acl_based_on_groups) {
-        //     Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
-        //     Base.addRight(nodered_api_users, nodered_api_users._id, "nodered api users", [Rights.read]);
-        // }
-        // await Logger.DBHelper.Save(nodered_api_users, jwt, span);
-
-        if (Config.multi_tenant) {
-            try {
-                const resellers: Role = await Logger.DBHelper.EnsureRole(jwt, "resellers", WellknownIds.resellers, span);
-                // @ts-ignore
-                resellers.hidemembers = true;
-                Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
-                Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
-                Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
-                resellers.AddMember(admins);
-                await Logger.DBHelper.Save(resellers, jwt, span);
-
-                const customer_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "customer admins", WellknownIds.customer_admins, span);
-                // @ts-ignore
-                customer_admins.hidemembers = true;
-                Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-                Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
-                Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
-                await Logger.DBHelper.Save(customer_admins, jwt, span);
-            } catch (error) {
-                Logger.instanse.error(error, span);
-            }
-        }
-
-
-        // const robot_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
-        // robot_admins.AddMember(admins);
-        // Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        // Base.removeRight(robot_admins, WellknownIds.admins, [Rights.delete]);
-        // await Logger.DBHelper.Save(robot_admins, jwt, span);
-        // const robot_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
-        // robot_users.AddMember(admins);
-        // robot_users.AddMember(users);
-        // Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        // Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
-        // if (Config.multi_tenant) {
-        //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self", span);
-        //     Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-        // } else if (Config.update_acl_based_on_groups) {
-        //     Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-        //     Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read, Rights.invoke, Rights.update]);
-        // }
-        // await Logger.DBHelper.Save(robot_users, jwt, span);
-
-        if (!admins.IsMember(root._id)) {
-            admins.AddMember(root);
-            await Logger.DBHelper.Save(admins, jwt, span);
-        }
-
-        const filestore_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins, span);
-        filestore_admins.AddMember(admins);
-        Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self", span);
-            Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
-        }
-        await Logger.DBHelper.Save(filestore_admins, jwt, span);
-        const filestore_users: Role = await Logger.DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users, span);
-        filestore_users.AddMember(admins);
-        if (!Config.multi_tenant) {
-            filestore_users.AddMember(users);
-        }
-        Base.addRight(filestore_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(filestore_users, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self", span);
-            Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
-        } else if (Config.update_acl_based_on_groups) {
-            Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
-            Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
-        }
-        await Logger.DBHelper.Save(filestore_users, jwt, span);
-
-
-
-        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", span);
-        workitem_queue_admins.AddMember(admins);
-        Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.full_control]);
-        }
-        await Logger.DBHelper.Save(workitem_queue_admins, jwt, span);
-
-        const workitem_queue_users: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue users", "62544134231309e2cd2052ce", span);
-        Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
-        if (Config.multi_tenant) {
-            Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.full_control]);
-        }
-        await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
-
-        // if (Config.auto_hourly_housekeeping) {
-            const randomNum = crypto.randomInt(1, 100);
-            // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
-            Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds", span);
-            housekeeping = setInterval(async () => {
-                if (Config.enable_openflow_amqp) {
-                    if (!HouseKeeping.ReadyForHousekeeping()) {
-                        return;
-                    }
-                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
-                    await new Promise(resolve => { setTimeout(resolve, 10000) });
-                    if (HouseKeeping.ReadyForHousekeeping()) {
-                        doHouseKeeping(span);
-                    } else {
-                        Logger.instanse.verbose("SKIP housekeeping", span);
-                    }
-                } else {
-                    doHouseKeeping(span);
-                }
-            }, (15 * 60 * 1000) + (randomNum * 1000));
-            // If I'm first and noone else has run it, lets trigger it now
-            const randomNum2 = crypto.randomInt(1, 10);
-            Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds", span);
-            setTimeout(async () => {
-                if (Config.enable_openflow_amqp) {
-                    if (!HouseKeeping.ReadyForHousekeeping()) {
-                        return;
-                    }
-                    amqpwrapper.Instance().send("openflow", "", { "command": "housekeeping" }, 10000, null, "", span, 1);
-                    await new Promise(resolve => { setTimeout(resolve, 10000) });
-                    if (HouseKeeping.ReadyForHousekeeping()) {
-                        doHouseKeeping(span);
-                    } else {
-                        Logger.instanse.verbose("SKIP housekeeping", span);
-                    }
-                } else {
-                    doHouseKeeping(span);
-                }
-            }, randomNum2 * 1000);
-        // }
-        await Config.db.ParseTimeseries(span);
         return true;
     } catch (error) {
         Logger.instanse.error(error, span);
@@ -353,12 +147,11 @@ async function initDatabase(parent: Span): Promise<boolean> {
 }
 async function PreRegisterExchanges(span: Span) {
     var exchanges = await Config.db.query<Base>({ query: { _type: "exchange" }, collectionname: "mq", jwt: Crypt.rootToken() }, span);
-    for(let i = 0; i < exchanges.length; i++) {
+    for (let i = 0; i < exchanges.length; i++) {
         const exchange = exchanges[i];
         await amqpwrapper.Instance().PreRegisterExchange(exchange, span);
     }
 }
-
 process.on('beforeExit', (code) => {
     Logger.instanse.error(code as any, null);
 });
@@ -405,7 +198,7 @@ var housekeeping = null;
 async function handle(signal, value) {
     Logger.instanse.info(`process received a ${signal} signal with value ${value}`, null);
     try {
-        if(Config.heapdump_onstop) {
+        if (Config.heapdump_onstop) {
             await Logger.otel.createheapdump(null);
         }
         Config.db.shutdown();
@@ -421,7 +214,7 @@ async function handle(signal, value) {
         setTimeout(() => {
             process.exit(128 + value);
         }, 1000);
-        if(server != null && server.close) {
+        if (server != null && server.close) {
             server.close((err) => {
                 Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
                 Logger.instanse.error(err, null);
@@ -459,39 +252,52 @@ var server: http.Server = null;
         await Config.db.connect(span);
         await initamqp(span);
         await PreRegisterExchanges(span);
-        Logger.instanse.info("VERSION: " + Config.version, span);
+        Logger.instanse.info("VERSION: " + Config.version, span, { cls: "index", func: "init" });
+        Logger.instanse.debug("Configure Webserver", span, { cls: "index", func: "init" });
         server = await WebServer.configure(Config.baseurl(), span);
         try {
             let GrafanaProxy: any = await import("./ee/grafana-proxy.js");
+            Logger.instanse.debug("Configure grafana", span, { cls: "index", func: "init" });
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
         } catch (error) {
             console.error(error.message);
         }
         try {
             let OpenAPIProxy: any = await import("./ee/OpenAPIProxy.js");
+            Logger.instanse.debug("Configure open api", span, { cls: "index", func: "init" });
             const OpenAI = await OpenAPIProxy.OpenAPIProxy.configure(WebServer.app, span);
         } catch (error) {
             console.error(error.message);
         }
         try {
             let GitProxy: any = await import("./ee/GitProxy.js");
+            Logger.instanse.debug("Configure git server", span, { cls: "index", func: "init" });
             const Git = await GitProxy.GitProxy.configure(WebServer.app, span);
         } catch (error) {
             console.error(error.message);
         }
+        Logger.instanse.debug("Configure oauth provider", span, { cls: "index", func: "init" });
         OAuthProvider.configure(WebServer.app, span);
+        Logger.instanse.debug("Configure websocket server", span, { cls: "index", func: "init" });
         WebSocketServer.configure(server, span);
+        Logger.instanse.debug("init database", span, { cls: "index", func: "init" });
         if (!await initDatabase(span)) {
             process.exit(404);
         }
+        Logger.instanse.debug("init house keeping", span, { cls: "index", func: "init" });
+        initHouseKeeping(span);
+        Logger.instanse.debug("Init queue handler (openflow amqp)", span, { cls: "index", func: "init" });
         await QueueClient.configure(span);
+        Logger.instanse.debug("Validate user validation form exists, if needed", span, { cls: "index", func: "init" });
         await ValidateUserForm(span);
+        Logger.instanse.debug("Begin listening on ports", span, { cls: "index", func: "init" });
         WebServer.Listen();
         if (Config.workitem_queue_monitoring_enabled) {
+            Logger.instanse.verbose("Start workitem queue monitor", span, { cls: "index", func: "init" });
             Config.db.ensureQueueMonitoring();
         }
     } catch (error) {
-        Logger.instanse.error(error, span);
+        Logger.instanse.error(error, span, { cls: "index", func: "init" });
         process.exit(404);
     } finally {
         Logger.otel.endSpan(span);
