@@ -12,6 +12,7 @@ import { promiseRetry } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { Crypt } from './Crypt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -479,6 +480,12 @@ export class Config {
         Config.log_websocket = false;
         Config.log_oauth = false;
         Config.unittesting = true;
+    }
+    public static async Load(span: Span) {
+        Config.aes_secret = Config.getEnv("aes_secret");
+        Config.mongodb_url = Config.getEnv("mongodb_url");
+        const jwt: string = Crypt.rootToken();
+        Config.dbConfig = await dbConfig.Load(jwt, false, span);
     }
     public static _version: number = -1;
     public static unittesting: boolean = false;

@@ -19,3 +19,4 @@ crash.log
 .npmignore
 .gitignore
 .clinic
+docker-compose.yml

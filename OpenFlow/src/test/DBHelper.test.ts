@@ -1,13 +1,10 @@
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from "../OpenFlow/src/Config";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
 import { FederationId, NoderedUtil, TokenUser, User, WellknownIds } from '@openiap/openflow-api';
-import { Crypt } from '../OpenFlow/src/Crypt';
+import { Crypt } from '../Crypt.js';
 
 @suite class dbhelper_test {
     private rootToken: string;
@@ -17,9 +14,10 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, true);
+        await Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
@@ -114,4 +112,4 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         await assert.rejects(Logger.DBHelper.EnsureRole(null, null, null, null));
     }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/DBHelper.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/DBHelper.test.ts'

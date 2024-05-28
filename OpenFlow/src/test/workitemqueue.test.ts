@@ -1,19 +1,15 @@
-import fs = require('fs');
-// import path = require('path');
-import pako = require('pako');
-
-
-var wtf = require('wtfnode');
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
+import fs from "fs";
+import pako from "pako";
+import wtf from "wtfnode";
 import { AddWorkitem, MessageWorkitemFile, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
 import { suite, test, timeout } from '@testdeck/mocha';
-import assert = require('assert');
-import { Config } from '../OpenFlow/src/Config';
-import { Logger } from '../OpenFlow/src/Logger';
-
-// C:\code\openflow-api
+import assert from "assert";
+import { Config } from '../Config.js';
+import { Logger } from '../Logger.js';
+import path from "path";
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 @suite class workitemqueue {
     private socket: WebSocketClient = null;
@@ -21,7 +17,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, false);
+        await Logger.configure(true, false);
         if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true);
         // if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true, true);
         this.socket.agent = "test-cli";
@@ -125,10 +121,9 @@ import { Logger } from '../OpenFlow/src/Logger';
         assert.strictEqual(item.name, "Test Work Item with files", "Failed matching name on work item");
         assert.strictEqual(item.state, "processing");
 
-
         item = await NoderedUtil.UpdateWorkitem({
             _id: item._id,
-            files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, 'tsconfig.json')], false)
+            files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, '../..', 'tsconfig.json')], false)
         });
 
         let testitem = await NoderedUtil.PopWorkitem({ wiq: q.name });
@@ -178,7 +173,7 @@ import { Logger } from '../OpenFlow/src/Logger';
 
             item = await NoderedUtil.UpdateWorkitem({
                 _id: item._id,
-                files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, 'tsconfig.json')], false)
+                files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, '../..', 'tsconfig.json')], false)
             });
             assert.strictEqual(item.files.length, 2);
             await NoderedUtil.UpdateWorkitem({ _id: item._id, state: "successful" });
@@ -190,4 +185,4 @@ import { Logger } from '../OpenFlow/src/Logger';
 
     }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/workitemqueue.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/workitemqueue.test.ts'

@@ -1,23 +1,21 @@
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from "../OpenFlow/src/Config";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
 import { User } from '@openiap/openflow-api';
-import { Crypt } from '../OpenFlow/src/Crypt';
-import { OAuthProvider } from '../OpenFlow/src/OAuthProvider';
+import { Crypt } from '../Crypt.js';
+import { OAuthProvider } from '../OAuthProvider.js';
 @suite class crypt_test {
     private testUser: User;
     @timeout(10000)
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, true);
+        await Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
         this.testUser = await Logger.DBHelper.FindByUsername("testuser", Crypt.rootToken(), null)
     }
     async after() {
@@ -65,4 +63,4 @@ import { OAuthProvider } from '../OpenFlow/src/OAuthProvider';
         assert.ok(cbcdecrypted == "teststring", "Failed decrypting string using gcm encryption");
     }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/Crypt.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/Crypt.test.ts'

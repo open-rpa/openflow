@@ -400,7 +400,7 @@ export class Logger {
             try {
                 // @ts-ignore
                 if (!skiplic && _lic_require == null) _lic_require = await import("./ee/license-file.js");
-                Logger.License = new _lic_require.LicenseFile();
+                if(_lic_require != null) Logger.License = new _lic_require.LicenseFile();
             } catch (error) {
                 console.error(error.message);
             }

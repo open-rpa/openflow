@@ -1,28 +1,22 @@
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from "../OpenFlow/src/Config";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
 import { NoderedUtil } from '@openiap/openflow-api';
-import { Auth } from '../OpenFlow/src/Auth';
 
 @suite class Config_test {
     @timeout(10000)
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, false);
+        await Logger.configure(true, false);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
     }
     async after() {
         await Logger.shutdown();
-    }
-    @test 'reload'() {
-        Config.reload();
     }
     @test 'baseurl'() {
         assert.strictEqual(NoderedUtil.IsNullEmpty(Config.domain), false, "domain missing from baseurl");
@@ -73,4 +67,4 @@ import { Auth } from '../OpenFlow/src/Auth';
         assert.ok(metadata.cert.length > 0);
     }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/Config.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/Config.test.ts'

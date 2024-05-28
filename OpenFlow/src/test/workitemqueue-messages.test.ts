@@ -1,17 +1,14 @@
-// var wtf = require('wtfnode');
-const path = require("path");
-const fs = require('fs');
-const pako = require('pako');
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
-import { Message } from "../OpenFlow/src/Messages/Message";
+import fs from "fs";
+import path from "path";
+import pako from "pako";
+import { Message } from "../Messages/Message.js";
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from "../OpenFlow/src/Config";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
 import { NoderedUtil, User, SaveFileMessage } from '@openiap/openflow-api';
-import { Crypt } from '../OpenFlow/src/Crypt';
+import { Crypt } from '../Crypt.js';
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage } from "@openiap/openflow-api";
 
 @suite class workitemqueue_messages_test {
@@ -22,9 +19,10 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, true);
+        await Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         assert.ok(!NoderedUtil.IsNullUndefinded(this.testUser), "Test user missing, was user deleted ?");
@@ -254,4 +252,4 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     }
 
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/workitemqueue-messages.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/workitemqueue-messages.test.ts'

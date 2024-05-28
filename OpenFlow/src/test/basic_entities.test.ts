@@ -1,12 +1,9 @@
-var wtf = require('wtfnode');
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
+import wtf from "wtfnode";
 import { NoderedUtil, WebSocketClient } from '@openiap/openflow-api';
 import { suite, test, timeout } from '@testdeck/mocha';
-import assert = require('assert');
-import { Config } from '../OpenFlow/src/Config';
-import { Logger } from '../OpenFlow/src/Logger';
+import assert from "assert";
+import { Config } from '../Config.js';
+import { Logger } from '../Logger.js';
 
 @suite class basic_entities {
     private socket: WebSocketClient = null;
@@ -14,7 +11,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, false);
+        await Logger.configure(true, false);
         if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true);
         // if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true, true);
         this.socket.agent = "test-cli";
@@ -127,4 +124,4 @@ import { Logger } from '../OpenFlow/src/Logger';
     //     assert.strictEqual(items.length, 0, "Failed cleaning up");
     // }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/basic_entities.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/basic_entities.test.ts'

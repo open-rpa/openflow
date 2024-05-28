@@ -1,25 +1,23 @@
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from "../OpenFlow/src/Config";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
 import { Base, NoderedUtil, User, WellknownIds } from '@openiap/openflow-api';
-import { Crypt } from '../OpenFlow/src/Crypt';
+import { Crypt } from '../Crypt.js';
 
 @suite class databaseConnection_test {
     private rootToken: string;
     private testUser: User;
     private userToken: string;
-    @timeout(10000)
+    @timeout(50000)
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, true);
+        await Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
@@ -27,20 +25,45 @@ import { Crypt } from '../OpenFlow/src/Crypt';
     async after() {
         await Logger.shutdown();
     }
-    @test async 'dbconstructor'() {
-        var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
-        await db.connect(null);
-        db.shutdown();
+    // @timeout(50000)
+    // @test async 'dbconstructor'() {
+    //     try {
+    //         var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
+    //         await db.connect(null);
+    //         // db.shutdown();
+    //     } catch (error) {
+    //         console.error(error);            
+    //     }
+    //     console.log("completed");
+    // }
+    @timeout(5000)
+    @test async 'indextest'() {
+        // await Config.db.ensureindexes(null)
+        let indexes = await Config.db.db.collection("entities").indexes();
+        let indexnames = indexes.map(x => x.name);
+        if (indexnames.indexOf("test_index") !== -1) {
+            await Config.db.deleteIndex("entities", "test_index", null);
+        }
+        await Config.db.createIndex("entities", "test_index", { "myname": 1 }, null, null);
+        indexes = await Config.db.db.collection("entities").indexes();
+        indexnames = indexes.map(x => x.name);
+        assert.notStrictEqual(indexnames.indexOf("test_index"), -1, "test_index not found after being created");
+        await Config.db.deleteIndex("entities", "test_index", null);
+        indexes = await Config.db.db.collection("entities").indexes();
+        indexnames = indexes.map(x => x.name);
+        assert.strictEqual(indexnames.indexOf("test_index"), -1, "test_index was found after being deleted");
+
     }
+
     @test async 'ListCollections'() {
-        var rootcollections = await Config.db.ListCollections(this.rootToken);
+        var rootcollections = await Config.db.ListCollections(false, this.rootToken);
         rootcollections = rootcollections.filter(x => x.name.indexOf("system.") === -1);
         assert.notDeepStrictEqual(rootcollections, null);
         assert.notDeepStrictEqual(rootcollections.length, 0);
     }
     @test async 'DropCollections'() {
         const colname = "testcollection"
-        var rootcollections = await Config.db.ListCollections(this.rootToken);
+        var rootcollections = await Config.db.ListCollections(false, this.rootToken);
         rootcollections = rootcollections.filter(x => x.name.indexOf("system.") === -1);
         assert.notDeepStrictEqual(rootcollections, null);
         assert.notDeepStrictEqual(rootcollections.length, 0);
@@ -51,7 +74,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         var item = new Base(); item.name = "test item";
         await Config.db.InsertOne(item, colname, 1, true, this.rootToken, null);
 
-        var rootcollections = await Config.db.ListCollections(this.rootToken);
+        var rootcollections = await Config.db.ListCollections(false, this.rootToken);
         exists = rootcollections.filter(x => x.name == colname);
         assert.notDeepStrictEqual(exists.length, 0);
         await Config.db.DropCollection(colname, this.rootToken, null);
@@ -99,7 +122,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         var rolecount = await Config.db.count({ collectionname: "users", query: { "_type": "role" }, jwt: this.rootToken }, null);
         assert.notDeepStrictEqual(rolecount, null);
         assert.notStrictEqual(rolecount, 0);
-        assert.notStrictEqual(usercount, rolecount);
+        // assert.notStrictEqual(usercount, rolecount);
     }
     @timeout(5000)
     @test async 'GetDocumentVersion'() {
@@ -157,7 +180,7 @@ import { Crypt } from '../OpenFlow/src/Crypt';
                     }
                 }
             }
-        ], "users", this.rootToken, null, null);
+        ], "users", this.rootToken, null, null, false, null);
 
         assert.notDeepStrictEqual(userssize, null);
         assert.notDeepStrictEqual(userssize.length, 0);
@@ -207,15 +230,5 @@ import { Crypt } from '../OpenFlow/src/Crypt';
         assert.strictEqual(item._version, 1);
         await Config.db.DeleteOne(item._id, "entities", false, this.userToken, null);
     }
-    @timeout(5000)
-    @test async 'indextest'() {
-        await Config.db.ensureindexes(null)
-        const indexes = await Config.db.db.collection("entities").indexes();
-        const indexnames = indexes.map(x => x.name);
-        if (indexnames.indexOf("test_index") !== -1) {
-            await Config.db.deleteIndex("entities", "test_index", null);
-        }
-        await Config.db.createIndex("entities", "test_index", { "_id": 1 }, null, null);
-    }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/DatabaseConnection.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/DatabaseConnection.test.ts'

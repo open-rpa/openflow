@@ -9,6 +9,15 @@ function cerror(error) {
     console.error(dts, error.message ? error.message : error);
 }
 clog("Starting @openiap/openflow");
+import path from "path";
+import fs from "fs";
+import { config } from "dotenv";
+const env = path.join(process.cwd(), 'config', '.env');
+if(fs.existsSync(env)) {
+    clog("Loading env file: " + env);
+    config({ path: env }); // , debug: false 
+}
+
 import { Logger } from "./Logger.js";
 import http from "http";
 import { WebServer } from "./WebServer.js";

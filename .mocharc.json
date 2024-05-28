@@ -1,4 +1,4 @@
 {
-    "require": "./register.js",
-    "reporter": "dot"
-}
+    "$schema": "https://json.schemastore.org/mocharc.json",
+    "require": ["./register.js","tsx"]
+  }

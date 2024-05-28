@@ -1,21 +1,19 @@
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from "../OpenFlow/src/Config";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
-import { KubeUtil } from '../OpenFlow/src/ee/KubeUtil';
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
+import { KubeUtil } from '../ee/KubeUtil.js';
 
 @suite class kubeutil_test {
     @timeout(10000)
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, true);
+        await Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
     }
     async after() {
         await Logger.shutdown();
@@ -70,4 +68,4 @@ import { KubeUtil } from '../OpenFlow/src/ee/KubeUtil';
         assert.ok(list.body.items.length > 0)
     }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/KubeUtil.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/KubeUtil.test.ts'

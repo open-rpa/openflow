@@ -142,6 +142,8 @@ gulp.task("browserify", function () {
     }
     bfi = browserify(config)
         .plugin(tsify, { noImplicitAny: false, skipLibCheck: true, esModuleInterop: true});
+        // .plugin(tsify, { project: "tsconfig.web.json" }); // { noImplicitAny: false, skipLibCheck: true, esModuleInterop: true}
+
     if (minify) bfi.plugin('tinyify', {})
     bfi.transform('browserify-css', {
         minify: minify,

@@ -1,14 +1,11 @@
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from "../OpenFlow/src/Config.js";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
 import { NoderedUtil, User } from '@openiap/openflow-api';
-import { Crypt } from '../OpenFlow/src/Crypt';
-import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
+import { Crypt } from '../Crypt.js';
+import { amqpwrapper } from '../amqpwrapper.js';
 
 @suite class amqp_test {
     private rootToken: string;
@@ -18,11 +15,16 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, false);
+        await Logger.configure(true, false);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
         this.rootToken = Crypt.rootToken();
-        this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
+        try {
+            this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
+        } catch (error) {
+            console.error("Error finding testuser: " + error);            
+        }
         this.amqp = new amqpwrapper(Config.amqp_url);
         amqpwrapper.SetInstance(this.amqp);
         Config.log_amqp = false;
@@ -30,7 +32,7 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
     }
     @timeout(5000)
     async after() {
-        this.amqp.shutdown();
+        this.amqp?.shutdown();
         await Logger.shutdown();
     }
     // @test async 'connecterror'() {
@@ -122,5 +124,4 @@ import { amqpwrapper } from '../OpenFlow/src/amqpwrapper';
         await assert.rejects(this.amqp.RemoveQueueConsumer(this.testUser, null, null));
     }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/amqp.test.ts'
-// clear && ts-mocha --paths -p test/tsconfig.json 'test/amqp.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/amqp.test.ts'

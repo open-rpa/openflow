@@ -395,7 +395,8 @@ export class WebSocketServer {
                 this.lastUserUpdate = Date.now();
                 let ot_end: any = Logger.otel.startTimer();
                 var bulkresult = await Config.db.db.collection("users").bulkWrite(bulkUpdates);
-                Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_updatemany, { collection: "users" });
+                let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_updatemany, { collection: "users" });
+                Logger.instanse.debug("updating " + bulkUpdates.length  + " online users took " + ms + "ms", span, { cls: "DatabaseConnection", func: "pingClients", collection: "users", ms });
             }
         } catch (error) {
             Logger.instanse.error(error, span);

@@ -19,9 +19,6 @@ OpenFlow.code-workspace
 CONTRIBUTING
 Dockerfile
 docker-compose.yml
-docker-compose-toolbox.yml
-docker-compose-traefik.yml
-docker-compose-traefik-letsencrypt.yml
 sonar-project.properties
 .nyc_output
 .scannerwor

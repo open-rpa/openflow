@@ -1,14 +1,9 @@
-var wtf = require('wtfnode');
-import * as wtf from "wtfnode";
-const env = path.join(process.cwd(), 'config', '.env');
+import wtf from "wtfnode";
 import * as crypto from "crypto";
-import * as path from "path";
-require("dotenv").config({ path: env }); // , debug: false 
 import { AddWorkitem, ApiConfig, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
 import { suite, test, timeout } from '@testdeck/mocha';
-import assert = require('assert');
-import { Config } from '../OpenFlow/src/Config';
-import { Logger } from '../OpenFlow/src/Logger';
+import { Config } from '../Config.js';
+import { Logger } from '../Logger.js';
 
 @suite class loadtest {
     public clients: WebSocketClient[] = [];
@@ -17,7 +12,7 @@ import { Logger } from '../OpenFlow/src/Logger';
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, false);
+        await Logger.configure(true, false);
     }
     @timeout(5000)
     async after() {
@@ -98,5 +93,5 @@ import { Logger } from '../OpenFlow/src/Logger';
         // await this.sleep(1000 * 60 * 30);
     }
 }
-// cd \code\openflow | node_modules\.bin\_mocha 'test/**/loadtest.test.ts'
-// clear && ./node_modules/.bin/_mocha 'test/**/loadtest.test.ts'
+// node_modules\.bin\_mocha 'OpenFlow/src/test/**/loadtest.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/loadtest.test.ts'

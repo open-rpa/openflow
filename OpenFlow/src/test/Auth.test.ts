@@ -1,14 +1,11 @@
-var wtf = require('wtfnode');
-const path = require("path");
-const env = path.join(process.cwd(), 'config', '.env');
-require("dotenv").config({ path: env }); // , debug: false 
+import wtf from "wtfnode";
 import { suite, test, timeout } from '@testdeck/mocha';
-import { Message } from "../OpenFlow/src/Messages/Message";
-import { Config } from "../OpenFlow/src/Config";
-import { DatabaseConnection } from '../OpenFlow/src/DatabaseConnection';
-import assert = require('assert');
-import { Logger } from '../OpenFlow/src/Logger';
-import { Auth } from '../OpenFlow/src/Auth';
+import { Message } from "../Messages/Message.js";
+import { Config } from "../Config.js";
+import { DatabaseConnection } from '../DatabaseConnection.js';
+import assert from "assert";
+import { Logger } from '../Logger.js';
+import { Auth } from '../Auth.js';
 import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
 
 @suite class auth_test {
@@ -16,9 +13,10 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
     async before() {
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
-        Logger.configure(true, true);
+        await Logger.configure(true, true);
         Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
         await Config.db.connect(null);
+        await Config.Load(null);
     }
     async after() {
         await Logger.shutdown();
@@ -50,4 +48,4 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
 
     }
 }
-// clear && ./node_modules/.bin/_mocha 'test/**/Auth.test.ts'
+// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/Auth.test.ts'
