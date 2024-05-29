@@ -49,7 +49,7 @@ export class Crypt {
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
         if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-        let cipher: crypto.CipherGCM = crypto.createCipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
+        let cipher: crypto.CipherGCM = crypto.createCipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key), iv);
         let encrypted: Buffer = cipher.update((text as any));
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         const authTag = cipher.getAuthTag()
@@ -64,7 +64,7 @@ export class Crypt {
         let decrypted: Buffer;
         if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         if (authTag != null) {
-            let decipher: crypto.DecipherGCM = crypto.createDecipheriv('aes-256-gcm', Buffer.from(Crypt.encryption_key), iv);
+            let decipher: crypto.DecipherGCM = crypto.createDecipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key), iv);
             decipher.setAuthTag(authTag);
             decrypted = decipher.update(encryptedText);
             decrypted = Buffer.concat([decrypted, decipher.final()]);
@@ -136,7 +136,7 @@ export class Crypt {
     static async verityToken(token: string, cli?: WebSocketServerClient, ignoreExpiration: boolean = false): Promise<TokenUser> {
         try {
             if (NoderedUtil.IsNullEmpty(token)) {
-                throw new Error('jwt must be provided');
+                throw new Error("jwt must be provided");
             }
             if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
             if(Config.allow_signin_with_expired_jwt == false) ignoreExpiration = false;

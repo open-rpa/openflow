@@ -1,9 +1,9 @@
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from '../Logger.js';
-import { NoderedUtil } from '@openiap/openflow-api';
+import { Logger } from "../Logger.js";
+import { NoderedUtil } from "@openiap/openflow-api";
 
 @suite class Config_test {
     @timeout(10000)
@@ -18,7 +18,7 @@ import { NoderedUtil } from '@openiap/openflow-api';
     async after() {
         await Logger.shutdown();
     }
-    @test 'baseurl'() {
+    @test "baseurl"() {
         assert.strictEqual(NoderedUtil.IsNullEmpty(Config.domain), false, "domain missing from baseurl");
         var url = Config.baseurl();
         assert.notStrictEqual(url.indexOf(Config.domain), -1, "domain missing from baseurl");
@@ -48,7 +48,7 @@ import { NoderedUtil } from '@openiap/openflow-api';
         var wsurl = Config.basewsurl();
         assert.notStrictEqual(wsurl.indexOf(":12345"), -1, "port missing from basewsurl");
     }
-    @test 'parseBoolean'() {
+    @test "parseBoolean"() {
         assert.strictEqual(Config.parseBoolean(true), true)
         assert.strictEqual(Config.parseBoolean(false), false)
         assert.strictEqual(Config.parseBoolean("true"), true)
@@ -58,7 +58,7 @@ import { NoderedUtil } from '@openiap/openflow-api';
         assert.strictEqual(Config.parseBoolean(0), false)
         assert.throws(() => { Config.parseBoolean({}) }, Error, "parseBoolean did not fail on illegal arguement");
     }
-    @test async 'parse_federation_metadata'() {
+    @test async "parse_federation_metadata"() {
         var metadata = await Config.parse_federation_metadata(null, "https://login.microsoftonline.com/common/FederationMetadata/2007-06/FederationMetadata.xml");
         assert.ok(!NoderedUtil.IsNullEmpty(metadata.identityProviderUrl))
         assert.ok(!NoderedUtil.IsNullEmpty(metadata.entryPoint))
@@ -67,4 +67,4 @@ import { NoderedUtil } from '@openiap/openflow-api';
         assert.ok(metadata.cert.length > 0);
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/Config.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/**/Config.test.ts"

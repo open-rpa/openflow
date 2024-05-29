@@ -57,8 +57,8 @@ export class amqpexchange {
     public ExchangeOptions: any;
 }
 export declare interface amqpwrapper {
-    on(event: 'connected', listener: () => void): this;
-    on(event: 'disconnected', listener: () => void): this;
+    on(event: "connected", listener: () => void): this;
+    on(event: "disconnected", listener: () => void): this;
     on(event: string, listener: Function): this;
 }
 // tslint:disable-next-line: class-name
@@ -98,7 +98,7 @@ export class amqpwrapper extends events.EventEmitter {
         this.connectionstring = connectionstring;
         if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx)) {
             this.AssertQueueOptions.arguments = {};
-            this.AssertQueueOptions.arguments['x-dead-letter-exchange'] = Config.amqp_dlx;
+            this.AssertQueueOptions.arguments["x-dead-letter-exchange"] = Config.amqp_dlx;
         }
         this.setMaxListeners(1500);
     }
@@ -144,13 +144,13 @@ export class amqpwrapper extends events.EventEmitter {
                 Logger.instanse.info("Connecting to rabbitmq", span);
                 this.conn = await amqplib.connect(this.connectionstring);
                 Logger.instanse.info("Connected to rabbitmq", span);
-                this.conn.on('error', this.conn_error);
+                this.conn.on("error", this.conn_error);
                 this.conn.on("close", this.conn_close);
             }
             try {
                 span?.addEvent("AddReplyQueue");
                 await this.AddReplyQueue(span);
-                this.channel.on('error', this.channel_error);
+                this.channel.on("error", this.channel_error);
             } catch (error) {
                 Logger.instanse.error(error, span);
                 if (Config.NODE_ENV == "production") {
@@ -281,8 +281,8 @@ export class amqpwrapper extends events.EventEmitter {
             this.replyqueue = await this.AddQueueConsumer(Crypt.rootUser(), "", null, null, this.reply_queue_message.bind(this), undefined);
             // We don't want to recreate this
             this.queues = this.queues.filter(q => q.consumerTag != this.replyqueue.consumerTag);
-            this.channel.on('return', this.reply_queue_return.bind(this))
-            this.channel.on('close', this.reply_queue_close.bind(this));
+            this.channel.on("return", this.reply_queue_return.bind(this))
+            this.channel.on("close", this.reply_queue_close.bind(this));
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -364,7 +364,7 @@ export class amqpwrapper extends events.EventEmitter {
                 console.log(`Exchange '${exchangeName}' does not exist or there was an error checking it.`);
             }
         } catch (error) {
-            console.error('Error connecting to RabbitMQ:', error);
+            console.error("Error connecting to RabbitMQ:", error);
         } finally {
             conn.close();
       }
@@ -383,7 +383,7 @@ export class amqpwrapper extends events.EventEmitter {
                 return false;
             }
         } catch (error) {
-            console.error('Error connecting to RabbitMQ:', error);
+            console.error("Error connecting to RabbitMQ:", error);
         } finally {
             conn.close();
       }
@@ -438,7 +438,7 @@ export class amqpwrapper extends events.EventEmitter {
                     if(amqpwrapper.bad_queues.indexOf(q.queue.queue) != -1) {
                         amqpwrapper.bad_queues.splice(amqpwrapper.bad_queues.indexOf(q.queue.queue), 1);
                     }
-                    Logger.instanse.debug("[" + user?.username + "] Added exchange consumer " + q.exchange + ' to queue ' + q.queue.queue, span);
+                    Logger.instanse.debug("[" + user?.username + "] Added exchange consumer " + q.exchange + " to queue " + q.queue.queue, span);
                 }
             }
             this.exchanges.push(q);
@@ -504,7 +504,7 @@ export class amqpwrapper extends events.EventEmitter {
             throw new Error("Cannot send message, when not connected");
         }
         try {
-            if (typeof data === 'string' || ((data as any) instanceof String)) {
+            if (typeof data === "string" || ((data as any) instanceof String)) {
                 data = JSON.parse(data);
             }
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
@@ -514,7 +514,7 @@ export class amqpwrapper extends events.EventEmitter {
             }
         } catch (error) {
         }
-        if (typeof data !== 'string' && !(data instanceof String)) {
+        if (typeof data !== "string" && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
         // PRECONDITION_FAILED - message size 155339741 is larger than configured max size 134217728
@@ -557,7 +557,7 @@ export class amqpwrapper extends events.EventEmitter {
             throw new Error("Cannot send message, when not connected");
         }
         try {
-            if (typeof data === 'string' || ((data as any) instanceof String)) {
+            if (typeof data === "string" || ((data as any) instanceof String)) {
                 data = JSON.parse(data);
             }
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
@@ -567,7 +567,7 @@ export class amqpwrapper extends events.EventEmitter {
             }
         } catch (error) {
         }
-        if (typeof data !== 'string' && !(data instanceof String)) {
+        if (typeof data !== "string" && !(data instanceof String)) {
             data = JSON.stringify(data);
         }
         if(data.length > 130000000 ) {

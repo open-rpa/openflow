@@ -179,7 +179,7 @@ export class Message {
     public static fromjson(json: string): Message {
         const result: Message = new Message();
         let data: any = json;
-        if (typeof data == 'string') data = JSON.parse(json);
+        if (typeof data == "string") data = JSON.parse(json);
         result.id = data.id;
         result.replyto = data.replyto;
         result.command = data.command;
@@ -994,7 +994,7 @@ export class Message {
             const jwt: string = this.jwt;
             const rootjwt = Crypt.rootToken();
             if (!NoderedUtil.IsNullUndefinded(msg.data)) {
-                if (typeof msg.data == 'string') {
+                if (typeof msg.data == "string") {
                     try {
                         const obj = JSON.parse(msg.data);
                     } catch (error) {
@@ -1006,8 +1006,8 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(msg.exchangename) && !Config.amqp_enabled_exchange) {
                 throw new Error("AMQP exchange is not enabled on this OpenFlow");
             }
-            const expiration: number = (typeof msg.expiration == 'number' ? msg.expiration : Config.amqp_default_expiration);
-            if (typeof msg.data === 'string' || msg.data instanceof String) {
+            const expiration: number = (typeof msg.expiration == "number" ? msg.expiration : Config.amqp_default_expiration);
+            if (typeof msg.data === "string" || msg.data instanceof String) {
                 try {
                     msg.data = JSON.parse((msg.data as any));
                 } catch (error) {
@@ -1290,7 +1290,7 @@ export class Message {
         let msg: DistinctMessage = this.data as any;
         try {
             // @ts-ignore
-            if (typeof this.data === 'string' || this.data instanceof String) {
+            if (typeof this.data === "string" || this.data instanceof String) {
                 // @ts-ignore
                 msg = JSON.stringify(this.data);
             }
@@ -2068,10 +2068,10 @@ export class Message {
                 let uploadStream = bucket.openUploadStream(filename, { contentType: contentType, metadata: metadata });
                 let id = uploadStream.id;
                 stream.pipe(uploadStream);
-                uploadStream.on('error', function (error) {
+                uploadStream.on("error", function (error) {
                     reject(error);
                 }).
-                    on('finish', function () {
+                    on("finish", function () {
                         resolve(id.toString());
                     });
             } catch (err) {
@@ -2109,14 +2109,14 @@ export class Message {
             readable.push(file);
             readable.push(null);
         } else if (file && (!compressed)) {
-            const buf: Buffer = Buffer.from(file as string, 'base64');
+            const buf: Buffer = Buffer.from(file as string, "base64");
             readable._read = () => { }; // _read is required but you can noop it
             readable.push(buf);
             readable.push(null);
         } else {
             let result: Buffer;
             try {
-                var data = Buffer.from(file as string, 'base64')
+                var data = Buffer.from(file as string, "base64")
                 result = pako.inflate(data);
             } catch (error) {
                 Logger.instanse.error(error, null);
@@ -2193,13 +2193,13 @@ export class Message {
                 const bucket = new GridFSBucket(Config.db.db);
                 let downloadStream = bucket.openDownloadStream(safeObjectID(id));
                 const bufs = [];
-                downloadStream.on('data', (chunk) => {
+                downloadStream.on("data", (chunk) => {
                     bufs.push(chunk);
                 });
-                downloadStream.on('error', (error) => {
+                downloadStream.on("error", (error) => {
                     reject(error);
                 });
-                downloadStream.on('end', () => {
+                downloadStream.on("end", () => {
                     try {
                         const buffer = Buffer.concat(bufs);
                         let result: Buffer;
@@ -2241,7 +2241,7 @@ export class Message {
             } else {
                 throw new Error("id or filename is mandatory");
             }
-            msg.file = (await this._GetFile(msg.id, msg.compress)).toString('base64');
+            msg.file = (await this._GetFile(msg.id, msg.compress)).toString("base64");
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } finally {
@@ -2378,7 +2378,7 @@ export class Message {
 
     static isObject(obj) {
         const type = typeof obj;
-        return (type === 'function' || type === 'object') && !!obj;
+        return (type === "function" || type === "object") && !!obj;
     }
     static flattenAndStringify(data) {
         const result = {};
@@ -2390,7 +2390,7 @@ export class Message {
                 const newKey = prevKey ? `${prevKey}[${key}]` : key;
 
                 if (this.isObject(value)) {
-                    if (!Buffer.isBuffer(value) && !value.hasOwnProperty('data')) {
+                    if (!Buffer.isBuffer(value) && !value.hasOwnProperty("data")) {
                         // Non-buffer non-file Objects are recursively flattened
                         return step(value, newKey);
                     } else {
@@ -2423,7 +2423,7 @@ export class Message {
             const tuser = await Auth.Token2User(jwt, span);
             if(tuser == null) throw new Error("Access denied");
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
+                throw new Error(`Access denied, adding plan (not in "${customer.name} admins")`);
             }
 
 
@@ -2556,7 +2556,7 @@ export class Message {
             const user = await Auth.Token2User(msg.jwt, span);
             if(user == null) throw new Error("Access denied");
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
-                throw new Error("Access denied, getting invoice (not in '" + customer.name + " admins')");
+                throw new Error(`Access denied, getting invoice (not in "${customer.name} admins")`);
             }
 
             let subscription: stripe_subscription;
@@ -2779,7 +2779,7 @@ export class Message {
             const tuser = await Auth.Token2User(jwt, span);
             if(tuser == null) throw new Error("Access denied");
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                throw new Error("Access denied, adding plan (not in '" + customer.name + " admins')");
+                throw new Error(`Access denied, adding plan (not in ${customer.name} admins")`);
             }
 
             if (NoderedUtil.IsNullEmpty(customer.vattype)) customer.vattype = "";
@@ -3169,7 +3169,7 @@ export class Message {
 
         const options = {
             headers: {
-                'Content-type': 'application/x-www-form-urlencoded',
+                "Content-type": "application/x-www-form-urlencoded",
                 "authorization": auth
             }
         };
@@ -3221,7 +3221,7 @@ export class Message {
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
                     if (customer == null) throw new Error("Access denied, or customer not found");
                     if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
-                        throw new Error("Access denied, (not in '" + customer.name + " admins')");
+                        throw new Error(`Access denied, (not in "${customer.name} admins")`);
                     }
                 }
                 if (msg.object == "subscription_items" && msg.method != "POST") throw new Error("Access to " + msg.object + " is not allowed");
@@ -3364,13 +3364,6 @@ export class Message {
                 }
 
             }
-
-            // if (msg.customer.vatnumber) {
-            //     if (!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vattype == "eu_vat" && msg.customer.vatnumber.substring(0, 2) != msg.customer.country) {
-            //         throw new Error("Country and VAT number does not match (eu vat numbers must be prefixed with country code)");
-            //     }
-            // }
-            // if ((!NoderedUtil.IsNullEmpty(msg.customer.vatnumber) && msg.customer.vatnumber.length > 2) || Config.stripe_force_vat) {
             if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid) || Config.stripe_force_vat) {
 
                 if (NoderedUtil.IsNullUndefinded(msg.stripecustomer) && !NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
@@ -3380,11 +3373,7 @@ export class Message {
                     }
                 }
                 if (NoderedUtil.IsNullUndefinded(msg.stripecustomer)) {
-                    // let payload: any = { name: msg.customer.name, email: msg.customer.email, metadata: { userid: user._id }, description: user.name, address: { country: msg.customer.country }, tax_exempt: tax_exempt };
-                    // msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", null, payload, null);
-                    // msg.customer.stripeid = msg.stripecustomer.id;
                     msg.customer.subscriptionid = null;
-                    // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                         Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
@@ -3404,10 +3393,6 @@ export class Message {
                         const payload: any = { name: msg.customer.name };
                         msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
                     }
-                    // if (msg.stripecustomer.email != msg.customer.email || msg.stripecustomer.name != msg.customer.name || (msg.stripecustomer.address == null || msg.stripecustomer.address.country != msg.customer.country)) {
-                    // const payload: any = { email: msg.customer.email, name: msg.customer.name, address: { country: msg.customer.country }, tax_exempt: tax_exempt };
-                    // msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
-                    // }
                     if (!NoderedUtil.IsNullEmpty(msg.stripecustomer?.address?.country)) {
                         msg.customer.country = msg.stripecustomer.address.country;
                     }
@@ -3439,7 +3424,6 @@ export class Message {
                     } else {
                         if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                             msg.customer.subscriptionid = null;
-                            // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                             const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                             Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
                             for (let usage of total_usage) {
@@ -3452,47 +3436,9 @@ export class Message {
                         }
                     }
                 }
-                // if (msg.customer.vatnumber) {
-                //     if (msg.stripecustomer.tax_ids.total_count == 0) {
-                //         const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
-                //         await Message.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
-                //     } else if (msg.stripecustomer.tax_ids.data[0].value != msg.customer.vatnumber) {
-                //         await Message.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
-                //         const payload: any = { value: msg.customer.vatnumber, type: msg.customer.vattype };
-                //         await Message.Stripe<stripe_customer>("POST", "tax_ids", null, payload, msg.customer.stripeid);
-                //     }
-                // } else {
-                //     if (msg.stripecustomer.tax_ids.data.length > 0) {
-                //         await Message.Stripe<stripe_tax_id>("DELETE", "tax_ids", msg.stripecustomer.tax_ids.data[0].id, null, msg.customer.stripeid);
-                //     }
-                // }
-
-                // if (!NoderedUtil.IsNullUndefinded(msg.stripecustomer.discount) && !NoderedUtil.IsNullEmpty(msg.stripecustomer.discount.coupon.name)) {
-                //     if (msg.customer.coupon != msg.stripecustomer.discount.coupon.name) {
-                //         const payload: any = { coupon: "" };
-                //         msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
-
-                //         if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
-                //             const coupons: stripe_list<stripe_coupon> = await Message.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
-                //             const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
-                //             if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
-
-                //             const payload2: any = { coupon: coupons.data[0].id };
-                //             msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
-                //         }
-                //     }
-                // } else if (!NoderedUtil.IsNullEmpty(msg.customer.coupon)) {
-                //     const coupons: stripe_list<stripe_coupon> = await Message.Stripe<stripe_list<stripe_coupon>>("GET", "coupons", null, null, null);
-                //     const isvalid = coupons.data.filter(c => c.name == msg.customer.coupon);
-                //     if (isvalid.length == 0) throw new Error("Unknown coupons '" + msg.customer.coupon + "'");
-
-                //     const payload2: any = { coupon: coupons.data[0].id };
-                //     msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload2, null);
-                // }
             } else {
                 if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                     msg.customer.subscriptionid = null;
-                    // const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
                     for (let usage of total_usage) {
@@ -3531,7 +3477,6 @@ export class Message {
             customeradmins.name = msg.customer.name + " admins";
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
-            // Base.removeRight(customeradmins, WellknownIds.admins, [Rights.delete]);
             if (!user.HasRoleId(WellknownIds.admins)) {
                 customeradmins.AddMember(user as any);
             }
@@ -3591,15 +3536,15 @@ export class Message {
         }
     }
     formatBytes(bytes, decimals = 2) {
-        if (bytes === 0) return '0 Bytes';
+        if (bytes === 0) return "0 Bytes";
 
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
         const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
     }
     sleep(ms) {
         return new Promise(resolve => { setTimeout(resolve, ms) })
@@ -3695,7 +3640,7 @@ export class Message {
         wi.wiqid = wiq._id;
         wi.name = msg.name ? msg.name : "New work item";
         wi.payload = msg.payload ? msg.payload : {};
-        if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+        if (typeof wi.payload !== "object") wi.payload = { "value": wi.payload };
         wi.priority = msg.priority;
         wi.nextrun = msg.nextrun;
         // @ts-ignore
@@ -3731,13 +3676,13 @@ export class Message {
                     const readable = new Readable();
                     readable._read = () => { }; // _read is required but you can noop it
                     if (file.file && (!file.compressed)) {
-                        const buf: Buffer = Buffer.from(file.file, 'base64');
+                        const buf: Buffer = Buffer.from(file.file, "base64");
                         readable.push(buf);
                         readable.push(null);
                     } else {
                         let result: Buffer;
                         try {
-                            var data = Buffer.from(file.file, 'base64')
+                            var data = Buffer.from(file.file, "base64")
                             result = pako.inflate(data);
                         } catch (error) {
                             Logger.instanse.error(msg.error, parent);
@@ -3835,7 +3780,7 @@ export class Message {
         }
         for (var i = 0; i < wi.files.length; i++) {
             var _f = wi.files[i];
-            var file:string = (await this._GetFile(_f._id, false)).toString('base64');
+            var file:string = (await this._GetFile(_f._id, false)).toString("base64");
             const metadata = new Base();
             (metadata as any).wi = wi._id;
             (metadata as any).wiq = _wiq.name;
@@ -3888,7 +3833,7 @@ export class Message {
             wi.wiqid = wiq._id;
             wi.name = item.name ? item.name : "New work item";
             wi.payload = item.payload ? item.payload : {};
-            if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+            if (typeof wi.payload !== "object") wi.payload = { "value": wi.payload };
             wi.priority = item.priority;
             if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
@@ -3930,13 +3875,13 @@ export class Message {
                         const readable = new Readable();
                         readable._read = () => { }; // _read is required but you can noop it
                         if (file.file && (!file.compressed)) {
-                            const buf: Buffer = Buffer.from(file.file, 'base64');
+                            const buf: Buffer = Buffer.from(file.file, "base64");
                             readable.push(buf);
                             readable.push(null);
                         } else {
                             let result: Buffer;
                             try {
-                                var data = Buffer.from(file.file, 'base64')
+                                var data = Buffer.from(file.file, "base64")
                                 result = pako.inflate(data);
                             } catch (error) {
                                 Logger.instanse.error(msg.error, parent);
@@ -4036,7 +3981,7 @@ export class Message {
         wi.wiqid = wiq._id;
         if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
         if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
-        if (typeof wi.payload !== 'object') wi.payload = { "value": wi.payload };
+        if (typeof wi.payload !== "object") wi.payload = { "value": wi.payload };
         if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) {
             wi.errormessage = msg.errormessage;
             if (!NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = msg.errortype;
@@ -4108,13 +4053,13 @@ export class Message {
                     const readable = new Readable();
                     readable._read = () => { }; // _read is required but you can noop it
                     if (file.file && (!file.compressed)) {
-                        const buf: Buffer = Buffer.from(file.file, 'base64');
+                        const buf: Buffer = Buffer.from(file.file, "base64");
                         readable.push(buf);
                         readable.push(null);
                     } else {
                         let result: Buffer;
                         try {
-                            var data = Buffer.from(file.file, 'base64')
+                            var data = Buffer.from(file.file, "base64")
                             result = pako.inflate(data);
                         } catch (error) {
                             Logger.instanse.error(msg.error, parent);
@@ -4238,7 +4183,7 @@ export class Message {
                 _wi.lastrun = new Date(new Date().toISOString());
 
                 if (NoderedUtil.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
-                if (typeof workitems[0].payload !== 'object') UpdateDoc["$set"]["payload"] = { "value": workitems[0].payload };
+                if (typeof workitems[0].payload !== "object") UpdateDoc["$set"]["payload"] = { "value": workitems[0].payload };
                 UpdateDoc["$set"]["state"] = "processing";
                 UpdateDoc["$set"]["userid"] = user._id;
                 UpdateDoc["$set"]["username"] = user.name;
@@ -4256,7 +4201,7 @@ export class Message {
                     }, UpdateDoc, "workitems", 1, true, rootjwt, null)
 
                     if (NoderedUtil.IsNullEmpty(_wi.retries)) _wi.retries = 0;
-                    if (typeof _wi.payload !== 'object') _wi.payload = { "value": _wi.payload };
+                    if (typeof _wi.payload !== "object") _wi.payload = { "value": _wi.payload };
                     _wi.state = "processing";
                     _wi.userid = user._id;
                     _wi.username = user.name;
@@ -4826,7 +4771,7 @@ export class Message {
 export class JSONfn {
     public static stringify(obj) {
         return JSON.stringify(obj, function (key, value) {
-            return (typeof value === 'function') ? value.toString() : value;
+            return (typeof value === "function") ? value.toString() : value;
         });
     }
 }

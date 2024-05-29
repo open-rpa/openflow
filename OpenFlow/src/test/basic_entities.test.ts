@@ -1,9 +1,9 @@
 import wtf from "wtfnode";
-import { NoderedUtil, WebSocketClient } from '@openiap/openflow-api';
-import { suite, test, timeout } from '@testdeck/mocha';
+import { NoderedUtil, WebSocketClient } from "@openiap/openflow-api";
+import { suite, test, timeout } from "@testdeck/mocha";
 import assert from "assert";
-import { Config } from '../Config.js';
-import { Logger } from '../Logger.js';
+import { Config } from "../Config.js";
+import { Logger } from "../Logger.js";
 
 @suite class basic_entities {
     private socket: WebSocketClient = null;
@@ -31,7 +31,7 @@ import { Logger } from '../Logger.js';
         // wtf.dump()
     }
     @timeout(500000)
-    @test async 'validate collectioname'() {
+    @test async "validate collectioname"() {
         await assert.rejects(NoderedUtil.Query({ query: { "_type": "test" }, collectionname: null }));
         await assert.rejects(NoderedUtil.Query({ query: { "_type": "test" }, collectionname: undefined }));
         await assert.rejects(NoderedUtil.Query({ query: { "_type": "test" }, collectionname: "" }));
@@ -71,7 +71,7 @@ import { Logger } from '../Logger.js';
 
 
     // @timeout(5000)
-    // @test async 'querytest'() {
+    // @test async "querytest"() {
     //     await NoderedUtil.DeleteMany({ query: { "_type": "test" }, collectionname: "entities" });
 
     //     let item = await NoderedUtil.InsertOne({ item: { "_type": "test", "name": "test entities item" }, collectionname: "entities" });
@@ -124,4 +124,4 @@ import { Logger } from '../Logger.js';
     //     assert.strictEqual(items.length, 0, "Failed cleaning up");
     // }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/basic_entities.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/**/basic_entities.test.ts"

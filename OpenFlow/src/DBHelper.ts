@@ -6,13 +6,13 @@ import { Logger } from "./Logger.js";
 import { Auth } from "./Auth.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { LoginProvider, Provider } from "./LoginProvider.js";
-import { caching } from 'cache-manager';
+import { caching } from "cache-manager";
 import { TokenRequest } from "./TokenRequest.js";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { EntityRestriction } from "./EntityRestriction.js";
 import { iAgent } from "./commoninterfaces.js";
 import { CollectionInfo } from "mongodb";
-import { redisStore } from 'cache-manager-ioredis-yet'
+import { redisStore } from "cache-manager-ioredis-yet"
 
 export class DBHelper {
 
@@ -51,13 +51,13 @@ export class DBHelper {
             })
             // listen for redis connection error event
             // var redisClient = this.memoryCache.store.getClient();
-            // redisClient.on('error', (error) => {
+            // redisClient.on("error", (error) => {
             //     Logger.instanse.error(error, null);
             // });
             this.ensureotel();
             return;
         }
-        this.memoryCache = await caching('memory', { max, ttl,
+        this.memoryCache = await caching("memory", { max, ttl,
             isCacheable: (val: unknown) => {
                 return true
             }
@@ -69,9 +69,9 @@ export class DBHelper {
         var keys: string[];
         if (Config.cache_store_type == "redis") {
             if(this.memoryCache.keys) {
-                keys = await this.memoryCache.keys('*');
+                keys = await this.memoryCache.keys("*");
             } else {
-                keys = await this.memoryCache.store.keys('*');
+                keys = await this.memoryCache.store.keys("*");
             }
         } else {
             if(this.memoryCache.keys) {
@@ -91,13 +91,13 @@ export class DBHelper {
     public ensureotel() {
         if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter) && NoderedUtil.IsNullUndefinded(this.item_cache)) {
             this.item_cache = Logger.otel.meter.createObservableGauge("openflow_item_cache_count", {
-                description: 'Total number of cached items'
+                description: "Total number of cached items"
             });
             this.item_cache?.addCallback(async (res) => {
                 var keys: any = null;
                 try {
                     if (Config.cache_store_type == "redis" && this.memoryCache && this.memoryCache.keys) {
-                        keys = await this.memoryCache.keys('*');
+                        keys = await this.memoryCache.keys("*");
                     } else if(this.memoryCache && this.memoryCache.keys) {
                         if(this.memoryCache.keys.get) {
                             keys = await this.memoryCache.keys.get();
@@ -337,9 +337,9 @@ export class DBHelper {
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         }
-        const b64auth = (authorization || '').split(' ')[1].toString() || ''
-        // const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
-        const [login, password] = Buffer.from(b64auth, "base64").toString().split(':')
+        const b64auth = (authorization || "").split(" ")[1].toString() || ""
+        // const [login, password] = new Buffer(b64auth, "base64").toString().split(":")
+        const [login, password] = Buffer.from(b64auth, "base64").toString().split(":")
         if (!NoderedUtil.IsNullEmpty(login) && !NoderedUtil.IsNullEmpty(password)) {
             let item: User = await this.memoryCache.wrap(b64auth, () => { return this.FindByAuthorizationWrap2(login, password, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;

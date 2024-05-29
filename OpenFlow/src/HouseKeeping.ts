@@ -45,7 +45,7 @@ export class HouseKeeping {
     } finally {
       Logger.otel.endSpan(span);
       if (Config.auto_hourly_housekeeping == true) {
-        logMemoryUsage('Housekeeping end', span);
+        logMemoryUsage("Housekeeping end", span);
       }      
     }
   }
@@ -78,7 +78,7 @@ export class HouseKeeping {
             }
           }
         }
-        logMemoryUsage('runInstanceCleanup', span);
+        logMemoryUsage("runInstanceCleanup", span);
       } else {
         Logger.instanse.warn("agentdriver is null, skip agent check", span, { cls: "Housekeeping" });
       }
@@ -102,7 +102,7 @@ export class HouseKeeping {
           await Logger.DBHelper.Save(item, jwt, span);
         }
       }
-      logMemoryUsage('validateBuiltinRoles', span);
+      logMemoryUsage("validateBuiltinRoles", span);
     } catch (error) {
       Logger.instanse.error(error, span, { cls: "Housekeeping" });
     }
@@ -122,7 +122,7 @@ export class HouseKeeping {
       if (count > 0) {
         Logger.instanse.verbose("Removed " + count + " unvalidated users", span, { cls: "Housekeeping" });
       }
-      logMemoryUsage('removeUnvalidatedUsers', span);
+      logMemoryUsage("removeUnvalidatedUsers", span);
     }
   }
   private static async cleanupOpenRPAInstances(span: Span) {
@@ -140,7 +140,7 @@ export class HouseKeeping {
         Logger.instanse.verbose("Updated " + result.opresult.modifiedCount + " openrpa instances", span, { cls: "Housekeeping" });
       }
     }
-    logMemoryUsage('cleanupOpenRPAInstances', span);
+    logMemoryUsage("cleanupOpenRPAInstances", span);
   }
   private static async migrateToTimeseries(rootuser: User, span: Span) {
     Logger.instanse.debug("Begin validating prefered timeseries collections", span, { cls: "Housekeeping" });
@@ -257,7 +257,7 @@ export class HouseKeeping {
     } catch (error) {
       Logger.instanse.error(error, span, { cls: "Housekeeping" });
     }
-    logMemoryUsage('migrateToTimeseries', span);
+    logMemoryUsage("migrateToTimeseries", span);
   }
   private static async ensureSearchNames(span: Span) {
     Logger.instanse.debug("Begin ensuring searchnames", span, { cls: "Housekeeping" });
@@ -396,7 +396,7 @@ export class HouseKeeping {
         }
       }
     }
-    logMemoryUsage('ensureSearchNames', span);
+    logMemoryUsage("ensureSearchNames", span);
   }
   private static async caclulateSizeAndUsage(skipCalculateSize: boolean, span: Span) {
     if (!skipCalculateSize) {
@@ -551,7 +551,7 @@ export class HouseKeeping {
           }
       }
       Logger.instanse.debug("Add stats from " + collections.length + " collections with a total usage of " + formatBytes(totalusage), span, { cls: "Housekeeping" });
-      logMemoryUsage('caclulateSizeAndUsage', span);
+      logMemoryUsage("caclulateSizeAndUsage", span);
     }
   }
   private static async updateUserSizeAndUsage(skipUpdateUserSize: boolean, span: Span) {
@@ -595,12 +595,12 @@ export class HouseKeeping {
         }
         if (index % 100 == 0) {
           Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span, { cls: "Housekeeping" });
-          logMemoryUsage('updateUserSizeAndUsage', span);
+          logMemoryUsage("updateUserSizeAndUsage", span);
         }
 
       }
       Logger.instanse.debug("Completed updating all users dbusage field", span, { cls: "Housekeeping" });
-      logMemoryUsage('updateUserSizeAndUsage', span);
+      logMemoryUsage("updateUserSizeAndUsage", span);
     }
   }
   private static async updateCustomerSizeAndUsage(skipUpdateUserSize: boolean, span: Span) {
@@ -668,7 +668,7 @@ export class HouseKeeping {
       } catch (error) {
         Logger.instanse.error(error, span, { cls: "Housekeeping" });
       }
-      logMemoryUsage('updateCustomerSizeAndUsage - part 1', span);
+      logMemoryUsage("updateCustomerSizeAndUsage - part 1", span);
     }
     if (Config.multi_tenant && !skipUpdateUserSize) {
       Logger.instanse.debug("Begin updating all customers dbusage field", span, { cls: "Housekeeping" });
@@ -793,7 +793,7 @@ export class HouseKeeping {
             }
             if (index % 100 == 0) {
               Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span, { cls: "Housekeeping" });
-              logMemoryUsage('updateCustomerSizeAndUsage', span);
+              logMemoryUsage("updateCustomerSizeAndUsage", span);
             }
           }
           Logger.instanse.debug("Completed updating all customers dbusage field", span, { cls: "Housekeeping" });
@@ -819,7 +819,7 @@ export class HouseKeeping {
           }
           Logger.instanse.debug("Completed updating all users without a customer dbusage field", span, { cls: "Housekeeping" });
         }
-        logMemoryUsage('Housekeeping end', span);
+        logMemoryUsage("Housekeeping end", span);
       } catch (error) {
         if (error.response && error.response.body) {
           Logger.instanse.error(error.response.body, span, { cls: "Housekeeping" });
@@ -829,7 +829,7 @@ export class HouseKeeping {
       } finally {
         Logger.instanse.debug("Completed housekeeping", span, { cls: "Housekeeping" });
       }
-      logMemoryUsage('updateCustomerSizeAndUsage - part 2', span);
+      logMemoryUsage("updateCustomerSizeAndUsage - part 2", span);
     }
   }
   public static async ensureBuiltInUsersAndRoles(span: Span) {
@@ -1038,17 +1038,17 @@ export class HouseKeeping {
   }
 }
 const formatBytes = (bytes, decimals = 2) => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
   if (bytes < 0) {
     bytes = bytes * -1;
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return "-" + parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    return "-" + parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   } else {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   }
 }
 const calculateDateDifferenceInMinutes = (date1, date2) => {
@@ -1073,7 +1073,7 @@ export const logMemoryUsage = (label, span) => {
   // if (global.gc) {
   //   global.gc();
   // } else {
-  //   console.warn('No GC hook! Start your program with `node --expose-gc file.js`.');
+  //   console.warn("No GC hook! Start your program with `node --expose-gc file.js`.");
   // }
   const memoryUsage = process.memoryUsage();
   // Logger.instanse.debug(`Memory usage after ${label}:`, span, { cls: "Housekeeping" });
@@ -1093,5 +1093,5 @@ export const logMemoryUsage = (label, span) => {
   heapUsed = memoryUsage.heapUsed;
   external = memoryUsage.external;
   arrayBuffers = memoryUsage.arrayBuffers;
-  // fs.writeFileSync('memoryusage.txt', `Memory usage after ${label}:\nRSS: ${formatBytes(memoryUsage.rss)}\nHeap Total: ${formatBytes(memoryUsage.heapTotal)}\nHeap Used: ${formatBytes(memoryUsage.heapUsed)}\nExternal: ${formatBytes(memoryUsage.external)}\nArray Buffers: ${formatBytes(memoryUsage.arrayBuffers)}\n`, { flag: 'a' });
+  // fs.writeFileSync("memoryusage.txt", `Memory usage after ${label}:\nRSS: ${formatBytes(memoryUsage.rss)}\nHeap Total: ${formatBytes(memoryUsage.heapTotal)}\nHeap Used: ${formatBytes(memoryUsage.heapUsed)}\nExternal: ${formatBytes(memoryUsage.external)}\nArray Buffers: ${formatBytes(memoryUsage.arrayBuffers)}\n`, { flag: "a" });
 };

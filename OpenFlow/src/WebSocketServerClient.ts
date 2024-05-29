@@ -442,7 +442,7 @@ export class WebSocketServerClient {
                     var _data = msg;
                     try {
                         var o = msg;
-                        if (typeof o === 'string') o = JSON.parse(o);
+                        if (typeof o === "string") o = JSON.parse(o);
                         span = Logger.otel.startSpan("OpenFlow Queue Process Message", o.traceId, o.spanId);
                         Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
                         _data = await this.Queue(msg, qname, options, span);;
@@ -509,10 +509,10 @@ export class WebSocketServerClient {
                 const msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
                 if (this._receiveQueue.length > Config.websocket_max_package_count) {
                     if (Config.websocket_disconnect_out_of_sync) {
-                        Logger.instanse.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "', disconnecting", span, Logger.parsecli(this));
+                        Logger.instanse.error(`_receiveQueue containers more than ${Config.websocket_max_package_count} messages for id ${id}, disconnecting`, span, Logger.parsecli(this));
                         this.Close(span);
                     } else {
-                        Logger.instanse.error("_receiveQueue containers more than " + Config.websocket_max_package_count + " messages for id '" + id + "' so discarding all !!!!!!!", span, Logger.parsecli(this));
+                        Logger.instanse.error(`_receiveQueue containers more than ${Config.websocket_max_package_count} messages for id ${id} so discarding all !!!!!!!`, span, Logger.parsecli(this));
                         this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     }
                 }
@@ -633,7 +633,7 @@ export class WebSocketServerClient {
     public chunkString(str: string, length: number): string[] | null {
         if (NoderedUtil.IsNullEmpty(str)) { return null; }
         // tslint:disable-next-line: quotemark
-        return str.match(new RegExp('.{1,' + length + '}', 'g'));
+        return str.match(new RegExp(".{1," + length + "}", "g"));
     }
     async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<any[]> {
         const d: any = JSON.parse(data);

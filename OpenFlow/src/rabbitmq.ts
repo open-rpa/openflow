@@ -10,14 +10,14 @@ export class rabbitmq {
         const q = url.parse(amqp_url, true);
         if (q.port == null || q.port == "") { q.port = "15672"; }
         if (q.auth != null && q.auth != "") {
-            const arr = q.auth.split(':');
+            const arr = q.auth.split(":");
             (q as any).username = arr[0];
             (q as any).password = arr[1];
         } else {
             (q as any).username = Config.amqp_username;
             (q as any).password = Config.amqp_password;
         }
-        q.protocol = 'http://';
+        q.protocol = "http://";
         return q;
     }
 
@@ -29,7 +29,7 @@ export class rabbitmq {
                 if (Config.amqp_check_for_consumer_count) {
                     return this.checkQueueConsumerCount(queuename);
                 }
-                test = await rabbitmq.getqueue(Config.amqp_url, '/', queuename);
+                test = await rabbitmq.getqueue(Config.amqp_url, "/", queuename);
                 if (test == null) {
                     return false;
                 }
@@ -46,7 +46,7 @@ export class rabbitmq {
         let result: boolean = false;
         try {
             result = await promiseRetry(async () => {
-                const queue = await rabbitmq.getqueue(Config.amqp_url, '/', queuename);
+                const queue = await rabbitmq.getqueue(Config.amqp_url, "/", queuename);
                 // const queue = await amqpwrapper.getqueue(queuename);
                 let hasConsumers: boolean = false;
                 if (queue.consumers > 0) {
@@ -78,12 +78,12 @@ export class rabbitmq {
         const q = this.parseurl(amqp_url);
         const options = {
             headers: {
-                'Content-type': 'application/x-www-form-urlencoded'
+                "Content-type": "application/x-www-form-urlencoded"
             },
             username: (q as any).username,
             password: (q as any).password
         };
-        const _url = 'http://' + q.host + ':' + q.port + '/api/vhosts';
+        const _url = "http://" + q.host + ":" + q.port + "/api/vhosts";
         const response = await got.get(_url, options);
         const payload = JSON.parse(response.body);
         return payload;
@@ -92,13 +92,13 @@ export class rabbitmq {
         const q = this.parseurl(amqp_url);
         const options = {
             headers: {
-                'Content-type': 'application/x-www-form-urlencoded'
+                "Content-type": "application/x-www-form-urlencoded"
             },
             username: (q as any).username,
             password: (q as any).password
         };
-        let _url = 'http://' + q.host + ':' + q.port + '/api/queues';
-        if (!NoderedUtil.IsNullEmpty(vhost)) _url += '/' + encodeURIComponent(vhost);
+        let _url = "http://" + q.host + ":" + q.port + "/api/queues";
+        if (!NoderedUtil.IsNullEmpty(vhost)) _url += "/" + encodeURIComponent(vhost);
         const response = await got.get(_url, options);
         const payload = JSON.parse(response.body);
         return payload;
@@ -107,13 +107,13 @@ export class rabbitmq {
         const q = this.parseurl(amqp_url);
         const options = {
             headers: {
-                'Content-type': 'application/x-www-form-urlencoded'
+                "Content-type": "application/x-www-form-urlencoded"
             },
             username: (q as any).username,
             password: (q as any).password,
             timeout: 500, retry: 1
         };
-        const _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
+        const _url = "http://" + q.host + ":" + q.port + "/api/queues/" + encodeURIComponent(vhost) + "/" + encodeURIComponent(queuename);
         const response = await got.get(_url, options);
         const payload = JSON.parse(response.body);
         return payload;
@@ -122,13 +122,13 @@ export class rabbitmq {
         const q = this.parseurl(amqp_url);
         const options = {
             headers: {
-                'Content-type': 'application/x-www-form-urlencoded'
+                "Content-type": "application/x-www-form-urlencoded"
             },
             username: (q as any).username,
             password: (q as any).password,
             timeout: 500, retry: 1
         };
-        const _url = 'http://' + q.host + ':' + q.port + '/api/queues/' + encodeURIComponent(vhost) + '/' + encodeURIComponent(queuename);
+        const _url = "http://" + q.host + ":" + q.port + "/api/queues/" + encodeURIComponent(vhost) + "/" + encodeURIComponent(queuename);
         const response = await got.delete(_url, options);
         const payload = JSON.parse(response.body);
         return payload;

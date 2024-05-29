@@ -1,13 +1,13 @@
 import fs from "fs";
 import pako from "pako";
 import wtf from "wtfnode";
-import { AddWorkitem, MessageWorkitemFile, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
-import { suite, test, timeout } from '@testdeck/mocha';
+import { AddWorkitem, MessageWorkitemFile, NoderedUtil, WebSocketClient, Workitem } from "@openiap/openflow-api";
+import { suite, test, timeout } from "@testdeck/mocha";
 import assert from "assert";
-import { Config } from '../Config.js';
-import { Logger } from '../Logger.js';
+import { Config } from "../Config.js";
+import { Logger } from "../Logger.js";
 import path from "path";
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -33,7 +33,7 @@ const __dirname = path.dirname(__filename);
     }
     @timeout(10000)
     @test
-    async 'basic workitem test'() {
+    async "basic workitem test"() {
         let q = await NoderedUtil.GetWorkitemQueue({ name: "test queue" });
         if (q == null) q = await NoderedUtil.AddWorkitemQueue({ name: "test queue" });
         assert.notStrictEqual(q, null, "Failed getting test queue");
@@ -82,9 +82,9 @@ const __dirname = path.dirname(__filename);
             if (fs.existsSync(files[i])) {
                 if (compressed) {
                     file.compressed = true;
-                    file.file = Buffer.from(pako.deflate(fs.readFileSync(files[i], null))).toString('base64');
+                    file.file = Buffer.from(pako.deflate(fs.readFileSync(files[i], null))).toString("base64");
                 } else {
-                    file.file = fs.readFileSync(files[i], { encoding: 'base64' });
+                    file.file = fs.readFileSync(files[i], { encoding: "base64" });
                 }
                 result.push(file);
             } else { throw new Error("File not found " + files[i]) }
@@ -92,7 +92,7 @@ const __dirname = path.dirname(__filename);
         return result;
     }
     @timeout(10000)
-    @test async 'basic workitem test with files'() {
+    @test async "basic workitem test with files"() {
         let q = await NoderedUtil.GetWorkitemQueue({ name: "test queue" });
         if (q == null) q = await NoderedUtil.AddWorkitemQueue({ name: "test queue" });
         assert.notStrictEqual(q, null, "Failed getting test queue");
@@ -123,7 +123,7 @@ const __dirname = path.dirname(__filename);
 
         item = await NoderedUtil.UpdateWorkitem({
             _id: item._id,
-            files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, '../..', 'tsconfig.json')], false)
+            files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, "../..", "tsconfig.json")], false)
         });
 
         let testitem = await NoderedUtil.PopWorkitem({ wiq: q.name });
@@ -144,7 +144,7 @@ const __dirname = path.dirname(__filename);
         // await NoderedUtil.UpdateWorkitem({ _id: item._id, state: "successful" });
     }
     @timeout(10000)
-    @test async 'multiple workitem test with files'() {
+    @test async "multiple workitem test with files"() {
         let q = await NoderedUtil.GetWorkitemQueue({ name: "test queue" });
         if (q == null) q = await NoderedUtil.AddWorkitemQueue({ name: "test queue" });
         assert.notStrictEqual(q, null, "Failed getting test queue");
@@ -173,7 +173,7 @@ const __dirname = path.dirname(__filename);
 
             item = await NoderedUtil.UpdateWorkitem({
                 _id: item._id,
-                files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, '../..', 'tsconfig.json')], false)
+                files: await workitemqueue.CreateWorkitemFilesArray([path.join(__dirname, "../..", "tsconfig.json")], false)
             });
             assert.strictEqual(item.files.length, 2);
             await NoderedUtil.UpdateWorkitem({ _id: item._id, state: "successful" });
@@ -185,4 +185,4 @@ const __dirname = path.dirname(__filename);
 
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/workitemqueue.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/**/workitemqueue.test.ts"

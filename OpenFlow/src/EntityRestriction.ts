@@ -13,7 +13,7 @@ export class EntityRestriction extends Base {
         this._type = "restriction";
     }
     static assign<EntityRestriction>(o: any): EntityRestriction {
-        if (typeof o === 'string' || o instanceof String) {
+        if (typeof o === "string" || o instanceof String) {
             return Object.assign(new EntityRestriction(), JSON.parse(o.toString()));
         }
         return Object.assign(new EntityRestriction(), o);

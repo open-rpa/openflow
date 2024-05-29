@@ -1,4 +1,4 @@
-import AnsiUp from 'ansi_up';
+import AnsiUp from "ansi_up";
 const ansi_up = new AnsiUp();
 
 import { userdata, api, entityCtrl, entitiesCtrl } from "./CommonControllers";
@@ -34,7 +34,7 @@ declare const FileSaver: any;
 export class jsutil {
     public static async ensureJQuery() {
         try {
-            const ele = $('body');
+            const ele = $("body");
         } catch (error) {
             await this.loadScript("jquery.min.js");
         }
@@ -56,12 +56,12 @@ export class jsutil {
                 resolve();
             }).fail((e1, e2, e3) => {
                 if (e1.readyState == 0) {
-                    reject('script failed to load');
+                    reject("script failed to load");
                     //script failed to load
                 } else if (e3 != null) {
                     reject(e3.toString());
                 } else {
-                    reject('unknonw error loading ' + url);
+                    reject("unknonw error loading " + url);
                 }
             });
         });
@@ -139,35 +139,35 @@ export class MenuCtrl {
                 console.error(error);
             }
         });
-        document.addEventListener('keydown', (event) => {
+        document.addEventListener("keydown", (event) => {
             if(!this.PathIs(this.searchpaths)) return;
-            // Check if 'Ctrl' or 'Command' (for MacOS) is pressed along with 'F'
-            if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+            // Check if "Ctrl" or "Command" (for MacOS) is pressed along with "F"
+            if ((event.ctrlKey || event.metaKey) && event.key === "f") {
                 event.preventDefault(); // Prevent the default Ctrl+F behavior
-                document.getElementById('menusearch').focus(); // Focus on your search field
+                document.getElementById("menusearch").focus(); // Focus on your search field
             }
         });
             
         this.halfmoon = require("halfmoon");
         console.debug("MenuCtrl::constructor");
-        $scope.$root.$on('$routeChangeStart', (...args) => { this.routeChangeStart.apply(this, args); });
+        $scope.$root.$on("$routeChangeStart", (...args) => { this.routeChangeStart.apply(this, args); });
         this.path = this.$location.path();
 
-        this.$scope.$on('search', (event, data) => {
+        this.$scope.$on("search", (event, data) => {
             this.searchstring = data;
         });
 
         this.halfmoon.onDOMContentLoaded();
-        const cleanup = this.$scope.$on('signin', async (event, data) => {
+        const cleanup = this.$scope.$on("signin", async (event, data) => {
             if (event && data) { }
             this.user = data;
             this.signedin = true;
 
             this.version = this.WebSocketClientService.version;
             this.majorversion = this.version;
-            const dotCount = this.version.split('.').length - 1;
+            const dotCount = this.version.split(".").length - 1;
             if(dotCount == 3){
-                this.majorversion = this.version.substring(0, this.version.lastIndexOf('.'));
+                this.majorversion = this.version.substring(0, this.version.lastIndexOf("."));
             }
             console.log(this.version)
         
@@ -188,7 +188,7 @@ export class MenuCtrl {
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
             this.StartNewFeaturesTour(null);
         });
-        const cleanup2 = this.$scope.$on('refreshtoken', async (event, data) => {
+        const cleanup2 = this.$scope.$on("refreshtoken", async (event, data) => {
             if (event && data) { }
             this.user = data;
             this.signedin = true;
@@ -226,11 +226,11 @@ export class MenuCtrl {
             this.StartNewFeaturesTour(null)
             // cleanup();
         });
-        this.$scope.$on('setsearch', (event, data) => {
+        this.$scope.$on("setsearch", (event, data) => {
             if (event && data) { }
             this.searchstring = data;
         });
-        this.$scope.$on('menurefresh', async (event, data) => {
+        this.$scope.$on("menurefresh", async (event, data) => {
             if (event && data) { }
             this.customer = this.WebSocketClientService.customer;
             this.customers = await NoderedUtil.Query({ collectionname: "users", query: { _type: "customer" }, orderby: { "name": 1 }, top: 20 });
@@ -362,10 +362,10 @@ export class MenuCtrl {
     getCookie(cname) {
         const name = cname + "=";
         const decodedCookie = decodeURIComponent(document.cookie);
-        const ca = decodedCookie.split(';');
+        const ca = decodedCookie.split(";");
         for (let i = 0; i < ca.length; i++) {
             let c = ca[i];
-            while (c.charAt(0) == ' ') {
+            while (c.charAt(0) == " ") {
                 c = c.substring(1);
             }
             if (c.indexOf(name) == 0) {
@@ -383,13 +383,13 @@ export class MenuCtrl {
             var me = this;
             this.NewFeaturesTour = new this.Shepherd.Tour({
                 useModalOverlay: true,
-                tourName: 'featuretour',
+                tourName: "featuretour",
                 exitOnEsc: true,
                 defaultStepOptions: {
                     cancelIcon: {
                         enabled: true
                     },
-                    scrollTo: { behavior: 'smooth', block: 'center' }
+                    scrollTo: { behavior: "smooth", block: "center" }
                 },
             });
             let step: number = this.getCookie("newfeatures") as any;
@@ -419,55 +419,55 @@ export class MenuCtrl {
                 action() {
                     return this.back();
                 },
-                classes: 'shepherd-button-secondary',
-                text: 'Back'
+                classes: "shepherd-button-secondary",
+                text: "Back"
             };
             const nextbutton = {
                 action() {
                     return this.next();
                 },
-                text: 'Next'
+                text: "Next"
             };
             const completebutton = {
                 action() {
                     return this.complete();
                 },
-                text: 'Complete'
+                text: "Complete"
             };
             this.NewFeaturesTour.addStep({
-                title: 'New User Interface in OpenFlow',
+                title: "New User Interface in OpenFlow",
                 text: `The new UI in Openflow, allows for using darkmode, you can toogle darkmode on this button or you can use the keyboard shortcut Shift+D.`,
                 attachTo: {
-                    element: '#menudarkmode'
+                    element: "#menudarkmode"
                 },
                 buttons: [nextbutton],
-                id: '0'
+                id: "0"
             });
 
             if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length == 0) this.NewFeaturesTour.addStep({
-                title: 'Enable multi tenancy',
+                title: "Enable multi tenancy",
                 text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
                 attachTo: {
-                    element: '#menumultitenant'
+                    element: "#menumultitenant"
                 },
                 buttons: [backbutton, nextbutton],
-                id: '1'
+                id: "1"
             });
             if (this.hasrole("customer admins") || this.hasrole("resellers") || this.hasrole("admins")) {
                 if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length == 1) this.NewFeaturesTour.addStep({
-                    title: 'Manage your company',
+                    title: "Manage your company",
                     text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
                     attachTo: {
-                        element: '#menumanagecustomer'
+                        element: "#menumanagecustomer"
                     },
                     buttons: [backbutton, nextbutton],
-                    id: '50'
+                    id: "50"
                 });
                 if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 0) this.NewFeaturesTour.addStep({
-                    title: 'Manage your users ',
+                    title: "Manage your users ",
                     text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
                     attachTo: {
-                        element: '#menuadminusers'
+                        element: "#menuadminusers"
                     },
                     when: {
                         show() {
@@ -478,17 +478,17 @@ export class MenuCtrl {
                         }
                     },
                     buttons: [backbutton, nextbutton],
-                    id: '51'
+                    id: "51"
                 });
 
                 if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 1) this.NewFeaturesTour.addStep({
-                    title: 'Select a company',
+                    title: "Select a company",
                     text: `Click here to select a company to work with. This will filter the users and roles list, and control what customer to add new items too`,
                     attachTo: {
-                        element: '#menuresellermenu'
+                        element: "#menuresellermenu"
                     },
                     buttons: [backbutton, nextbutton],
-                    id: '52'
+                    id: "52"
                 });
 
             }
@@ -496,13 +496,13 @@ export class MenuCtrl {
                 const laststepid = parseInt(this.NewFeaturesTour.steps[this.NewFeaturesTour.steps.length - 1].id);
                 if (step <= laststepid) {
                     this.NewFeaturesTour.addStep({
-                        title: 'Thank you for using OpenIAP',
+                        title: "Thank you for using OpenIAP",
                         text: `We hope you will enjoy the power of the leading open Source Integrated Automation Platform, click here to see different help tours.`,
                         attachTo: {
-                            element: '#menutour'
+                            element: "#menutour"
                         },
                         buttons: [backbutton, completebutton],
-                        id: '-1'
+                        id: "-1"
                     });
                     for (let i = 0; i < this.NewFeaturesTour.steps.length; i++) {
                         const _stepid = parseInt(this.NewFeaturesTour.steps[i].id);
@@ -522,13 +522,13 @@ export class MenuCtrl {
         try {
             const tour = new this.Shepherd.Tour({
                 useModalOverlay: true,
-                tourName: 'listoftour',
+                tourName: "listoftour",
                 exitOnEsc: true,
                 defaultStepOptions: {
                     cancelIcon: {
                         enabled: true
                     },
-                    scrollTo: { behavior: 'smooth', block: 'center' }
+                    scrollTo: { behavior: "smooth", block: "center" }
                 },
             });
             let bottons: any[] = [];
@@ -537,7 +537,7 @@ export class MenuCtrl {
                     me.StartNewFeaturesTour(0);
                     return this.complete();
                 },
-                text: 'New Features'
+                text: "New Features"
             });
             if (this.WebSocketClientService.multi_tenant && this.customers.length > 0 && (this.hasrole("admins") ||
                 this.hasrole("resellers") || this.hasrole("customer admins"))) {
@@ -546,7 +546,7 @@ export class MenuCtrl {
                         me.StartManageCompanyTour();
                         return this.complete();
                     },
-                    text: 'Manage Company'
+                    text: "Manage Company"
                 });
             }
             bottons.push({
@@ -554,28 +554,28 @@ export class MenuCtrl {
                     me.StartManageDataTour();
                     return this.complete();
                 },
-                text: 'Manage Data'
+                text: "Manage Data"
             });
             bottons.push({
                 action() {
                     me.StartManageRobotsAndNoderedTour();
                     return this.complete();
                 },
-                text: 'Manage Robots and Nodered'
+                text: "Manage Robots and Nodered"
             });
             if (this.WebSocketClientService.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
                 tour.addStep({
-                    title: 'What do you want to explorer ?',
+                    title: "What do you want to explorer ?",
                     text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour. <br><small><i>For billing questions and sales support feel free to reach out on support@openiap.io, for all other questions use the <a class="text-primary" href="https://discourse.openiap.io" target="_blank" rel="noopener">forum</a> or <a class="text-primary" href="https://rocket.openiap.io/" target="_blank" rel="noopener">rocket</a> chat</i></small>`,
                     buttons: bottons,
-                    id: 'tourlist'
+                    id: "tourlist"
                 });
             } else {
                 tour.addStep({
-                    title: 'What do you want to explorer ?',
+                    title: "What do you want to explorer ?",
                     text: `Select from one of the below guided tours to learn more. Use your keyboard arror keys to move back and forward and Esc to exit the tour.`,
                     buttons: bottons,
-                    id: 'tourlist'
+                    id: "tourlist"
                 });
             }
             tour.start();
@@ -602,13 +602,13 @@ export class MenuCtrl {
             var me = this;
             const tour = new this.Shepherd.Tour({
                 useModalOverlay: false,
-                tourName: 'managecompanytour',
+                tourName: "managecompanytour",
                 exitOnEsc: true,
                 defaultStepOptions: {
                     cancelIcon: {
                         enabled: true
                     },
-                    scrollTo: { behavior: 'smooth', block: 'center' }
+                    scrollTo: { behavior: "smooth", block: "center" }
                 },
             });
             let step: number = 0;
@@ -627,24 +627,24 @@ export class MenuCtrl {
                 action() {
                     return this.back();
                 },
-                classes: 'shepherd-button-secondary',
-                text: 'Back'
+                classes: "shepherd-button-secondary",
+                text: "Back"
             };
             const nextbutton = {
                 action() {
                     return this.next();
                 },
-                text: 'Next'
+                text: "Next"
             };
             const completebutton = {
                 action() {
                     return this.complete();
                 },
-                text: 'Complete'
+                text: "Complete"
             };
 
             tour.addStep({
-                title: 'User management',
+                title: "User management",
                 text: `You manage users by clicking Users in the admin menu`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -656,18 +656,18 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuadminusers',
-                    on: 'bottom'
+                    element: "#menuadminusers",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [nextbutton],
-                id: '0'
+                id: "0"
             });
 
             tour.addStep({
-                title: 'User management',
+                title: "User management",
                 text: `You assign new services to your users by clicking the <em class="fas fa-money-bill-wave"></em> icon. This require a valid vat number to have been added on the company page`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -677,12 +677,12 @@ export class MenuCtrl {
                     }
                 },
                 buttons: [backbutton, nextbutton],
-                id: '1'
+                id: "1"
             });
 
 
             tour.addStep({
-                title: 'Roles management',
+                title: "Roles management",
                 text: `You manage roles by clicking Roles in the admin menu. It is more efficent to use roles as a way to control access to resources and data. Many features will auto generate roles you can use to control access to these, like NodeRED workflows`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -692,26 +692,26 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuadminroles',
-                    on: 'bottom'
+                    element: "#menuadminroles",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '2'
+                id: "2"
             });
 
             tour.addStep({
-                title: 'Roles management',
+                title: "Roles management",
                 text: `Roles is also how we load balance workload across multiple robots. Simply check RPA on the edit role page to allow assigning workflows to that role. Any robot that is only and not busy, will then pick up that workitem `,
                 attachTo: {
                 },
                 buttons: [backbutton, nextbutton],
-                id: '3'
+                id: "3"
             });
             tour.addStep({
-                title: 'Audit logs',
+                title: "Audit logs",
                 text: `This is the log of security events related to you and users you manage, this combined with the built in version control and on-the-fly encryption, makes it easy to comply with various regulatory demands like GDRP, FedRAMP, HIPAA etc. By default only your own entries are shown`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -723,103 +723,103 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuadminauditlogs',
-                    on: 'bottom'
+                    element: "#menuadminauditlogs",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, completebutton],
-                id: '4'
+                id: "4"
             });
 
             // tour.addStep({
-            //     title: 'Manage credentials',
+            //     title: "Manage credentials",
             //     text: `For a more secure environment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
             //     attachTo: {
-            //         element: '#menuadmincredentials'
+            //         element: "#menuadmincredentials"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '3'
+            //     id: "3"
             // });
             // tour.addStep({
-            //     title: 'Workflow forms',
+            //     title: "Workflow forms",
             //     text: `Nodered Workflows allows you to design forms with an endless combination of different form elements to interact with users as part of a process`,
             //     attachTo: {
-            //         element: '#menuadminforms'
+            //         element: "#menuadminforms"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '5'
+            //     id: "5"
             // });
             // tour.addStep({
-            //     title: 'Files',
+            //     title: "Files",
             //     text: `Files associated with robot workflows, forms and files you use as part of a Nodered workflow gets stored here. You can upload, download, delete and manage permissions on all files here. Remember to clean up, as a free user you only get 25 megabyte of storage`,
             //     attachTo: {
-            //         element: '#menuadminfiles'
+            //         element: "#menuadminfiles"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '6'
+            //     id: "6"
             // });
 
             // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length > 1) tour.addStep({
-            //     title: 'Enable multi tenancy',
+            //     title: "Enable multi tenancy",
             //     text: `Per default OpenFlow is running in a single user mode, where users cannot share information. Click here to create a new Customer, and enable access to multiple user, roles, control access to data and workflows and to buy additional services`,
             //     attachTo: {
-            //         element: '#menumultitenant'
+            //         element: "#menumultitenant"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '7'
+            //     id: "7"
             // });
             // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
-            //     title: 'Manage you users ',
+            //     title: "Manage you users ",
             //     text: `Click here to manage your users. You can create, edit and delete new users, and you can purchase and assign new services to users here`,
             //     attachTo: {
-            //         element: '#menuadminusers'
+            //         element: "#menuadminusers"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '8'
+            //     id: "8"
             // });
             // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
-            //     title: 'Manage you roles',
+            //     title: "Manage you roles",
             //     text: `Click here to manage your roles. It is much more efficent to use a role when assigning permissons`,
             //     attachTo: {
-            //         element: '#menuadminroles'
+            //         element: "#menuadminroles"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '9'
+            //     id: "9"
             // });
             // if (this.WebSocketClientService.multi_tenant && this.customer != null && this.customers.length < 2) tour.addStep({
-            //     title: 'Manage you company',
+            //     title: "Manage you company",
             //     text: `Click here to manage you company details, this is also where you can check your next Invoice and how many services you have added`,
             //     attachTo: {
-            //         element: '#menumanagecustomer'
+            //         element: "#menumanagecustomer"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '10'
+            //     id: "10"
             // });
 
             // tour.addStep({
-            //     title: 'Rerun tour',
+            //     title: "Rerun tour",
             //     text: `We hope you will enjoy the power on the leading opensource automation platform, click here to restart all tour steps.`,
             //     attachTo: {
-            //         element: '#menutour'
+            //         element: "#menutour"
             //     },
             //     buttons: [
             //         {
             //             action() {
             //                 return this.back();
             //             },
-            //             classes: 'shepherd-button-secondary',
-            //             text: 'Back'
+            //             classes: "shepherd-button-secondary",
+            //             text: "Back"
             //         },
             //         {
             //             action() {
             //                 return this.cancel();
             //             },
-            //             text: 'Exit'
+            //             text: "Exit"
             //         }
             //     ],
-            //     id: '-1'
+            //     id: "-1"
             // });
             for (let i = 0; i < tour.steps.length; i++) {
                 const _stepid = parseInt(tour.steps[i].id);
@@ -837,13 +837,13 @@ export class MenuCtrl {
             var me = this;
             const tour = new this.Shepherd.Tour({
                 useModalOverlay: false,
-                tourName: 'managedatatour',
+                tourName: "managedatatour",
                 exitOnEsc: true,
                 defaultStepOptions: {
                     cancelIcon: {
                         enabled: true
                     },
-                    scrollTo: { behavior: 'smooth', block: 'center' }
+                    scrollTo: { behavior: "smooth", block: "center" }
                 },
             });
             let step: number = 0;
@@ -862,29 +862,29 @@ export class MenuCtrl {
                 action() {
                     return this.back();
                 },
-                classes: 'shepherd-button-secondary',
-                text: 'Back'
+                classes: "shepherd-button-secondary",
+                text: "Back"
             };
             const nextbutton = {
                 action() {
                     return this.next();
                 },
-                text: 'Next'
+                text: "Next"
             };
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `OpenFlow is primarily a database with an security layer, and an api to orchestrate multiple NodeRED and OpenRPA robots. Data is there for a central element of understanding and getting the ful benefit of the platform`,
                 buttons: [nextbutton],
-                id: '0'
+                id: "0"
             });
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `Most pages is a "view" on the data, but you can access ALL data inside the database, by clicking entities in the menu`,
                 attachTo: {
-                    element: '#menuentities',
-                    on: 'bottom'
+                    element: "#menuentities",
+                    on: "bottom"
                 },
                 when: {
                     hide() {
@@ -894,21 +894,21 @@ export class MenuCtrl {
                     }
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [50, 10] } }]
+                    modifiers: [{ name: "offset", options: { offset: [50, 10] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '1'
+                id: "1"
             });
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `The database contains a list of collections, similar to tables in an traditional relational database. We can store different kinds of data in the same collection, and there for group, and search our data in a more meaningful way`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
                 attachTo: {
-                    element: '#menucollections',
-                    on: 'bottom'
+                    element: "#menucollections",
+                    on: "bottom"
                 },
                 when: {
                     hide() {
@@ -918,31 +918,31 @@ export class MenuCtrl {
                     }
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                    modifiers: [{ name: "offset", options: { offset: [50, 20] } }]
                 },
 
                 buttons: [backbutton, nextbutton],
-                id: '2'
+                id: "2"
             });
 
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `I selected the "users" collection, and as you can see it contains both user and role objects.<br>
                 Clicking <em class="fas fa-notes-medical"></em> will open the history for that object, allowing you to see different versions of the object<br>
                 <em class="fas fa-edit"></em> to edit and set permissions, <em
                 class="fas fa-trash"></em> to delete the entity`,
                 buttons: [backbutton, nextbutton],
-                id: '3'
+                id: "3"
             });
 
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `Up here we have access to Undelete <em class="fas fa-undo"></em> to restore deleted object, <em class="fas fa-clone"></em> clone tool, that allows us to group all data by different keys and <em class="fas fa-plus"></em> to add a new entity to this collection`,
                 attachTo: {
-                    element: '#entitiestools',
-                    on: 'bottom'
+                    element: "#entitiestools",
+                    on: "bottom"
                 },
                 when: {
                     hide() {
@@ -952,66 +952,66 @@ export class MenuCtrl {
                     }
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 20] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 20] } }]
                 },
 
                 buttons: [backbutton, nextbutton],
-                id: '4'
+                id: "4"
             });
 
 
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `When adding data, either from the webpage, a robot, NodeRED, PowerShell or the API, you need to comply with the entity restrictions setup for this OpenFlow instance, you will get an Access Denied if you do not have the right create permissions.`,
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                    modifiers: [{ name: "offset", options: { offset: [50, 20] } }]
                 },
 
                 buttons: [backbutton, nextbutton],
-                id: '5'
+                id: "5"
             });
 
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `Every entity in the database has an Access Control List that defines who can read, edit, delete or invoke this entity. Invoke will have different meanings for different types of entities`,
                 attachTo: {
-                    element: '#entitypermissions',
-                    on: 'bottom'
+                    element: "#entitypermissions",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [50, 40] } }]
+                    modifiers: [{ name: "offset", options: { offset: [50, 40] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '6'
+                id: "6"
             });
 
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `Hear you can search for, and then add any user or role. You define what right you want to assign them. As a rule of thumb use roles, and not users unless absolutely necessary. Even with a low number of users it is often much more effecient to use roles to control permissions, than having to go back and update the permissions on all objects later to add/remove a user.`,
                 attachTo: {
-                    element: '#addusergroup',
-                    on: 'bottom'
+                    element: "#addusergroup",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                    modifiers: [{ name: "offset", options: { offset: [50, 20] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '7'
+                id: "7"
             });
             tour.addStep({
-                title: 'Managing Data',
+                title: "Managing Data",
                 text: `By default you get an structured view that allows adding or removing properties, but you are free to click the "show json" button to edit the object directly`,
                 attachTo: {
-                    element: '#enableshowjson',
-                    on: 'bottom'
+                    element: "#enableshowjson",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [50, 20] } }]
+                    modifiers: [{ name: "offset", options: { offset: [50, 20] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '8'
+                id: "8"
             });
 
 
@@ -1033,13 +1033,13 @@ export class MenuCtrl {
 
             const tour = new this.Shepherd.Tour({
                 useModalOverlay: false,
-                tourName: 'managerobotnoderedtour',
+                tourName: "managerobotnoderedtour",
                 exitOnEsc: true,
                 defaultStepOptions: {
                     cancelIcon: {
                         enabled: true
                     },
-                    scrollTo: { behavior: 'smooth', block: 'center' }
+                    scrollTo: { behavior: "smooth", block: "center" }
                 },
             });
             let step: number = 0;
@@ -1058,30 +1058,30 @@ export class MenuCtrl {
                 action() {
                     return this.back();
                 },
-                classes: 'shepherd-button-secondary',
-                text: 'Back'
+                classes: "shepherd-button-secondary",
+                text: "Back"
             };
             const nextbutton = {
                 action() {
                     return this.next();
                 },
-                text: 'Next'
+                text: "Next"
             };
             const completebutton = {
                 action() {
                     return this.complete();
                 },
-                text: 'Complete'
+                text: "Complete"
             };
 
             tour.addStep({
-                title: 'Managing Robots',
+                title: "Managing Robots",
                 text: `Robots run as a User. Normaly you will run a robot as your own user, but once you start to scale it makes sense to create dedicated bot accounts. 
                 Keep in mind you cannot run multiply robots with the same user account, so create meaning full names when adding new users`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
                 },
-                classes: 'shepherd shepherd-open shepherd-theme-arrows shepherd-transparent-text',
+                classes: "shepherd shepherd-open shepherd-theme-arrows shepherd-transparent-text",
 
                 when: {
                     show() {
@@ -1090,18 +1090,18 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuadminusers',
-                    on: 'bottom'
+                    element: "#menuadminusers",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [nextbutton],
-                id: '0'
+                id: "0"
             });
 
             tour.addStep({
-                title: 'Managing Robots',
+                title: "Managing Robots",
                 text: `When scaling to many robots, you will need to spread out the workload to many robots. You can create a role, and add all the robot user accounts to that role.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -1118,19 +1118,19 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuadminroles',
-                    on: 'bottom'
+                    element: "#menuadminroles",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '1'
+                id: "1"
             });
 
 
             tour.addStep({
-                title: 'Managing Robots',
+                title: "Managing Robots",
                 text: `On the new role make sure to check the RPA role. This tell the robots that is member of this role, to wait for work sent to this role. When you send work to a role, any robot that is online and is not busy with other workflows will take the job. If no robots pick up the message it will be queue up and retry automatically`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -1142,19 +1142,19 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#rparole',
-                    on: 'right'
+                    element: "#rparole",
+                    on: "right"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 120] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 120] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '2'
+                id: "2"
             });
 
 
             tour.addStep({
-                title: 'Credentials',
+                title: "Credentials",
                 text: `For a more secure environment, it is a good practice to use encrypted credentials added here and not save those as plaintext in a robot workflow. Remember to give all robots access to the credentials.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -1169,19 +1169,19 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuadmincredentials',
-                    on: 'bottom'
+                    element: "#menuadmincredentials",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '3'
+                id: "3"
             });
 
 
             tour.addStep({
-                title: 'Clients',
+                title: "Clients",
                 text: `On the clients page you can see all online users, and filter on the type of client used.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -1196,19 +1196,19 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuclients',
-                    on: 'bottom'
+                    element: "#menuclients",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '3'
+                id: "3"
             });
 
 
             tour.addStep({
-                title: 'RPA Workflows',
+                title: "RPA Workflows",
                 text: `On the rpa workflows page, you can see a list of all the RPA workflows you have access too, if you click invoke <em
                 class="fas fa-play-circle"></em>, you can even start them from this webpage, given the robot is online`,
                 beforeShowPromise: function () {
@@ -1224,14 +1224,14 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menurpaworkflows',
-                    on: 'bottom'
+                    element: "#menurpaworkflows",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '4'
+                id: "4"
             });
 
 
@@ -1240,7 +1240,7 @@ export class MenuCtrl {
                 nodered_multi_tenant_turns_off = "The free version will stop after a few hours hours and have limited amount of ram. ";
             }
             tour.addStep({
-                title: 'Nodered',
+                title: "Nodered",
                 text: `On the NodeRED page, you can start your personal NodeRED instance. ` + nodered_multi_tenant_turns_off + `This is where you can schedule robots, and install modules that allows easy integration to more than 3500 IT systems. This is also where you create workflow, that can involve humans using different channels like email, chat, voice or the forms you design in OpenFlow`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -1255,19 +1255,19 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menunodered',
-                    on: 'bottom'
+                    element: "#menunodered",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '5'
+                id: "5"
             });
 
 
             tour.addStep({
-                title: 'Forms',
+                title: "Forms",
                 text: `This is where you can create forms, used by workflows in NodeRED. You can combine this with other channels as well, and then automated based on the input you get and/or present the results`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -1282,19 +1282,19 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuadminforms',
-                    on: 'bottom'
+                    element: "#menuadminforms",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '6'
+                id: "6"
             });
 
 
             tour.addStep({
-                title: 'Workflows',
+                title: "Workflows",
                 text: `Once you created a Workflow in NodeRED, this is where you and your users can start the workflow. Each workflow will have a corrosponding role created, that you need to add the users too, in order to see and invoke the workflow. You can "chain" many workflows, so triggering one workflow will create one or more sub workflows and wait for the results. This is handy when working with complex swim lanes or process that span multiple departments.`,
                 beforeShowPromise: function () {
                     return new Promise((resolve) => setTimeout(resolve, 250));
@@ -1309,23 +1309,23 @@ export class MenuCtrl {
                     }
                 },
                 attachTo: {
-                    element: '#menuworkflows',
-                    on: 'bottom'
+                    element: "#menuworkflows",
+                    on: "bottom"
                 },
                 popperOptions: {
-                    modifiers: [{ name: 'offset', options: { offset: [0, 15] } }]
+                    modifiers: [{ name: "offset", options: { offset: [0, 15] } }]
                 },
                 buttons: [backbutton, nextbutton],
-                id: '7'
+                id: "7"
             });
             // tour.addStep({
-            //     title: 'Files',
+            //     title: "Files",
             //     text: `Files associated with robot workflows, forms and files you use as part of a Nodered workflow gets stored here. You can upload, download, delete and manage permissions on all files here. Remember to clean up, as a free user you only get 25 megabyte of storage`,
             //     attachTo: {
-            //         element: '#menuadminfiles'
+            //         element: "#menuadminfiles"
             //     },
             //     buttons: defaultbuttons,
-            //     id: '6'
+            //     id: "6"
             // });
             for (let i = 0; i < tour.steps.length; i++) {
                 const _stepid = parseInt(tour.steps[i].id);
@@ -1362,7 +1362,7 @@ export class RPAWorkflowCtrl extends entityCtrl<RPAWorkflow> {
         this.messages = "";
         WebSocketClientService.onSignedin(async (_user: TokenUser) => {
             await this.RegisterQueue();
-            this.$scope.$on('signin', (event, data) => {
+            this.$scope.$on("signin", (event, data) => {
                 this.RegisterQueue();
             });
             if (this.id !== null && this.id !== undefined) {
@@ -1670,27 +1670,27 @@ export class chartset {
     options: any = {
         legend: { display: true }
     };
-    // baseColors: string[] = ['#F7464A', '#97BBCD', '#FDB45C', '#46BFBD', '#949FB1', '#4D5360'];
-    // baseColors: string[] = ['#803690', '#00ADF9', '#DCDCDC', '#46BFBD', '#FDB45C', '#949FB1', '#4D5360'];
+    // baseColors: string[] = ["#F7464A", "#97BBCD", "#FDB45C", "#46BFBD", "#949FB1", "#4D5360"];
+    // baseColors: string[] = ["#803690", "#00ADF9", "#DCDCDC", "#46BFBD", "#FDB45C", "#949FB1", "#4D5360"];
     baseColors: [
-        '#97BBCD', // blue
-        '#DCDCDC', // light grey
-        '#F7464A', // red
-        '#46BFBD', // green
-        '#FDB45C', // yellow
-        '#949FB1', // grey
-        '#4D5360'  // dark grey
+        "#97BBCD", // blue
+        "#DCDCDC", // light grey
+        "#F7464A", // red
+        "#46BFBD", // green
+        "#FDB45C", // yellow
+        "#949FB1", // grey
+        "#4D5360"  // dark grey
     ];
     colors: string[] = [
-        '#97BBCD', // blue
-        '#DCDCDC', // light grey
-        '#F7464A', // red
-        '#46BFBD', // green
-        '#FDB45C', // yellow
-        '#949FB1', // grey
-        '#4D5360'  // dark grey
+        "#97BBCD", // blue
+        "#DCDCDC", // light grey
+        "#F7464A", // red
+        "#46BFBD", // green
+        "#FDB45C", // yellow
+        "#949FB1", // grey
+        "#4D5360"  // dark grey
     ];
-    type: string = 'bar';
+    type: string = "bar";
     heading: string = "";
     labels: string[] = [];
     series: string[] = [];
@@ -1776,16 +1776,16 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
 
         const chart: chartset = new chartset();
         chart.heading = onlinerobots + " Online and " + (totalrobots - onlinerobots) + " offline robots, seen the last " + this.timeframedesc;
-        chart.labels = ['online', 'offline'];
+        chart.labels = ["online", "offline"];
         chart.data = [onlinerobots, (totalrobots - onlinerobots)];
         chart.charttype = "pie";
         chart.colors = [
-            // '#98FB98', // very light green
-            // '#F08080', // very light red
-            // '#228B22', // green
-            // '#B22222', // red
-            '#006400', // green
-            '#8B0000', // red
+            // "#98FB98", // very light green
+            // "#F08080", // very light red
+            // "#228B22", // green
+            // "#B22222", // red
+            "#006400", // green
+            "#8B0000", // red
         ];
 
         // chart.click = this.robotsclick.bind(this);
@@ -1840,7 +1840,7 @@ export class ReportsCtrl extends entitiesCtrl<Base> {
         }
         this.charts = [];
         aggregates = [
-            { $match: { _type: 'user' } }
+            { $match: { _type: "user" } }
             , { $sort: { "_rpaheartbeat": -1 } }
             , { "$limit": 20 }
             , rpaheartbeat
@@ -2173,10 +2173,10 @@ export class LoginCtrl {
                             resolve();
                         };
                         fileWriter.onerror = function (e) {
-                            console.error('Write failed: ' + e.toString());
+                            console.error("Write failed: " + e.toString());
                             resolve();
                         };
-                        const blob = new Blob([content], { type: 'text/plain' });
+                        const blob = new Blob([content], { type: "text/plain" });
                         fileWriter.write(blob);
                     }, errorCallback);
                 }, errorCallback);
@@ -2273,10 +2273,10 @@ export class LoginCtrl {
     getCookie(cname) {
         const name = cname + "=";
         const decodedCookie = decodeURIComponent(document.cookie);
-        const ca = decodedCookie.split(';');
+        const ca = decodedCookie.split(";");
         for (let i = 0; i < ca.length; i++) {
             let c = ca[i];
-            while (c.charAt(0) == ' ') {
+            while (c.charAt(0) == " ") {
                 c = c.substring(1);
             }
             if (c.indexOf(name) == 0) {
@@ -2429,7 +2429,7 @@ export class UsersCtrl extends entitiesCtrl<TokenUser> {
                     haderror = true;
                 }
                 if (haderror) {
-                    await jsutil.loadScript('//js.stripe.com/v3/');
+                    await jsutil.loadScript("//js.stripe.com/v3/");
                     this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 }
             }
@@ -2999,7 +2999,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         this.collection = "fs.files";
         this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1, length: 1 };
         const elem = document.getElementById("myBar");
-        elem.style.width = '0%';
+        elem.style.width = "0%";
         WebSocketClientService.onSignedin((user: TokenUser) => {
             this.loadData();
         });
@@ -3010,19 +3010,19 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         const fileinfo = await NoderedUtil.GetFile({ id });
 
         const elem = document.getElementById("myBar");
-        elem.style.width = '0%';
-        elem.innerText = '';
+        elem.style.width = "0%";
+        elem.innerText = "";
         const blob = this.b64toBlob(fileinfo.file, fileinfo.mimeType);
         // const blobUrl = URL.createObjectURL(blob);
         // (window.location as any) = blobUrl;
-        const anchor = document.createElement('a');
+        const anchor = document.createElement("a");
         anchor.download = fileinfo.metadata.name;
         anchor.href = ((window as any).webkitURL || window.URL).createObjectURL(blob);
-        anchor.dataset.downloadurl = [fileinfo.mimeType, anchor.download, anchor.href].join(':');
+        anchor.dataset.downloadurl = [fileinfo.mimeType, anchor.download, anchor.href].join(":");
         anchor.click();
     }
     b64toBlob(b64Data: string, contentType: string, sliceSize: number = 512) {
-        contentType = contentType || '';
+        contentType = contentType || "";
         sliceSize = sliceSize || 512;
         const byteCharacters = atob(b64Data);
         const byteArrays = [];
@@ -3039,8 +3039,8 @@ export class FilesCtrl extends entitiesCtrl<Base> {
         return blob;
     }
     async Upload() {
-        // const e: any = document.querySelector('input[type="file"]');
-        const e: any = document.getElementById('fileupload')
+        // const e: any = document.querySelector("input[type="file"]");
+        const e: any = document.getElementById("fileupload")
         const fd = new FormData();
         for (let i = 0; i < e.files.length; i++) {
             const file = e.files[i];
@@ -3055,7 +3055,7 @@ export class FilesCtrl extends entitiesCtrl<Base> {
 
             }
         };
-        xhr.open('POST', '/upload', true);
+        xhr.open("POST", "/upload", true);
         xhr.send(fd);
     }
     async Upload_usingapi() {
@@ -3067,8 +3067,8 @@ export class FilesCtrl extends entitiesCtrl<Base> {
             const lastp: number = 0;
             await NoderedUtil.SaveFile({ filename, mimeType, file: this.file, compressed: false });
             const elem = document.getElementById("myBar");
-            elem.style.width = '0%';
-            elem.innerText = '';
+            elem.style.width = "0%";
+            elem.innerText = "";
             this.loading = false;
 
         } catch (error) {
@@ -3324,9 +3324,9 @@ export class FormResourceCtrl extends entityCtrl<Base> {
     }
     fixtextarea() {
         setTimeout(() => {
-            const tx = document.getElementsByTagName('textarea');
+            const tx = document.getElementsByTagName("textarea");
             for (let i = 0; i < tx.length; i++) {
-                tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
+                tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px;overflow-y:hidden;");
             }
         }, 500);
     }
@@ -3410,11 +3410,11 @@ export class EditFormCtrl extends entityCtrl<Form> {
                 formData: this.model.formData,
                 dataType: this.model.dataType,
                 roles: roles,
-                disabledActionButtons: ['data', 'clear'],
+                disabledActionButtons: ["data", "clear"],
                 onSave: this.Save.bind(this),
             };
             await jsutil.ensureJQuery();
-            const ele: any = $(document.getElementById('fb-editor'));
+            const ele: any = $(document.getElementById("fb-editor"));
             if (this.formBuilder == null || this.formBuilder == undefined) {
                 if (ele.formBuilder == null) {
                     // await this.loadScript("jquery.min.js");
@@ -3433,10 +3433,10 @@ export class EditFormCtrl extends entityCtrl<Form> {
             try {
                 const storage = "url";
                 const Providers = Formio.Providers
-                const p = Providers.getProviders('storage');
-                Providers.providers['storage'] = { "url": ofurl.default };
+                const p = Providers.getProviders("storage");
+                Providers.providers["storage"] = { "url": ofurl.default };
 
-                const Provider = Providers.getProvider('storage', storage);
+                const Provider = Providers.getProvider("storage", storage);
                 const provider = new Provider(this);
             } catch (error) {
                 console.error(error);
@@ -3445,9 +3445,9 @@ export class EditFormCtrl extends entityCtrl<Form> {
             if (NoderedUtil.IsNullEmpty(this.model.formData.display)) this.model.formData.display = "form";
             let protocol = "http:";
             if (this.WebSocketClientService.wsurl.startsWith("wss")) protocol = "https:";
-            Formio.setBaseUrl(protocol + '//' + this.WebSocketClientService.domain);
-            Formio.setProjectUrl(protocol + '//' + this.WebSocketClientService.domain);
-            this.Formiobuilder = await Formio.builder(document.getElementById('builder'), this.model.formData,
+            Formio.setBaseUrl(protocol + "//" + this.WebSocketClientService.domain);
+            Formio.setProjectUrl(protocol + "//" + this.WebSocketClientService.domain);
+            this.Formiobuilder = await Formio.builder(document.getElementById("builder"), this.model.formData,
                 {
                     noAlerts: false,
                     breadcrumbSettings: { clickable: false },
@@ -3459,7 +3459,7 @@ export class EditFormCtrl extends entityCtrl<Form> {
                         premium: false,
                         basic: false,
                         customBasic: {
-                            title: 'Basic',
+                            title: "Basic",
                             default: true,
                             weight: 0,
                             components: {
@@ -3483,17 +3483,17 @@ export class EditFormCtrl extends entityCtrl<Form> {
                     }
 
                 });
-            // this.Formiobuilder.hook('customValidation', { ...submission, component: options.component }, (err) => {
+            // this.Formiobuilder.hook("customValidation", { ...submission, component: options.component }, (err) => {
             this.Formiobuilder.options.hooks.beforeSubmit = (submission, callback) => {
             };
 
             this.Formiobuilder.url = "/formio";
-            this.Formiobuilder.on('change', form => {
+            this.Formiobuilder.on("change", form => {
                 this.model.schema = form;
             })
-            this.Formiobuilder.on('submit', submission => {
+            this.Formiobuilder.on("submit", submission => {
             })
-            this.Formiobuilder.on('error', (errors) => {
+            this.Formiobuilder.on("error", (errors) => {
                 console.error(errors);
             })
         }
@@ -3618,21 +3618,21 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
         });
     }
     async hideFormElements() {
-        $('input[ref="component"]').prop("disabled", true);
-        $('#workflowform :input').prop("disabled", true);
-        $('#workflowform :button').prop("disabled", true);
-        $('#workflowform :input').addClass("disabled");
-        $('#workflowform :button').addClass("disabled");
-        $('#workflowform choices__list').hide();
-        $('#workflowform .form-group').addClass("is-disabled");
-        $('#workflowform .form-group').prop("isDisabled", true);
+        $(`input[ref="component"]`).prop("disabled", true);
+        $("#workflowform :input").prop("disabled", true);
+        $("#workflowform :button").prop("disabled", true);
+        $("#workflowform :input").addClass("disabled");
+        $("#workflowform :button").addClass("disabled");
+        $("#workflowform choices__list").hide();
+        $("#workflowform .form-group").addClass("is-disabled");
+        $("#workflowform .form-group").prop("isDisabled", true);
 
 
-        // $('.form-control').addClass("disabled");
-        // $('.dropdown').attr("checked", "checked");;
+        // $(".form-control").addClass("disabled");
+        // $(".dropdown").attr("checked", "checked");;
 
-        $('#workflowform :button').hide();
-        $('input[type="submit"]').hide();
+        $("#workflowform :button").hide();
+        $(`input[type="submit"]`).hide();
 
     }
     async loadData(): Promise<void> {
@@ -3744,7 +3744,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 }
             }
             this.model.payload.submitbutton = this.submitbutton;
-            const ele = $('.render-wrap');
+            const ele = $(".render-wrap");
             ele.hide();
         } else {
 
@@ -3888,7 +3888,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             WebSocketClient.instance.user.roles.forEach(role => {
                 roles[role._id] = role.name;
             });
-            if (typeof this.form.formData === 'string' || this.form.formData instanceof String) {
+            if (typeof this.form.formData === "string" || this.form.formData instanceof String) {
                 this.form.formData = JSON.parse((this.form.formData as any));
             }
             for (let i = 0; i < this.form.formData.length; i++) {
@@ -3922,31 +3922,31 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                 formData: this.form.formData,
                 dataType: this.form.dataType,
                 roles: roles,
-                disabledActionButtons: ['data', 'clear'],
+                disabledActionButtons: ["data", "clear"],
                 onSave: this.Save.bind(this),
             };
             if (this.model.userData !== null && this.model.userData !== undefined && this.model.userData !== "") {
                 formRenderOpts.formData = this.model.userData;
             }
             const concatHashToString = function (hash) {
-                let emptyStr = '';
+                let emptyStr = "";
                 $.each(hash, function (index) {
-                    emptyStr += ' ' + hash[index].name + '="' + hash[index].value + '"';
+                    emptyStr += ` ${hash[index].name}="${hash[index].value}"`;
                 });
                 return emptyStr;
             }
             setTimeout(() => {
-                $('button[type="button"]').each(function () {
+                $(`button[type="button"]`).each(function () {
                     const cur: any = $(this)[0];
                     cur.type = "submit";
                 });
                 const click = function (evt) {
                     this.submitbutton = evt.target.id;
                 }
-                $('button[type="submit"]').click(click.bind(this));
+                $(`button[type="submit"]`).click(click.bind(this));
 
             }, 500);
-            const ele: any = $('.render-wrap');
+            const ele: any = $(".render-wrap");
             ele.show();
             if (ele.formBuilder == null || ele.formBuilder == undefined) {
                 await jsutil.loadScript("jquery-ui.min.js");
@@ -3972,10 +3972,10 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             try {
                 const storage = "url";
                 const Providers = Formio.Providers
-                const p = Providers.getProviders('storage');
-                Providers.providers['storage'] = { "url": ofurl.default };
+                const p = Providers.getProviders("storage");
+                Providers.providers["storage"] = { "url": ofurl.default };
 
-                const Provider = Providers.getProvider('storage', storage);
+                const Provider = Providers.getProvider("storage", storage);
                 const provider = new Provider(this);
             } catch (error) {
                 console.error(error);
@@ -3991,10 +3991,10 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             }
             let protocol = "http:";
             if (this.WebSocketClientService.wsurl.startsWith("wss")) protocol = "https:";
-            Formio.setBaseUrl(protocol + '//' + this.WebSocketClientService.domain);
-            Formio.setProjectUrl(protocol + '//' + this.WebSocketClientService.domain);
+            Formio.setBaseUrl(protocol + "//" + this.WebSocketClientService.domain);
+            Formio.setProjectUrl(protocol + "//" + this.WebSocketClientService.domain);
 
-            this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
+            this.formioRender = await Formio.createForm(document.getElementById("formio"), this.form.schema,
                 {
                     breadcrumbSettings: { clickable: true },
                     buttonSettings: { showCancel: false },
@@ -4014,7 +4014,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
                         }
                     }
                 });
-            this.formioRender.on('submit', async submission => {
+            this.formioRender.on("submit", async submission => {
                 this.Save();
             });
             // wizard
@@ -4023,7 +4023,7 @@ export class FormCtrl extends entityCtrl<WorkflowInstance> {
             if (this.model.payload != null && this.model.payload != undefined) {
                 this.formioRender.submission = { data: this.model.payload };
             }
-            this.formioRender.on('error', (error) => {
+            this.formioRender.on("error", (error) => {
                 this.errormessage = error.message ? error.message : error;
                 if (!this.$scope.$$phase) { this.$scope.$apply(); }
                 console.error(this.errormessage);
@@ -4089,7 +4089,7 @@ export class EntityCtrl extends entityCtrl<Base> {
                 this.model._encrypt = [];
                 this.keys = Object.keys(this.model);
                 for (let i: number = this.keys.length - 1; i >= 0; i--) {
-                    if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                    if (this.keys[i].startsWith("_")) this.keys.splice(i, 1);
                 }
                 this.searchSelectedItem = WebSocketClient.instance.user;
                 this.adduser();
@@ -4137,13 +4137,13 @@ export class EntityCtrl extends entityCtrl<Base> {
         this.fixtextarea();
     }
     isobject(object: any) {
-        return typeof object === 'object';
+        return typeof object === "object";
     }
     fixtextarea() {
         setTimeout(() => {
-            const tx = document.getElementsByTagName('textarea');
+            const tx = document.getElementsByTagName("textarea");
             for (let i = 0; i < tx.length; i++) {
-                tx[i].setAttribute('style', 'height:' + (tx[i].scrollHeight) + 'px;overflow-y:hidden;');
+                tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px;overflow-y:hidden;");
             }
         }, 500);
     }
@@ -4155,7 +4155,7 @@ export class EntityCtrl extends entityCtrl<Base> {
             this.model = JSON.parse(this.jsonmodel);
             this.keys = Object.keys(this.model);
             for (let i: number = this.keys.length - 1; i >= 0; i--) {
-                if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                if (this.keys[i].startsWith("_")) this.keys.splice(i, 1);
             }
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -4196,13 +4196,13 @@ export class EntityCtrl extends entityCtrl<Base> {
         delete this.model[key];
     }
     addkey() {
-        if (this.newkey === '') { return; }
+        if (this.newkey === "") { return; }
         if (this.keys.indexOf(this.newkey) > -1) {
             this.keys.splice(this.keys.indexOf(this.newkey), 1);
         }
         this.keys.push(this.newkey);
-        this.model[this.newkey] = '';
-        this.newkey = '';
+        this.model[this.newkey] = "";
+        this.newkey = "";
     }
     removeuser(_id) {
         if (this.collection == "files" || this.collection?.endsWith(".files")) {
@@ -4408,7 +4408,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             if (item != null) model.item = item;
         }
         if (model.item == null) {
-            document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
+            document.getElementById("visual").innerHTML = "Failed loading item version " + model._version;
         }
         let encrypt = model.item._encrypt;
         if (NoderedUtil.IsNullUndefinded(encrypt)) encrypt = [];
@@ -4430,7 +4430,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
                 }
             });
         }
-        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
+        document.getElementById("visual").innerHTML = jsondiffpatch.formatters.html.format(delta, this.model);
     }
     async ShowVersion(model) {
         this.ToggleModal();
@@ -4439,7 +4439,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             if (item != null) model.item = item;
         }
         if (model.item == null) {
-            document.getElementById('visual').innerHTML = "Failed loading item version " + model._version;
+            document.getElementById("visual").innerHTML = "Failed loading item version " + model._version;
         }
         const keys = Object.keys(model.item);
         keys.forEach(key => {
@@ -4448,14 +4448,14 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
             }
         });
         const delta = jsondiffpatch.diff(model.item, { ...model.item, _id: this.id });
-        document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(delta, model.item);
+        document.getElementById("visual").innerHTML = jsondiffpatch.formatters.html.format(delta, model.item);
     }
     download(filename, text) {
-        var element = document.createElement('a');
-        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-        element.setAttribute('download', filename);
+        var element = document.createElement("a");
+        element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
+        element.setAttribute("download", filename);
 
-        element.style.display = 'none';
+        element.style.display = "none";
         document.body.appendChild(element);
 
         element.click();
@@ -4498,7 +4498,7 @@ export class HistoryCtrl extends entitiesCtrl<Base> {
                 }
             }
             this.ToggleModal();
-            document.getElementById('visual').innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
+            document.getElementById("visual").innerHTML = jsondiffpatch.formatters.html.format(model.delta, {});
         } catch (error) {
             this.errormessage = error;
         }
@@ -4596,7 +4596,7 @@ export class ClientsCtrl  {
         public userdata: userdata
     ) {
         console.debug("RobotsCtrl");
-        this.$scope.$on('search', (event, data) => {
+        this.$scope.$on("search", (event, data) => {
             this.searchstring = data;
             this.processdata();
         });
@@ -4707,24 +4707,24 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
             const model: any = this.models[i];
             model.fa = "far fa-question-circle";
             model.fa2 = "";
-            if (model.imagename != null && model.imagename != "") model.fa = 'fab fa-docker';
-            if (model.clientagent == 'openrpa') model.fa = 'fas fa-robot';
-            if (model.clientagent == 'webapp') model.fa = 'fas fa-globe';
-            if (model.clientagent == 'browser') model.fa = 'fas fa-globe';
-            if (model.clientagent == 'mobileapp') model.fa = 'fas fa-mobile-alt';
-            if (model.clientagent == 'python') model.fa = 'fab python';
-            if (model.clientagent == 'node') model.fa = 'fab fa-node-js';
-            if (model.clientagent == 'nodeagent') model.fa = 'fab fa-node-js';
-            if (model.clientagent == 'nodered') model.fa = 'fab fa-node-js';
-            if (model.clientagent == 'getUserFromRequest') model.fa = 'fab fa-node-js';
-            if (model.clientagent == 'googleverify') model.fa = 'fab fa-google';
-            if (model.clientagent == 'samlverify') model.fa = 'fab fa-windows';
-            if (model.clientagent == 'aiotwebapp') model.fa = 'fas fa-globe';
-            if (model.clientagent == 'aiotmobileapp') model.fa = 'fas fa-mobile-alt';
-            if (model.clientagent == 'nodered-cli') model.fa = 'fab fa-node-js';
-            if (model.clientagent == 'openflow-cli') model.fa = 'fab fa-node-js';
+            if (model.imagename != null && model.imagename != "") model.fa = "fab fa-docker";
+            if (model.clientagent == "openrpa") model.fa = "fas fa-robot";
+            if (model.clientagent == "webapp") model.fa = "fas fa-globe";
+            if (model.clientagent == "browser") model.fa = "fas fa-globe";
+            if (model.clientagent == "mobileapp") model.fa = "fas fa-mobile-alt";
+            if (model.clientagent == "python") model.fa = "fab python";
+            if (model.clientagent == "node") model.fa = "fab fa-node-js";
+            if (model.clientagent == "nodeagent") model.fa = "fab fa-node-js";
+            if (model.clientagent == "nodered") model.fa = "fab fa-node-js";
+            if (model.clientagent == "getUserFromRequest") model.fa = "fab fa-node-js";
+            if (model.clientagent == "googleverify") model.fa = "fab fa-google";
+            if (model.clientagent == "samlverify") model.fa = "fab fa-windows";
+            if (model.clientagent == "aiotwebapp") model.fa = "fas fa-globe";
+            if (model.clientagent == "aiotmobileapp") model.fa = "fas fa-mobile-alt";
+            if (model.clientagent == "nodered-cli") model.fa = "fab fa-node-js";
+            if (model.clientagent == "openflow-cli") model.fa = "fab fa-node-js";
 
-            if (model.impostorname != '' && model.impostorname != null) model.fa2 = 'fas fa-user-secret';
+            if (model.impostorname != "" && model.impostorname != null) model.fa2 = "fas fa-user-secret";
         }
         this.loading = false;
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
@@ -4733,7 +4733,7 @@ export class AuditlogsCtrl extends entitiesCtrl<Role> {
         if(logtype == null || logtype == "") {
             this.basequery = {}
         } else {
-            this.basequery['type'] = logtype;
+            this.basequery["type"] = logtype;
         }
         this.page = 0; 
         this.loading = false;
@@ -5076,16 +5076,16 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
                 this.model._type = "oauthclient";
                 this.model._encrypt = ["clientSecret"];
                 (this.model as any).clientId = "application";
-                (this.model as any).clientSecret = 'secret';
-                (this.model as any).grants = ['password', 'refresh_token', 'authorization_code'];
+                (this.model as any).clientSecret = "secret";
+                (this.model as any).grants = ["password", "refresh_token", "authorization_code"];
                 (this.model as any).redirectUris = [];
                 (this.model as any).defaultrole = "Viewer";
                 (this.model as any).rolemappings = { "admins": "Admin", "grafana editors": "Editor", "grafana admins": "Admin" };
 
                 // (this.model as any).token_endpoint_auth_method = "none";
                 (this.model as any).token_endpoint_auth_method = "client_secret_post";
-                (this.model as any).response_types = ['code', 'id_token', 'code id_token'];
-                (this.model as any).grant_types = ['implicit', 'authorization_code'];
+                (this.model as any).response_types = ["code", "id_token", "code id_token"];
+                (this.model as any).grant_types = ["implicit", "authorization_code"];
                 (this.model as any).post_logout_redirect_uris = [];
             }
         });
@@ -5137,7 +5137,7 @@ export class OAuthClientCtrl extends entityCtrl<Base> {
         var copyText = document.querySelector(field);
         copyText.type = "text";
         // var copythis = copyText.value;
-        // copyText = document.getElementById('just_for_copy');
+        // copyText = document.getElementById("just_for_copy");
         // copyText.value = copythis;
 
         /* Select the text field */
@@ -5176,12 +5176,12 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         // this.baseprojection = { _type: 1, type: 1, name: 1, _created: 1, _createdby: 1, _modified: 1 };
         this.pagesize = 1;
         this.postloadData = this.processdata;
-        const checkList = document.getElementById('list1');
-        (checkList.getElementsByClassName('anchor')[0] as any).onclick = function (evt) {
-            if (checkList.classList.contains('visible'))
-                checkList.classList.remove('visible');
+        const checkList = document.getElementById("list1");
+        (checkList.getElementsByClassName("anchor")[0] as any).onclick = function (evt) {
+            if (checkList.classList.contains("visible"))
+                checkList.classList.remove("visible");
             else
-                checkList.classList.add('visible');
+                checkList.classList.add("visible");
         }
         if (this.userdata.data.DuplicatesCtrl) {
             this.basequery = this.userdata.data.DuplicatesCtrl.basequery;
@@ -5222,11 +5222,11 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
                     this.keys.splice(i, 1);
                     var subkeys = Object.keys(this.models[0]["metadata"]);
                     for (let n: number = subkeys.length - 1; n >= 0; n--) {
-                        if (!subkeys[n].startsWith('_') && subkeys[n] != "_type" && subkeys[n] != "$$hashKey") {
+                        if (!subkeys[n].startsWith("_") && subkeys[n] != "_type" && subkeys[n] != "$$hashKey") {
                             this.keys.push("metadata." + subkeys[n])
                         }
                     }                    
-                } else if (this.keys[i].startsWith('_') && this.keys[i] != "_type" ) {
+                } else if (this.keys[i].startsWith("_") && this.keys[i] != "_type" ) {
                     this.keys.splice(i, 1);
                 } else if (this.keys[i] == "$$hashKey") {
                     this.keys.splice(i, 1);
@@ -5242,7 +5242,7 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
         const arr = this.uniqeness.split(",");
         const group: any = { _id: {}, count: { "$sum": 1 } };
         group.items = {
-            $push: { "_id": '$$ROOT._id', "name": '$$ROOT.name' }
+            $push: { "_id": "$$ROOT._id", "name": "$$ROOT.name" }
         }
         arr.forEach(field => {
             if (field.trim() !== "") {
@@ -5287,14 +5287,14 @@ export class DuplicatesCtrl extends entitiesCtrl<Base> {
     }
     ToggleUniqeness(model) {
         let arr = [];
-        if (this.uniqeness != null && this.uniqeness != "") arr = this.uniqeness.split(',');
+        if (this.uniqeness != null && this.uniqeness != "") arr = this.uniqeness.split(",");
         const index = arr.indexOf(model);
         if (index > -1) {
             arr.splice(index, 1);
-            this.uniqeness = arr.join(',');
+            this.uniqeness = arr.join(",");
         } else {
             arr.push(model);
-            this.uniqeness = arr.join(',');
+            this.uniqeness = arr.join(",");
         }
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
         this.loadData();
@@ -5585,7 +5585,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                     haderror = true;
                 }
                 if (haderror) {
-                    await jsutil.loadScript('//js.stripe.com/v3/');
+                    await jsutil.loadScript("//js.stripe.com/v3/");
                     this.stripe = Stripe(this.WebSocketClientService.stripe_api_key);
                 }
             }
@@ -5714,7 +5714,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
                         (res as any).newproduct = prod;
                         (prod as any).usedby = this.UsedbyCount(prod);
                     }
-                    if (prod.customerassign == "metered" && res.name == 'Database Usage') {
+                    if (prod.customerassign == "metered" && res.name == "Database Usage") {
 
                         let billabledbusage: number = this.model.dbusage - res.defaultmetadata.dbusage;
                         if (billabledbusage > 0) {
@@ -5990,7 +5990,7 @@ export class CustomerCtrl extends entityCtrl<Customer> {
             (payload as any).customer = this.model.stripeid;
             var session: any = await NoderedUtil.Stripe({ method: "POST", object: "billing_portal/sessions", payload });
             if (session && session.url) {
-                window.open(session.url, '_blank');
+                window.open(session.url, "_blank");
                 // window.location.href = session.url;
             } else {
                 this.errormessage = "Failed getting portal session url";
@@ -6009,8 +6009,8 @@ export class CustomerCtrl extends entityCtrl<Customer> {
         if (!this.$scope.$$phase) { this.$scope.$apply(); }
     }
     CountryUpdate() {
-        const eu: string[] = ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT',
-            'RO', 'SK', 'SI', 'ES', 'SE'];
+        const eu: string[] = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT",
+            "RO", "SK", "SI", "ES", "SE"];
         if (eu.indexOf(this.model.country) > -1) {
             this.model.vattype = "eu_vat";
             if (this.model.vatnumber == null || this.model.vatnumber == "") this.model.vatnumber = this.model.country;

@@ -64,7 +64,7 @@ export class WebSocketServer {
             }
             if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
-                    description: 'Total number of online websocket clients'
+                    description: "Total number of online websocket clients"
                 }) // "agent", "version"
                 let p_all = {};
                 WebSocketServer.p_all?.addCallback(res => {
@@ -98,7 +98,7 @@ export class WebSocketServer {
                     });
                 });
                 WebSocketServer.websocket_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_queue", {
-                    description: 'Total number of registered queues'
+                    description: "Total number of registered queues"
                 }) // "clientid"
                 WebSocketServer.websocket_queue_count?.addCallback(res => {
                     if (!Config.otel_measure_queued_messages) return;
@@ -108,19 +108,19 @@ export class WebSocketServer {
                     }
                 });
                 WebSocketServer.websocket_queue_message_count = Logger.otel.meter.createCounter("openflow_websocket_queue_message", {
-                    description: 'Total number of queues messages'
+                    description: "Total number of queues messages"
                 }) // "queuename"
                 WebSocketServer.websocket_rate_limit = Logger.otel.meter.createCounter("openflow_websocket_rate_limit", {
-                    description: 'Total number of rate limited messages'
+                    description: "Total number of rate limited messages"
                 }) // "command"
                 WebSocketServer.websocket_errors = Logger.otel.meter.createCounter("openflow_websocket_errors", {
-                    description: 'Total number of websocket errors'
+                    description: "Total number of websocket errors"
                 }) // 
-                WebSocketServer.websocket_messages = Logger.otel.meter.createHistogram('openflow_websocket_messages_duration_seconds', {
-                    description: 'Duration for handling websocket requests', valueType: 1, unit: 's'
+                WebSocketServer.websocket_messages = Logger.otel.meter.createHistogram("openflow_websocket_messages_duration_seconds", {
+                    description: "Duration for handling websocket requests", valueType: 1, unit: "s"
                 }); // "command"
                 WebSocketServer.message_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_message_queue", {
-                    description: 'Total number messages waiting on reply from client'
+                    description: "Total number messages waiting on reply from client"
                 }) // "clientid"
                 WebSocketServer.message_queue_count?.addCallback(res => {
                     if (!Config.otel_measure_queued_messages) return;
@@ -135,7 +135,7 @@ export class WebSocketServer {
                     }
                 });
                 WebSocketServer.mongodb_watch_count = Logger.otel.meter.createObservableUpDownCounter("mongodb_watch", {
-                    description: 'Total number af steams  watching for changes'
+                    description: "Total number af steams  watching for changes"
                 }) // "agent", "clientid"
                 WebSocketServer.mongodb_watch_count?.addCallback(res => {
                     if (!Config.otel_measure__mongodb_watch) return;
@@ -148,8 +148,8 @@ export class WebSocketServer {
                         res.observe(keys.length, { ...Logger.otel.defaultlabels, clientid: cli.id, agent: cli.clientagent })
                     }
                 });
-                WebSocketServer.websocket_connections_count = Logger.otel.meter.createObservableUpDownCounter('openflow_websocket_connections_count', {
-                    description: 'Total number of connection requests'
+                WebSocketServer.websocket_connections_count = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_connections_count", {
+                    description: "Total number of connection requests"
                 }); // "command"
                 WebSocketServer.websocket_connections_count?.addCallback(res => {
                     const keys = Object.keys(this.total_connections_count);

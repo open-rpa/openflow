@@ -38,10 +38,10 @@ export class Auth {
             const token = jwt.split(" ")[1].toString();
             jwt = token;
         } else if(jwt.indexOf(" ") > 1 && jwt.toLowerCase().startsWith("basic")) {
-            jwt = jwt.split(' ')[1].toString() || '';
+            jwt = jwt.split(" ")[1].toString() || "";
             user = await Logger.DBHelper.FindJWT(jwt, parent);
             if(user == null) {
-                const [login, password] = Buffer.from(jwt, "base64").toString().split(':')
+                const [login, password] = Buffer.from(jwt, "base64").toString().split(":")
                 if (login != null && login != "" && password != null && password != "") {
                     user = await Auth.ValidateByPassword(login, password, parent);
                 }
@@ -212,10 +212,10 @@ export class Auth {
             jwt = token;
             tuser = await Crypt.verityToken(jwt);
         } else if(jwt.indexOf(" ") > 1 && jwt.toLowerCase().startsWith("basic")) {
-            jwt = jwt.split(' ')[1].toString() || '';
+            jwt = jwt.split(" ")[1].toString() || "";
             user = await Logger.DBHelper.FindJWT(jwt, parent);
             if(user == null) {
-                const [login, password] = Buffer.from(jwt, "base64").toString().split(':')
+                const [login, password] = Buffer.from(jwt, "base64").toString().split(":")
                 if (login != null && login != "" && password != null && password != "") {
                     user = await Auth.ValidateByPassword(login, password, parent);
                 }

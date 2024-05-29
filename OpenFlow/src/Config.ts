@@ -1,4 +1,4 @@
-import xml2js from 'xml2js';
+import xml2js from "xml2js";
 import https from "https";
 import http from "http";
 import fs from "fs";
@@ -10,9 +10,9 @@ import { Logger } from "./Logger.js";
 import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
 import { promiseRetry } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { Crypt } from './Crypt.js';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import { Crypt } from "./Crypt.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -47,7 +47,7 @@ export class dbConfig extends Base {
     }
     public compare(version: string): number {
         if(this.version == null) return -1;
-        return this.version.localeCompare(version, undefined, { numeric: true, sensitivity: 'base' });
+        return this.version.localeCompare(version, undefined, { numeric: true, sensitivity: "base" });
     }
     public static areEqual(a, b) {
         if (a === b) return true;
@@ -767,7 +767,7 @@ export class Config {
     }
     public static baseurl(): string {
         let result: string = "";
-        if (Config.tls_crt != '' && Config.tls_key != '') {
+        if (Config.tls_crt != "" && Config.tls_key != "") {
             result = "https://" + Config.domain;
         } else {
             result = Config.protocol + "://" + Config.domain;
@@ -779,7 +779,7 @@ export class Config {
     }
     public static basewsurl(): string {
         let result: string = "";
-        if (Config.tls_crt != '' && Config.tls_key != '') {
+        if (Config.tls_crt != "" && Config.tls_key != "") {
             result = "wss://" + Config.domain;
         } else if (Config.protocol == "http") {
             result = "ws://" + Config.domain;
@@ -801,15 +801,15 @@ export class Config {
     public static post_x_www_form_data_urlencoded(url: string, data: any, headers: string[][]): Promise<string> {
         return new Promise((resolve, reject) => {
             var provider = http;
-            if (url.startsWith('https')) {
+            if (url.startsWith("https")) {
                 provider = https as any;
             }
             const dataString = querystring.stringify(data);
             const options = {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Content-Length': dataString.length
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Content-Length": dataString.length
                 }
             };
             if(headers != null) {
@@ -818,15 +818,15 @@ export class Config {
                 });
             }
             const req = provider.request(url, options, (res) => {
-                let data = '';
-                res.on('data', (chunk) => {
+                let data = "";
+                res.on("data", (chunk) => {
                     data += chunk;
                 });
-                res.on('end', () => {
+                res.on("end", () => {
                     resolve(data);
                 });
             });
-            req.on('error', (error) => {
+            req.on("error", (error) => {
                 reject(error);
             });
             req.write(dataString);
@@ -836,15 +836,15 @@ export class Config {
     public static post(url: string, data: any, headers: string[][]): Promise<string> {
         return new Promise((resolve, reject) => {
             var provider = http;
-            if (url.startsWith('https')) {
+            if (url.startsWith("https")) {
                 provider = https as any;
             }
             const dataString = JSON.stringify(data);
             const options = {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': dataString.length
+                    "Content-Type": "application/json",
+                    "Content-Length": dataString.length
                 }
             };
             if(headers != null) {
@@ -853,15 +853,15 @@ export class Config {
                 });
             }
             const req = provider.request(url, options, (res) => {
-                let data = '';
-                res.on('data', (chunk) => {
+                let data = "";
+                res.on("data", (chunk) => {
                     data += chunk;
                 });
-                res.on('end', () => {
+                res.on("end", () => {
                     resolve(data);
                 });
             });
-            req.on('error', (error) => {
+            req.on("error", (error) => {
                 reject(error);
             });
             req.write(dataString);
@@ -871,15 +871,15 @@ export class Config {
     public static get(url: string): Promise<string> {
         return new Promise((resolve, reject) => {
             var provider = http;
-            if (url.startsWith('https')) {
+            if (url.startsWith("https")) {
                 provider = https as any;
             }
             provider.get(url, (resp) => {
-                let data = '';
-                resp.on('data', (chunk) => {
+                let data = "";
+                resp.on("data", (chunk) => {
                     data += chunk;
                 });
-                resp.on('end', () => {
+                resp.on("end", () => {
                     resolve(data);
                 });
             }).on("error", (err) => {

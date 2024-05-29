@@ -12,7 +12,7 @@ clog("Starting @openiap/openflow");
 import path from "path";
 import fs from "fs";
 import { config } from "dotenv";
-const env = path.join(process.cwd(), 'config', '.env');
+const env = path.join(process.cwd(), "config", ".env");
 if(fs.existsSync(env)) {
     clog("Loading env file: " + env);
     config({ path: env }); // , debug: false 
@@ -161,22 +161,22 @@ async function PreRegisterExchanges(span: Span) {
         await amqpwrapper.Instance().PreRegisterExchange(exchange, span);
     }
 }
-process.on('beforeExit', (code) => {
+process.on("beforeExit", (code) => {
     Logger.instanse.error(code as any, null);
 });
-process.on('exit', (code) => {
+process.on("exit", (code) => {
     Logger.instanse.error(code as any, null);
 });
 const unhandledRejections = new Map();
-process.on('unhandledRejection', (reason, promise) => {
+process.on("unhandledRejection", (reason, promise) => {
     Logger.instanse.error(reason as any, null);
-    // ('Unhandled Rejection at: Promise', promise, 'reason:', reason);
+    // ("Unhandled Rejection at: Promise", promise, "reason:", reason);
     unhandledRejections.set(promise, reason);
 });
-process.on('rejectionHandled', (promise) => {
+process.on("rejectionHandled", (promise) => {
     unhandledRejections.delete(promise);
 });
-process.on('uncaughtException', (err, origin) => {
+process.on("uncaughtException", (err, origin) => {
     Logger.instanse.error(err, null);
     // (`Caught exception: ${err}\n` +
     //     `Exception origin: ${origin}`
@@ -188,20 +188,20 @@ function onerror(err, origin) {
     //     `Exception origin: ${origin}`
     // );
 }
-process.on('uncaughtExceptionMonitor', onerror);
+process.on("uncaughtExceptionMonitor", onerror);
 function onWarning(warning) {
     try {
         Logger.instanse.warn(warning.name + ": " + warning.message, null);
     } catch (error) {
     }
 }
-process.on('warning', onWarning);
+process.on("warning", onWarning);
 // The signals we want to handle
 // NOTE: although it is tempting, the SIGKILL signal (9) cannot be intercepted and handled
 var signals = {
-    'SIGHUP': 1,
-    'SIGINT': 2,
-    'SIGTERM': 15
+    "SIGHUP": 1,
+    "SIGINT": 2,
+    "SIGTERM": 15
 };
 var housekeeping = null;
 async function handle(signal, value) {

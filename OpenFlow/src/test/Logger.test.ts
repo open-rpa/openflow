@@ -1,10 +1,10 @@
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from '../Logger.js';
-import { NoderedUtil } from '@openiap/openflow-api';
-import { i_license_data } from '../commoninterfaces.js';
+import { Logger } from "../Logger.js";
+import { NoderedUtil } from "@openiap/openflow-api";
+import { i_license_data } from "../commoninterfaces.js";
 
 @suite class logger_test {
     @timeout(10000)
@@ -19,12 +19,12 @@ import { i_license_data } from '../commoninterfaces.js';
     async after() {
         await Logger.shutdown();
     }
-    @test async 'test info'() {
+    @test async "test info"() {
         // assert.ok(!NoderedUtil.IsNullUndefinded(Logger.myFormat), "Logger missing winston error formatter");
         var ofid = Logger.ofid();
         assert.strictEqual(NoderedUtil.IsNullEmpty(ofid), false);
     }
-    @test async 'v1_lic'() {
+    @test async "v1_lic"() {
         const months: number = 1;
         const data: i_license_data = {} as any;
         let template = Logger.License.template_v1;
@@ -34,17 +34,17 @@ import { i_license_data } from '../commoninterfaces.js';
         dt.setMonth(dt.getMonth() + months);
         data.expirationDate = dt.toISOString() as any;
         const licenseFileContent = Logger.License.generate({
-            privateKeyPath: 'config/private_key.pem',
+            privateKeyPath: "config/private_key.pem",
             template,
             data: data
         });
-        Config.license_key = Buffer.from(licenseFileContent).toString('base64');
+        Config.license_key = Buffer.from(licenseFileContent).toString("base64");
         Logger.License.validate();
         assert.strictEqual(Logger.License.validlicense, true);
         assert.strictEqual(Logger.License.data.email, "test@user.com");
 
     }
-    @test async 'v2_lic'() {
+    @test async "v2_lic"() {
         const months: number = 1;
         const data: i_license_data = {} as any;
         let template = Logger.License.template_v2;
@@ -58,12 +58,12 @@ import { i_license_data } from '../commoninterfaces.js';
         dt.setMonth(dt.getMonth() + months);
         data.expirationDate = dt.toISOString() as any;
         const licenseFileContent = Logger.License.generate({
-            privateKeyPath: 'config/private_key.pem',
+            privateKeyPath: "config/private_key.pem",
             template,
             data: data
         });
         var lic = Logger.License;
-        Config.license_key = Buffer.from(licenseFileContent).toString('base64');
+        Config.license_key = Buffer.from(licenseFileContent).toString("base64");
         Logger.License.validate();
         assert.strictEqual(Logger.License.validlicense, true);
         assert.strictEqual(Logger.License.data.email, "test@user.com");
@@ -78,4 +78,4 @@ import { i_license_data } from '../commoninterfaces.js';
         assert.notStrictEqual(ofid, ofid2);
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/Logger.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/**/Logger.test.ts"

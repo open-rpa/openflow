@@ -13,8 +13,8 @@ export class Audit {
     public static ensure_openflow_logins() {
         if (!NoderedUtil.IsNullUndefinded(Audit.openflow_logins)) return;
         if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
-            Audit.openflow_logins = Logger.otel.meter.createUpDownCounter('openflow_logins', {
-                description: 'Number of login attempts'
+            Audit.openflow_logins = Logger.otel.meter.createUpDownCounter("openflow_logins", {
+                description: "Number of login attempts"
             });
         }
     }
@@ -157,9 +157,9 @@ export class Audit {
                 }
             }
             log.image = image;
-            if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(':') > -1) {
-                log.imagename = image.split(':')[0];
-                log.imageversion = image.split(':')[1];
+            if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(":") > -1) {
+                log.imagename = image.split(":")[0];
+                log.imageversion = image.split(":")[1];
             } else {
                 log.imagename = image;
             }
@@ -205,7 +205,7 @@ export class Audit {
     static dot2num(dot: string): number {
         if (NoderedUtil.IsNullEmpty(dot)) return 0;
         if (dot.indexOf(".") == -1) return 0;
-        var d = dot.split('.');
+        var d = dot.split(".");
         return ((((((+d[0]) * 256) + (+d[1])) * 256) + (+d[2])) * 256) + (+d[3]);
     }
     static num2dot(num: number): string {
@@ -214,7 +214,7 @@ export class Audit {
         var d: string = (num % 256).toString();
         for (var i = 3; i > 0; i--) {
             num = Math.floor(num / 256);
-            d = num % 256 + '.' + d;
+            d = num % 256 + "." + d;
         }
         return d;
     }

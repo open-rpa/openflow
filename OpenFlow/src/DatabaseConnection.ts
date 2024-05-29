@@ -5,7 +5,7 @@ import { TokenUser, Base, WellknownIds, Rights, NoderedUtil, mapFunc, finalizeFu
 import { OAuthProvider } from "./OAuthProvider.js";
 import { Span, ObservableUpDownCounter, Histogram } from "@opentelemetry/api";
 import { Logger } from "./Logger.js";
-import { JSONPath } from 'jsonpath-plus';
+import { JSONPath } from "jsonpath-plus";
 import events from "events";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { WebSocketServer } from "./WebSocketServer.js";
@@ -19,11 +19,11 @@ import { Auth } from "./Auth.js";
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
-import _jsondiffpatch from 'jsondiffpatch';
+import _jsondiffpatch from "jsondiffpatch";
 const jsondiffpatch = _jsondiffpatch.create({
     objectHash: function (obj, index) {
         // try to find an id property, otherwise just use the index in the array
-        return obj.name || obj.id || obj._id || '$$index:' + index;
+        return obj.name || obj.id || obj._id || "$$index:" + index;
     }
 });
 
@@ -72,39 +72,39 @@ export class DatabaseConnection extends events.EventEmitter {
         if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
-            DatabaseConnection.mongodb_query = Logger.otel.meter.createHistogram('openflow_mongodb_query_seconds', {
-                description: 'Duration for mongodb queries', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_query = Logger.otel.meter.createHistogram("openflow_mongodb_query_seconds", {
+                description: "Duration for mongodb queries", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_count = Logger.otel.meter.createHistogram('openflow_mongodb_count_seconds', {
-                description: 'Duration for mongodb counts', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_count = Logger.otel.meter.createHistogram("openflow_mongodb_count_seconds", {
+                description: "Duration for mongodb counts", valueType: 1, unit: "s"
             });
             // valueType: ValueType.DOUBLE
-            DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createHistogram('openflow_mongodb_aggregate_seconds', {
-                description: 'Duration for mongodb aggregates', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createHistogram("openflow_mongodb_aggregate_seconds", {
+                description: "Duration for mongodb aggregates", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_insert = Logger.otel.meter.createHistogram('openflow_mongodb_insert_seconds', {
-                description: 'Duration for mongodb inserts', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_insert = Logger.otel.meter.createHistogram("openflow_mongodb_insert_seconds", {
+                description: "Duration for mongodb inserts", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_insertmany = Logger.otel.meter.createHistogram('openflow_mongodb_insertmany_seconds', {
-                description: 'Duration for mongodb insert many', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_insertmany = Logger.otel.meter.createHistogram("openflow_mongodb_insertmany_seconds", {
+                description: "Duration for mongodb insert many", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_update = Logger.otel.meter.createHistogram('openflow_mongodb_update_seconds', {
-                description: 'Duration for mongodb updates', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_update = Logger.otel.meter.createHistogram("openflow_mongodb_update_seconds", {
+                description: "Duration for mongodb updates", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_updatemany = Logger.otel.meter.createHistogram('openflow_mongodb_updatemany_seconds', {
-                description: 'Duration for mongodb update many', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_updatemany = Logger.otel.meter.createHistogram("openflow_mongodb_updatemany_seconds", {
+                description: "Duration for mongodb update many", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_replace = Logger.otel.meter.createHistogram('openflow_mongodb_replace_seconds', {
-                description: 'Duration for mongodb replaces', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_replace = Logger.otel.meter.createHistogram("openflow_mongodb_replace_seconds", {
+                description: "Duration for mongodb replaces", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_delete = Logger.otel.meter.createHistogram('openflow_mongodb_delete_seconds', {
-                description: 'Duration for mongodb deletes', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_delete = Logger.otel.meter.createHistogram("openflow_mongodb_delete_seconds", {
+                description: "Duration for mongodb deletes", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_deletemany = Logger.otel.meter.createHistogram('openflow_mongodb_deletemany_seconds', {
-                description: 'Duration for mongodb deletemanys', valueType: 1, unit: 's'
+            DatabaseConnection.mongodb_deletemany = Logger.otel.meter.createHistogram("openflow_mongodb_deletemany_seconds", {
+                description: "Duration for mongodb deletemanys", valueType: 1, unit: "s"
             });
-            DatabaseConnection.mongodb_active_sessions = Logger.otel.meter.createObservableUpDownCounter('openflow_mongodb_active_sessions', {
-                description: 'Number of active mongodb sessions'
+            DatabaseConnection.mongodb_active_sessions = Logger.otel.meter.createObservableUpDownCounter("openflow_mongodb_active_sessions", {
+                description: "Number of active mongodb sessions"
             });
             DatabaseConnection.mongodb_active_sessions?.addCallback((res) => {
                 // @ts-ignore
@@ -192,12 +192,12 @@ export class DatabaseConnection extends events.EventEmitter {
             this.emit("disconnected");
         }
         this.cli
-            .on('connectionReady', () => {
+            .on("connectionReady", () => {
             })
-            .on('error', errEvent)
-            .on('parseError', parseErrEvent)
-            .on('timeout', errEvent)
-            .on('close', closeEvent)
+            .on("error", errEvent)
+            .on("parseError", parseErrEvent)
+            .on("timeout", errEvent)
+            .on("close", closeEvent)
         this.db = this.cli.db(this._dbname);
         await Config.db.UpdateIndexTypes(span);
         this.doRegisterGlobalWatches(span);
@@ -329,7 +329,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 return;
             }
             var _id = next.documentKey._id;
-            if (next.operationType == 'update' && collectionname == "users") {
+            if (next.operationType == "update" && collectionname == "users") {
                 // update document
                 if(next.updateDescription != null && next.updateDescription.updatedFields != null) {
                     // var keys = Object.keys(next.updateDescription.updatedFields);
@@ -353,7 +353,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, span);
             }
             if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-                if (next.operationType == 'delete' && collectionname == "users") {
+                if (next.operationType == "delete" && collectionname == "users") {
                     item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, span);
                     if (!NoderedUtil.IsNullUndefinded(item)) {
                         await Logger.DBHelper.CheckCache(collectionname, item, true, false, span);
@@ -459,7 +459,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                         notify = true;
                                     } else if (stream.aggregates.length == 0) {
                                         notify = true;
-                                    } else if (typeof stream.aggregates[0] === 'object') {
+                                    } else if (typeof stream.aggregates[0] === "object") {
                                         // This is fucking ugly, but need something to be backward compatible with older version of OpenRPA and Nodered Nodes
                                         var match = stream.aggregates[0]["$match"];
                                         if (NoderedUtil.IsNullUndefinded(match)) { continue; }
@@ -565,7 +565,7 @@ export class DatabaseConnection extends events.EventEmitter {
             var stream = new clsstream();
             if(exists.length > 0) stream = exists[0];
             stream.collectionname = collectionname;
-            stream.stream = this.db.collection(collectionname).watch([], { fullDocument: 'updateLookup' });
+            stream.stream = this.db.collection(collectionname).watch([], { fullDocument: "updateLookup" });
             stream.stream.on("error", err => {
                 Logger.instanse.error(err, span, { collection: collectionname });
                 try {
@@ -607,7 +607,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // remove all that starts with system. except system.profile
             result = result.filter(x => x.name.indexOf("system.") === -1 || x.name == "system.profile");
         }
-        result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
         if(await Auth.Token2User(jwt, null)==null) throw new Error("Access denied");
         return result;
     }
@@ -953,7 +953,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     public compare(cur: string, version: string): number {
-        return cur.localeCompare(version, undefined, { numeric: true, sensitivity: 'base' });
+        return cur.localeCompare(version, undefined, { numeric: true, sensitivity: "base" });
     }
     public parseResults(arr: any[], agent: string, version: string): void {
         if (arr == null || arr.length == 0) return;
@@ -1037,7 +1037,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (query !== null && query !== undefined) {
             span?.addEvent("parse query");
             let json: any = query;
-            if (typeof json !== 'string' && !(json instanceof String)) {
+            if (typeof json !== "string" && !(json instanceof String)) {
                 json = JSON.stringify(json, (key, value) => {
                     if (value instanceof RegExp)
                         return ("__REGEXP " + value.toString());
@@ -1046,7 +1046,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 });
             }
             query = JSON.parse(json, (key, value) => {
-                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                if (typeof value === "string" && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                     const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -1179,7 +1179,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (query !== null && query !== undefined) {
             span?.addEvent("parse query");
             let json: any = query;
-            if (typeof json !== 'string' && !(json instanceof String)) {
+            if (typeof json !== "string" && !(json instanceof String)) {
                 json = JSON.stringify(json, (key, value) => {
                     if (value instanceof RegExp)
                         return ("__REGEXP " + value.toString());
@@ -1188,7 +1188,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 });
             }
             query = JSON.parse(json, (key, value) => {
-                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                if (typeof value === "string" && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                     const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -1260,7 +1260,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (query !== null && query !== undefined) {
             span?.addEvent("parse query");
             let json: any = query;
-            if (typeof json !== 'string' && !(json instanceof String)) {
+            if (typeof json !== "string" && !(json instanceof String)) {
                 json = JSON.stringify(json, (key, value) => {
                     if (value instanceof RegExp)
                         return ("__REGEXP " + value.toString());
@@ -1269,7 +1269,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 });
             }
             query = JSON.parse(json, (key, value) => {
-                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                if (typeof value === "string" && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                     const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -1446,7 +1446,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
-        if (typeof json !== 'string' && !(json instanceof String)) {
+        if (typeof json !== "string" && !(json instanceof String)) {
             json = JSON.stringify(json, (key, value) => {
                 if (value instanceof RegExp)
                     return ("__REGEXP " + value.toString());
@@ -1474,7 +1474,7 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.setAttribute("hint", JSON.stringify(myhint));
         }
         aggregates = JSON.parse(json, (key, value) => {
-            if (typeof value === 'string' && value.match(isoDatePattern)) {
+            if (typeof value === "string" && value.match(isoDatePattern)) {
                 return new Date(value); // isostring, so cast to js date
             } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                 const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -1555,7 +1555,7 @@ export class DatabaseConnection extends events.EventEmitter {
         await this.connect();
 
         let json: any = aggregates;
-        if (typeof json !== 'string' && !(json instanceof String)) {
+        if (typeof json !== "string" && !(json instanceof String)) {
             json = JSON.stringify(json, (key, value) => {
                 if (value instanceof RegExp)
                     return ("__REGEXP " + value.toString());
@@ -1566,7 +1566,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
         if (!NoderedUtil.IsNullEmpty(json)) {
             aggregates = JSON.parse(json, (key, value) => {
-                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                if (typeof value === "string" && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                     const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -1590,7 +1590,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 aggregates = [{ $match: base }, aggregates];
             }
         }
-        return await this.db.collection(collectionname).watch(aggregates, { fullDocument: 'updateLookup' });
+        return await this.db.collection(collectionname).watch(aggregates, { fullDocument: "updateLookup" });
     }
     /**
      * Create a new document in the database
@@ -1931,7 +1931,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     item = this.ensureResource(item, collectionname);
                 }
             }
-            j = ((j as any) === 'true' || j === true);
+            j = ((j as any) === "true" || j === true);
             w = parseInt((w as any));
             if (item._id != null) {
                 const basehist = await this.query<any>({ query: { id: item._id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken() }, span);
@@ -1999,7 +1999,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 span?.addEvent("FindByUsername");
                 await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
-                if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
+                if (exists != null) { throw new Error("Access denied, user '" + u.username + "' already exists"); }
             }
             if (collectionname === "users" && item._type === "role") {
                 const r: Role = (item as any);
@@ -2402,7 +2402,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
                     const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
-                    if (exists != null) { throw new Error("Access denied, user  '" + u.username + "' already exists"); }
+                    if (exists != null) { throw new Error("Access denied, user '" + u.username + "' already exists"); }
                 }
                 if (collectionname === "users" && item._type === "role") {
                     const r: Role = (item as any);
@@ -2881,7 +2881,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     q.item._version = await this.SaveDiff(q.collectionname, original, q.item, span);
                 }
                 if (_oldversion == q.item._version && _skiphistory == false) {
-                    if (q.item._type === 'instance' && q.collectionname === 'workflows') {
+                    if (q.item._type === "instance" && q.collectionname === "workflows") {
                     } else {
                         const _skip_array: string[] = Config.skip_history_collections.split(",");
                         const skip_array: string[] = [];
@@ -2896,11 +2896,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             } else { // if (q.query === null || q.query === undefined) {
                 let json: string = q.item as any;
-                if (typeof json !== 'string') {
+                if (typeof json !== "string") {
                     json = JSON.stringify(json);
                 }
                 q.item = JSON.parse(json, (key, value) => {
-                    if (typeof value === 'string' && value.match(isoDatePattern)) {
+                    if (typeof value === "string" && value.match(isoDatePattern)) {
                         return new Date(value); // isostring, so cast to js date
                     } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                         const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -2958,7 +2958,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (Config.api_bypass_perm_check) { _query = q.query; }
 
-            q.j = ((q.j as any) === 'true' || q.j === true);
+            q.j = ((q.j as any) === "true" || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
 
             let options: UpdateOptions = { writeConcern: { w: q.w, j: q.j }, upsert: false };
@@ -3030,7 +3030,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
                 (q.item["$inc"])._version = 1;
                 if (q.collectionname == "users") {
-                    ['$inc', '$mul', '$set', '$unset'].forEach(t => {
+                    ["$inc", "$mul", "$set", "$unset"].forEach(t => {
                         if (q.item[t] !== undefined) {
                             delete q.item[t].username;
                             delete q.item[t].dbusage;
@@ -3161,14 +3161,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 delete (q.item as any).newpassword;
             }
             let json: string = q.item as any;
-            if (typeof json !== 'string') {
+            if (typeof json !== "string") {
                 json = JSON.stringify(json);
             }
-            if(typeof q.query === 'string') {
+            if(typeof q.query === "string") {
                 q.query = JSON.parse(q.query);
             }
             q.item = JSON.parse(json, (key, value) => {
-                if (typeof value === 'string' && value.match(isoDatePattern)) {
+                if (typeof value === "string" && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
                 } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                     const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -3214,7 +3214,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
 
             if (q.collectionname == "users") {
-                ['$inc', '$mul', '$set', '$unset'].forEach(t => {
+                ["$inc", "$mul", "$set", "$unset"].forEach(t => {
                     if (q.item[t] !== undefined) {
                         delete q.item[t].username;
                         delete q.item[t].dbusage;
@@ -3225,7 +3225,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
             Logger.instanse.silly("UpdateMany " + (q.item.name || q.item._name) + " in database", span, { collection: q.collectionname, user: user.username });
 
-            q.j = ((q.j as any) === 'true' || q.j === true);
+            q.j = ((q.j as any) === "true" || q.j === true);
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
             let options: UpdateOptions = { writeConcern: { w: q.w, j: q.j } };
             (options as any).WriteConcern = { w: q.w, j: q.j };
@@ -3494,7 +3494,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: User = await Auth.Token2User(jwt, span);
             if(user == null) throw new Error("Access denied");
             let _query: any = {};
-            if (typeof id === 'string' || id instanceof String) {
+            if (typeof id === "string" || id instanceof String) {
                 _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
             } else {
                 _query = { $and: [{ id }, this.getbasequery(user, [Rights.delete], collectionname)] };
@@ -3631,7 +3631,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         _version: doc._version,
                         reason: (doc as any).reason
                     }
-                    await this.db.collection(collectionname + '_hist').insertOne(fullhist);
+                    await this.db.collection(collectionname + "_hist").insertOne(fullhist);
                 }
                 const ot_end = Logger.otel.startTimer();
                 await this.db.collection(collectionname).deleteOne({ _id: doc._id });
@@ -3743,7 +3743,7 @@ export class DatabaseConnection extends events.EventEmitter {
             } else if (!NoderedUtil.IsNullUndefinded(query)) {
                 if (query !== null && query !== undefined) {
                     let json: any = query;
-                    if (typeof json !== 'string' && !(json instanceof String)) {
+                    if (typeof json !== "string" && !(json instanceof String)) {
                         json = JSON.stringify(json, (key, value) => {
                             if (value instanceof RegExp)
                                 return ("__REGEXP " + value.toString());
@@ -3752,7 +3752,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         });
                     }
                     query = JSON.parse(json, (key, value) => {
-                        if (typeof value === 'string' && value.match(isoDatePattern)) {
+                        if (typeof value === "string" && value.match(isoDatePattern)) {
                             return new Date(value); // isostring, so cast to js date
                         } else if (value != null && value != undefined && value.toString().indexOf("__REGEXP ") === 0) {
                             const m = value.split("__REGEXP ")[1].match(/\/(.*)\/(.*)?/);
@@ -4194,7 +4194,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
 
         if (item._acl != null && item._acl != undefined && Array.isArray(item._acl)) {
-            if (typeof item._acl === 'string' || item._acl instanceof String) {
+            if (typeof item._acl === "string" || item._acl instanceof String) {
                 item._acl = JSON.parse((item._acl as any));
             }
 
@@ -4213,8 +4213,6 @@ export class DatabaseConnection extends events.EventEmitter {
         return true;
     }
     public static replaceAll(target, search, replacement) {
-        //const target = this;
-        // return target.replace(new RegExp(search, 'g'), replacement);
         return target.split(search).join(replacement);
     };
     /**
@@ -4230,7 +4228,7 @@ export class DatabaseConnection extends events.EventEmitter {
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
             let value = o[key];
-            if (typeof value === 'string') {
+            if (typeof value === "string") {
                 const a = reISO.exec(value);
                 if (a) {
                     o[key] = new Date(value);
@@ -4242,9 +4240,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
-            if (key.indexOf('.') > -1) {
+            if (key.indexOf(".") > -1) {
                 try {
-                    // const newkey = key.replace(new RegExp('.', 'g'), '____');
                     const newkey = this.replaceAll(key, ".", "____");
                     o[newkey] = o[key];
                     delete o[key];
@@ -4252,11 +4249,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 } catch (error) {
                 }
             }
-            if (key.startsWith('$$')) {
+            if (key.startsWith("$$")) {
                 delete o[key];
             } else if (o[key]) {
-                if (typeof o[key] === 'string') {
-                    if (o[key].length === 24 && o[key].endsWith('Z')) {
+                if (typeof o[key] === "string") {
+                    if (o[key].length === 24 && o[key].endsWith("Z")) {
                         try {
                             o[key] = new Date(o[key]);
                         } catch (error) {
@@ -4276,9 +4273,8 @@ export class DatabaseConnection extends events.EventEmitter {
         const keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
-            if (key.indexOf('____') > -1) {
+            if (key.indexOf("____") > -1) {
                 try {
-                    // const newkey = key.replace(new RegExp('____', 'g'), '.');
                     const newkey = this.replaceAll(key, "____", ".");
                     o[newkey] = o[key];
                     delete o[key];
@@ -4286,11 +4282,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 } catch (error) {
                 }
             }
-            if (key.startsWith('$$')) {
+            if (key.startsWith("$$")) {
                 delete o[key];
             } else if (o[key]) {
-                if (typeof o[key] === 'string') {
-                    if (o[key].length === 24 && o[key].endsWith('Z')) {
+                if (typeof o[key] === "string") {
+                    if (o[key].length === 24 && o[key].endsWith("Z")) {
                         try {
                             o[key] = new Date(o[key]);
                         } catch (error) {
@@ -4305,27 +4301,6 @@ export class DatabaseConnection extends events.EventEmitter {
 
         }
 
-    }
-
-    SaveMongoDBCommand( user: TokenUser, collection: string, command: string, query: any, ms:number) {
-        try {
-            const cmd = {
-                _created: new Date(new Date().toISOString()),
-                _createdby: user.name,
-                _createdbyid: user._id,
-                collection: collection,
-                name: user?.username + " " + command + " " + collection + " " + ms,
-                command: command,
-                query: query,
-                ms: ms
-            }
-            this.db.collection("dbcommands").insertOne(cmd).then(() => {
-            }).catch(err => {
-                Logger.instanse.error(err, null);
-            });
-        } catch (error) {
-            Logger.instanse.error(error, null, { collection: collection, user: user?.username, ms: ms, query: query });
-        }
     }
     async SaveUpdateDiff<T extends Base>(q: UpdateOneMessage, user: TokenUser | User, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("db.SaveUpdateDiff", parent);
@@ -4365,7 +4340,7 @@ export class DatabaseConnection extends events.EventEmitter {
             const ot_end = Logger.otel.startTimer();
             const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
             mongodbspan.setAttribute("collection", q.collectionname + "_hist");
-            this.db.collection(q.collectionname + '_hist').insertOne(updatehist).then(() => {
+            this.db.collection(q.collectionname + "_hist").insertOne(updatehist).then(() => {
                 Logger.otel.endSpan(mongodbspan);
                 Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, DatabaseConnection.otel_label(q.collectionname + "_hist", user, "insert"));
             }).catch(err => {
@@ -4395,7 +4370,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!precision) return num;
             return (Math.floor(num / precision) * precision);
         };
-        if (item._type === 'instance' && collectionname === 'workflows') return 0;
+        if (item._type === "instance" && collectionname === "workflows") return 0;
 
         let roughObjSize1 = -1;
         let roughObjSize2 = -1;
@@ -4479,7 +4454,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 const ot_end = Logger.otel.startTimer();
                 const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
                 mongodbspan.setAttribute("collection", collectionname + "_hist");
-                this.db.collection(collectionname + '_hist').insertOne(fullhist).then(() => {
+                this.db.collection(collectionname + "_hist").insertOne(fullhist).then(() => {
                     Logger.otel.endSpan(mongodbspan);
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, DatabaseConnection.otel_label(collectionname + "_hist", Crypt.rootUser(), "insert"));
                 }).catch(err => {
@@ -4516,7 +4491,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const ot_end = Logger.otel.startTimer();
                     const mongodbspan: Span = Logger.otel.startSubSpan("mongodb.insertOne", span);
                     mongodbspan.setAttribute("collection", collectionname + "_hist");
-                    this.db.collection(collectionname + '_hist').insertOne(deltahist).then(() => {
+                    this.db.collection(collectionname + "_hist").insertOne(deltahist).then(() => {
                         Logger.otel.endSpan(mongodbspan);
                         Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_insert, DatabaseConnection.otel_label(collectionname + "_hist", Crypt.rootUser(), "insert"));
                     }).catch(err => {

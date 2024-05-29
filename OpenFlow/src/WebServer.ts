@@ -29,8 +29,8 @@ const { info, warn, err } = config;
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any.js";
 import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp.js";
 import { Auth } from "./Auth.js";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -38,7 +38,7 @@ const __dirname = dirname(__filename);
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
-    if (req.originalUrl.indexOf('/oidc') > -1) {
+    if (req.originalUrl.indexOf("/oidc") > -1) {
         Logger.instanse.verbose("SKip validate for " + req.originalUrl, null);
         // Logger.instanse.info("Ignore for " + req.originalUrl, null);
         return next();
@@ -60,7 +60,7 @@ const rateLimiter = async (req: express.Request, res: express.Response, next: ex
         var span = Logger.otel.startSpanExpress("rateLimiter", req);
         Logger.instanse.warn("API_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
         span.end();
-        res.status(429).json({ response: 'RATE_LIMIT' });
+        res.status(429).json({ response: "RATE_LIMIT" });
     } finally {
     }
 };
@@ -135,13 +135,13 @@ export class WebServer {
             this.app.use(compression());
             // this.app.use(express.urlencoded({ extended: true }));
             // this.app.use(express.json());
-            // this.app.use(express.urlencoded({ extended: true, limit: '50mb', parameterLimit:50000 }));
-            // this.app.use(express.json({limit: '50mb'}));
+            // this.app.use(express.urlencoded({ extended: true, limit: "50mb", parameterLimit:50000 }));
+            // this.app.use(express.json({limit: "50mb"}));
             this.app.use(express.urlencoded({ extended: true }));
-            this.app.use(express.json({limit: '150mb'}));
+            this.app.use(express.json({limit: "150mb"}));
 
             this.app.use(cookieParser());
-            this.app.set('trust proxy', 1)
+            this.app.set("trust proxy", 1)
             span?.addEvent("Add cookieSession");
             this.app.use(cookieSession({
                 name: "session", secret: Config.cookie_secret, httpOnly: true
@@ -158,35 +158,35 @@ export class WebServer {
                     var remoteip = LoginProvider.remoteip(req);
                     if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null);
                     res.statusCode = 401;
-                    res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
-                    res.end('Unauthorized');
+                    res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);
+                    res.end("Unauthorized");
                     return;
                 }
-                return res.status(200).send({ message: 'ok.' });
+                return res.status(200).send({ message: "ok." });
             });
 
             this.app.use(function (req, res, next) {
                 Logger.instanse.verbose("add for " + req.originalUrl, null);
                 // Website you wish to allow to connect
-                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.setHeader("Access-Control-Allow-Origin", "*");
 
                 // Request methods you wish to allow
-                res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+                res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
 
                 // Request headers you wish to allow
                 res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Headers, Authorization, x-jwt-token, openai-conversation-id, openai-ephemeral-user-id");
 
                 // Set to true if you need the website to include cookies in the requests sent
                 // to the API (e.g. in case you use sessions)
-                res.setHeader('Access-Control-Allow-Credentials', "true");
+                res.setHeader("Access-Control-Allow-Credentials", "true");
 
                 // Disable Caching
-                res.header('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-                res.header('Expires', '-1');
-                res.header('Pragma', 'no-cache');
+                res.header("Cache-Control", "private, no-cache, no-store, must-revalidate");
+                res.header("Expires", "-1");
+                res.header("Pragma", "no-cache");
 
                 if (req.originalUrl == "/me") {
-                    res.redirect('/oidc/me')
+                    res.redirect("/oidc/me")
                     return next();
                 }
 
@@ -194,7 +194,7 @@ export class WebServer {
                 if (req.originalUrl == "/oidc/me" && req.method == "OPTIONS") {
                     return res.send("ok");
                 }
-                if (req.originalUrl.indexOf('/oidc') > -1) return next();
+                if (req.originalUrl.indexOf("/oidc") > -1) return next();
 
                 next();
             });
@@ -204,8 +204,8 @@ export class WebServer {
                 span?.addEvent("Setting openflow for WebPush");
                 var mail = Config.wapid_mail;
                 if (NoderedUtil.IsNullEmpty(mail)) mail = "me@email.com"
-                webpush.setVapidDetails('mailto:' + mail, Config.wapid_pub, Config.wapid_key);
-                this.app.post('/webpushsubscribe', async (req, res) => {
+                webpush.setVapidDetails("mailto:" + mail, Config.wapid_pub, Config.wapid_key);
+                this.app.post("/webpushsubscribe", async (req, res) => {
                     var subspan = Logger.otel.startSpanExpress("webpushsubscribe", req);
                     try {
                         const subscription = req.body;
@@ -257,21 +257,21 @@ export class WebServer {
             span?.addEvent("Configure SamlProvider");
             await SamlProvider.configure(this.app, baseurl);
             WebServer.server = null;
-            if (Config.tls_crt != '' && Config.tls_key != '') {
+            if (Config.tls_crt != "" && Config.tls_key != "") {
                 let options: any = {
                     cert: Config.tls_crt,
                     key: Config.tls_key
                 };
                 if (Config.tls_crt.indexOf("---") == -1) {
                     options = {
-                        cert: Buffer.from(Config.tls_crt, 'base64').toString('ascii'),
-                        key: Buffer.from(Config.tls_key, 'base64').toString('ascii')
+                        cert: Buffer.from(Config.tls_crt, "base64").toString("ascii"),
+                        key: Buffer.from(Config.tls_key, "base64").toString("ascii")
                     };
                 }
                 let ca: string = Config.tls_ca;
                 if (ca !== "") {
                     if (ca.indexOf("---") === -1) {
-                        ca = Buffer.from(Config.tls_ca, 'base64').toString('ascii');
+                        ca = Buffer.from(Config.tls_ca, "base64").toString("ascii");
                     }
                     options.ca = ca;
                 }
@@ -300,23 +300,23 @@ export class WebServer {
         }
     }
     public static Listen() {
-        WebServer.server.listen(Config.port).on('error', function (error) {
+        WebServer.server.listen(Config.port).on("error", function (error) {
             Logger.instanse.error(error, null);
             if (Config.NODE_ENV == "production") {
                 WebServer.server.close();
                 process.exit(404);
             }
         });
-        if(Config.grpc_keepalive_time_ms > -1) protowrap.grpc_server_options['grpc.keepalive_time_ms'] = Config.grpc_keepalive_time_ms;
-        if(Config.grpc_keepalive_timeout_ms > -1) protowrap.grpc_server_options['grpc.keepalive_timeout_ms'] = Config.grpc_keepalive_timeout_ms;
-        if(Config.grpc_http2_min_ping_interval_without_data_ms > -1) protowrap.grpc_server_options['grpc.http2.min_ping_interval_without_data_ms'] = Config.grpc_http2_min_ping_interval_without_data_ms;
-        if(Config.grpc_max_connection_idle_ms > -1) protowrap.grpc_server_options['grpc.max_connection_idle_ms'] = Config.grpc_max_connection_idle_ms;
-        if(Config.grpc_max_connection_age_ms > -1) protowrap.grpc_server_options['grpc.max_connection_age_ms'] = Config.grpc_max_connection_age_ms;
-        if(Config.grpc_max_connection_age_grace_ms > -1) protowrap.grpc_server_options['grpc.max_connection_age_grace_ms'] = Config.grpc_max_connection_age_grace_ms;
-        if(Config.grpc_http2_max_pings_without_data > -1) protowrap.grpc_server_options['grpc.http2.max_pings_without_data'] = Config.grpc_http2_max_pings_without_data;
-        if(Config.grpc_keepalive_permit_without_calls > -1) protowrap.grpc_server_options['grpc.keepalive_permit_without_calls'] = Config.grpc_keepalive_permit_without_calls;
-        if(Config.grpc_max_receive_message_length > -1) protowrap.grpc_server_options['grpc.max_receive_message_length'] = Config.grpc_max_receive_message_length;
-        if(Config.grpc_max_send_message_length > -1) protowrap.grpc_server_options['grpc.max_send_message_length'] = Config.grpc_max_send_message_length;
+        if(Config.grpc_keepalive_time_ms > -1) protowrap.grpc_server_options["grpc.keepalive_time_ms"] = Config.grpc_keepalive_time_ms;
+        if(Config.grpc_keepalive_timeout_ms > -1) protowrap.grpc_server_options["grpc.keepalive_timeout_ms"] = Config.grpc_keepalive_timeout_ms;
+        if(Config.grpc_http2_min_ping_interval_without_data_ms > -1) protowrap.grpc_server_options["grpc.http2.min_ping_interval_without_data_ms"] = Config.grpc_http2_min_ping_interval_without_data_ms;
+        if(Config.grpc_max_connection_idle_ms > -1) protowrap.grpc_server_options["grpc.max_connection_idle_ms"] = Config.grpc_max_connection_idle_ms;
+        if(Config.grpc_max_connection_age_ms > -1) protowrap.grpc_server_options["grpc.max_connection_age_ms"] = Config.grpc_max_connection_age_ms;
+        if(Config.grpc_max_connection_age_grace_ms > -1) protowrap.grpc_server_options["grpc.max_connection_age_grace_ms"] = Config.grpc_max_connection_age_grace_ms;
+        if(Config.grpc_http2_max_pings_without_data > -1) protowrap.grpc_server_options["grpc.http2.max_pings_without_data"] = Config.grpc_http2_max_pings_without_data;
+        if(Config.grpc_keepalive_permit_without_calls > -1) protowrap.grpc_server_options["grpc.keepalive_permit_without_calls"] = Config.grpc_keepalive_permit_without_calls;
+        if(Config.grpc_max_receive_message_length > -1) protowrap.grpc_server_options["grpc.max_receive_message_length"] = Config.grpc_max_receive_message_length;
+        if(Config.grpc_max_send_message_length > -1) protowrap.grpc_server_options["grpc.max_send_message_length"] = Config.grpc_max_send_message_length;
 
       
         var servers = [];
@@ -372,10 +372,10 @@ export class WebServer {
    
             let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
             let id = uploadStream.id
-            uploadStream.on('finish', ()=> {
+            uploadStream.on("finish", ()=> {
                 resolve(id.toString());
             })
-            uploadStream.on('error', (err)=> {
+            uploadStream.on("error", (err)=> {
                 reject(err);
             });
             rs.pipe(uploadStream);
@@ -394,17 +394,17 @@ export class WebServer {
             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
             const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
             protowrap.sendMesssag(client, { rid, command: "beginstream", data: data }, null, true);
-            downloadStream.on('data', (chunk) => {
+            downloadStream.on("data", (chunk) => {
                 const data = Any.create({type_url: "type.googleapis.com/openiap.Stream", value: Stream.encode(Stream.create({data: chunk})).finish() })
                 protowrap.sendMesssag(client, { rid, command: "stream", 
                 data: data }, null, true);
             });
-            downloadStream.on('end', ()=> {
+            downloadStream.on("end", ()=> {
                 const data = Any.create({type_url: "type.googleapis.com/openiap.EndStream", value: EndStream.encode(EndStream.create()).finish() })
                 protowrap.sendMesssag(client, { rid, command: "endstream", data: data }, null, true);
                 resolve();
             });
-            downloadStream.on('error', (err) => {
+            downloadStream.on("error", (err) => {
                 reject(err);
             });
         });
@@ -781,7 +781,7 @@ export class WebServer {
         }
         let array = [];
         while (true) {
-            array.push(new Array(10000000).join('x'));
+            array.push(new Array(10000000).join("x"));
             await new Promise(resolve => { setTimeout(resolve, 1000) });
         }
     }

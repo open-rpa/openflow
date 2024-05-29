@@ -1,10 +1,10 @@
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from '../Logger.js';
-import { Base, NoderedUtil, User, WellknownIds } from '@openiap/openflow-api';
-import { Crypt } from '../Crypt.js';
+import { Logger } from "../Logger.js";
+import { Base, NoderedUtil, User, WellknownIds } from "@openiap/openflow-api";
+import { Crypt } from "../Crypt.js";
 
 @suite class databaseConnection_test {
     private rootToken: string;
@@ -26,7 +26,7 @@ import { Crypt } from '../Crypt.js';
         await Logger.shutdown();
     }
     // @timeout(50000)
-    // @test async 'dbconstructor'() {
+    // @test async "dbconstructor"() {
     //     try {
     //         var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
     //         await db.connect(null);
@@ -37,7 +37,7 @@ import { Crypt } from '../Crypt.js';
     //     console.log("completed");
     // }
     @timeout(5000)
-    @test async 'indextest'() {
+    @test async "indextest"() {
         // await Config.db.ensureindexes(null)
         let indexes = await Config.db.db.collection("entities").indexes();
         let indexnames = indexes.map(x => x.name);
@@ -55,13 +55,13 @@ import { Crypt } from '../Crypt.js';
 
     }
 
-    @test async 'ListCollections'() {
+    @test async "ListCollections"() {
         var rootcollections = await Config.db.ListCollections(false, this.rootToken);
         rootcollections = rootcollections.filter(x => x.name.indexOf("system.") === -1);
         assert.notDeepStrictEqual(rootcollections, null);
         assert.notDeepStrictEqual(rootcollections.length, 0);
     }
-    @test async 'DropCollections'() {
+    @test async "DropCollections"() {
         const colname = "testcollection"
         var rootcollections = await Config.db.ListCollections(false, this.rootToken);
         rootcollections = rootcollections.filter(x => x.name.indexOf("system.") === -1);
@@ -79,7 +79,7 @@ import { Crypt } from '../Crypt.js';
         assert.notDeepStrictEqual(exists.length, 0);
         await Config.db.DropCollection(colname, this.rootToken, null);
     }
-    @test async 'query'() {
+    @test async "query"() {
         var items = await Config.db.query<Base>({ collectionname: "users", query: {}, top: 5, jwt: this.rootToken }, null);
         assert.notDeepStrictEqual(items, null);
         assert.strictEqual(items.length, 5);
@@ -115,7 +115,7 @@ import { Crypt } from '../Crypt.js';
         assert.strictEqual(items.length, 5, "Root did not find any files");
     }
     @timeout(5000)
-    @test async 'count'() {
+    @test async "count"() {
         var usercount = await Config.db.count({ collectionname: "users", query: { "_type": "user" }, jwt: this.rootToken }, null);
         assert.notDeepStrictEqual(usercount, null);
         assert.notStrictEqual(usercount, 0);
@@ -125,7 +125,7 @@ import { Crypt } from '../Crypt.js';
         // assert.notStrictEqual(usercount, rolecount);
     }
     @timeout(5000)
-    @test async 'GetDocumentVersion'() {
+    @test async "GetDocumentVersion"() {
         let item = new Base(); item.name = "item version 0";
         item = await Config.db.InsertOne(item, "entities", 1, true, this.userToken, null);
         assert.notDeepStrictEqual(item, null);
@@ -152,7 +152,7 @@ import { Crypt } from '../Crypt.js';
         assert.strictEqual(testitem.name, "item version 2");
         assert.strictEqual(testitem._version, 2);
     }
-    @test async 'getbyid'() {
+    @test async "getbyid"() {
         var user = await Config.db.getbyid(this.testUser._id, "users", this.userToken, true, null);
         assert.notDeepStrictEqual(user, null);
         assert.strictEqual(user._id, this.testUser._id);
@@ -162,7 +162,7 @@ import { Crypt } from '../Crypt.js';
         user = await Config.db.getbyid(WellknownIds.root, "users", this.userToken, true, null);
         assert.strictEqual(user, null);
     }
-    @test async 'aggregate'() {
+    @test async "aggregate"() {
         var userssize = await Config.db.aggregate([
             {
                 "$project": {
@@ -188,7 +188,7 @@ import { Crypt } from '../Crypt.js';
         assert.ok((userssize[0] as any).size > 0);
     }
     @timeout(5000)
-    @test async 'Many'() {
+    @test async "Many"() {
         await Config.db.DeleteMany({}, null, "entities", null, false, this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         var items = await Config.db.query({ query: {}, collectionname: "entities", top: 100, jwt: this.userToken }, null);
@@ -211,7 +211,7 @@ import { Crypt } from '../Crypt.js';
         assert.notDeepStrictEqual(items, null);
         assert.strictEqual(items.length, 0);
     }
-    @test async 'updatedoc'() {
+    @test async "updatedoc"() {
         var item = new Base(); item.name = "test item";
         item = await Config.db.InsertOne(item, "entities", 1, true, this.userToken, null);
         assert.notDeepStrictEqual(item, null);
@@ -231,4 +231,4 @@ import { Crypt } from '../Crypt.js';
         await Config.db.DeleteOne(item._id, "entities", false, this.userToken, null);
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/DatabaseConnection.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/DatabaseConnection.test.ts"

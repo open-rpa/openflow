@@ -6,12 +6,12 @@ import { NoderedUtil } from "@openiap/openflow-api";
 import { i_license_file, i_agent_driver, i_otel } from "./commoninterfaces.js";
 import { Config } from "./Config.js";
 import { dockerdriver } from "./dockerdriver.js";
-import { DBHelper } from './DBHelper.js';
+import { DBHelper } from "./DBHelper.js";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { Span } from "@opentelemetry/api";
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -65,7 +65,7 @@ export class Logger {
         let dt = new Date();
         if (cls == "cli" || cls == "cli-lic" || cls == "cliutil") cls = "";
         if (NoderedUtil.IsNullEmpty(cls)) cls = "";
-        if (typeof cls !== 'string') { try { cls = (cls as object).toString(); } catch { cls = "unknown"; } }
+        if (typeof cls !== "string") { try { cls = (cls as object).toString(); } catch { cls = "unknown"; } }
         let prefix = "";
         let color = Cyan;
         if (lvl == level.Debug) color = Blue;
@@ -179,7 +179,7 @@ export class Logger {
         } else {
             obj.func = s.method;
             obj.cls = "";
-            if (s.file != '') obj.cls = s.file.replace(".js", "");
+            if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
         if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
@@ -201,11 +201,11 @@ export class Logger {
         if (s.method.indexOf(".") > 1) {
             obj.func = s.method.substring(s.method.indexOf(".") + 1);
             obj.cls = s.method.substring(0, s.method.indexOf("."));
-            if (s.file != '') obj.cls = s.file.replace(".js", "");
+            if (s.file != "") obj.cls = s.file.replace(".js", "");
         } else {
             obj.func = s.method;
             obj.cls = "";
-            if (s.file != '') obj.cls = s.file.replace(".js", "");
+            if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
         if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
@@ -230,7 +230,7 @@ export class Logger {
         } else {
             obj.func = s.method;
             obj.cls = "";
-            if (s.file != '') obj.cls = s.file.replace(".js", "");
+            if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
         if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
@@ -255,7 +255,7 @@ export class Logger {
         } else {
             obj.func = s.method;
             obj.cls = "";
-            if (s.file != '') obj.cls = s.file.replace(".js", "");
+            if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
         if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
@@ -281,7 +281,7 @@ export class Logger {
         } else {
             obj.func = s.method;
             obj.cls = "";
-            if (s.file != '') obj.cls = s.file.replace(".js", "");
+            if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
         if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
@@ -307,7 +307,7 @@ export class Logger {
         } else {
             obj.func = s.method;
             obj.cls = "";
-            if (s.file != '') obj.cls = s.file.replace(".js", "");
+            if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
         if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
@@ -359,7 +359,7 @@ export class Logger {
     }
     static hasDockerEnv(): boolean {
         try {
-            fs.statSync('/.dockerenv');
+            fs.statSync("/.dockerenv");
             return true;
         } catch (_) {
             return false;
@@ -367,8 +367,8 @@ export class Logger {
     }
     static hasDockerCGroup() {
         try {
-            if (fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker')) return true;
-            return fs.readFileSync('/proc/self/cgroup', 'utf8').includes('/kubepods');
+            if (fs.readFileSync("/proc/self/cgroup", "utf8").includes("docker")) return true;
+            return fs.readFileSync("/proc/self/cgroup", "utf8").includes("/kubepods");
         } catch (_) {
             return false;
         }
@@ -499,7 +499,7 @@ export class Logger {
     private static _ofid = null;
     static ofid() {
         if (!NoderedUtil.IsNullEmpty(Logger._ofid)) return Logger._ofid;
-        const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash('md5').update(Config.domain).digest("hex");
+        const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash("md5").update(Config.domain).digest("hex");
         Config.openflow_uniqueid = openflow_uniqueid;
         Logger._ofid = openflow_uniqueid;
         return openflow_uniqueid;
@@ -507,7 +507,7 @@ export class Logger {
     static getStackInfo(stackIndex) {
         // get call stack, and analyze it
         // get all file, method, and line numbers
-        var stacklist = (new Error()).stack.split('\n').slice(3)
+        var stacklist = (new Error()).stack.split("\n").slice(3)
 
         // stack trace format:
         // http://code.google.com/p/v8/wiki/JavaScriptStackTraceApi
@@ -525,7 +525,7 @@ export class Logger {
                 line: sp[3],
                 pos: sp[4],
                 file: path.basename(sp[2]),
-                stack: stacklist.join('\n')
+                stack: stacklist.join("\n")
             }
         } else {
             return {
@@ -534,7 +534,7 @@ export class Logger {
                 line: "",
                 pos: "",
                 file: "",
-                stack: stacklist.join('\n')
+                stack: stacklist.join("\n")
             }
         }
     }

@@ -1,12 +1,12 @@
 import wtf from "wtfnode";
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Message } from "../Messages/Message.js";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from '../Logger.js';
-import { Auth } from '../Auth.js';
-import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
+import { Logger } from "../Logger.js";
+import { Auth } from "../Auth.js";
+import { NoderedUtil, SigninMessage } from "@openiap/openflow-api";
 
 @suite class auth_test {
     @timeout(10000)
@@ -22,7 +22,7 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
         await Logger.shutdown();
         // wtf.dump()
     }
-    @test async 'ValidateByPassword'() {
+    @test async "ValidateByPassword"() {
         await assert.rejects(async () => {
             await Auth.ValidateByPassword("testuser", null, null);
         }, "Did not fail on null password")
@@ -35,7 +35,7 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
         var user2 = await Auth.ValidateByPassword("testuser", "not-my-password", null);
         assert.strictEqual(user2, null, "Did not fail on wrong password")
     }
-    @test async 'test full login'() {
+    @test async "test full login"() {
         var q: any = new SigninMessage();
         var msg = new Message();
         msg.command = "signin";
@@ -48,4 +48,4 @@ import { NoderedUtil, SigninMessage } from '@openiap/openflow-api';
 
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/Auth.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/**/Auth.test.ts"

@@ -21,8 +21,8 @@ import nodemailer from "nodemailer";
 import dns from "dns";
 import got from "got";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -62,7 +62,7 @@ export class samlauthstrategyoptions {
     public disableRequestedAuthnContext: boolean = false;
 
     public audience: any = false;
-    public signatureAlgorithm: 'sha1' | 'sha256' | 'sha512' = "sha256";
+    public signatureAlgorithm: "sha1" | "sha256" | "sha512" = "sha256";
     public callbackMethod: string = "POST";
     public verify: any;
     public wantAuthnResponseSigned: boolean = false;
@@ -81,19 +81,19 @@ export class LoginProvider {
     }
     public static escape(s: string): string {
         let lookup: any = {
-            '&': "&amp;",
+            "&": "&amp;",
             '"': "&quot;",
-            '<': "&lt;",
-            '>': "&gt;"
+            "<": "&lt;",
+            ">": "&gt;"
         };
         return s.replace(/[&"<>]/g, (c) => lookup[c]);
     }
     public static redirect(res: any, originalUrl: string) {
-        res.write('<!DOCTYPE html>');
-        res.write('<body>');
-        res.write('<script>top.location = "' + LoginProvider.escape(originalUrl) + '";</script>');
-        res.write('</body>');
-        res.write('</html>');
+        res.write("<!DOCTYPE html>");
+        res.write("<body>");
+        res.write(`<script>top.location = "${LoginProvider.escape(originalUrl)}";</script>`);
+        res.write("</body>");
+        res.write("</html>");
         res.end();
     }
     static async validateToken(rawAssertion: string, parent: Span): Promise<User> {
@@ -150,9 +150,9 @@ export class LoginProvider {
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
             Logger.instanse.silly("userid " + userid, null, {cls: "LoginProvider", func: "deserializeUser"});
-            if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
-            if (typeof userid !== 'string') userid = (userid as any)._id
-            if (NoderedUtil.IsNullEmpty(userid)) return done('missing userid', null);
+            if (NoderedUtil.IsNullEmpty(userid)) return done("missing userid", null);
+            if (typeof userid !== "string") userid = (userid as any)._id
+            if (NoderedUtil.IsNullEmpty(userid)) return done("missing userid", null);
             const _user = await Logger.DBHelper.FindById(userid, null);
             if (_user == null) {
                 Logger.instanse.error("Failed locating user " + userid, null, {cls: "LoginProvider", func: "deserializeUser"});
@@ -233,7 +233,7 @@ export class LoginProvider {
             const keys = Object.keys(LoginProvider._providers);
             for (var i = 0; i < keys.length; i++) {
                 let key = keys[i];
-                var exists = providers.filter(x => x.id == key || (key == 'local' && x.provider == 'local'));
+                var exists = providers.filter(x => x.id == key || (key == "local" && x.provider == "local"));
                 if (exists.length == 0) {
                     Logger.instanse.debug("[loginprovider] Removing passport strategy " + key, span, {cls: "LoginProvider", func: "RegisterProviders"});
                     passport.unuse(key);
@@ -386,7 +386,7 @@ export class LoginProvider {
         //         cert: Buffer.from(Config.signing_crt, "base64").toString("ascii"),
         //         issuer: issuer
         //     }));
-        const CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, '');
+        const CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, "");
         app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
             (req: express.Request, res: express.Response, next: express.NextFunction) => {
                 const span: Span = Logger.otel.startSpanExpress("FederationMetadata", req);
@@ -541,16 +541,16 @@ export class LoginProvider {
                         model.name = "grafana";
                         model._encrypt = ["clientSecret"];
                         (model as any).clientId = "application";
-                        (model as any).clientSecret = 'secret';
-                        (model as any).grants = ['password', 'refresh_token', 'authorization_code'];
+                        (model as any).clientSecret = "secret";
+                        (model as any).grants = ["password", "refresh_token", "authorization_code"];
                         (model as any).redirectUris = [];
                         (model as any).defaultrole = "Viewer";
                         (model as any).rolemappings = { "admins": "Admin", "grafana editors": "Editor", "grafana admins": "Admin" };
 
                         // (model as any).token_endpoint_auth_method = "none";
                         (model as any).token_endpoint_auth_method = "client_secret_post";
-                        (model as any).response_types = ['code', 'id_token', 'code id_token'];
-                        (model as any).grant_types = ['implicit', 'authorization_code'];
+                        (model as any).response_types = ["code", "id_token", "code id_token"];
+                        (model as any).grant_types = ["implicit", "authorization_code"];
                         (model as any).post_logout_redirect_uris = [];
                         await Config.db.InsertOne(model, "config", 0, false, Crypt.rootToken(), span);
                     }
@@ -919,7 +919,7 @@ export class LoginProvider {
             }
             let id = NoderedUtil.GetUniqueIdentifier();
             let imgurl = Config.baseurl() + "read/" + id;
-            text = text.split('\n').join('<br/>\n');
+            text = text.split("\n").join("<br/>\n");
             let html = text + `<img src="${imgurl}" alt="isread" border="0" width="1" height="1">`
             let from = Config.smtp_from;
 
@@ -986,8 +986,8 @@ export class LoginProvider {
 
             if (NoderedUtil.IsNullEmpty(authorization)) {
                 res.statusCode = 401;
-                res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
-                res.end('Unauthorized');
+                res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);
+                res.end("Unauthorized");
                 return;
             }
 
@@ -1007,8 +1007,8 @@ export class LoginProvider {
                 }
             }
             res.statusCode = 401;
-            res.setHeader('WWW-Authenticate', 'Basic realm="OpenFlow"');
-            res.end('Unauthorized');
+            res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);
+            res.end("Unauthorized");
             return;
         } finally {
             Logger.otel.endSpan(span);
@@ -1407,7 +1407,7 @@ export class LoginProvider {
                 this.redirect(res, "/");
             } else {
                 Logger.instanse.debug("return PassiveLogin.html", span, {cls: "LoginProvider", func: "getlogin"});
-                const file = path.join(__dirname, 'public', 'PassiveLogin.html');
+                const file = path.join(__dirname, "public", "PassiveLogin.html");
                 res.sendFile(file);
             }
         } catch (error) {
@@ -1454,9 +1454,9 @@ export class LoginProvider {
     static async get_read(req: any, res) {
         if (NoderedUtil.IsNullEmpty(req.params.id)) return res.end(JSON.stringify({ "message": "notok" }));
         const buffer = Buffer.alloc(43)
-        buffer.write('R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=', 'base64')
-        res.writeHead(200, { 'Content-Type': 'image/gif' })
-        res.end(buffer, 'binary')
+        buffer.write("R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=", "base64")
+        res.writeHead(200, { "Content-Type": "image/gif" })
+        res.end(buffer, "binary")
         try {
             const id = req.params.id;
             const dt = new Date(new Date().toISOString());
@@ -1466,7 +1466,7 @@ export class LoginProvider {
                 domain = await LoginProvider.reverseLookup(ip);
             } catch (error) {
             }
-            const agent = req.headers['user-agent'];
+            const agent = req.headers["user-agent"];
             const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } }, "$inc": { "readcount": 1 } };
             var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
         } catch (error) {
@@ -1563,7 +1563,7 @@ export class LoginProvider {
                                 } else {
                                     const code = NoderedUtil.GetUniqueIdentifier();
                                     UpdateDoc.$set["_mailcode"] = code;
-                                    this.sendEmail("validate", tuser._id, email, 'Validate email in OpenIAP flow',
+                                    this.sendEmail("validate", tuser._id, email, "Validate email in OpenIAP flow",
                                         `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`, span);
                                 }
                             } else {
@@ -1595,7 +1595,7 @@ export class LoginProvider {
                             let email: string = u.username;
                             if (u.email.indexOf("@") > -1) email = u.email;
                             (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
-                            this.sendEmail("validate", u._id, email, 'Validate email in OpenIAP flow',
+                            this.sendEmail("validate", u._id, email, "Validate email in OpenIAP flow",
                                 `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`, span);
 
 
@@ -1669,7 +1669,7 @@ export class LoginProvider {
                     Logger.instanse.error("Recevied wrong mail for id " + id, span, {cls: "LoginProvider", func: "forgotpassword"});
                     return res.end(JSON.stringify({ id }));
                 }
-                this.sendEmail("pwreset", user._id, email, 'Reset password request',
+                this.sendEmail("pwreset", user._id, email, "Reset password request",
                     `Hi ${user.name}\nYour password for ${Config.domain} can be reset by using the below validation code\n\n${code}\n\nIf you did not request a new password, please ignore this email.`, span);
                 await Logger.DBHelper.CheckCache("users", user, false, false, span);
                 return res.end(JSON.stringify({ id }));
@@ -1761,19 +1761,19 @@ export class LoginProvider {
                 jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
             }
             if (user == null) {
-                return res.status(404).send({ message: 'Route ' + req.url + ' Not found.' });
+                return res.status(404).send({ message: "Route " + req.url + " Not found." });
             }
 
             const id = req.params.id;
             const rows = await Config.db.query({ query: { _id: safeObjectID(id) }, top: 1, collectionname: "files", jwt }, span);
-            if (rows == null || rows.length != 1) { return res.status(404).send({ message: 'id ' + id + ' Not found.' }); }
+            if (rows == null || rows.length != 1) { return res.status(404).send({ message: "id " + id + " Not found." }); }
             const file = rows[0] as any;
 
             const bucket = new GridFSBucket(Config.db.db);
             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-            res.set('Content-Type', file.contentType);
-            res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"');
-            res.set('Content-Length', file.length);
+            res.set("Content-Type", file.contentType);
+            res.set("Content-Disposition", `attachment; filename="${file.filename}"`);
+            res.set("Content-Length", file.length);
             downloadStream.on("error", function (err) {
                 res.end();
             });

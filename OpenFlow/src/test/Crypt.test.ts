@@ -1,11 +1,11 @@
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from '../Logger.js';
-import { User } from '@openiap/openflow-api';
-import { Crypt } from '../Crypt.js';
-import { OAuthProvider } from '../OAuthProvider.js';
+import { Logger } from "../Logger.js";
+import { User } from "@openiap/openflow-api";
+import { Crypt } from "../Crypt.js";
+import { OAuthProvider } from "../OAuthProvider.js";
 @suite class crypt_test {
     private testUser: User;
     @timeout(10000)
@@ -21,12 +21,12 @@ import { OAuthProvider } from '../OAuthProvider.js';
     async after() {
         await Logger.shutdown();
     }
-    @test async 'TestGenerateKeys'() {
+    @test async "TestGenerateKeys"() {
         let jwks = await OAuthProvider.generatekeys();
         assert.ok(jwks, "Failed generating keys");
     }
     @timeout(10000)
-    @test async 'ValidatePassword'() {
+    @test async "ValidatePassword"() {
         await Crypt.SetPassword(this.testUser, "randompassword", null);
         var result = await Crypt.ValidatePassword(this.testUser, "randompassword", null);
         assert.ok(result, "Failed validating with the correct password");
@@ -47,14 +47,14 @@ import { OAuthProvider } from '../OAuthProvider.js';
         await assert.rejects(Crypt.compare(null, null, null));
 
     }
-    @test async 'encrypt'() {
+    @test async "encrypt"() {
         const basestring = "Hi mom, i miss you.";
         var encryptedstring = Crypt.encrypt(basestring);
         var decryptedstring = Crypt.decrypt(encryptedstring);
         assert.ok(decryptedstring == basestring, "Failed encrypting and decrypting string");
         assert.throws(() => { Crypt.decrypt("Bogusstring") }, Error, "Decrypt did not fail with an illegal string");
     }
-    @test async 'decrypt'() {
+    @test async "decrypt"() {
         const gcm = "8a23d6b7b2282b09a32994faf724f05e:8c2551427845c60b4e394302057bc4e4";
         const cbc = "4beca50248100a14d06c8d284258eda7:aee11025ef03216d0068:4b23f4875b8bda4be5b1a0b3a4b4cd3c";
         var gcmdecrypted = Crypt.decrypt(gcm);
@@ -63,4 +63,4 @@ import { OAuthProvider } from '../OAuthProvider.js';
         assert.ok(cbcdecrypted == "teststring", "Failed decrypting string using gcm encryption");
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/Crypt.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/**/Crypt.test.ts"

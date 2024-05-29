@@ -57,11 +57,11 @@ export class WebSocketClientService {
                     const cli: WebSocketClient = new WebSocketClient(this.logger, wsurl);
                     cli.agent = "webapp";
                     cli.version = data.version;
-                    cli.events.on('connect', () => {
-                        this.logger.info('connected to ' + wsurl);
+                    cli.events.on("connect", () => {
+                        this.logger.info("connected to " + wsurl);
                         this.loadToken();
                     });
-                    cli.events.on('refreshtoken', (user) => {
+                    cli.events.on("refreshtoken", (user) => {
                         this.$rootScope.$broadcast("refreshtoken", user);
                     });
                     cli.connect();
@@ -97,8 +97,8 @@ export class WebSocketClientService {
                 if(result == null || (result.message && result.message.includes("not validated")) || result.user == null) {
                     this.setCookie("validateurl", this.$location.path(), 365);
                     setTimeout(() => {
-                        top.location.href = '/login';
-                        document.write('<script>top.location = "/login";</script>')
+                        top.location.href = "/login";
+                        document.write(`<script>top.location = "/login";</script>`)
                     }, 500);
                     try {
                         document.write(error);
@@ -130,8 +130,8 @@ export class WebSocketClientService {
                 if (error == "User not validated, please login again") {
                     this.setCookie("validateurl", this.$location.path(), 365);
                     setTimeout(() => {
-                        top.location.href = '/login';
-                        document.write('<script>top.location = "/login";</script>')
+                        top.location.href = "/login";
+                        document.write(`<script>top.location = "/login";</script>`)
                     }, 500);
                 }
                 console.error(error);
@@ -161,10 +161,10 @@ export class WebSocketClientService {
     getCookie(cname) {
         const name = cname + "=";
         const decodedCookie = decodeURIComponent(document.cookie);
-        const ca = decodedCookie.split(';');
+        const ca = decodedCookie.split(";");
         for (let i = 0; i < ca.length; i++) {
             let c = ca[i];
-            while (c.charAt(0) == ' ') {
+            while (c.charAt(0) == " ") {
                 c = c.substring(1);
             }
             if (c.indexOf(name) == 0) {
@@ -233,7 +233,7 @@ export class WebSocketClientService {
             callback(WebSocketClient.instance.user);
             return;
         }
-        const cleanup = this.$rootScope.$on('signin', (event, data) => {
+        const cleanup = this.$rootScope.$on("signin", (event, data) => {
             if (event && data) { }
             cleanup();
             callback(WebSocketClient.instance.user);
@@ -244,7 +244,7 @@ export class WebSocketClientService {
             callback();
             return;
         }
-        const cleanup = this.$rootScope.$on('socketopen', (event, data) => {
+        const cleanup = this.$rootScope.$on("socketopen", (event, data) => {
             if (event && data) { }
             cleanup();
             callback();

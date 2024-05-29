@@ -138,26 +138,26 @@ export class SamlProvider {
                 Logger.instanse.error(error, null);
             }
             // TODO: FIX !!!!
-            app.get('/wssignout', async (req: any, res: any, next: any) => {
+            app.get("/wssignout", async (req: any, res: any, next: any) => {
                 req.logout();
                 let html = "<html><head></head><body>";
                 html += "<h1>Du er nu logget ud</h1><br>";
-                // html += "<br/><p><a href='/'>Til login</ifarame></p>";
+                // html += `<br/><p><a href="/">Til login</ifarame></p>`;
                 html += "</body></html>";
                 res.send(html);
             });
-            app.post('/wssignout', async (req: any, res: any, next: any) => {
+            app.post("/wssignout", async (req: any, res: any, next: any) => {
                 req.logout();
                 let html = "<html><head></head><body>";
                 html += "<h1>Du er nu logget ud</h1><br>";
-                // html += "<br/><p><a href='/'>Til login</ifarame></p>";
+                // html += `<br/><p><a href="/">Til login</ifarame></p>`;
                 html += "</body></html>";
                 res.send(html);
             });
         } else {
             Logger.instanse.warn("SAML signing certificate is not configured, saml not possible", null);
         }
-        app.get('/logout', async (req: any, res: any, next: any) => {
+        app.get("/logout", async (req: any, res: any, next: any) => {
             const referer: string = req.headers.referer;
             const providerid: any = req.cookies.provider;
             req.logout();
@@ -171,15 +171,15 @@ export class SamlProvider {
                         let html = "<html><head></head><body>";
                         html += "<h1>Logud</h1><br>";
                         if (!NoderedUtil.IsNullEmpty(referer)) {
-                            html += "<br/><p><a href='" + encodeURI(referer) + "'>Til login</a></p>";
+                            html += `<br/><p><a href="${encodeURI(referer)}">Til login</a></p>`;
                         } else {
-                            html += "<br/><p><a href='/'>Til login</a></p>";
+                            html += `<br/><p><a href="/">Til login</a></p>`;
                         }
-                        html += "<iframe src='" + encodeURI(provider.saml_signout_url) + "'></iframe>";
+                        html += `<iframe src="${encodeURI(provider.saml_signout_url)}"></iframe>`;
                         if (!NoderedUtil.IsNullEmpty(referer)) {
-                            html += "<br/><p><a href='" + encodeURI(referer) + "'>Til login</a></p>";
+                            html += `<br/><p><a href="${encodeURI(referer)}">Til login</a></p>`;
                         } else {
-                            html += "<br/><p><a href='/'>Til login</a></p>";
+                            html += `<br/><p><a href="/">Til login</a></p>`;
                         }
                         html += "</body></html>";
                         res.send(html);
@@ -193,13 +193,13 @@ export class SamlProvider {
                 res.redirect("/");
             }
         });
-        app.post('/logout', (req: any, res: any, next: any): void => {
+        app.post("/logout", (req: any, res: any, next: any): void => {
             if(cert != null && cert != "") {
                 let saml_issuer: string = Config.saml_issuer;
                 if(saml_issuer == null || saml_issuer == "") saml_issuer = "uri:" + Config.domain;
                 samlp.logout({
                     issuer: saml_issuer,
-                    protocolBinding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                    protocolBinding: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
                     cert: cert,
                     key: key
                 })(req, res, next);

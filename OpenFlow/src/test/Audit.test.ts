@@ -1,11 +1,11 @@
 // import wtf from "wtfnode";
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
-import { Logger } from '../Logger.js';
-import { TokenUser, User } from '@openiap/openflow-api';
-import { Audit } from '../Audit.js';
-import { Crypt } from '../Crypt.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
+import { Logger } from "../Logger.js";
+import { TokenUser, User } from "@openiap/openflow-api";
+import { Audit } from "../Audit.js";
+import { Crypt } from "../Crypt.js";
 
 @suite class audit_test {
     private rootToken: string;
@@ -25,7 +25,7 @@ import { Crypt } from '../Crypt.js';
         await Logger.shutdown();
         // wtf.dump()
     }
-    @test async 'reload'() {
+    @test async "reload"() {
         await Audit.LoginSuccess(this.testUser, "local", "local", "127.0.0.1", "test", Config.version, null);
         await Audit.LoginFailed("testuser", "local", "local", "127.0.0.1", "test", Config.version, null);
         await Audit.ImpersonateSuccess(this.testUser, Crypt.rootUser(), "test", Config.version, null);
@@ -35,4 +35,4 @@ import { Crypt } from '../Crypt.js';
         await new Promise(resolve => { setTimeout(resolve, 1000) })
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/Audit.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/Audit.test.ts"

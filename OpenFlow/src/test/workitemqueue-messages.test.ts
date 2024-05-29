@@ -2,13 +2,13 @@ import fs from "fs";
 import path from "path";
 import pako from "pako";
 import { Message } from "../Messages/Message.js";
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from '../Logger.js';
-import { NoderedUtil, User, SaveFileMessage } from '@openiap/openflow-api';
-import { Crypt } from '../Crypt.js';
+import { Logger } from "../Logger.js";
+import { NoderedUtil, User, SaveFileMessage } from "@openiap/openflow-api";
+import { Crypt } from "../Crypt.js";
 import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, GetWorkitemQueueMessage, PopWorkitemMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage } from "@openiap/openflow-api";
 
 @suite class workitemqueue_messages_test {
@@ -45,18 +45,18 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         return q.result;
     }
     formatBytes(bytes, decimals = 2) {
-        if (bytes === 0) return '0 Bytes';
+        if (bytes === 0) return "0 Bytes";
 
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
         const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
     }
     @timeout(5000)
-    async 'Save File Base64'() {
+    async "Save File Base64"() {
         var filepath = "./config/invoice2.pdf";
         var filepath = "./config/invoice.zip";
         var filepath = "./config/invoice2.zip";
@@ -64,7 +64,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         if (!(fs.existsSync(filepath))) return;
         var q: SaveFileMessage = new SaveFileMessage();
         q.filename = "base64" + path.basename(filepath);
-        q.file = fs.readFileSync(filepath, { encoding: 'base64' });
+        q.file = fs.readFileSync(filepath, { encoding: "base64" });
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
         await msg.EnsureJWT(null, false)
@@ -76,7 +76,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         return q.result;
     }
     @timeout(5000)
-    async 'Save File zlib'() {
+    async "Save File zlib"() {
         var filepath = "./config/invoice2.pdf";
         var filepath = "./config/invoice.zip";
         var filepath = "./config/invoice2.zip";
@@ -85,7 +85,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         var q: SaveFileMessage = new SaveFileMessage();
         (q as any).compressed = true;
         q.filename = "zlib" + path.basename(filepath);
-        q.file = Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString('base64');
+        q.file = Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString("base64");
         var msg = new Message(); msg.jwt = this.userToken;
         msg.data = JSON.stringify(q);
         await msg.EnsureJWT(null, false)
@@ -97,7 +97,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         return q.result;
     }
     @timeout(5000)
-    async 'Create update and delete test work item queue'() {
+    async "Create update and delete test work item queue"() {
         var exists = await this.GetItem("test queue")
         if (exists) {
             await this["delete test work item queue"](null);
@@ -110,11 +110,11 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         await this["delete test work item queue"](null);
     }
     @timeout(15000)
-    @test async 'Workwith work item'() {
-        await this['Create update and delete test work item queue']();
+    @test async "Workwith work item"() {
+        await this["Create update and delete test work item queue"]();
         var wiq = await this.GetItem("test queue")
         if (!wiq) {
-            wiq = await this["Create work item queue"]('test queue')
+            wiq = await this["Create work item queue"]("test queue")
         }
         var wi: any = { "_id": "62488f88bf045a7e58228f2f", files: [] }
 
@@ -140,7 +140,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         await this["Delete work item"](wi);
     }
     @timeout(5000)
-    async 'Delete work item'(wi) {
+    async "Delete work item"(wi) {
         var q: any = new DeleteWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q._id = wi._id;
@@ -152,7 +152,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         assert.ok(NoderedUtil.IsNullUndefinded(q.error), q.error);
     }
     @timeout(5000)
-    async 'Update work item'(wi) {
+    async "Update work item"(wi) {
         var q: any = new UpdateWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q._id = wi._id;
@@ -162,7 +162,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         if (fs.existsSync(filepath)) {
             var f = {
                 compressed: true, filename: path.basename(filepath),
-                file: Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString('base64')
+                file: Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString("base64")
             }
             q.files.push(f);
         }
@@ -176,7 +176,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         return q.result;
     }
     @timeout(5000)
-    async 'Create work item'(wiq) {
+    async "Create work item"(wiq) {
         var q: any = new AddWorkitemMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.wiq = wiq.name;
@@ -186,7 +186,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         if (fs.existsSync(filepath)) {
             var f = {
                 compressed: true, filename: path.basename(filepath),
-                file: Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString('base64')
+                file: Buffer.from(pako.deflate(fs.readFileSync(filepath, null))).toString("base64")
             }
             q.files.push(f);
         }
@@ -194,7 +194,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         if (fs.existsSync(filepath)) {
             var f2 = {
                 compressed: false, filename: path.basename(filepath),
-                file: fs.readFileSync(filepath, { encoding: 'base64' })
+                file: fs.readFileSync(filepath, { encoding: "base64" })
             }
             q.files.push(f2);
         }
@@ -209,7 +209,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     }
 
     @timeout(50000)
-    async 'Create work item queue'(name) {
+    async "Create work item queue"(name) {
         var q: any = new AddWorkitemQueueMessage();
         q.maxretries = 3; q.retrydelay = 0; q.initialdelay = 0;
         var msg = new Message(); msg.jwt = this.userToken;
@@ -224,7 +224,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         return q.result;
     }
     @timeout(50000)
-    async 'update test work item queue'(name) {
+    async "update test work item queue"(name) {
         var q: any = new UpdateWorkitemQueueMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue"
@@ -238,7 +238,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         return q.result;
     }
     @timeout(50000)
-    async 'delete test work item queue'(name) {
+    async "delete test work item queue"(name) {
         var q: any = new DeleteWorkitemQueueMessage();
         var msg = new Message(); msg.jwt = this.userToken;
         q.name = name ? name : "test queue";
@@ -252,4 +252,4 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
     }
 
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/workitemqueue-messages.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/workitemqueue-messages.test.ts"

@@ -197,7 +197,7 @@ export class flowclient extends client {
                 var _data = msg;
                 try {
                     var o = msg;
-                    if (typeof o === 'string') o = JSON.parse(o);
+                    if (typeof o === "string") o = JSON.parse(o);
                     span = Logger.otel.startSpan("OpenFlow Queue Process Message", o.traceId, o.spanId);
                     Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
                     _data = await this.Queue(msg, qname, options, span);;

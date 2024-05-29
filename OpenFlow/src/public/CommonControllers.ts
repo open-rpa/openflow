@@ -1,6 +1,6 @@
 // import angular from "angular";
 // angular.isArray([]);
-require('angular');
+require("angular");
 import angular from "angular";
 import { WebSocketClientService } from "./WebSocketClientService";
 import { NoderedUtil } from "@openiap/openflow-api";
@@ -18,13 +18,13 @@ function _timeSince(timeStamp) {
     const now: Date = new Date(),
         secondsPast: number = (now.getTime() - timeStamp.getTime()) / 1000;
     if (secondsPast < 60) {
-        return parseInt(secondsPast.toString()) + 's';
+        return parseInt(secondsPast.toString()) + "s";
     }
     if (secondsPast < 3600) {
-        return parseInt((secondsPast / 60).toString()) + 'm';
+        return parseInt((secondsPast / 60).toString()) + "m";
     }
     if (secondsPast <= 86400) {
-        return parseInt((secondsPast / 3600).toString()) + 'h';
+        return parseInt((secondsPast / 3600).toString()) + "h";
     }
     if (secondsPast > 86400) {
         let day = timeStamp.getDate();
@@ -41,13 +41,13 @@ function _timeToo(timeStamp) {
     if (secondsPast < 0) secondsPast *= -1
 
     if (secondsPast < 60) {
-        return parseInt(secondsPast.toString()) + 's' + suffix;
+        return parseInt(secondsPast.toString()) + "s" + suffix;
     }
     if (secondsPast < 3600) {
-        return parseInt((secondsPast / 60).toString()) + 'm' + suffix;
+        return parseInt((secondsPast / 60).toString()) + "m" + suffix;
     }
     if (secondsPast <= 86400) {
-        return parseInt((secondsPast / 3600).toString()) + 'h' + suffix;
+        return parseInt((secondsPast / 3600).toString()) + "h" + suffix;
     }
     if (secondsPast > 86400) {
         let day = timeStamp.getDate();
@@ -58,8 +58,8 @@ function _timeToo(timeStamp) {
 }
 // @ts-ignore
 export class timesince implements ng.IDirective {
-    // restrict = 'E';
-    require = 'ngModel';
+    // restrict = "E";
+    require = "ngModel";
     replace = true;
 
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
@@ -75,14 +75,14 @@ export class timesince implements ng.IDirective {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new timesince($location, $timeout);
-        directive.$inject = ['$location', '$timeout'];
+        directive.$inject = ["$location", "$timeout"];
         return directive;
     }
 }
 // @ts-ignore
 export class timetoo implements ng.IDirective {
-    // restrict = 'E';
-    require = 'ngModel';
+    // restrict = "E";
+    require = "ngModel";
     replace = true;
 
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
@@ -98,29 +98,29 @@ export class timetoo implements ng.IDirective {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new timetoo($location, $timeout);
-        directive.$inject = ['$location', '$timeout'];
+        directive.$inject = ["$location", "$timeout"];
         return directive;
     }
 }
 // @ts-ignore
 export class formatBytes implements ng.IDirective {
-    // restrict = 'E';
-    require = 'ngModel';
+    // restrict = "E";
+    require = "ngModel";
     replace = true;
 
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
 
     }
     formatBytes(bytes, decimals = 1) {
-        if (bytes === 0) return '0 Bytes';
+        if (bytes === 0) return "0 Bytes";
 
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
         const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
     }
 
     link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
@@ -137,7 +137,7 @@ export class formatBytes implements ng.IDirective {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new formatBytes($location, $timeout);
-        directive.$inject = ['$location', '$timeout'];
+        directive.$inject = ["$location", "$timeout"];
         return directive;
     }
 }
@@ -194,14 +194,13 @@ export class whenScrolled implements ng.IDirective {
         else if (document.addEventListener) //WC3 browsers
             document.addEventListener(mousewheelevt, handler, false)
 
-        // angular.element(this.$window).on('scroll', handler);
-        scope.$on('$destroy', () => {
+        scope.$on("$destroy", () => {
             var doc = document as any;
             if (doc.detachEvent)
                 doc.detachEvent("on" + mousewheelevt, handler)
             else if (document.removeEventListener) //WC3 browsers
                 document.removeEventListener(mousewheelevt, handler, false)
-            // return this.$window.off('scroll', handler);
+            // return this.$window.off("scroll", handler);
         });
         return this.$timeout((() => {
             if (attrs.whenScrolledImmediateCheck) {
@@ -215,15 +214,15 @@ export class whenScrolled implements ng.IDirective {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($rootScope: ng.IRootScopeService, $window: ng.IWindowService, $timeout: ng.ITimeoutService) => new whenScrolled($rootScope, $window, $timeout);
-        directive.$inject = ['$rootScope', '$window', '$timeout'];
+        directive.$inject = ["$rootScope", "$window", "$timeout"];
         return directive;
     }
 }
 
 
 export class textarea implements ng.IDirective {
-    // restrict = 'E';
-    // require = 'ngModel';
+    // restrict = "E";
+    // require = "ngModel";
     replace = true;
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
 
@@ -283,14 +282,14 @@ export class textarea implements ng.IDirective {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new textarea($location, $timeout);
-        directive.$inject = ['$location', '$timeout'];
+        directive.$inject = ["$location", "$timeout"];
         return directive;
     }
 }
 
 export class ngtype  { // implements ng.IDirective
-    restrict = 'A';
-    require = '?ngModel';
+    restrict = "A";
+    require = "?ngModel";
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService) {
     }
     link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
@@ -299,10 +298,10 @@ export class ngtype  { // implements ng.IDirective
         scope.$watch((newValue) => {
             if (ngModelCtrl.$viewValue === null || ngModelCtrl.$viewValue === undefined) { return; }
             if(mytype != "") return;;
-            if (typeof ngModelCtrl.$modelValue === 'number') {
+            if (typeof ngModelCtrl.$modelValue === "number") {
                 mytype = "number";
                 element.attr("type", "number");
-            } else if (typeof ngModelCtrl.$modelValue === 'boolean') {
+            } else if (typeof ngModelCtrl.$modelValue === "boolean") {
                 mytype = "boolean";
                 element.attr("type", "checkbox");
             } else {
@@ -326,13 +325,13 @@ export class ngtype  { // implements ng.IDirective
         }
         var toViewb = function (value) {
             if (mytype == "") {
-                if (typeof value === 'number') {
+                if (typeof value === "number") {
                     mytype = "number";
                     element.attr("type", "number");
-                } else if (typeof value === 'boolean') {
+                } else if (typeof value === "boolean") {
                     mytype = "boolean";
                     element.attr("type", "checkbox");
-                } else if (value != null && value != undefined && typeof value === 'string') {
+                } else if (value != null && value != undefined && typeof value === "string") {
                     mytype = "text";
                     element.attr("type", "text");
                 }
@@ -353,7 +352,7 @@ export class ngtype  { // implements ng.IDirective
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService) => new ngtype($location, $timeout);
-        directive.$inject = ['$location', '$timeout'];
+        directive.$inject = ["$location", "$timeout"];
         return directive;
     }
 }
@@ -377,7 +376,7 @@ async function getString(locale: any, lib: string, key: string): Promise<any> {
 }
 const global_translate_notfound: string[] = [];
 export class translate   { // implements ng.IDirective
-    require = '?ngModel';
+    require = "?ngModel";
     replace = true;
 
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
@@ -418,7 +417,7 @@ export class translate   { // implements ng.IDirective
                 }
                 if (attr.value !== null && attr.value !== undefined && element[0].tagName !== "OPTION") {
                     value = calculateValue(attr.value);
-                    attr.$set('value', value);
+                    attr.$set("value", value);
                 } else {
                     value = element.text();
                     if (value !== null || value !== undefined) {
@@ -431,7 +430,7 @@ export class translate   { // implements ng.IDirective
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new translate($location, $timeout, locale);
-        directive.$inject = ['$location', '$timeout', 'locale'];
+        directive.$inject = ["$location", "$timeout", "locale"];
         return directive;
     }
 }
@@ -443,15 +442,15 @@ export class userdata {
 }
 // implements ng.IDirective
 export class copytext {
-    restrict = 'A';
-    require = '?ngModel';
+    restrict = "A";
+    require = "?ngModel";
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
     }
     link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
         console.debug("copytext", element);
         if (!ngModelCtrl) return;
-        element.attr('unselectable', 'on');
-        element.on('mousedown', function (e, eventData) {
+        element.attr("unselectable", "on");
+        element.on("mousedown", function (e, eventData) {
             /* istanbul ignore else: this is for catching the jqLite testing*/
             if (eventData) angular.extend(e, eventData);
             // this prevents focusout from firing on the editor when clicking toolbar buttons
@@ -462,14 +461,14 @@ export class copytext {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new copytext($location, $timeout, locale);
-        directive.$inject = ['$location', '$timeout', 'locale'];
+        directive.$inject = ["$location", "$timeout", "locale"];
         return directive;
     }
 }
 // implements ng.IDirective
 export class jsonText {
-    restrict = 'A';
-    require = '?ngModel';
+    restrict = "A";
+    require = "?ngModel";
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
     }
     link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
@@ -486,14 +485,14 @@ export class jsonText {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new jsonText($location, $timeout, locale);
-        directive.$inject = ['$location', '$timeout', 'locale'];
+        directive.$inject = ["$location", "$timeout", "locale"];
         return directive;
     }
 }
 // implements ng.IDirective
 export class fileread {
-    restrict = 'A';
-    require = '?ngModel';
+    restrict = "A";
+    require = "?ngModel";
     constructor(public $location: ng.ILocationService, public $timeout: ng.ITimeoutService, public locale) {
     }
     link: ng.IDirectiveLinkFn = (scope: ng.IScope, element: ng.IAugmentedJQuery, attr: ng.IAttributes, ngModelCtrl: any) => {
@@ -501,11 +500,11 @@ export class fileread {
 
         ngModelCtrl.$render = function () { };
 
-        element.bind('change', function (changeEvent) {
+        element.bind("change", function (changeEvent) {
             const reader = new FileReader();
             reader.onload = function (loadEvent) {
                 scope.$apply(function () {
-                    const base64result = ((loadEvent.target as any).result as string).split(',')[1];
+                    const base64result = ((loadEvent.target as any).result as string).split(",")[1];
                     ngModelCtrl.$setViewValue(base64result);
                     (scope as any).filename = (changeEvent.target as any).files[0].name;
                     (scope as any).type = (changeEvent.target as any).files[0].type;
@@ -519,7 +518,7 @@ export class fileread {
     }
     static factory(): ng.IDirectiveFactory {
         const directive = ($location: ng.ILocationService, $timeout: ng.ITimeoutService, locale) => new fileread($location, $timeout, locale);
-        directive.$inject = ['$location', '$timeout', 'locale'];
+        directive.$inject = ["$location", "$timeout", "locale"];
         return directive;
     }
 }
@@ -569,11 +568,11 @@ export class entitiesCtrl<T> {
     ) {
         this._onKeyDown = this.onKeyDown.bind(this);
         this._onKeyUp = this.onKeyUp.bind(this);
-        document.addEventListener('keydown', this._onKeyDown);
-        document.addEventListener('keyup', this._onKeyUp);
-        $scope.$on('$destroy', () => {
-            document.removeEventListener('keydown', this._onKeyDown);
-            document.removeEventListener('keyup', this._onKeyUp);
+        document.addEventListener("keydown", this._onKeyDown);
+        document.addEventListener("keyup", this._onKeyUp);
+        $scope.$on("$destroy", () => {
+            document.removeEventListener("keydown", this._onKeyDown);
+            document.removeEventListener("keyup", this._onKeyUp);
         })
         if (this.userdata.data != null && this.userdata.data) {
             if (this.userdata.data.basequery != null) {
@@ -590,7 +589,7 @@ export class entitiesCtrl<T> {
                 delete this.userdata.data.basequeryas;
             }
         }
-        this.$scope.$on('search', (event, data) => {
+        this.$scope.$on("search", (event, data) => {
             this.searchstring = data;
             this.loadData();
         });
@@ -599,21 +598,21 @@ export class entitiesCtrl<T> {
     public controldown: boolean = false;
     public shiftdown: boolean = false;
     public onKeyDown(e) {
-        if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && !this.controldown) {
+        if ((e.code == "ControlLeft" || e.code == "ControlRight") && !this.controldown) {
             this.controldown = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && !this.shiftdown) {
+        if ((e.code == "ShiftLeft" || e.code == "ShiftRight") && !this.shiftdown) {
             this.shiftdown = true;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
     }
     public onKeyUp(e) {
-        if ((e.code == 'ControlLeft' || e.code == 'ControlRight') && this.controldown) {
+        if ((e.code == "ControlLeft" || e.code == "ControlRight") && this.controldown) {
             this.controldown = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
-        if ((e.code == 'ShiftLeft' || e.code == 'ShiftRight') && this.shiftdown) {
+        if ((e.code == "ShiftLeft" || e.code == "ShiftRight") && this.shiftdown) {
             this.shiftdown = false;
             if (!this.$scope.$$phase) { this.$scope.$apply(); }
         }
@@ -771,7 +770,7 @@ export class entitiesCtrl<T> {
                         this.autorefreshpromise = this.$interval(() => {
                             this.loadData();
                         }, this.autorefreshinterval);
-                        this.$scope.$on('$destroy', () => {
+                        this.$scope.$on("$destroy", () => {
                             this.$interval.cancel(this.autorefreshpromise);
                         });
                     }
@@ -804,7 +803,7 @@ export class entitiesCtrl<T> {
         } else {
             this.orderby[field] = -1;
         }
-        if (field === '_type') {
+        if (field === "_type") {
             this.orderby["type"] = this.orderby[field];
         }
         this.page = 0;
@@ -926,7 +925,7 @@ export class entityCtrl<T> {
             if (updated) {
                 this.keys = Object.keys(this.model);
                 for (let i: number = this.keys.length - 1; i >= 0; i--) {
-                    if (this.keys[i].startsWith('_')) this.keys.splice(i, 1);
+                    if (this.keys[i].startsWith("_")) this.keys.splice(i, 1);
                 }
             }
             this.loading = false;
@@ -940,7 +939,7 @@ export class entityCtrl<T> {
                     this.autorefreshpromise = this.$interval(() => {
                         this.loadData();
                     }, this.autorefreshinterval);
-                    this.$scope.$on('$destroy', () => {
+                    this.$scope.$on("$destroy", () => {
                         this.$interval.cancel(this.autorefreshpromise);
                     });
                 }

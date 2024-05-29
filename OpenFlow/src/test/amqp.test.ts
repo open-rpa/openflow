@@ -1,11 +1,11 @@
-import { suite, test, timeout } from '@testdeck/mocha';
+import { suite, test, timeout } from "@testdeck/mocha";
 import { Config } from "../Config.js";
-import { DatabaseConnection } from '../DatabaseConnection.js';
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from '../Logger.js';
-import { NoderedUtil, User } from '@openiap/openflow-api';
-import { Crypt } from '../Crypt.js';
-import { amqpwrapper } from '../amqpwrapper.js';
+import { Logger } from "../Logger.js";
+import { NoderedUtil, User } from "@openiap/openflow-api";
+import { Crypt } from "../Crypt.js";
+import { amqpwrapper } from "../amqpwrapper.js";
 
 @suite class amqp_test {
     private rootToken: string;
@@ -35,12 +35,12 @@ import { amqpwrapper } from '../amqpwrapper.js';
         this.amqp?.shutdown();
         await Logger.shutdown();
     }
-    // @test async 'connecterror'() {
-    //     // var amqp = new amqpwrapper('bogus://url');
+    // @test async "connecterror"() {
+    //     // var amqp = new amqpwrapper("bogus://url");
     //     // await assert.rejects( await amqp.connect(null));
     // }
     @timeout(5000)
-    @test async 'queuetest'() {
+    @test async "queuetest"() {
         const queuename = "demotestqueue";
         var q = await this.amqp.AddQueueConsumer(this.testUser, queuename, null, this.rootToken, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
@@ -73,7 +73,7 @@ import { amqpwrapper } from '../amqpwrapper.js';
     }
     @timeout(5000)
     @test
-    async 'personalqueuetest'() {
+    async "personalqueuetest"() {
         var q = await this.amqp.AddQueueConsumer(this.testUser, this.testUser._id, null, this.rootToken, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                 if (msg.indexOf("hi mom, i miss you") > -1) {
@@ -99,7 +99,7 @@ import { amqpwrapper } from '../amqpwrapper.js';
     }
     @timeout(5000)
     @test
-    async 'exchangetest'() {
+    async "exchangetest"() {
         const exchangename = "demotestexchange";
         var q = await this.amqp.AddExchangeConsumer(this.testUser, exchangename, "direct", "", null, this.rootToken, true, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
@@ -124,4 +124,4 @@ import { amqpwrapper } from '../amqpwrapper.js';
         await assert.rejects(this.amqp.RemoveQueueConsumer(this.testUser, null, null));
     }
 }
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/amqp.test.ts'
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/amqp.test.ts"

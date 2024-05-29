@@ -44,16 +44,16 @@ export class OAuthProvider {
         <h1>Do you want to sign-out from ${ctx.hostname}?</h1>
         <script>
           function logout() {
-            var form = document.getElementById('op.logoutForm');
-            var input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'logout';
-            input.value = 'yes';
+            var form = document.getElementById("op.logoutForm");
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "logout";
+            input.value = "yes";
             form.appendChild(input);
             form.submit();
           }
           function rpLogoutOnly() {
-            var form = document.getElementById('op.logoutForm');
+            var form = document.getElementById("op.logoutForm");
             form.submit();
           }
           
@@ -97,11 +97,11 @@ export class OAuthProvider {
         return new Promise((resolve, reject) => {
             const keystore = new jose.JWKS.KeyStore();
             Promise.all([
-                keystore.generate('RSA', 2048, { use: 'sig' }),
-                keystore.generate('RSA', 2048, { use: 'enc' }),
-                keystore.generate('EC', 'P-256', { use: 'sig' }),
-                keystore.generate('EC', 'P-256', { use: 'enc' }),
-                keystore.generate('OKP', 'Ed25519', { use: 'sig' }),
+                keystore.generate("RSA", 2048, { use: "sig" }),
+                keystore.generate("RSA", 2048, { use: "enc" }),
+                keystore.generate("EC", "P-256", { use: "sig" }),
+                keystore.generate("EC", "P-256", { use: "enc" }),
+                keystore.generate("OKP", "Ed25519", { use: "sig" }),
             ]).then(() => {
                 resolve(keystore.toJWKS(true));
             }).catch((err) => {
@@ -135,22 +135,22 @@ export class OAuthProvider {
                     cli.token_endpoint_auth_method = "none";
                     delete cli.client_secret;
                 }
-                // response_types can only contain 'code id_token', 'code', 'id_token', or 'none' 
+                // response_types can only contain "code id_token", "code", "id_token", or "none" 
                 // id_token token
-                if (NoderedUtil.IsNullEmpty(cli.response_types)) cli.response_types = ['code', 'id_token', 'code id_token'];
+                if (NoderedUtil.IsNullEmpty(cli.response_types)) cli.response_types = ["code", "id_token", "code id_token"];
                 // https://github.com/panva/node-oidc-provider/blob/64edda69a84e556531f45ac814788c8c92ab6212/test/claim_types/claim_types.test.js
-                if (cli.grant_types == null) cli.grant_types = ['implicit', 'authorization_code'];
+                if (cli.grant_types == null) cli.grant_types = ["implicit", "authorization_code"];
             });
             var agent = instance.clients.find(x => x.client_id == "agent");
             if(agent == null) {
                 instance.clients.push({
-                        grants: ['password', 'refresh_token', 'authorization_code'],
+                        grants: ["password", "refresh_token", "authorization_code"],
                         defaultrole : "Viewer",
                         rolemappings : { "admins": "Admin" },
                         clientId: "agent",client_id: "agent", 
                         token_endpoint_auth_method: "none",
-                        response_types: ['code', 'id_token', 'code id_token'],
-                        grant_types: ['implicit', 'authorization_code'],
+                        response_types: ["code", "id_token", "code id_token"],
+                        grant_types: ["implicit", "authorization_code"],
                         post_logout_redirect_uris: [],
                         redirect_uris: [],
                         openflowsignout: true
@@ -161,14 +161,14 @@ export class OAuthProvider {
             if(agent == null) {
                 // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
                 instance.clients.push({
-                        grants: ['password', 'refresh_token', 'authorization_code'],
+                        grants: ["password", "refresh_token", "authorization_code"],
                         defaultrole : "Viewer",
                         rolemappings : { "admins": "Admin" },
                         clientId: "openai",client_id: "openai", 
                         client_secret: "openai",
                         token_endpoint_auth_method: "client_secret_post",
-                        response_types: ['code', 'id_token', 'code id_token'],
-                        grant_types: ['implicit', 'authorization_code'],
+                        response_types: ["code", "id_token", "code id_token"],
+                        grant_types: ["implicit", "authorization_code"],
                         post_logout_redirect_uris: [],
                         redirect_uris: [],
                         openflowsignout: true
@@ -179,14 +179,14 @@ export class OAuthProvider {
             if(agent == null) {
                 // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
                 instance.clients.push({
-                        grants: ['password', 'refresh_token', 'authorization_code'],
+                        grants: ["password", "refresh_token", "authorization_code"],
                         defaultrole : "Viewer",
                         rolemappings : { "admins": "Admin" },
                         clientId: "openapi",client_id: "openapi", 
                         client_secret: "openapi",
                         token_endpoint_auth_method: "client_secret_post",
-                        response_types: ['code', 'id_token', 'code id_token'],
-                        grant_types: ['implicit', 'authorization_code'],
+                        response_types: ["code", "id_token", "code id_token"],
+                        grant_types: ["implicit", "authorization_code"],
                         post_logout_redirect_uris: [],
                         redirect_uris: [],
                         openflowsignout: true
@@ -196,14 +196,14 @@ export class OAuthProvider {
             // var grafana = instance.clients.find(x => x.client_id == "grafana");
             // if(grafana == null) {
             //     instance.clients.push({
-            //             grants: ['password', 'refresh_token', 'authorization_code'],
+            //             grants: ["password", "refresh_token", "authorization_code"],
             //             defaultrole : "Viewer",
             //             rolemappings : { "admins": "Admin" },
             //             clientId: "grafana",client_id: "grafana", 
             //             clientSecret: "tf555FrdWK7XJxYv2Nw3N1iFOliK4HHeIGct", client_secret: "tf555FrdWK7XJxYv2Nw3N1iFOliK4HHeIGct",
             //             token_endpoint_auth_method: "client_secret_post",
-            //             response_types: ['code', 'id_token', 'code id_token'],
-            //             grant_types: ['implicit', 'authorization_code'],
+            //             response_types: ["code", "id_token", "code id_token"],
+            //             grant_types: ["implicit", "authorization_code"],
             //             post_logout_redirect_uris: [],
             //             redirect_uris: [],
             //             openflowsignout: true
@@ -215,7 +215,7 @@ export class OAuthProvider {
                 clients: instance.clients,
                 adapter: MongoAdapter,
                 formats: {
-                    AccessToken: 'jwt',
+                    AccessToken: "jwt",
                 },
                 ttl: {
                     AccessToken: (Config.oidc_access_token_ttl * 60),
@@ -245,7 +245,7 @@ export class OAuthProvider {
                     auth_time: null,
                     iss: null,
                     openid: [
-                        'sub', 'name', 'email', 'email_verified', 'role', 'roles'
+                        "sub", "name", "email", "email_verified", "role", "roles"
                     ],
                     sid: null
                 },
@@ -256,7 +256,7 @@ export class OAuthProvider {
                 findAccount: Account.findAccount,
                 cookies: {
                     short: {
-                        path: '/',
+                        path: "/",
                     },
                     keys: [Config.oidc_cookie_key],
                 },
@@ -264,10 +264,10 @@ export class OAuthProvider {
             provider.proxy = true;
             const { invalidate: orig } = (provider.Client as any).Schema.prototype;
             (provider.Client as any).Schema.prototype.invalidate = function invalidate(message, code) {
-                if (code === 'implicit-force-https' || code === 'implicit-forbid-localhost') {
+                if (code === "implicit-force-https" || code === "implicit-forbid-localhost") {
                     return;
                 }
-                if (message === 'redirect_uris must contain members') {
+                if (message === "redirect_uris must contain members") {
                     return;
                 }
                 orig.call(this, message);
@@ -287,9 +287,9 @@ export class OAuthProvider {
                 return;
             }
             instance.oidc = provider;
-            instance.app.use('/oidc', async (req, res, next) => {
+            instance.app.use("/oidc", async (req, res, next) => {
                 if (req.originalUrl == "/oidc/me/emails") { // Grafana old school hack
-                    res.send('[]');
+                    res.send("[]");
                     return;
                 }
                 if (req.originalUrl.startsWith("/oidc/session/end")) {
@@ -301,15 +301,15 @@ export class OAuthProvider {
                 }
                 instance.oidc.callback(req, res);
                 // return next();
-                // if (req.originalUrl.indexOf('/oidc') > -1) return next();
+                // if (req.originalUrl.indexOf("/oidc") > -1) return next();
             });
 
-            instance.app.use('/oidc/*', async (req, res, next) => {
+            instance.app.use("/oidc/*", async (req, res, next) => {
                 console.log(req);
                 next();
             });
 
-            instance.app.use('/oidclogin', async (req, res, next) => {
+            instance.app.use("/oidclogin", async (req, res, next) => {
                 if (req && (req as any).user) {
 
                     var validated = true;
@@ -331,7 +331,7 @@ export class OAuthProvider {
                     res.redirect("/login");
                 }
             });
-            instance.app.use('/oidccb', async (req, res, next) => {
+            instance.app.use("/oidccb", async (req, res, next) => {
                 try {
                     const {
                         uid, prompt, params, session,
@@ -342,7 +342,7 @@ export class OAuthProvider {
                     if (isAuthenticated) {
                     } else {
                         res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
-                        res.redirect('/login');
+                        res.redirect("/login");
                         return;
                     }
 
@@ -390,7 +390,7 @@ export class OAuthProvider {
                                     "openflow": "true"
                                 },
 
-                                ['custom prompt name resolved']: {},
+                                ["custom prompt name resolved"]: {},
                             }
                         );
                     }

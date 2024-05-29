@@ -1,9 +1,9 @@
 import wtf from "wtfnode";
 import * as crypto from "crypto";
-import { AddWorkitem, ApiConfig, NoderedUtil, WebSocketClient, Workitem } from '@openiap/openflow-api';
-import { suite, test, timeout } from '@testdeck/mocha';
-import { Config } from '../Config.js';
-import { Logger } from '../Logger.js';
+import { AddWorkitem, ApiConfig, NoderedUtil, WebSocketClient, Workitem } from "@openiap/openflow-api";
+import { suite, test, timeout } from "@testdeck/mocha";
+import { Config } from "../Config.js";
+import { Logger } from "../Logger.js";
 
 @suite class loadtest {
     public clients: WebSocketClient[] = [];
@@ -80,7 +80,7 @@ import { Logger } from '../Logger.js';
 
     @timeout(6000000)
     @test
-    async 'crud connection load test'() {
+    async "crud connection load test"() {
         // await this.createandconnect(0);
         // var Promises: Promise<any>[] = [];
         // for (var i = 0; i < 200; i++) {
@@ -93,5 +93,5 @@ import { Logger } from '../Logger.js';
         // await this.sleep(1000 * 60 * 30);
     }
 }
-// node_modules\.bin\_mocha 'OpenFlow/src/test/**/loadtest.test.ts'
-// clear && ./node_modules/.bin/_mocha 'OpenFlow/src/test/**/loadtest.test.ts'
+// node_modules\.bin\_mocha "OpenFlow/src/test/**/loadtest.test.ts"
+// clear && ./node_modules/.bin/_mocha "OpenFlow/src/test/**/loadtest.test.ts"
