@@ -61,15 +61,13 @@ export class DatabaseConnection extends events.EventEmitter {
 
     // public static semaphore = Auth.Semaphore(1);
 
-    public registerGlobalWatches: boolean = true;
     public queuemonitoringhandle: NodeJS.Timeout = null;
     public queuemonitoringlastrun: Date = new Date();
-    constructor(mongodburl: string, dbname: string, registerGlobalWatches: boolean) {
+    constructor(mongodburl: string, dbname: string) {
         super();
         this._dbname = dbname;
         this.mongodburl = mongodburl;
         this.setMaxListeners(1500);
-        if (!NoderedUtil.IsNullEmpty(registerGlobalWatches)) this.registerGlobalWatches = registerGlobalWatches;
 
         if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createHistogram("openflow_mongodb_query_seconds", {
@@ -145,7 +143,7 @@ export class DatabaseConnection extends events.EventEmitter {
     public lastWatchFault: Date = new Date();
     public watchFaultHandler: any = null;
     public replicat: string = null;
-    public streams: clsstream[] = [];
+    private stream: clsstream;
     public requests: any = {};
     public host: string = "";
     /**
@@ -160,7 +158,6 @@ export class DatabaseConnection extends events.EventEmitter {
             this.host = os.hostname();
         }
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
-        this.streams = [];
         span?.addEvent("connecting to mongodb");
         Logger.instanse.info("Connecting to mongodb", span);
         const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, maxPoolSize: Config.mongodb_maxpoolsize };
@@ -172,20 +169,17 @@ export class DatabaseConnection extends events.EventEmitter {
         Logger.instanse.silly("Really connected to mongodb", span);
         const errEvent = (error) => {
             this.isConnected = false;
-            this.streams = [];
             Logger.instanse.info("mongodb.error", span);
             Logger.instanse.error(error, span);
             this.emit("disconnected");
         }
         const parseErrEvent = (error) => {
             this.isConnected = false;
-            this.streams = [];
             Logger.instanse.info("mongodb.parseError", span);
             Logger.instanse.error(error, span);
             this.emit("disconnected");
         }
         const closeEvent = () => {
-            this.streams = [];
             this.isConnected = false;
             Logger.instanse.info("mongodb.close", span);
             Logger.instanse.silly("Disconnected from mongodb", span);
@@ -200,7 +194,7 @@ export class DatabaseConnection extends events.EventEmitter {
             .on("close", closeEvent)
         this.db = this.cli.db(this._dbname);
         await Config.db.UpdateIndexTypes(span);
-        this.doRegisterGlobalWatches(span);
+        this.doRegisterGlobalWatch(span);
         // }
         this.isConnected = true;
         Logger.otel.endSpan(span);
@@ -360,6 +354,13 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
+
+            if (!NoderedUtil.IsNullUndefinded(item)) {
+                if(Config.log_all_watches == true) {
+                    Logger.instanse.debug(collectionname + " watch " + next?.fullDocument?._type + " " + next?.operationType + " " + next?.fullDocument?.name, span, { cls: "DatabaseConnection", func: "onchange", collection: collectionname });
+                }
+            }
+
             if (!NoderedUtil.IsNullUndefinded(item)) {
                 _type = item._type;
                 await Logger.DBHelper.CheckCache(collectionname, item, true, false, span);
@@ -540,61 +541,37 @@ export class DatabaseConnection extends events.EventEmitter {
             if (!discardspan) span?.end();
         }
     }
-    async doRegisterGlobalWatches(span: Span) {
-        let collections = await Logger.DBHelper.GetCollections(span);
-        collections = collections.filter(x => x.name.indexOf("system.") === -1);
-        for (var c = 0; c < collections.length; c++) {
-            if(["agents", "config", "mq", "nodered", "openrpa", "users", "workflow", "workitems"].indexOf(collections[c].name) == -1) continue;
-            if (collections[c].type != "collection") continue;
-            if (collections[c].name.endsWith(".files") || collections[c].name.endsWith(".chunks")) continue;
-            this.registerGlobalWatch(collections[c].name, span);
-        }
-    }
-    registerGlobalWatch(collectionname: string, span: Span) {
-        if (!this.registerGlobalWatches) return;
-        span?.addEvent("registerGlobalWatch", { collection: collectionname });
-        if (collectionname == "cvr") return;
+    async doRegisterGlobalWatch(span: Span) {
+        span?.addEvent("registerGlobalWatch");
         try {
-            var exists = this.streams.filter(x => x.collectionname == collectionname);
-            if (exists.length > 0 && exists[0].stream != null) return;
-            if (collectionname.endsWith("_hist")) return;
-            // if (collectionname == "users") return;
-            if (collectionname == "dbusage") return;
-            if (collectionname == "audit") return;
-            Logger.instanse.verbose("register global watch for " + collectionname + " collection", span, { collection: collectionname });
-            var stream = new clsstream();
-            if(exists.length > 0) stream = exists[0];
-            stream.collectionname = collectionname;
-            stream.stream = this.db.collection(collectionname).watch([], { fullDocument: "updateLookup" });
-            stream.stream.on("error", err => {
-                Logger.instanse.error(err, span, { collection: collectionname });
+            Logger.instanse.verbose("register global watch", span);
+            this.stream = new clsstream();
+            this.stream.stream = this.db.watch([], { fullDocument: "updateLookup" });
+            this.stream.stream.on("error", err => {
+                Logger.instanse.error(err, span);
                 try {
-                    stream.stream.close();
+                    this.stream.stream.close();
                 } catch (error) {
                 }
                 this.hadWatchFault = true;
                 this.lastWatchFault = new Date();
-                stream.stream = null;
-                this.streams = this.streams.filter(x => x.collectionname != collectionname);
+                this.stream.stream = null;
                 if(this.watchFaultHandler == null) {
                     this.watchFaultHandler = setTimeout(() => {
                         try {
-                            this.doRegisterGlobalWatches(null);                            
+                            this.doRegisterGlobalWatch(null);
                         } catch (error) {  
-                            Logger.instanse.error(error, span, { collection: collectionname });
+                            Logger.instanse.error(error, span);
                         }
                     }, 5000);            
                 }
             });
-            stream.stream.on("change", async (next:any) => {
-                if(Config.log_all_watches == true) {
-                    Logger.instanse.debug(collectionname + " watch " + next?.fullDocument?._type + " " + next?.operationType + " " + next?.fullDocument?.name, span, { cls: "DatabaseConnection", func: "onchange", collection: collectionname });
-                }
+            this.stream.stream.on("change", async (next:any) => {
+                const collectionname = next.ns.coll;
                 this.GlobalWatchCallback(collectionname, next) 
             });
-            this.streams.push(stream);
         } catch (error) {
-            Logger.instanse.error(error, span, { collection: collectionname });
+            Logger.instanse.error(error, span);
             return false;
         }
     }
@@ -4898,9 +4875,6 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.addEvent("Get collections");
             collections = await DatabaseConnection.toArray(this.db.listCollections());
             collections = collections.filter(x => x.name.indexOf("system.") === -1);
-
-            Logger.instanse.info("Register global watches for each collection", span);
-            this.doRegisterGlobalWatches(span);
 
             await this.UpdateIndexTypes(span);
             Logger.instanse.info("completed", span);

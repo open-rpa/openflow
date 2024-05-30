@@ -1391,9 +1391,6 @@ export class Message {
         msg.id = null;
         // if (Config.supports_watch) {
             msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
-            if(msg.collectionname != null && msg.collectionname != "") {
-                Config.db.registerGlobalWatch(msg.collectionname, null);
-            }
         // } else {
         //     msg.error = "Watch is not supported by this openflow";
         // }

@@ -20,7 +20,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         await Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
         await Config.db.connect(null);
         await Config.Load(null);
         this.rootToken = Crypt.rootToken();

@@ -16,7 +16,7 @@ import { amqpwrapper } from "../amqpwrapper.js";
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         await Logger.configure(true, false);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
+        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
         await Config.db.connect(null);
         await Config.Load(null);
         this.rootToken = Crypt.rootToken();
