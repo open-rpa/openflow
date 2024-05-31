@@ -3562,7 +3562,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             // let collections = await DatabaseConnection.toArray(this.db.listCollections());
                             let collections = await Logger.DBHelper.GetCollections(span);
                             collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
-                                && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
+                                && !x.name.endsWith(".chunks") && x.name != "audit" && !x.name.endsWith("_hist")
                                 && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
                                 && x.name != "oauthtokens" && x.name != "users");
                             for (let i = 0; i < collections.length; i++) {
@@ -3629,7 +3629,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         // let collections = await DatabaseConnection.toArray(this.db.listCollections());
                         let collections = await Logger.DBHelper.GetCollections(span);
                         collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
-                            && x.name != "fs.chunks" && x.name != "audit" && !x.name.endsWith("_hist")
+                            && !x.name.endsWith(".chunks") && x.name != "audit" && !x.name.endsWith("_hist")
                             && x.name != "mailhist" && x.name != "dbusage" && x.name != "domains" && x.name != "config"
                             && x.name != "oauthtokens" && x.name != "users");
                         for (let i = 0; i < collections.length; i++) {
@@ -4663,7 +4663,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 try {
                     const collection = collections[i];
                     if (collection.type != "collection") continue;
-                    if (collection.name == "uploads.files" || collection.name == "uploads.chunks" || collection.name == "fs.chunks") continue;
+                    if (collection.name.endsWith(".chunks") || collection.name.endsWith(".files")) continue;
                     span?.addEvent("Get indexes for " + collection.name);
                     const indexes = await this.db.collection(collection.name).indexes();
                     const indexnames = indexes.map(x => x.name);
@@ -4679,16 +4679,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     } else {
                         switch (collection.name) {
-                            case "fs.files":
-                                // if (indexnames.indexOf("metadata.workflow_1") === -1) {
-                                //     await this.createIndex(collection.name, "metadata.workflow_1", { "metadata.workflow": 1 }, null, span)
-                                // }
-                                if (indexnames.indexOf("metadata._acl") === -1) {
-                                    await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
-                                }
-                                break;
-                            case "fs.chunks":
-                                break;
                             case "workflow":
                                 // if (indexnames.indexOf("_created_1") === -1) {
                                 //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
