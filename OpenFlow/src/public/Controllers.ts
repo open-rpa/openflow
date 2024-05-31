@@ -3147,7 +3147,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
                     }
                 }
                 this.loadData();
-                this.collections = await NoderedUtil.ListCollections({});
+                this.collections = (await NoderedUtil.ListCollections({})).filter(x=> x.name != "system.profile");
             } catch (error) {
                 this.errormessage = error;
             }
@@ -3176,7 +3176,7 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
     }
     async DropCollection() {
         await NoderedUtil.DropCollection({ collectionname: this.collection });
-        this.collections = await NoderedUtil.ListCollections({});
+        this.collections = (await NoderedUtil.ListCollections({})).filter(x=> x.name != "system.profile");
         this.collection = "entities";
         this.loadData();
     }
