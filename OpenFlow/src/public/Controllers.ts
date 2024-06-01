@@ -3175,6 +3175,8 @@ export class EntitiesCtrl extends entitiesCtrl<Base> {
         // this.loadData();
     }
     async DropCollection() {
+        const response = prompt("Are you sure you want to drop the collection " + this.collection + "?\nType the " + this.collection + " below to confirm", "");
+        if(response != "yes" && response != this.collection) return;
         await NoderedUtil.DropCollection({ collectionname: this.collection });
         this.collections = (await NoderedUtil.ListCollections({})).filter(x=> x.name != "system.profile");
         this.collection = "entities";

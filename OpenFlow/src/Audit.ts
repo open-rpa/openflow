@@ -152,7 +152,7 @@ export class Audit {
             log.username = user.username;
             log.instancename = instancename;
             if (!NoderedUtil.IsNullEmpty(image)) {
-                while(image.indexOf("/") != image.lastIndexOf("/")) {
+                while (image.indexOf("/") != image.lastIndexOf("/")) {
                     image = image.substring(image.indexOf("/") + 1);
                 }
             }
@@ -172,7 +172,7 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
-    public static async IssueLicense(username: string,userid: string, customerid: string, remoteip: string, domain: string, months: number, success: boolean, error: string, parent: Span): Promise<void> {
+    public static async IssueLicense(username: string, userid: string, customerid: string, remoteip: string, domain: string, months: number, success: boolean, error: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.IssueLicense", parent);
         try {
             const log: LicenseKey = new LicenseKey();
@@ -183,10 +183,10 @@ export class Audit {
             log.months = months;
             log.customerid = customerid;
             log.domain = domain;
-            if(success) {
+            if (success) {
                 log.name = domain + " " + months + " months";
             } else {
-                if(error != null && error != "") {
+                if (error != null && error != "") {
                     log.name = error;
                 } else {
                     log.name = domain + " failed";
@@ -195,6 +195,25 @@ export class Audit {
             log.username = username;
             log.userid = userid;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span);
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async AuditCollectionAction(user: User, action: string, collectionname: string, success: boolean, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
+        try {
+            Audit.ensure_openflow_logins();
+            const log: Collection = new Collection();
+            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
+            log.success = success;
+            log.userid = user?._id;
+            log.name = user?.name + " " + action + " " + collectionname;
+            log.collectionname = collectionname;
+            log.username = user?.username;
+            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
             Logger.instanse.error(error, span);
         }
@@ -285,5 +304,16 @@ export class auditWorkitem extends Base {
     constructor() {
         super();
         this._type = "workitemqueue";
+    }
+}
+export class Collection extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public collectionname: string;
+    constructor() {
+        super();
+        this._type = "collection";
     }
 }

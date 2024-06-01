@@ -9,6 +9,8 @@
         <select id="menucollections" ng-model="ctrl.collection"
           ng-options="item.name as item.name for item in ctrl.collections" ng-change="ctrl.SelectCollection()">
         </select>
+        <button type="button" class="btn btn-info" ng-click="ctrl.DropCollection()"
+        ng-show="menuctrl.hasrole('admins')"><em class="fas fa-trash"></em></button>
       </div>
 
     </div>

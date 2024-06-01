@@ -41,6 +41,7 @@ const formatBytes = (bytes, decimals = 2) => {
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
 import _jsondiffpatch from "jsondiffpatch";
+import { Audit } from "./Audit.js";
 const jsondiffpatch = _jsondiffpatch.create({
     objectHash: function (obj, index) {
         // try to find an id property, otherwise just use the index in the array
@@ -609,37 +610,60 @@ export class DatabaseConnection extends events.EventEmitter {
         if(await Auth.Token2User(jwt, null)==null) throw new Error("Access denied");
         return result;
     }
+    static reserved_collection_names = ["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"];
     async DropCollection(collectionname: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
+        let user: User = null;
         try {
-            const user: User = await Auth.Token2User(jwt, span);
+            user = await Auth.Token2User(jwt, span);
             if(user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
-            if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
+            if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
+            Audit.AuditCollectionAction(user, "drop", collectionname, true, span);
             await Logger.DBHelper.ClearGetCollections();
         } finally {
+            Audit.AuditCollectionAction(user, "drop", collectionname, false, span);
             Logger.otel.endSpan(span);
         }
     }
     async CreateCollection(collectionname: string, options: any, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("db.CreateCollection", parent);
+        let user: User = null;
         try {
-            const user: User = await Auth.Token2User(jwt, span);
+            if(collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
+            user = await Auth.Token2User(jwt, span);
             if(user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
-            if (["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"].indexOf(collectionname) > -1) throw new Error("Access denied, creating reserved collection " + collectionname);
+            if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, creating reserved collection " + collectionname);
             delete options.jwt;
             delete options.priority;
             delete options.collectionname;
             var _options = JSON.parse(JSON.stringify(options))
+            if(_options.expireAfterSeconds != null && _options.expireAfterSeconds > 0) {
+                if(_options.metadata == null) {
+                    delete _options.expireAfterSeconds;
+                }
+            }
             await this.db.createCollection(collectionname, _options);
+            Audit.AuditCollectionAction(user, "create", collectionname, true, span);
+            if(options.expireAfterSeconds != null && options.expireAfterSeconds > 0) {
+                if(options.metadata == null) {
+                    await this.createIndex(collectionname, null, { "_created": 1 }, { expireAfterSeconds: options.expireAfterSeconds }, span);
+                }
+            }
             await Logger.DBHelper.ClearGetCollections();
-            await this.UpdateIndexTypes(span);
+            setTimeout(async () => {
+                await Logger.DBHelper.ClearGetCollections();
+                await this.UpdateIndexTypes(span);
+            }, 500);
+        } catch (error) {
+            Audit.AuditCollectionAction(user, "create", collectionname, false, span);
+            throw error;
         } finally {
             Logger.otel.endSpan(span);
         }
