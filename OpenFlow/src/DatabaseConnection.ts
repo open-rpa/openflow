@@ -15,6 +15,27 @@ import { WebServer } from "./WebServer.js";
 import { iAgent } from "./commoninterfaces.js";
 import os from "os";
 import { Auth } from "./Auth.js";
+import v8 from "v8";
+
+function getObjectSize(obj) {
+    const objectSerialized = v8.serialize(obj);
+    return objectSerialized.length;
+}
+const formatBytes = (bytes, decimals = 2) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    if (bytes < 0) {
+      bytes = bytes * -1;
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return "-" + parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+    } else {
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+    }
+  }
+  
 
 // tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -1099,9 +1120,24 @@ export class DatabaseConnection extends events.EventEmitter {
         if (hint) {
             _pipe = _pipe.hint(myhint);
         }
-        // @ts-ignore
-        arr = await _pipe.toArray();
-        _pipe.close();
+        let ms = 0;
+        try {
+            let size = 0;
+            for await (const c of _pipe) {
+                size += getObjectSize(c);
+                if(Config.max_memory_query_mb > 0 && size > (Config.max_memory_query_mb * 1024 * 1024)) {
+                    Logger.instanse.error("Query size exceeded " + Config.max_memory_query_mb + " mb (" + formatBytes(size) + " with " + arr.length + " items)", span, { collection: collectionname, user: user?.username, count: arr.length });
+                    throw new Error("Query size exceeded " + Config.max_memory_query_mb + " mb (" + formatBytes(size) + " with " + arr.length + " items)");
+                }
+                arr.push(c as any);
+            }
+            // Logger.instanse.debug("Query gave " + arr.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, ms, count: arr.length });
+            Logger.instanse.debug("Query gave " + arr.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, count: arr.length });
+        } finally {
+            _pipe.close();
+            ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
+        }
+        // arr = await _pipe.toArray();
         if(collectionname === "users") {
             var clients = WebSocketServer.getclients(user)
             for(var i=0; i<arr.length; i++) {
@@ -1113,25 +1149,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
-        } else if(collectionname === "agents") {
-            // var clients = WebSocketServer.getclients(user)
-            // for(var i=0; i<arr.length; i++) {
-            //     if(arr[i]._type == "agent") {
-            //         var agent: iAgent = arr[i] as any;
-            //         var client = clients.find(c => c.user?._id == agent.runas && (c.clientagent != "openrpa" && c.clientagent != "browser"));
-            //         if(client != null ) {
-            //             // @ts-ignore
-            //             arr[i].lastseen = client.lastheartbeat;
-            //         }
-            //     }
-            // }
         }
         span?.setAttribute("results", arr.length);
-        var ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
         if (decrypt) for (let i: number = 0; i < arr.length; i++) { arr[i] = this.decryptentity(arr[i]); }
         DatabaseConnection.traversejsondecode(arr);
-        var log_database_queries = Config.log_database_queries;
-        var log_database_queries_ms = Config.log_database_queries_ms;
         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
             Logger.instanse.debug(JSON.stringify(query), span, { collection: collectionname, user: user?.username, ms, count: arr.length });
         } else {
@@ -1504,12 +1525,32 @@ export class DatabaseConnection extends events.EventEmitter {
         try {
             const ot_end = Logger.otel.startTimer();
             const cursor = this.db.collection(collectionname).aggregate(aggregates, options);
-            // @ts-ignore
-            const items: T[] = await cursor.toArray();
-            cursor.close();
+
+            let items: T[] = [];
+            let ms = 0;
+            try {
+                let size = 0;
+                for await (const c of cursor) {
+                    size += getObjectSize(c);
+                    if(Config.max_memory_aggregate_mb > 0 && size > (Config.max_memory_aggregate_mb * 1024 * 1024)) {
+                        Logger.instanse.error("Aggregate size exceeded " + Config.max_memory_aggregate_mb + " mb (" + formatBytes(size) + " with " + items.length + " items)", span, { collection: collectionname, user: user?.username, count: items.length });
+                        throw new Error("Aggregate size exceeded " + Config.max_memory_aggregate_mb + " mb (" + formatBytes(size) + " with " + items.length + " items)");
+                    }
+                    items.push(c as any);
+                }
+                // Logger.instanse.debug("Aggregate gave " + arr.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, ms, count: arr.length });
+                Logger.instanse.debug("Aggregate gave " + items.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, count: items.length });
+            } finally {
+                ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
+                cursor.close();
+            }
+    
+            // // @ts-ignore
+            // const items: T[] = await cursor.toArray();
+            // cursor.close();
             span?.setAttribute("results", items.length);
 
-            let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
+            // let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
             DatabaseConnection.traversejsondecode(items);
             if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
                 Logger.instanse.debug(aggregatesjson, span, { collection: collectionname, user: user?.username, ms, count: items.length });

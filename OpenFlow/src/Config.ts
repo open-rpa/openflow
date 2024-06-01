@@ -386,6 +386,8 @@ export class Config {
         history_obj_max_kb_size: 10240,
         allow_skiphistory: false,
         max_memory_restart_mb: 0,
+        max_memory_query_mb: 0,
+        max_memory_aggregate_mb: 0,
 
         saml_issuer: "the-issuer",
         // aes_secret: "",
@@ -685,6 +687,8 @@ export class Config {
     
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory"));
     public static max_memory_restart_mb: number = parseInt(Config.getEnv("max_memory_restart_mb"));
+    public static max_memory_query_mb: number = parseInt(Config.getEnv("max_memory_query_mb"));
+    public static max_memory_aggregate_mb: number = parseInt(Config.getEnv("max_memory_aggregate_mb"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer"); 
     public static aes_secret: string = Config.getEnv("aes_secret");

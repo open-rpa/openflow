@@ -7610,6 +7610,8 @@ export class ConfigCtrl extends entityCtrl<RPAWorkflow> {
             {"name": "history_obj_max_kb_size", "type": "number", "default": "10240"},
             {"name": "allow_skiphistory", "type": "boolean", "default": "false"},
             {"name": "max_memory_restart_mb", "type": "number", "default": "0"},
+            {"name": "max_memory_query_mb", "type": "number", "default": "0"},
+            {"name": "max_memory_aggregate_mb", "type": "number", "default": "0"},
             {"name": "saml_issuer", "type": "string", "default": "the-issuer"},
             {"name": "wapid_mail", "type": "string", "default": ""},
             {"name": "wapid_pub", "type": "string", "default": ""},
