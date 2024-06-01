@@ -541,11 +541,15 @@ export class HouseKeeping {
 
           }
           totalusage += usage;
-          try {
-            await bulkInsert.execute();
-            // if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
-            if (usage > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
 
+          try {
+            // @ts-ignore
+            var insertCount = bulkInsert.length;
+            if(insertCount > 0) {
+              await bulkInsert.execute();
+              // if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
+            }
+            if (usage > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
           } catch (error) {
             Logger.instanse.error(error, span, { cls: "Housekeeping" });
           }
