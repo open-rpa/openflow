@@ -459,7 +459,10 @@ export class DBHelper {
             var key = ("users_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindRoleByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
-            return Role.assign(item);
+            const result = Role.assign(item);
+            // @ts-ignore
+            delete result.nodered;
+            return result as any;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -694,7 +697,10 @@ export class DBHelper {
             var key = ("rolename_" + name).toString();
             let item = await this.memoryCache.wrap(key, async () => { return this.FindRoleByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
-            return Role.assign(item);
+            const result = Role.assign(item);
+            // @ts-ignore
+            delete result.nodered;
+            return result as any;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -859,12 +865,17 @@ export class DBHelper {
             Logger.instanse.verbose(`Adding new role ${name}`, span);
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
             role = Role.assign(role);
+            // @ts-ignore
+            delete role.nodered;
             if (Config.force_add_admins) Base.addRight(role, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(role, role._id, role.name, [Rights.full_control]);
             if (Config.force_add_admins) Base.removeRight(role, role._id, [Rights.delete]);
             Logger.instanse.verbose(`Updating ACL for new role ${name}`, span);
             await this.Save(role, jwt, span);
-            return Role.assign(role);
+            const result = Role.assign(role);
+            // @ts-ignore
+            delete result.nodered;
+            return result as any;
         } finally {
             Logger.otel.endSpan(span);
         }

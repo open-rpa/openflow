@@ -875,6 +875,8 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                             } else if (arr[0]._type === "role") {
                                 let r: Role = Role.assign(arr[0]);
+                                // @ts-ignore
+                                delete r.nodered;                                
                                 if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
                                     Logger.instanse.silly("Assigning " + item.name + " read permission to " + r.name, span);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
@@ -928,6 +930,8 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     } else if (arr[0]._type === "role") {
                         let r: Role = Role.assign(arr[0]);
+                        // @ts-ignore
+                        delete r.nodered;                                
                         if (Base.hasRight(r, item._id, Rights.read)) {
                             Base.removeRight(r, item._id, [Rights.read]);
 
@@ -3158,9 +3162,15 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
                     // TODO: Check user has permission to this customer
                     let custusers: Role = await this.getbyid<Role>(customer.users, "users", q.jwt, true, span);
-                    if (custusers != null) custusers = Role.assign(custusers);
+                    if (custusers != null) {
+                        custusers = Role.assign(custusers);
+                        // @ts-ignore
+                        delete custusers.nodered;
+                    }
                     if (custusers != null && !custusers.IsMember(q.item._id)) {
                         custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
+                        // @ts-ignore
+                        delete custusers.nodered;
                         custusers.AddMember(q.item);
                         await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
                         await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);

@@ -135,6 +135,8 @@ export class Message {
                         this.UnknownCommand();
                         break;
                 }
+            } else {
+                Logger.instanse.debug("Discard " + this.command + " due to missing jwt", span);
             }
             if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
         } catch (error) {
@@ -218,7 +220,10 @@ export class Message {
         } else if (!NoderedUtil.IsNullEmpty(this.jwt)) {
             try {
                 this.tuser = await Auth.Token2User(this.jwt, null);
-                if(this.tuser == null) throw new Error("Access denied");
+                if(this.tuser == null) {
+                    // Invalid or expired token
+                    return false;
+                }
             } catch (error) {
                 if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, Logger.parsecli(cli));
                 if (this.command == "signin") {
@@ -330,11 +335,38 @@ export class Message {
                         Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, Logger.parsecli(cli));
                         process = false;
                         if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
+
+                        if(this.replyto == null || this.replyto == "") {
+                            this.Reply("error");
+                        } else {
+                            this.command = "error";                    
+                        }
+                        const error = new Error("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        this.data = JSON.stringify({"message": error.message});
+                        delete this.jwt;
+                        delete this.tuser;
+                        return resolve(this);
+
                     }
                 } else if (command == "signin") {
                     if (!await this.EnsureJWT(cli, false)) {
+                        this.parseSignAgent(cli, span);
                         if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
+                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, Logger.parsecli(cli));
                         process = false;
+
+                        if(this.replyto == null || this.replyto == "") {
+                            this.Reply("error");
+                        } else {
+                            this.command = "error";                    
+                        }
+                        const error = new Error("Discard " + command + " due to invalid or expired jwt for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
+                        this.data = JSON.stringify({"message": error.message});
+                        delete this.jwt;
+                        delete this.tuser;
+                        return resolve(this);
+
+                        // throw new Error("Discard " + command + " due to invalid or expired jwt for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                     }
                 }
                 if (process) {
@@ -1632,6 +1664,33 @@ export class Message {
         }
         return tuser;
     }
+    private parseSignAgent(cli: WebSocketServerClient, parent: Span) {
+        try {
+            const msg = SigninMessage.assign(this.data);
+            // @ts-ignore
+            if(msg.validateonly != null) msg.validate_only = msg.validateonly;
+            if (cli != null) {
+                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
+                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+                // @ts-ignore
+                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.agent)) cli.clientagent = msg.agent as any;
+                // @ts-ignore
+                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.version)) cli.clientversion = msg.version;
+                if (NoderedUtil.IsNullEmpty(cli.clientagent)) cli.clientagent = "unknown"
+                // @ts-ignore
+                if (cli.clientagent == "assistent") cli.clientagent = "assistant"
+                // @ts-ignore
+                if (cli.clientagent == "webapp" || cli.clientagent == "aiotwebapp") {
+                    cli.clientagent = "browser"
+                }
+                if (cli.clientagent != null && cli.clientagent.toLocaleLowerCase() == "rdservice") {
+                    cli.clientagent = "rdservice"
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
     public async Signin(cli: WebSocketServerClient, parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.Signin", parent);
@@ -1651,30 +1710,7 @@ export class Message {
             msg = SigninMessage.assign(this.data);
             // @ts-ignore
             if(msg.validateonly != null) msg.validate_only = msg.validateonly;
-            if (cli != null) {
-                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
-                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
-                // @ts-ignore
-                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.agent)) cli.clientagent = msg.agent as any;
-                // @ts-ignore
-                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.version)) cli.clientversion = msg.version;
-            }
-            // @ts-ignore
-            if(cli?.clientagent == "") cli.clientagent = "unknown"
-            // @ts-ignore
-            if(cli?.clientagent == "assistent") cli.clientagent = "assistant"
-            // @ts-ignore
-            if (cli?.clientagent == "webapp" || cli?.clientagent == "aiotwebapp") {
-                cli.clientagent = "browser"
-            }
-            // @ts-ignore
-            if (cli?.clientagent == "RDService" || cli?.clientagent == "rdservice") {
-                cli.clientagent = "rdservice"
-            }
-            // @ts-ignore
-            if (cli?.clientagent == "webapp" || cli?.clientagent == "aiotwebapp") {
-                cli.clientagent = "browser"
-            }
+            this.parseSignAgent(cli, span);
 
             let originialjwt = msg.jwt;
             let tuser: User = null;

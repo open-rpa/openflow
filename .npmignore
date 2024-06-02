@@ -10,7 +10,6 @@ logs
 package-lock.json
 tsconfig.json
 OpenFlow
-OpenFlowNodeRED
 temp
 letsencrypt
 webpack.config.js
