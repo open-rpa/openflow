@@ -22,7 +22,8 @@
             "stopOnEntry": false,
             "type": "node",
             "env": {
-                "otel_log_level": "info"
+                "otel_log_level": "info",
+                "GIT_DEBUG": "1"
             },
             "resolveSourceMapLocations": [
                 "${workspaceFolder}/**",
