@@ -2,4 +2,3 @@ package-lock.json
 node_modules
 logs
 dist
-ee
