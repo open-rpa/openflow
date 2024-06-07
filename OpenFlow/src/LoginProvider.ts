@@ -1204,6 +1204,14 @@ export class LoginProvider {
             grafana_url: Config.grafana_url,
             llmchat_queue: Config.llmchat_queue
         }
+        if(Config.enable_analytics) {
+            if(Config.otel_trace_url != null && Config.otel_trace_url != "") {
+                res2["otel_trace_url"] = Config.otel_trace_url;
+            }
+            if(Config.otel_metric_url != null && Config.otel_metric_url != "") {
+                res2["otel_metric_url"] = Config.otel_metric_url;
+            }
+        }
         return res2;
     }
     static async get_config(req: any, res: any, next: any): Promise<void> {

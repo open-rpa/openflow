@@ -109,13 +109,13 @@
         <input ng-model="ctrl.model.slug" ng-show="menuctrl.hasrole('admins')" class="form-control"
           ng-disabled="ctrl.loading==true" required="required" />
       </div>
-      <div class="col-sm">
+      <div class="col-sm" ng-hide="ctrl.model._id != null && ctrl.model._id != '' && (ctrl.model.image == '' || ctrl.model.image == null)">
         <label for="name" class="required" translate lib="web">image</label>
         <select id="images" ng-model="ctrl.model.image" ng-disabled="ctrl.loading==true" class="form-control"
           ng-options="item.image as item.name for item in menuctrl.WebSocketClientService.agent_images" ng-change="ctrl.ImageUpdated()">
         </select>
       </div>
-      <div class="col-sm">
+      <div class="col-sm" ng-hide="ctrl.model._id != null && ctrl.model._id != '' && (ctrl.model.image == '' || ctrl.model.image == null)">
         <label for="name" class="required" translate lib="web">plan</label>
         <select id="resoource" ng-model="ctrl.model.stripeprice" ng-disabled="ctrl.loading==true" class="form-control"
           ng-options="item.stripeprice as item.name for item in ctrl.products"  ng-change="ctrl.PlanUpdated()">
