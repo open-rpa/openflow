@@ -1202,15 +1202,14 @@ export class LoginProvider {
             validlicense: Logger.License.validlicense,
             forceddomains: forceddomains,
             grafana_url: Config.grafana_url,
-            llmchat_queue: Config.llmchat_queue
+            llmchat_queue: Config.llmchat_queue,
+            enable_analytics: Config.enable_analytics
         }
-        if(Config.enable_analytics) {
-            if(Config.otel_trace_url != null && Config.otel_trace_url != "") {
-                res2["otel_trace_url"] = Config.otel_trace_url;
-            }
-            if(Config.otel_metric_url != null && Config.otel_metric_url != "") {
-                res2["otel_metric_url"] = Config.otel_metric_url;
-            }
+        if(Config.otel_trace_url != null && Config.otel_trace_url != "") {
+            res2["otel_trace_url"] = Config.otel_trace_url;
+        }
+        if(Config.otel_metric_url != null && Config.otel_metric_url != "") {
+            res2["otel_metric_url"] = Config.otel_metric_url;
         }
         return res2;
     }
