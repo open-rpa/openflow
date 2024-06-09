@@ -597,7 +597,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
   console.timeLog("snapshot", "start");
   let objectcounter = 0;
   let concurrency = 100;
-  let formatcontent = (content: any) => JSON.stringify(content, null, 2);
+  const formatcontent = (content: any) => JSON.stringify(content, null, 2);
   let updated = false;
   const mainref = await repo.getHeadRef();
   const branches = await repo.getRefs();
@@ -607,89 +607,78 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
   const obj = await repo.getObject(undefined, snapshotobjects.sha);
   const objects = JSON.parse(obj.data.toString("utf8"));
   let promises = [];
-  for(let j = 0; j < objects.length; j++) {
-    const obj = objects[j];
+  const treeMap = new Map();
+
+  // Initialize treeMap and subtree
+  for (const obj of objects) {
     let treeobject = branchtree.find(x => x.name == obj.collection);
-    if(treeobject == null) {
+    if (!treeobject) {
       treeobject = {
         mode: 16384,
         name: obj.collection,
         sha: "",
         subtree: []
-      }
+      };
       updated = true;
       branchtree.push(treeobject);
     }
-    treeobject.subtree = [];            
+    treeobject.subtree = [];
+    treeMap.set(obj.collection, treeobject);
   }
-  for(let j = 0; j < objects.length; j++) {
-    const obj = objects[j];
-    if(obj.ids != null) {
-      for(let k = 0; k < obj.ids.length; k++) {
-        const id = obj.ids[k];
-        let treeobject = branchtree.find(x => x.name == obj.collection);
+
+  // Process objects
+  for (const obj of objects) {
+    if (obj.ids) {
+      for (const id of obj.ids) {
+        const treeobject = treeMap.get(obj.collection);
         const tree = treeobject.subtree;
-       
         const filename = id + ".json";
-        const content =  await Config.db.GetOne<any>({ collectionname: obj.collection, query: { _id: id }, jwt }, parent);
-        let object = {
+        const content = await Config.db.GetOne<any>({ collectionname: obj.collection, query: { _id: id }, jwt }, parent);
+        const object = {
           "objectType": 3, // blob
           "data": Buffer.from(formatcontent(content)),
           "contentType": "text/plain",
-          "sha": ""
+          "sha": tools.objectSha({ "objectType": 3, "data": Buffer.from(formatcontent(content)), "contentType": "text/plain" })
         };
-        object.sha = tools.objectSha(object);
         promises.push(repo.storeObject(object));
-        if(tree.find(x => x.name == filename) == null) {
+        const existingFile = tree.find(x => x.name == filename);
+        if (!existingFile) {
           tree.push({ mode: 33188, name: filename, sha: object.sha });
           updated = true;
-        } else {
-          for(let l = 0; l < tree.length; l++) {
-            if(tree[l].name == filename) {
-              if(tree[l].sha != object.sha) {
-                tree[l].sha = object.sha;
-                updated = true;
-              }                      
-            }
-          }
+        } else if (existingFile.sha !== object.sha) {
+          existingFile.sha = object.sha;
+          updated = true;
         }
-        if(promises.length >= concurrency) {
+        if (promises.length >= concurrency) {
           await Promise.all(promises);
           objectcounter += promises.length;
           promises = [];
         }
       }
     }
-    if(obj.pipeline != null) {
+    if (obj.pipeline) {
       const cursor = await Config.db.db.collection(obj.collection).aggregate(obj.pipeline);
       for await (const content of cursor) {
         const id = content._id;
-        let treeobject = branchtree.find(x => x.name == obj.collection);
+        const treeobject = treeMap.get(obj.collection);
         const tree = treeobject.subtree;
         const filename = id + ".json";
-        let object = {
+        const object = {
           "objectType": 3, // blob
           "data": Buffer.from(formatcontent(content)),
           "contentType": "text/plain",
-          "sha": ""
+          "sha": tools.objectSha({ "objectType": 3, "data": Buffer.from(formatcontent(content)), "contentType": "text/plain" })
         };
-        object.sha = tools.objectSha(object);
         promises.push(repo.storeObject(object));
-        // await repo.storeObject(object);
-        if(tree.find(x => x.name == filename) == null) {
+        const existingFile = tree.find(x => x.name == filename);
+        if (!existingFile) {
           tree.push({ mode: 33188, name: filename, sha: object.sha });
           updated = true;
-        } else {
-          for(let l = 0; l < tree.length; l++) {
-            if(tree[l].name == filename) {
-              if(tree[l].sha != object.sha) {
-                tree[l].sha = object.sha;
-                updated = true;
-              }                      
-            }
-          }
+        } else if (existingFile.sha !== object.sha) {
+          existingFile.sha = object.sha;
+          updated = true;
         }
-        if(promises.length >= concurrency) {
+        if (promises.length >= concurrency) {
           await Promise.all(promises);
           objectcounter += promises.length;
           promises = [];
@@ -697,10 +686,10 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
       }
     }
   }
-  if(promises.length >= concurrency) {
+
+  if (promises.length > 0) {
     await Promise.all(promises);
     objectcounter += promises.length;
-    promises = [];
   }
 
   const user: User = req.user as any;
