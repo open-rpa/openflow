@@ -287,7 +287,7 @@ export class GitProxy {
               html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches and ${tags.length} tags`;
 
             }
-            html += ` <a href="/git/${_repos[i]}/snapshot">snapshot</a>`;
+            // html += ` <a href="/git/${_repos[i]}/snapshot">snapshot</a>`;
             html += ` <a href="/git/${_repos[i]}/delete">del</a></li>`;
           }
           var keys = Object.keys(GitProxy.repos);
@@ -338,7 +338,8 @@ button {
             if (ref == "HEAD") continue;
             ref = ref.split("/")[ref.split("/").length - 1]
             html += `<li><a href="/git/${reponame}/${type}/${encodeURIComponent(ref)}">branch ${ref}</a>`;
-            html += ` <a href="/git/${reponame}/${type}/${encodeURIComponent(ref)}/snapshot">snapshot</a></li>`;
+            // html += ` <a href="/git/${reponame}/${type}/${encodeURIComponent(ref)}/snapshot">snapshot</a>`;
+            html += `</li>`;
           }
           const parts = repo.repoName.split("/");
           html += `</ul>`
@@ -458,7 +459,13 @@ git push -u origin main</pre></p>`
               html += `>tag ${ref}</option>`;
             }
           }
-          html += `</select><button onclick="copyToClipboard('clone')">Copy clone command</button><br />`;
+          html += `</select> <button onclick="copyToClipboard('clone')">Copy clone command</button>`;
+          if(files.find(x => x.name == "objects.json") != null) {
+            html += ` <button onclick="window.location.href = '/git/${reponame}/snapshot'">Snapshot</button>`;
+          }
+          html += `<br />`;
+
+
           if (blobentry != null && blobentry.mode != 40000 && blobentry.mode != 16384) {
             const contentType = mimetype.lookup(blobentry.name) || "application/octet-stream";
             if (req.query.download != null) {
@@ -535,143 +542,13 @@ git push -u origin main</pre></p>`
           res.redirect("/git");
           next();
         } else if (snapshotrequest == true) {
-          const mainref = await repo.getHeadRef();
-          const branches = await repo.getRefs();
-          const branch = branches.find(x => x.ref == mainref);
-          const branchtree = await repo.GetTree(branch.sha, true);
-          const snapshotobjects = branchtree.find(x => x.name == "objects.json");
-          const obj = await repo.getObject(undefined, snapshotobjects.sha);
-          const objects = JSON.parse(obj.data.toString("utf8"));
-          let updated = false;
-          for(let j = 0; j < objects.length; j++) {
-            const obj = objects[j];
-            if(obj.ids != null) {
-              for(let k = 0; k < obj.ids.length; k++) {
-                const id = obj.ids[k];
 
-                let treeobject = branchtree.find(x => x.name == obj.collection);
-                if(treeobject == null) {
-                  treeobject = {
-                    mode: 16384,
-                    name: obj.collection,
-                    sha: "",
-                    subtree: []
-                  }
-                  updated = true;
-                  branchtree.push(treeobject);
-                }
-                const tree = treeobject.subtree;
-                
-
-                const filename = id + ".json";
-                const content = await Config.db.GetOne<any>({ collectionname: obj.collection, query: { _id: id }, jwt }, parent);
-                let object = {
-                  "objectType": 3, // blob
-                  "data": Buffer.from(JSON.stringify(content)),
-                  "contentType": "text/plain",
-                  "sha": ""
-                };
-                object.sha = tools.objectSha(object);
-                await repo.storeObject(object);
-                if(tree.find(x => x.name == filename) == null) {
-                  tree.push({ mode: 33188, name: filename, sha: object.sha });
-                  updated = true;
-                } else {
-                  for(let l = 0; l < tree.length; l++) {
-                    if(tree[l].name == filename) {
-                      if(tree[l].sha != object.sha) {
-                        tree[l].sha = object.sha;
-                        updated = true;
-                      }                      
-                    }
-                  }
-                }
-              }
-            }
-            if(obj.pipeline != null) {
-              const cursor = await Config.db.db.collection(obj.collection).aggregate(obj.pipeline);
-              for await (const content of cursor) {
-
-                const id = content._id;
-
-                let treeobject = branchtree.find(x => x.name == obj.collection);
-                if(treeobject == null) {
-                  treeobject = {
-                    mode: 16384,
-                    name: obj.collection,
-                    sha: "",
-                    subtree: []
-                  }
-                  updated = true;
-                  branchtree.push(treeobject);
-                }
-                const tree = treeobject.subtree;
-                
-
-                const filename = id + ".json";
-                let object = {
-                  "objectType": 3, // blob
-                  "data": Buffer.from(JSON.stringify(content)),
-                  "contentType": "text/plain",
-                  "sha": ""
-                };
-                object.sha = tools.objectSha(object);
-                await repo.storeObject(object);
-                if(tree.find(x => x.name == filename) == null) {
-                  tree.push({ mode: 33188, name: filename, sha: object.sha });
-                  updated = true;
-                } else {
-                  for(let l = 0; l < tree.length; l++) {
-                    if(tree[l].name == filename) {
-                      if(tree[l].sha != object.sha) {
-                        tree[l].sha = object.sha;
-                        updated = true;
-                      }                      
-                    }
-                  }
-                }
-
-
-              }
-
-            }
-          }
-
-          if(!updated) {
-            res.status(200).send(`Nothing new to snapshot<p><a href="/git">back</p>`);
-            return next();
-          }
-
-          for(let k = 0; k < branchtree.length; k++) {
-            if(branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
-              const subtreeobj = tools.createTree(branchtree[k].subtree);
-              await repo.storeObject(subtreeobj);    
-              branchtree[k].sha = subtreeobj.sha;
-            }
-          }
-          const treeobj = tools.createTree(branchtree);
-          await repo.storeObject(treeobj);
-
-
-          const user: User = req.user as any;
-          const username = user.name || user.username || "guest";
-          const email = user.email || user.username || "guest";
-          // Create and store the new commit object
-          const author = `${username} <${email}> ${Math.floor(Date.now() / 1000)} +0000`;
-          const committer = `${username} <${email}> ${Math.floor(Date.now() / 1000)} +0000`;
-          const message = "Manual snapshot";
-
-          const commit = tools.createCommit({ tree: treeobj.sha, parent: branch.sha, author, committer, message });
-          await repo.storeObject(commit);
-
-          // Update the branch reference
-          await repo.upsertRef(mainref, commit.sha);
-
-          res.redirect("/git/" + reponame);
-          next();
-          // res.status(200).send(`Snapshot created as${commit.sha} <p><a href="/git">back</p>`);
+          const result = await snapshot(repo, req, res, next, tools, jwt, parent);
+          // res.redirect("/git/" + reponame);
           // next();
-
+          res.status(200).send(`${result}<p><a href="/git">back</p>`);
+          return next();
+      
         } else {
           console.log("Not Found", url);
           res.status(404).send("Not Found");
@@ -713,3 +590,161 @@ git push -u origin main</pre></p>`
   } // GetToken
 
 } // class
+
+async function snapshot(repo, req, res, next, tools, jwt, parent) {
+  const startTime = Date.now();
+  console.time("snapshot");
+  console.timeLog("snapshot", "start");
+  let objectcounter = 0;
+  let concurrency = 10;
+  let formatcontent = (content: any) => JSON.stringify(content, null, 2);
+  let updated = false;
+  const mainref = await repo.getHeadRef();
+  const branches = await repo.getRefs();
+  const branch = branches.find(x => x.ref == mainref);
+  const branchtree = await repo.GetTree(branch.sha, true);
+  const snapshotobjects = branchtree.find(x => x.name == "objects.json");
+  const obj = await repo.getObject(undefined, snapshotobjects.sha);
+  const objects = JSON.parse(obj.data.toString("utf8"));
+  let promises = [];
+  for(let j = 0; j < objects.length; j++) {
+    const obj = objects[j];
+    let treeobject = branchtree.find(x => x.name == obj.collection);
+    if(treeobject == null) {
+      treeobject = {
+        mode: 16384,
+        name: obj.collection,
+        sha: "",
+        subtree: []
+      }
+      updated = true;
+      branchtree.push(treeobject);
+    }
+    treeobject.subtree = [];            
+  }
+  for(let j = 0; j < objects.length; j++) {
+    const obj = objects[j];
+    if(obj.ids != null) {
+      for(let k = 0; k < obj.ids.length; k++) {
+        const id = obj.ids[k];
+        let treeobject = branchtree.find(x => x.name == obj.collection);
+        const tree = treeobject.subtree;
+       
+        const filename = id + ".json";
+        const content =  await Config.db.GetOne<any>({ collectionname: obj.collection, query: { _id: id }, jwt }, parent);
+        let object = {
+          "objectType": 3, // blob
+          "data": Buffer.from(formatcontent(content)),
+          "contentType": "text/plain",
+          "sha": ""
+        };
+        object.sha = tools.objectSha(object);
+        promises.push(repo.storeObject(object));
+        if(tree.find(x => x.name == filename) == null) {
+          tree.push({ mode: 33188, name: filename, sha: object.sha });
+          updated = true;
+        } else {
+          for(let l = 0; l < tree.length; l++) {
+            if(tree[l].name == filename) {
+              if(tree[l].sha != object.sha) {
+                tree[l].sha = object.sha;
+                updated = true;
+              }                      
+            }
+          }
+        }
+        if(promises.length >= concurrency) {
+          await Promise.all(promises);
+          objectcounter += promises.length;
+          promises = [];
+        }
+      }
+    }
+    if(obj.pipeline != null) {
+      const cursor = await Config.db.db.collection(obj.collection).aggregate(obj.pipeline);
+      for await (const content of cursor) {
+        const id = content._id;
+        let treeobject = branchtree.find(x => x.name == obj.collection);
+        const tree = treeobject.subtree;
+        const filename = id + ".json";
+        let object = {
+          "objectType": 3, // blob
+          "data": Buffer.from(formatcontent(content)),
+          "contentType": "text/plain",
+          "sha": ""
+        };
+        object.sha = tools.objectSha(object);
+        promises.push(repo.storeObject(object));
+        // await repo.storeObject(object);
+        if(tree.find(x => x.name == filename) == null) {
+          tree.push({ mode: 33188, name: filename, sha: object.sha });
+          updated = true;
+        } else {
+          for(let l = 0; l < tree.length; l++) {
+            if(tree[l].name == filename) {
+              if(tree[l].sha != object.sha) {
+                tree[l].sha = object.sha;
+                updated = true;
+              }                      
+            }
+          }
+        }
+        if(promises.length >= concurrency) {
+          await Promise.all(promises);
+          objectcounter += promises.length;
+          promises = [];
+        }
+      }
+    }
+  }
+  if(promises.length >= concurrency) {
+    await Promise.all(promises);
+    objectcounter += promises.length;
+    promises = [];
+  }
+
+  const user: User = req.user as any;
+  const username = user.name || user.username || "guest";
+  const email = user.email || user.username || "guest";
+  if(!updated) {
+    const ms = (Date.now() - startTime)
+    const msbyobjct = ms / objectcounter;
+    Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " discarded after " + (Date.now() - startTime) / 1000 + " seconds, due to no new/changed items", null, { cls: "GitProxy" });
+
+    objectcounter += promises.length;
+    console.timeLog("snapshot", "completed with " + objectcounter + " objects " + msbyobjct + " ms/object discarded due to no new/changed items");
+    console.timeEnd("snapshot");
+
+    return `Nothing new to snapshot, scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds ( ${msbyobjct}ms/object )`;
+  }
+
+  for(let k = 0; k < branchtree.length; k++) {
+    if(branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
+      const subtreeobj = tools.createTree(branchtree[k].subtree);
+      await repo.storeObject(subtreeobj);    
+      branchtree[k].sha = subtreeobj.sha;
+    }
+  }
+  const treeobj = tools.createTree(branchtree);
+  await repo.storeObject(treeobj);
+
+  // Create and store the new commit object
+  const author = `${username} <${email}> ${Math.floor(Date.now() / 1000)} +0000`;
+  const committer = `${username} <${email}> ${Math.floor(Date.now() / 1000)} +0000`;
+  const message = "Manual snapshot";
+
+  const commit = tools.createCommit({ tree: treeobj.sha, parent: branch.sha, author, committer, message });
+  await repo.storeObject(commit);
+
+  // Update the branch reference
+  await repo.upsertRef(mainref, commit.sha);
+
+  const ms = (Date.now() - startTime)
+  const msbyobjct = ms / objectcounter;
+  Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " completed in " + (Date.now() - startTime) / 1000 + " seconds", null, { cls: "GitProxy" });
+
+  objectcounter += promises.length;
+  console.timeLog("snapshot", "completed with " + objectcounter + " objects " + msbyobjct + " ms/object");
+  console.timeEnd("snapshot");
+  return `Snapshot completed with ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds ( ${msbyobjct}ms/object )`;
+}
