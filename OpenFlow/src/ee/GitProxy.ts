@@ -9,10 +9,13 @@ import { Auth } from "../Auth.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import mimetype from "mimetype";
 import _ from "angular-route";
+let concurrency = 100;
 export class GitProxy {
   static repos: any = {};
   static async configure(app: express.Express, parent: Span): Promise<void> {
-    const { MongoGitRepository, tools } = await import("@openiap/cloud-git-mongodb");
+    const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
+    Protocol.setBatchSize(200);
+    concurrency = 200;
     tools.setDebugHandler((...args) => {
       if (Config.log_git) {
         let msg = "";
@@ -546,7 +549,7 @@ git push -u origin main</pre></p>`
           const result = await snapshot(repo, req, res, next, tools, jwt, parent);
           // res.redirect("/git/" + reponame);
           // next();
-          res.status(200).send(`${result}<p><a href="/git">back</p>`);
+          res.status(200).send(`${result}<p><a href="/git/${reponame}">back</p>`);
           return next();
       
         } else {
@@ -596,7 +599,6 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
   console.time("snapshot");
   console.timeLog("snapshot", "start");
   let objectcounter = 0;
-  let concurrency = 100;
   const formatcontent = (content: any) => JSON.stringify(content, null, 2);
   let updated = false;
   const mainref = await repo.getHeadRef();
@@ -626,63 +628,48 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     treeMap.set(obj.collection, treeobject);
   }
 
-  // Process objects
+  async function handleObject(obj, id, content) {
+    const treeobject = treeMap.get(obj.collection);
+    const tree = treeobject.subtree;
+    const filename = id + ".json";
+    if(content == null) content = await Config.db.GetOne<any>({ collectionname: obj.collection, query: { _id: id }, jwt }, parent);
+    const object = {
+      "objectType": 3, // blob
+      "data": Buffer.from(formatcontent(content)),
+      "contentType": "text/plain",
+      "sha": tools.objectSha({ "objectType": 3, "data": Buffer.from(formatcontent(content)), "contentType": "text/plain" })
+    };
+    promises.push(repo.storeObject(object));
+    const existingFile = tree.find(x => x.name == filename);
+    if (!existingFile) {
+      tree.push({ mode: 33188, name: filename, sha: object.sha });
+      updated = true;
+    } else if (existingFile.sha !== object.sha) {
+      existingFile.sha = object.sha;
+      updated = true;
+    }
+    objectcounter++;
+    if (promises.length >= concurrency) {
+      await Promise.all(promises);
+      promises = [];
+    }
+    if(objectcounter % 100 == 0) {
+      const ms = (Date.now() - startTime)
+      const msbyobjct = Math.round(ms / objectcounter);
+      console.timeLog("snapshot", "handled " + objectcounter + " objects ( " + msbyobjct + " ms/object )");
+    }
+  }
+
   for (const obj of objects) {
     if (obj.ids) {
       for (const id of obj.ids) {
-        const treeobject = treeMap.get(obj.collection);
-        const tree = treeobject.subtree;
-        const filename = id + ".json";
-        const content = await Config.db.GetOne<any>({ collectionname: obj.collection, query: { _id: id }, jwt }, parent);
-        const object = {
-          "objectType": 3, // blob
-          "data": Buffer.from(formatcontent(content)),
-          "contentType": "text/plain",
-          "sha": tools.objectSha({ "objectType": 3, "data": Buffer.from(formatcontent(content)), "contentType": "text/plain" })
-        };
-        promises.push(repo.storeObject(object));
-        const existingFile = tree.find(x => x.name == filename);
-        if (!existingFile) {
-          tree.push({ mode: 33188, name: filename, sha: object.sha });
-          updated = true;
-        } else if (existingFile.sha !== object.sha) {
-          existingFile.sha = object.sha;
-          updated = true;
-        }
-        if (promises.length >= concurrency) {
-          await Promise.all(promises);
-          objectcounter += promises.length;
-          promises = [];
-        }
+        await handleObject(obj, id, null);
       }
-    }
-    if (obj.pipeline) {
+    } else if (obj.pipeline) {
       const cursor = await Config.db.db.collection(obj.collection).aggregate(obj.pipeline);
       for await (const content of cursor) {
         const id = content._id;
-        const treeobject = treeMap.get(obj.collection);
-        const tree = treeobject.subtree;
-        const filename = id + ".json";
-        const object = {
-          "objectType": 3, // blob
-          "data": Buffer.from(formatcontent(content)),
-          "contentType": "text/plain",
-          "sha": tools.objectSha({ "objectType": 3, "data": Buffer.from(formatcontent(content)), "contentType": "text/plain" })
-        };
-        promises.push(repo.storeObject(object));
-        const existingFile = tree.find(x => x.name == filename);
-        if (!existingFile) {
-          tree.push({ mode: 33188, name: filename, sha: object.sha });
-          updated = true;
-        } else if (existingFile.sha !== object.sha) {
-          existingFile.sha = object.sha;
-          updated = true;
-        }
-        if (promises.length >= concurrency) {
-          await Promise.all(promises);
-          objectcounter += promises.length;
-          promises = [];
-        }
+        await handleObject(obj, id, content);
       }
     }
   }
@@ -697,7 +684,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
   const email = user.email || user.username || "guest";
   if(!updated) {
     const ms = (Date.now() - startTime)
-    const msbyobjct = ms / objectcounter;
+    const msbyobjct = Math.round(ms / objectcounter);
     Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " discarded after " + (Date.now() - startTime) / 1000 + " seconds, due to no new/changed items", null, { cls: "GitProxy" });
 
     objectcounter += promises.length;
@@ -729,7 +716,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
   await repo.upsertRef(mainref, commit.sha);
 
   const ms = (Date.now() - startTime)
-  const msbyobjct = ms / objectcounter;
+  const msbyobjct = Math.round(ms / objectcounter);
   Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " completed in " + (Date.now() - startTime) / 1000 + " seconds", null, { cls: "GitProxy" });
 
   objectcounter += promises.length;
