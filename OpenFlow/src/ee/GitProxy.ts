@@ -596,7 +596,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
   console.time("snapshot");
   console.timeLog("snapshot", "start");
   let objectcounter = 0;
-  let concurrency = 10;
+  let concurrency = 100;
   let formatcontent = (content: any) => JSON.stringify(content, null, 2);
   let updated = false;
   const mainref = await repo.getHeadRef();
