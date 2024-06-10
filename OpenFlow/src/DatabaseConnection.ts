@@ -3409,6 +3409,7 @@ export class DatabaseConnection extends events.EventEmitter {
     async InsertOrUpdateMany<T extends Base>(items: T[], collectionname: string, uniqeness: string, skipresults: boolean, w: number, j: boolean, jwt: string, parent: Span): Promise<T[]> {
         const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateMany", parent);
         let result: T[] = [];
+        let errors: any[] = [];
         try {
             if (NoderedUtil.IsNullUndefinded(items) || items.length == 0) { throw new Error("Cannot create null item"); }
             if (NoderedUtil.IsNullEmpty(jwt)) {
@@ -3473,8 +3474,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (Promises.length > 0) {
                     const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
-                    const errors = tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
-                    if (errors.length > 0) throw errors[0];
+                    errors = errors.concat(tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error)))
                     update = update.concat(tempresults.map(x => x.result));
                     result = result.concat(tempresults.map(x => x.result));
                 }
@@ -3499,8 +3499,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         Promises.push(this.UpdateOne(um, span));
                     }
                     const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
-                    const errors = tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error));
-                    if (errors.length > 0) throw errors[0];
+                    errors = errors.concat(tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error)))
                     result = result.concat(tempresults.map(x => x.result));
                 }
             }
@@ -3508,6 +3507,9 @@ export class DatabaseConnection extends events.EventEmitter {
             if (insert.length > 0) {
                 let res = await this.InsertMany<T>(insert, collectionname, w, j, jwt, span);
                 result = result.concat(res);
+            }
+            if (errors.length > 0) {
+                throw errors[0];
             }
             Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + insert.length + " items and updated " + update.length + " items in database", span, { collection: collectionname, user: user?.username, count: insert.length + update.length });
         } finally {
