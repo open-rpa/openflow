@@ -14,7 +14,7 @@ export class GitProxy {
   static repos: any = {};
   static async configure(app: express.Express, parent: Span): Promise<void> {
     const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
-    Protocol.setBatchSize(200);
+    tools.setBatchSize(200);
     concurrency = 200;
     tools.setDebugHandler((...args) => {
       if (Config.log_git) {
@@ -94,7 +94,7 @@ export class GitProxy {
             if (parts[parts.length - 1] == "git-receive-pack") {
               right = Rights.update;
             }
-            var arr = await repo.collection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray()
+            var arr = await repo.repocollection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray()
             if (arr != null && arr.length > 0) {
               const main = arr[0];
               if (!DatabaseConnection.hasAuthorization(req.user, main as any, right)) {
@@ -129,8 +129,8 @@ export class GitProxy {
           return next();
         } else {
           if (repo != null) {
-            // var arr = await repo.collection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray()
-            var arr = await repo.collection.find({ repo: repo.repoName, _type: "hash" }).toArray()
+            // var arr = await repo.repocollection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray()
+            var arr = await repo.repocollection.find({ repo: repo.repoName, _type: "hash" }).toArray()
             if (arr != null && arr.length > 0) {
               const main = arr[0];
               if (!DatabaseConnection.hasAuthorization(req.user as any, main as any, Rights.read)) {
@@ -529,7 +529,7 @@ git push -u origin main</pre></p>`
           res.status(200).send(html);
           next();
         } else if (deleterequest == true) {
-          var arr = await repo.collection.find({ repo: repo.repoName, _type: "hash" }).toArray()
+          var arr = await repo.repocollection.find({ repo: repo.repoName, _type: "hash" }).toArray()
           if (arr != null && arr.length > 0) {
             const main = arr[0];
             if (!DatabaseConnection.hasAuthorization(req.user as any, main as any, Rights.delete)) {
