@@ -40,6 +40,7 @@ export class Crypt {
         const span: Span = Logger.otel.startSubSpan("Crypt.ValidatePassword", parent);
         try {
             if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
+            if(Config.enable_guest && user.username == "guest") return true;
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
         } finally {
