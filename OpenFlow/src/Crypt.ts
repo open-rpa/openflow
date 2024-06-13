@@ -18,6 +18,9 @@ export class Crypt {
     }
     static guestUser(): User {
         const result: User = new User();
+        result.validated = true;
+        result.formvalidated = true;
+        result.emailvalidated = true;
         result._type = "user"; result.name = "guest"; result.username = "guest"; result._id = "65cb30c40ff51e174095573c";
         result.roles = [];
         return result;
