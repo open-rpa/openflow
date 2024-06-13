@@ -13,6 +13,9 @@ export class Auth {
         try {
             if (username === null || username === undefined || username === "") { throw new Error("Username cannot be null"); }
             span?.setAttribute("username", username);
+            if(Config.enable_guest && username == "guest") {
+                return Crypt.guestUser();
+            }
             if (password === null || password === undefined || password === "") { throw new Error("Password cannot be null"); }
             const user: User = await Logger.DBHelper.FindByUsername(username, null, span);
             if (user === null || user === undefined) { return null; }
