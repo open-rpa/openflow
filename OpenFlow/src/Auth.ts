@@ -14,7 +14,7 @@ export class Auth {
             if (username === null || username === undefined || username === "") { throw new Error("Username cannot be null"); }
             span?.setAttribute("username", username);
             if(Config.enable_guest && username == "guest") {
-                return Crypt.guestUser();
+                return await Crypt.guestUser();
             }
             if (password === null || password === undefined || password === "") { throw new Error("Password cannot be null"); }
             const user: User = await Logger.DBHelper.FindByUsername(username, null, span);
@@ -32,7 +32,7 @@ export class Auth {
         if(jwt == null || jwt.trim() == "") {
             if (Config.enable_guest == true) {
                 // Assign to ensure overload functions are available
-                user = User.assign(Crypt.guestUser());
+                user = User.assign(await Crypt.guestUser());
                 return user;
             }
             throw new Error("Empty token is not valid");
@@ -79,7 +79,7 @@ export class Auth {
         if (tuser != null && tuser._id == "65cb30c40ff51e174095573c") {
             if(Config.enable_guest == true) {
                 // Assign to ensure overload functions are available
-                user = User.assign(Crypt.guestUser());
+                user = User.assign(await Crypt.guestUser());
                 return user;
             } else {
                 throw new Error("Guest user is not enabled");
@@ -205,7 +205,7 @@ export class Auth {
         if(jwt == null || jwt.trim() == "") {
             if (Config.enable_guest == true) {
                 // Assign to ensure overload functions are available
-                user = User.assign(Crypt.guestUser());
+                user = User.assign(await Crypt.guestUser());
                 return user;
             }
             throw new Error("Empty token is not valid");
@@ -255,7 +255,7 @@ export class Auth {
         if (tuser != null && tuser._id == "65cb30c40ff51e174095573c") {
             if(Config.enable_guest == true) {
                 // Assign to ensure overload functions are available
-                user = User.assign(Crypt.guestUser());
+                user = User.assign(await Crypt.guestUser());
                 return user;
             } else {
                 throw new Error("Guest user is not enabled");

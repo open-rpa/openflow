@@ -45,7 +45,7 @@ export class GitProxy {
             res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
             return res.status(401).send("Authentication required.")
           } else {
-            jwt = await Auth.User2Token(Crypt.guestUser(), Config.shorttoken_expires_in, null);
+            jwt = await Auth.User2Token(await Crypt.guestUser(), Config.shorttoken_expires_in, null);
           }
         }
         // @ts-ignore

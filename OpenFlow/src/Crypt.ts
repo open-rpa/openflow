@@ -16,13 +16,15 @@ export class Crypt {
         result.roles = []; result.roles.push(new Rolemember("admins", WellknownIds.admins));
         return result;
     }
-    static guestUser(): User {
-        const result: User = new User();
+    static async guestUser(): Promise<User> {
+        let result: User = new User();
         result.validated = true;
         result.formvalidated = true;
         result.emailvalidated = true;
         result._type = "user"; result.name = "guest"; result.username = "guest"; result._id = "65cb30c40ff51e174095573c";
         result.roles = [];
+        Logger.instanse.verbose(`Decorating guest user with roles`, null);
+        result = await Logger.DBHelper.DecorateWithRoles(result, null);
         return result;
     }
     static rootToken(): string {

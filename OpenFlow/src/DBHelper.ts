@@ -616,7 +616,7 @@ export class DBHelper {
                             Logger.instanse.silly("adding (from roles2) " + r.name + " " + r._id, span);
                         }
                     });
-                    if (users_results.length > 0) {
+                    if (users_results.length > 0 && user.username != "guest") {
                         users_results[0].roles.forEach(r => {
                             const exists = user.roles.filter(x => x._id == r._id);
                             if (exists.length == 0) {
@@ -634,7 +634,7 @@ export class DBHelper {
                     }
                 }
                 let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
-                if (hasusers.length == 0) {
+                if (hasusers.length == 0 && user.username != "guest") {
                     user.roles.push(new Rolemember("users", WellknownIds.users));
                     Logger.instanse.verbose("also adding user to users " + WellknownIds.users, span);
                     // Logger.instanse.debug(user.name + " missing from users, adding it", span);
@@ -659,7 +659,7 @@ export class DBHelper {
                 }
             }
             let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
-            if (hasusers.length == 0) {
+            if (hasusers.length == 0 && user.username != "guest") {
                 user.roles.push(new Rolemember("users", WellknownIds.users));
             }
             let updated: boolean = false;

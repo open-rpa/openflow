@@ -39,13 +39,13 @@
           lib="web">workitems</span></a>
 
       <a href="#/Workflows" class="sidebar-link" id="menuworkflows"
-      ng-show="menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide form workflows')"
+      ng-show="!menuctrl.hasrole('menu hide form workflows')"
         ng-class="{active: menuctrl.PathIs(['/Workflows', '/Form/'])}"><span translate
           lib="web">menuworkflows</span></a>
 
       <a href="#/RPAWorkflows" class="sidebar-link" id="menurpaworkflows"
         ng-class="{active: menuctrl.PathIs(['/RPAWorkflows', '/RPAWorkflow/'])}"
-        ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
+        ng-show="(!menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span
           translate lib="web">rpaworkflows</span></a>
 
       <a href="{{menuctrl.WebSocketClientService.grafana_url}}"
@@ -72,7 +72,7 @@
           ng-class="{active: menuctrl.PathIs('/Auditlogs')}"><span translate lib="web">auditlogs</span></a>
 
       </div>
-      <div ng-show="menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide misc')">
+      <div ng-show="!menuctrl.hasrole('menu hide misc')">
         <h5 class="sidebar-title">Misc management</h5>
         <div class="sidebar-divider"></div>
 
@@ -84,7 +84,7 @@
 
         <a href="#/Entities" class="sidebar-link" id="menuentities"
           ng-class="{active: menuctrl.PathIs(['/Entities/', '/Entity/'])}"
-          ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"><span
+          ng-show="(!menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"><span
             translate lib="web">entities</span></a>
 
         <a class="sidebar-link" href="#/Clients" id="menuclients"
@@ -93,7 +93,8 @@
             translate lib="web">clients</span></a>
         
 
-        <a class="sidebar-link" href="#/Credentials" id="menuadmincredentials"
+        <a class="sidebar-link" href="#/Credentials" id="menuadmincredentials" 
+          ng-show="menuctrl.hasrole('users')"
           ng-class="{active: menuctrl.PathIs(['/Credentials', '/Credential', '/Credential/'])}"><span translate
             lib="web">credentials</span></a>
         <a class="sidebar-link" href="#/EntityRestrictions"
@@ -101,6 +102,7 @@
           ng-show="menuctrl.WebSocketClientService.enable_entity_restriction && menuctrl.hasrole('admins')"><span
             translate lib="web">entityrestrictions</span></a>
         <a class="sidebar-link" href="#/Forms" id="menuadminforms"
+          ng-show="menuctrl.hasrole('users')"
           ng-class="{active: menuctrl.PathIs(['/Forms', '/EditForm', '/EditForm/'])}"><span translate
             lib="web">forms</span></a>
         <a class="sidebar-link" href="#/FormResources" id="menuadminformresources"
@@ -118,7 +120,9 @@
           ng-show="menuctrl.hasrole('admins')"><span translate lib="web">oauthclients</span></a>
         <a class="sidebar-link" id="menuadminfiles" ng-class="{active: menuctrl.PathIs(['/Files'])}"
           href="#/Files"><span translate lib="web">files</span></a>
-        <a class="sidebar-link" ng-class="{active: menuctrl.PathIs(['/hdrobots'])}" href="#/hdrobots"><span translate
+        <a class="sidebar-link" ng-class="{active: menuctrl.PathIs(['/hdrobots'])}" 
+        ng-show="menuctrl.hasrole('customer admins')"
+        href="#/hdrobots"><span translate
             lib="web">hdrobots</span></a>
 
         <a class="sidebar-link" href="#/Customers"
@@ -215,14 +219,14 @@
           <div class="dropdown-menu dropdown-menu-right w-200" aria-labelledby="navbar-dropdown-toggle-btn-1" id="">
 
             <a href="#/Entities" class="dropdown-item"
-            ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"            
+            ng-show="(!menuctrl.hasrole('menu hide entities')) || menuctrl.hasrole('admins')"            
             ><span translate
                 lib="web">entities</span></a>
             <a href="#/Workflows" class="dropdown-item"
-            ng-show="menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide form workflows')"
+            ng-show="!menuctrl.hasrole('menu hide form workflows')"
             ><span translate lib="web">menuworkflows</span></a>
             <a href="#/RPAWorkflows" class="dropdown-item" 
-            ng-show="(menuctrl.hasrole('users') && !menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span translate
+            ng-show="(!menuctrl.hasrole('menu hide rpaworkflows')) || menuctrl.hasrole('admins')"><span translate
                 lib="web">rpaworkflows</span></a>
             <a href="#/Clients" class="dropdown-item" 
             ng-show="menuctrl.hasrole('personal nodered users')"><span translate
