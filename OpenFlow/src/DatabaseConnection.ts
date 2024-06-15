@@ -3581,8 +3581,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (arr.length === 1) {
                     // since admins by default can do everything using getbasequery, we need to check if the user really has delete
-                    if (!DatabaseConnection.hasAuthorization(user, arr[0].metadata, Rights.delete)) {
-                        throw new Error(`[${user.name}] Access denied, missing delete permission`);
+                    if(arr[0].metadata != null) {
+                        if (!DatabaseConnection.hasAuthorization(user, arr[0].metadata, Rights.delete)) {
+                            throw new Error(`[${user.name}] Access denied, missing delete permission`);
+                        }
+                    } else {
+                        if (!DatabaseConnection.hasAuthorization(user, arr[0] as any, Rights.delete)) {
+                            throw new Error(`[${user.name}] Access denied, missing delete permission`);
+                        }
                     }
 
                     const ot_end = Logger.otel.startTimer();
