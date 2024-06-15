@@ -121,7 +121,11 @@ export class GitProxy {
                   return res.status(401).send("Access denied to create " + repo.repoName + " for " + (req.user as any).name)
                 }
               }
-            }
+              var exists = repo._acl.find(x => x._id == (req.user as any)._id);
+              if(exists == null) {
+                repo._acl.push({ _id: (req.user as any)._id, name: (req.user as any).name, rights: Rights.full_control });
+              }  
+            } // new
             next();
           }
 
@@ -602,12 +606,11 @@ git push -u origin main</pre></p>`
           res.status(200).send(`${result}<p><a href="/git/${reponame}">back</p>`);
           return next();
         } else if (restorerequest == true) {
-          const result = await restoresnapshot(repo, tree);
+          const result = await restoresnapshot(req, repo, tree);
           res.status(200).send(`${result.split(`\n`).join(`<br />`)}<p><a href="/git/${reponame}">back</p>`);
           return next();
-      
         } else {
-          console.log("Not Found", url);
+          Logger.instanse.info(`Not Found ${url}`, null, { cls: "GitProxy" });
           res.status(404).send("Not Found");
           next();
         }
@@ -648,7 +651,7 @@ git push -u origin main</pre></p>`
 
 } // class
 
-async function restoresnapshot(repo, tree) {
+async function restoresnapshot(req, repo, tree) {
   const startTime = Date.now();
   let objectcounter = 0;
   let rootfiles: any[] = [];
@@ -705,12 +708,15 @@ async function restoresnapshot(repo, tree) {
           uploadStream.on('error', reject);
         });
         // *ARGH* Stupid mongoDB not support setting uploadDate
-        // so SHA will change for metadata doing next restore, but file will be the same
-        // Config.db.db.collection(collectionname).updateOne({ _id: metadata._id }, { $set: { uploadDate: metadata.uploadDate } });
-        console.log("complated")
+        // so SHA will change for metadata doing next restore, but the actual file will be the same
       } else {
         const content = JSON.parse(filecontent.data.toString("utf8"));
-        await collection.updateOne({ _id: content._id }, { $set: content }, { upsert: true });
+        let query = { _id: content._id };
+        let _query = { $and: [query, Config.db.getbasequery(req.user, [Rights.update], collectionname)] };
+        const opresult = await collection.updateOne(_query, { $set: content }, { upsert: true });
+        if(opresult.matchedCount == 0 && opresult.upsertedCount == 0) {
+          result += `Object ${content._id} in ${collectionname} failed ${JSON.stringify(opresult)}\n`;
+        }
       }
       objectcounter++;
     }
@@ -787,10 +793,10 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
         if(existingFile != null) {
           const metasha = tools.objectSha({objectType: 3, data: Buffer.from(formatcontent(metadata))});
           if(existingFile.sha == metasha) {
-            console.log(`File ${metadata.filename} #${id} in ${collection} already exists`);
+            Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists`, null, { cls: "GitProxy" });
             return;
           } else {
-            console.log("File " + metadata.filename + " #" + id + " in " + collection + " changed, old sha", existingFile.sha, "new sha", metasha);
+            Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists  changed, old sha ${existingFile.sha}, new sha ${metasha}`, null, { cls: "GitProxy" });
           }
         }
         
@@ -808,7 +814,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
             resolve({});
           });
         });
-        console.log(`Downloaded file ${metadata.filename} #${id} from ${collection}`);
+        Logger.instanse.debug(`Downloaded file ${metadata.filename} #${id} from ${collection}`, null, { cls: "GitProxy" });
         const fileext = metadata.filename.split(".").pop();
         filename = id + "." + fileext;
         object.contentType = metadata.contentType;
@@ -854,6 +860,8 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
           await handleObject(obj.collection, id, null);
         }
       } else if (obj.pipeline) {
+        const base = Config.db.getbasequery(req.user, [Rights.read], obj.collection);
+        obj.pipeline.unshift({ $match: base });
         const cursor = await Config.db.db.collection(obj.collection).aggregate(obj.pipeline);
         for await (const content of cursor) {
           const id = content._id;
