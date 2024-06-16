@@ -14,6 +14,10 @@ import { GridFSBucket, ObjectId } from "mongodb";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 export class GitProxy {
   static repos: any = {};
+  static stream: any = null;
+  static hadWatchFault: boolean = false;
+  static lastWatchFault: Date = new Date();
+  static watchFaultHandler: any = null;
   static async configure(app: express.Express, parent: Span): Promise<void> {
     const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
     tools.setBatchSize(200);
@@ -573,7 +577,9 @@ git push -u origin main</pre></p>`
             if (file.mode == 40000 || file.mode == 16384) continue;
             if (file.name.toLowerCase() == "readme.md") readme = (await repo.getObject(undefined, file.sha)).data.toString("utf8");
             html += `<li><a href="${baseblobpath}${encodeURIComponent(file.name)}">${file.name}</a>`;
-            html += ` | <a href="${baseblobpath}${encodeURIComponent(file.name)}?download=${Math.random().toString(36).substring(7)}">download</a></li>`;
+            html += ` | <a href="${baseblobpath}${encodeURIComponent(file.name)}?download=${Math.random().toString(36).substring(7)}">download</a>`;
+            // html += `${file.sha}`;
+            html += `</li>`;
           }
           html += "</ul>";
           if(readme != null && readme != "") {
@@ -654,49 +660,39 @@ git push -u origin main</pre></p>`
 async function restoresnapshot(req, repo, tree) {
   const startTime = Date.now();
   let objectcounter = 0;
-  let rootfiles: any[] = [];
-  if(tree == null || tree == "") return "No tree specified";
-  rootfiles = await repo.GetTree(tree, false);
-  if(rootfiles == null || rootfiles.length == 0) return "No files found for " + tree;
-  let filesha = rootfiles.find(x => x.name == "objects.json").sha;
-  if(filesha == null) return "Definition file objects.json found";
-  let filecontent = await repo.getObject(undefined, filesha);
-  if(filecontent == null) return "Definition file objects.json found";
-  let objects = JSON.parse(filecontent.data.toString("utf8"));
-  let result = "";
-  let collections = [];
-  for(let i = 0; i < objects.length; i++) {
-    const collectionname = objects[i].collection;
-    const treeobject = rootfiles.find(x => x.name == collectionname)
-    if(treeobject == null) {
-      result += "Collection " + collectionname + " not found in commit\n";
-      continue;
-    }
-    if(collections.indexOf(collectionname) == -1) collections.push(collectionname);
-  }
-  for(let i = 0; i < collections.length; i++) {
-    const collectionname = collections[i];
-    const treeobject = rootfiles.find(x => x.name == collectionname)
-    const treesha = treeobject.sha;
-    const files = await repo.GetTree(treesha, false); 
-    const collection = Config.db.db.collection(collectionname);
-    for(let j = 0; j < files.length; j++) {
-      const file = files[j];
-      if(file.mode != 33188) continue;
+  console.time("restoresnapshot");
+  console.timeLog("restoresnapshot", "start");
+  let insertedobjectcounter = 0;
+  let updatedobjectcounter = 0;
+  let promises = [];
+  try {
+    let rootfiles: any[] = [];
+    if(tree == null || tree == "") return "No tree specified";
+    rootfiles = await repo.GetTree(tree, false);
+    if(rootfiles == null || rootfiles.length == 0) return "No files found for " + tree;
+    let filesha = rootfiles.find(x => x.name == "objects.json").sha;
+    if(filesha == null) return "Definition file objects.json found";
+    let filecontent = await repo.getObject(undefined, filesha);
+    if(filecontent == null) return "Definition file objects.json found";
+    let objects = JSON.parse(filecontent.data.toString("utf8"));
+    let result = "";
+    let collections = [];
+    async function handleObject(collection, collectionname,files, file) {
       const filecontent = await repo.getObject(undefined, file.sha);
       if(collectionname.endsWith(".files")) {
-        if(!file.name.endsWith(".json")) continue;
+        if(!file.name.endsWith(".json")) return;
         const metadata = JSON.parse(filecontent.data.toString("utf8"));
         const bucketName = collectionname.substring(0, collectionname.length - 6);
         const fileexists = await Config.db.GetOne<any>({ collectionname: collectionname, query: { _id: metadata._id }, jwt: Crypt.rootToken() }, null);
         if(fileexists != null) {
           // result += `File ${metadata.filename} #${metadata._id} in ${collectionname} already exists\n`;
-          continue;
-        }       
+          return;
+        }
+        insertedobjectcounter++;
         const bucket = new GridFSBucket(Config.db.db, { bucketName });
 
         const fileext = metadata.filename.split(".").pop();
-        const filename = metadata._id + "." + fileext;
+        const filename = metadata._id + ".obj." + fileext;
         const treeobject = files.find(x => x.name == filename);
         const content = await repo.getObject(undefined, treeobject.sha);
 
@@ -717,14 +713,62 @@ async function restoresnapshot(req, repo, tree) {
         if(opresult.matchedCount == 0 && opresult.upsertedCount == 0) {
           result += `Object ${content._id} in ${collectionname} failed ${JSON.stringify(opresult)}\n`;
         }
+        if(opresult.modifiedCount > 0) {
+          updatedobjectcounter++;
+        } else if(opresult.upsertedCount > 0) {
+          insertedobjectcounter++;
+        }
       }
-      objectcounter++;
     }
+    for(let i = 0; i < objects.length; i++) {
+      const collectionname = objects[i].collection;
+      const treeobject = rootfiles.find(x => x.name == collectionname)
+      if(treeobject == null) {
+        result += "Collection " + collectionname + " not found in commit\n";
+        continue;
+      }
+      if(collections.indexOf(collectionname) == -1) collections.push(collectionname);
+    }
+    for(let i = 0; i < collections.length; i++) {
+      const collectionname = collections[i];
+      const treeobject = rootfiles.find(x => x.name == collectionname)
+      const treesha = treeobject.sha;
+      const files = await repo.GetTree(treesha, false); 
+      const collection = Config.db.db.collection(collectionname);
+      for(let j = 0; j < files.length; j++) {
+        const file = files[j];
+        if(file.mode != 33188) continue;
+        promises.push(handleObject(collection, collectionname, files, file));
+        objectcounter++;
+        if (promises.length >= concurrency) {
+          await Promise.all(promises);
+          promises = [];
+        }
+        if(objectcounter % 100 == 0 && objectcounter > 0) {
+          const ms = (Date.now() - startTime)
+          const msbyobjct = Math.round(ms / objectcounter);
+          console.timeLog("restoresnapshot", "handled " + objectcounter + " objects ( " + msbyobjct + " ms/object )");
+        }
+      }
+    }
+    if (promises.length >= concurrency) {
+      await Promise.all(promises);
+      promises = [];
+    }
+    const ms = (Date.now() - startTime)
+    const msbyobjct = Math.round(ms / objectcounter);
+    if(msbyobjct == Infinity) {
+      result += `Restore scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds  (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated)`;
+    } else {
+      result += `Restore scanned scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated / ${msbyobjct}ms pr object)`;
+    }
+    return result;    
+  } catch (error) {
+    console.error("error", error.message);
+    return "Internal Server Error: " + error.message;
+  } finally {
+    console.timeEnd("restoresnapshot");
   }
-  const ms = (Date.now() - startTime)
-  const msbyobjct = Math.round(ms / objectcounter);
-  result += `Snapshot restored ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds ( ${msbyobjct}ms/object )`
-  return result;
 }
 async function snapshot(repo, req, res, next, tools, jwt, parent) {
   try {
@@ -732,6 +776,9 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     console.time("snapshot");
     console.timeLog("snapshot", "start");
     let objectcounter = 0;
+    let insertedobjectcounter = 0;
+    let updatedobjectcounter = 0;
+    let deletedobjectcounter = 0;
     const formatcontent = (content: any) => JSON.stringify(content, null, 2);
     let updated = false;
     const mainref = await repo.getHeadRef();
@@ -773,7 +820,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
       treeobject.subtree = [];
     }
 
-    async function handleObject(collection, id, content) {
+    async function handleObject(collection, id, content, ismetadata = false) {
       const treeobject = getTreeObject(collection);
       let filename = id + ".json";
       const object = {
@@ -781,27 +828,31 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
         contentType: "text/plain",
         sha: ""
       };
+      objectcounter++;
 
-      if(collection.endsWith(".files") && content == null) {
-        const metadata = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
+      if(collection.endsWith(".files") && ismetadata == false) {
+        let metadata = content;
+        if(content == null) {
+          metadata = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
+        }
         if(metadata == null) {
           throw new Error("File not found in " + collection + " " + id);
         }
-
 
         const existingFile = treeobject.origin.find(x => x.name == filename);
         if(existingFile != null) {
           const metasha = tools.objectSha({objectType: 3, data: Buffer.from(formatcontent(metadata))});
           if(existingFile.sha == metasha) {
+            const entries = treeobject.origin.filter(x => x.name.startsWith(id + "."));
+            if(entries.length != 2) throw new Error("Invalid entries in " + collection + " " + id);
+            treeobject.subtree.push(entries[0]);
+            treeobject.subtree.push(entries[1]);
             Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists`, null, { cls: "GitProxy" });
             return;
           } else {
-            Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists  changed, old sha ${existingFile.sha}, new sha ${metasha}`, null, { cls: "GitProxy" });
+            Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists changed, old sha ${existingFile.sha}, new sha ${metasha}`, null, { cls: "GitProxy" });
           }
         }
-        
-
-
         const bucketName = collection.substring(0, collection.length - 6);
         const bucket = new GridFSBucket(Config.db.db, { bucketName });
         let downloadStream = bucket.openDownloadStream(safeObjectID(id));
@@ -810,16 +861,19 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
           content = Buffer.concat([content, chunk]);
         });
         await new Promise((resolve, reject) => {
+          downloadStream.on('error', function (error) {
+            reject(new Error(`Error downloading file ${metadata.filename} #${id} from ${collection}: ${error.message}`));
+          });
           downloadStream.on('end', function () {
             resolve({});
           });
         });
         Logger.instanse.debug(`Downloaded file ${metadata.filename} #${id} from ${collection}`, null, { cls: "GitProxy" });
         const fileext = metadata.filename.split(".").pop();
-        filename = id + "." + fileext;
+        filename = id + ".obj." + fileext;
         object.contentType = metadata.contentType;
         object["data"] = content;
-        handleObject(collection, id, metadata);
+        await handleObject(collection, id, metadata, true);
       } else if(content == null) {
         if(content == null) content = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
         object["data"] = Buffer.from(formatcontent(content));
@@ -834,16 +888,19 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
 
       promises.push(repo.storeObject(object));
       const existingFile = treeobject.origin.find(x => x.name == filename);
-      treeobject.subtree.push({ mode: 33188, name: filename, sha: object.sha });
-      if (!existingFile) {
-        updated = true;
-        objectcounter++;
-      } else if (existingFile.sha !== object.sha) {
-        updated = true;
-        objectcounter++;
+      if(treeobject.subtree.find(x => x.name == filename) == null) {
+        treeobject.subtree.push({ mode: 33188, name: filename, sha: object.sha });
+        if (!existingFile) {
+          updated = true;
+          insertedobjectcounter++;
+        } else if (existingFile.sha !== object.sha) {
+          updated = true;
+          updatedobjectcounter++;
+        }
       }
       // objectcounter++;
       if (promises.length >= concurrency) {
+      // if (promises.length >= 1) {
         await Promise.all(promises);
         promises = [];
       }
@@ -862,6 +919,9 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
       } else if (obj.pipeline) {
         const base = Config.db.getbasequery(req.user, [Rights.read], obj.collection);
         obj.pipeline.unshift({ $match: base });
+        if(obj.collection.endsWith(".files")) {
+          obj.pipeline.push({ $sort: { uploadDate: 1 } });
+        }
         const cursor = await Config.db.db.collection(obj.collection).aggregate(obj.pipeline);
         for await (const content of cursor) {
           const id = content._id;
@@ -872,38 +932,52 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
 
     if (promises.length > 0) {
       await Promise.all(promises);
-      // objectcounter += promises.length;
+      promises = [];
     }
 
     const user: User = req.user as any;
     const username = user.name || user.username || "guest";
     const email = user.email || user.username || "guest";
+    // update deletedobjectcounter
+    for(let k = 0; k < branchtree.length; k++) {
+      if(branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
+        const subtreeobj = tools.createTree(branchtree[k].subtree);
+        if(subtreeobj.sha != branchtree[k].sha) {
+          updated = true;
+        }
+      }
+    }
+    
     if(!updated) {
       const ms = (Date.now() - startTime)
       const msbyobjct = Math.round(ms / objectcounter);
       Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " discarded after " + (Date.now() - startTime) / 1000 + " seconds, due to no new/changed items", null, { cls: "GitProxy" });
 
-      objectcounter += promises.length;
-      if( Number.isFinite(msbyobjct) || msbyobjct == Infinity) {
+      if(msbyobjct == Infinity) {
         console.timeLog("snapshot", "completed with " + objectcounter + " objects discarded due to no new/changed items");
       } else {
         console.timeLog("snapshot", "completed with " + objectcounter + " objects " + msbyobjct + " ms/object discarded due to no new/changed items");
       }
-      console.timeEnd("snapshot");
-      if(Number.isFinite(msbyobjct) || msbyobjct == Infinity) {
-        return `Nothing new to snapshot, scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds`;
+      if(msbyobjct == Infinity) {
+        return `Nothing new to snapshot, scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds  (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated)`;
       }
-      return `Nothing new to snapshot, scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds ( ${msbyobjct}ms/object )`;
+      return `Nothing new to snapshot, scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated / ${msbyobjct}ms pr object)`;
     }
 
     for(let k = 0; k < branchtree.length; k++) {
       if(branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
-        const subtreeobj = tools.createTree(branchtree[k].subtree);
-        await repo.storeObject(subtreeobj);
-        branchtree[k].sha = subtreeobj.sha;
+        const subtree = branchtree[k].subtree;
+        const subtreeobj = tools.createTree(subtree);
+        if(subtreeobj.sha != branchtree[k].sha) {
+          await repo.storeObject(subtreeobj);
+          branchtree[k].sha = subtreeobj.sha;
+        } else {
+          console.log("No change in subtree " + branchtree[k].name);
+        }
       }
     }
     const treeobj = tools.createTree(branchtree);
+    const test = tools.parseTree(treeobj);
     await repo.storeObject(treeobj);
 
     // Create and store the new commit object
@@ -925,20 +999,21 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " completed in " + (Date.now() - startTime) / 1000 + " seconds", null, { cls: "GitProxy" });
 
     // objectcounter += promises.length;
-    if(Number.isFinite(msbyobjct) || msbyobjct == Infinity) {
+    if(msbyobjct == Infinity) {
       console.timeLog("snapshot", "completed with " + objectcounter + " objects");
     } else {
       console.timeLog("snapshot", "completed with " + objectcounter + " objects " + msbyobjct + " ms/object");
     }
-    console.timeEnd("snapshot");
     if(repo.postProcess != null) {
       repo.postProcess();
     }
-    if(Number.isFinite(msbyobjct) || msbyobjct == Infinity) {
-      return `Snapshot completed with ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds`;
+    if(msbyobjct == Infinity) {
+      return `Snapshot completed with ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated)`;
     }
-    return `Snapshot completed with ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds ( ${msbyobjct}ms/object )`;
+    return `Snapshot completed with ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated / ${msbyobjct}ms pr object)`;
   } catch (error) {
     return `Snapshot failed with ${error.message}`;
+  } finally {
+    console.timeEnd("snapshot");
   }
 }
