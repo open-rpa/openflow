@@ -9,6 +9,7 @@ import { Auth } from "../Auth.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import mimetype from "mimetype";
 import _ from "angular-route";
+const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
 let concurrency = 100;
 import { GridFSBucket, ObjectId } from "mongodb";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
@@ -18,8 +19,8 @@ export class GitProxy {
   static hadWatchFault: boolean = false;
   static lastWatchFault: Date = new Date();
   static watchFaultHandler: any = null;
+  static zlib: boolean = true;
   static async configure(app: express.Express, parent: Span): Promise<void> {
-    const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
     tools.setBatchSize(200);
     concurrency = 200;
     tools.setDebugHandler((...args) => {
@@ -85,6 +86,7 @@ export class GitProxy {
         let repo = GitProxy.repos[reponame];
         if (repo == null && reponame != null && reponame != "") {
           repo = new MongoGitRepository(Config.db.db, mongocol, reponame);
+          repo.zlib = GitProxy.zlib;
           GitProxy.repos[reponame] = repo;
           repo.authorize = async (req, res, next) => {
             if (req.user == null) {
@@ -302,6 +304,7 @@ export class GitProxy {
               }
               await Config.db.InsertOne<any>(newbranch, "git", 1, true, Crypt.rootToken(), parent);
               repo = new MongoGitRepository(Config.db.db, mongocol, reponame);
+              repo.zlib = GitProxy.zlib;
               repo._acl = newbranch._acl;
               GitProxy.repos[reponame] = repo;
               repo.createExpress(app, "/git/" + reponame);
@@ -535,9 +538,12 @@ git push -u origin main</pre></p>`
                 "Content-Disposition": `attachment; filename="${blobentry.name}"`,
               });
               if (repo.db != null) {
-                const file = await repo.db.collection(repo.bucketName + ".files").findOne({ "filename": `blob_${blobentry.sha}` });
-                const downloadStream = repo.bucket.openDownloadStream(file._id);
-                downloadStream.pipe(res);
+                // const entries = await repo.collection.find({ "sha": blobentry.sha }).toArray()
+                // const dbentry = entries[0]
+                // const file = await repo.db.collection(repo.bucketName + ".files").findOne({ "filename": `blob_${blobentry.sha}` });
+                // const downloadStream = repo.bucket.openDownloadStream(file._id);
+                // downloadStream.pipe(res);
+                res.send((await repo.getObject(undefined, blobentry.sha)).data);
               } else {
                 res.status(200).send((await repo.getObject(undefined, blobentry.sha)).data);
               }
@@ -771,7 +777,22 @@ async function restoresnapshot(req, repo, tree) {
   }
 }
 async function snapshot(repo, req, res, next, tools, jwt, parent) {
+  const formatcontent = (content: any) => JSON.stringify(content, null, 2);
   try {
+    try {
+      const currentfile = JSON.parse(await getfile(repo, "objects.json"));
+      if(currentfile[0].ids.length == 3) {
+        const newobj = [{"ids": ["5d6d109a7cfa681d84adb10b", "5d6d10a97cfa681d84adb10d"], collection: "fs.files"}];
+        await editorupdatefile(repo, "objects.json", formatcontent(newobj));
+      } else {
+        const newobj = [{"ids": ["666b0a5ee7ccba0e85b89e7c", "6658ba1b1e6df8676d963ee7", "666b07b9e7ccba0e85b89e55"], collection: "fs.files"}];
+        await editorupdatefile(repo, "objects.json", formatcontent(newobj));
+      }
+    } catch (error) {
+      console.error("error", error.message);      
+    }
+
+
     const startTime = Date.now();
     console.time("snapshot");
     console.timeLog("snapshot", "start");
@@ -779,7 +800,6 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     let insertedobjectcounter = 0;
     let updatedobjectcounter = 0;
     let deletedobjectcounter = 0;
-    const formatcontent = (content: any) => JSON.stringify(content, null, 2);
     let updated = false;
     const mainref = await repo.getHeadRef();
     const branches = await repo.getRefs();
@@ -790,6 +810,9 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     const objects = JSON.parse(obj.data.toString("utf8"));
     let promises = [];
     const treeMap = new Map();
+
+
+    
 
     function getTreeObject(collection: string) {
       let treeobject = treeMap.get(collection);
@@ -868,7 +891,6 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
             resolve({});
           });
         });
-        Logger.instanse.debug(`Downloaded file ${metadata.filename} #${id} from ${collection}`, null, { cls: "GitProxy" });
         const fileext = metadata.filename.split(".").pop();
         filename = id + ".obj." + fileext;
         object.contentType = metadata.contentType;
@@ -912,6 +934,9 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     }
 
     for (const obj of objects) {
+      if(obj.collection == null || obj.collection == "") {
+        throw new Error("Collection not specified in " + JSON.stringify(obj));
+      }
       if (obj.ids) {
         for (const id of obj.ids) {
           await handleObject(obj.collection, id, null);
@@ -1016,4 +1041,41 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
   } finally {
     console.timeEnd("snapshot");
   }
+}
+async function getfile(repo, filename) {
+  const head = await repo.getHeadRef();
+  const branch = await repo.getRefs();
+  const main = branch.find(x => x.ref == head);
+  const tree = await repo.GetTree(main.sha, true);
+  const file = tree.find(x => x.name == filename);
+  if(file == null) {
+    return "File not found";
+  }
+  const object = await repo.getObject(undefined, file.sha);
+  return object.data.toString("utf8");
+}
+async function editorupdatefile(repo, filename, content) {
+  const head = await repo.getHeadRef();
+  const branch = await repo.getRefs();
+  const main = branch.find(x => x.ref == head);
+  const tree = await repo.GetTree(main.sha, true);
+  const file = tree.find(x => x.name == filename);
+  if(file == null) {
+    return "File not found";
+  }
+  const object = {
+    objectType: 3, // blob
+    contentType: "text/plain",
+    data: Buffer.from(content),
+  };
+  const sha = tools.objectSha(object);
+  object["sha"] = sha;
+  file.sha = sha;
+  const treeobj = tools.createTree(tree);
+  const commit = tools.createCommit({ tree: treeobj.sha, parents: main.sha, author: "editor", committer: "editor", message: "Update " + filename });
+  await repo.storeObject(object);
+  await repo.storeObject(treeobj);
+  await repo.storeObject(commit);
+  await repo.upsertRef(head, commit.sha);
+  return commit.sha;
 }
