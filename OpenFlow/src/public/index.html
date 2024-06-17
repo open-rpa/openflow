@@ -121,7 +121,7 @@
         <a class="sidebar-link" id="menuadminfiles" ng-class="{active: menuctrl.PathIs(['/Files'])}"
           href="#/Files"><span translate lib="web">files</span></a>
         <a class="sidebar-link" ng-class="{active: menuctrl.PathIs(['/hdrobots'])}" 
-        ng-show="menuctrl.hasrole('customer admins')"
+        ng-show="menuctrl.hasrole('customer admins') || menuctrl.hasrole('resellers') || menuctrl.hasrole('admins')"
         href="#/hdrobots"><span translate
             lib="web">hdrobots</span></a>
 
