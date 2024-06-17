@@ -779,18 +779,18 @@ async function restoresnapshot(req, repo, tree) {
 async function snapshot(repo, req, res, next, tools, jwt, parent) {
   const formatcontent = (content: any) => JSON.stringify(content, null, 2);
   try {
-    try {
-      const currentfile = JSON.parse(await getfile(repo, "objects.json"));
-      if(currentfile[0].ids.length == 3) {
-        const newobj = [{"ids": ["5d6d109a7cfa681d84adb10b", "5d6d10a97cfa681d84adb10d"], collection: "fs.files"}];
-        await editorupdatefile(repo, "objects.json", formatcontent(newobj));
-      } else {
-        const newobj = [{"ids": ["666b0a5ee7ccba0e85b89e7c", "6658ba1b1e6df8676d963ee7", "666b07b9e7ccba0e85b89e55"], collection: "fs.files"}];
-        await editorupdatefile(repo, "objects.json", formatcontent(newobj));
-      }
-    } catch (error) {
-      console.error("error", error.message);      
-    }
+    // try {
+    //   const currentfile = JSON.parse(await getfile(repo, "objects.json"));
+    //   if(currentfile[0].ids.length == 3) {
+    //     const newobj = [{"ids": ["5d6d109a7cfa681d84adb10b", "5d6d10a97cfa681d84adb10d"], collection: "fs.files"}];
+    //     await editorupdatefile(repo, "objects.json", formatcontent(newobj));
+    //   } else {
+    //     const newobj = [{"ids": ["666b0a5ee7ccba0e85b89e7c", "6658ba1b1e6df8676d963ee7", "666b07b9e7ccba0e85b89e55"], collection: "fs.files"}];
+    //     await editorupdatefile(repo, "objects.json", formatcontent(newobj));
+    //   }
+    // } catch (error) {
+    //   console.error("error", error.message);      
+    // }
 
 
     const startTime = Date.now();
