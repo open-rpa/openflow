@@ -10,7 +10,7 @@ import { DatabaseConnection } from "../DatabaseConnection.js";
 import mimetype from "mimetype";
 import _ from "angular-route";
 const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
-let concurrency = 100;
+let batchSize = 100;
 import { GridFSBucket, ObjectId } from "mongodb";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 export class GitProxy {
@@ -22,7 +22,7 @@ export class GitProxy {
   static zlib: boolean = true;
   static async configure(app: express.Express, parent: Span): Promise<void> {
     tools.setBatchSize(200);
-    concurrency = 200;
+    batchSize = 200;
     tools.setDebugHandler((...args) => {
       if (Config.log_git) {
         let msg = "";
@@ -128,9 +128,9 @@ export class GitProxy {
                 }
               }
               var exists = repo._acl.find(x => x._id == (req.user as any)._id);
-              if(exists == null) {
+              if (exists == null) {
                 repo._acl.push({ _id: (req.user as any)._id, name: (req.user as any).name, rights: Rights.full_control });
-              }  
+              }
             } // new
             next();
           }
@@ -233,6 +233,12 @@ export class GitProxy {
           if (repo == null) { return res.status(404).send("Not Found (no repo)"); }
           let idx = parts.indexOf("snapshot");
           if (idx == parts.length - 1) snapshotrequest = true;
+          if (idx == parts.length - 2) {
+            snapshotrequest = true;
+            if (parts.length > idx + 1) {
+              tree = decodeURIComponent(parts[idx + 1]);
+            }
+          }
         } else if (parts.indexOf("restore") > 0) {
           if (repo == null) { return res.status(404).send("Not Found (no repo)"); }
           let idx = parts.indexOf("restore");
@@ -241,7 +247,7 @@ export class GitProxy {
             if (parts.length > idx + 1) {
               tree = decodeURIComponent(parts[idx + 1]);
             }
-    
+
           }
         }
 
@@ -317,15 +323,15 @@ export class GitProxy {
             next();
             return;
           }
-          var _repos2 = await Config.db.query<any>({ collectionname: mongocol, query: {"_type": "hash"}, projection: {ref: 1, repo: 1}, jwt }, parent);
+          var _repos2 = await Config.db.query<any>({ collectionname: mongocol, query: { "_type": "hash" }, projection: { ref: 1, repo: 1 }, jwt }, parent);
           // distinct repos
           const _repos = _repos2.map(x => x.repo).filter((v, i, a) => a.indexOf(v) === i);
 
           var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/git">repos</a> | <a href="/#/Entities/git">Permissions</a><ul>`;
           for (var i = 0; i < _repos.length; i++) {
-            const branches = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/heads/") > -1 );
-            const tags = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/tags/") > -1 );
-            if(tags.length == 0) {
+            const branches = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/heads/") > -1);
+            const tags = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/tags/") > -1);
+            if (tags.length == 0) {
               html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches`;
             } else {
               html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches and ${tags.length} tags`;
@@ -426,7 +432,7 @@ git push -u origin main</pre></p>`
           let currentsha = "";
           var branches = await repo.GetBranches();
           var branch = branches.find(x => x.ref == "refs/" + (type == 'tree' ? 'heads' : type) + "/" + tree);
-          if(type == "commit") {
+          if (type == "commit") {
             currentsha = tree;
             files = await repo.GetTree(tree, false);
           } else if (branch == null) {
@@ -495,7 +501,9 @@ git push -u origin main</pre></p>`
             ref = ref.split("/")[ref.split("/").length - 1]
             if (branches[i].ref.indexOf("refs/heads/") == 0) {
               html += `<option value="/git/${reponame}/tree/${encodeURIComponent(ref)}"`;
-              if (ref == tree) html += ` selected`;
+              if (ref == tree) {
+                html += ` selected`;
+              }
               html += `>branch ${ref}</option>`;
             }
           }
@@ -505,26 +513,53 @@ git push -u origin main</pre></p>`
             ref = ref.split("/")[ref.split("/").length - 1]
             if (branches[i].ref.indexOf("refs/tags/") == 0) {
               html += `<option value="/git/${reponame}/tag/${encodeURIComponent(ref)}"`;
-              if (ref == tree) html += ` selected`;
+              if (ref == tree) {
+                html += ` selected`;
+              }
               html += `>tag ${ref}</option>`;
             }
           }
           html += `</select>`;
           var commits = await Config.db.query<any>({ collectionname: repo.bucketName, query: {"_type": "commit"}, projection: {sha: 1, message: 1}, jwt }, parent);
+          // var commits = [];
+          // var lookup = await Config.db.query<any>({ collectionname: repo.bucketName, query: { "_type": "commit", "sha": currentsha }, projection: { sha: 1, message: 1, parents: 1 }, jwt }, parent);
+          // do {
+          //   if (lookup.length > 0) {
+          //     commits = commits.concat(lookup);
+          //     let parents = [];
+          //     lookup.forEach(x => {
+          //       if (x.parents != null) {
+          //         parents = parents.concat(x.parents);
+          //       }
+          //     });
+          //     lookup = await Config.db.query<any>({ collectionname: repo.bucketName, query: { "_type": "commit", "sha": { "$in": parents } }, projection: { sha: 1, message: 1 }, jwt }, parent);
+          //   }
+          // } while (lookup.length > 0 && commits.length < 50);
+          // do {
+          //   if (commits.length > 0) {
+          //     lookup = await Config.db.query<any>({ collectionname: repo.bucketName, query: { "_type": "commit", "parents": commits[0].sha }, projection: { sha: 1, message: 1 }, jwt }, parent);
+          //     commits = lookup.concat(commits);
+          //   } else {
+          //     lookup = [];
+          //   }
+          // } while (lookup.length > 0 && commits.length < 50);
           html += `${commits.length - 1} commits <select onchange="window.location.href = this.value">`;
+          // commits = commits.reverse();
           for (let i = 0; i < commits.length; i++) {
             html += `<option value="/git/${reponame}/commit/${encodeURIComponent(commits[i].sha)}"`;
             if (commits[i].sha == tree) {
-              html += ` selected`;
+              html += ` selected> * ${commits[i].message.substring(0, 50)}</option>`;
             } else if (branch != null && commits[i].sha == branch.sha) {
-              html += ` selected`;
+              html += ` selected> * ${commits[i].message.substring(0, 50)}</option>`;
+            } else {
+              html += `>${commits[i].message.substring(0, 50)}</option>`;
             }
-            html += `>${commits[i].message}</option>`;
+            // html += `>${commits[i].message.substring(0, 50)}</option>`;
           }
-            html += `</select>`;
+          html += `</select>`;
           html += ` <button onclick="copyToClipboard('clone')">Copy clone command</button>`;
-          if(files.find(x => x.name == "objects.json") != null) {
-            html += ` <button onclick="window.location.href = '/git/${reponame}/snapshot'">Snapshot</button>`;
+          if (files.find(x => x.name == "objects.json") != null) {
+            html += ` <button onclick="window.location.href = '/git/${reponame}/snapshot/${currentsha}'">Snapshot</button>`;
             html += ` <button onclick="window.location.href = '/git/${reponame}/restore/${currentsha}'">Restore</button>`;
           }
           html += `<br />`;
@@ -588,7 +623,7 @@ git push -u origin main</pre></p>`
             html += `</li>`;
           }
           html += "</ul>";
-          if(readme != null && readme != "") {
+          if (readme != null && readme != "") {
             html += "<p><pre>" + readme + "</pre></p>";
           }
           html += "</body></html>";
@@ -612,7 +647,7 @@ git push -u origin main</pre></p>`
           next();
         } else if (snapshotrequest == true) {
 
-          const result = await snapshot(repo, req, res, next, tools, jwt, parent);
+          const result = await snapshot(repo, req, tree, jwt, parent);
           // res.redirect("/git/" + reponame);
           // next();
           res.status(200).send(`${result}<p><a href="/git/${reponame}">back</p>`);
@@ -673,24 +708,24 @@ async function restoresnapshot(req, repo, tree) {
   let promises = [];
   try {
     let rootfiles: any[] = [];
-    if(tree == null || tree == "") return "No tree specified";
+    if (tree == null || tree == "") return "No tree specified";
     rootfiles = await repo.GetTree(tree, false);
-    if(rootfiles == null || rootfiles.length == 0) return "No files found for " + tree;
+    if (rootfiles == null || rootfiles.length == 0) return "No files found for " + tree;
     let filesha = rootfiles.find(x => x.name == "objects.json").sha;
-    if(filesha == null) return "Definition file objects.json found";
+    if (filesha == null) return "Definition file objects.json found";
     let filecontent = await repo.getObject(undefined, filesha);
-    if(filecontent == null) return "Definition file objects.json found";
+    if (filecontent == null) return "Definition file objects.json found";
     let objects = JSON.parse(filecontent.data.toString("utf8"));
     let result = "";
     let collections = [];
-    async function handleObject(collection, collectionname,files, file) {
+    async function handleObject(collection, collectionname, files, file) {
       const filecontent = await repo.getObject(undefined, file.sha);
-      if(collectionname.endsWith(".files")) {
-        if(!file.name.endsWith(".json")) return;
+      if (collectionname.endsWith(".files")) {
+        if (!file.name.endsWith(".json")) return;
         const metadata = JSON.parse(filecontent.data.toString("utf8"));
         const bucketName = collectionname.substring(0, collectionname.length - 6);
         const fileexists = await Config.db.GetOne<any>({ collectionname: collectionname, query: { _id: metadata._id }, jwt: Crypt.rootToken() }, null);
-        if(fileexists != null) {
+        if (fileexists != null) {
           // result += `File ${metadata.filename} #${metadata._id} in ${collectionname} already exists\n`;
           return;
         }
@@ -716,59 +751,67 @@ async function restoresnapshot(req, repo, tree) {
         let query = { _id: content._id };
         let _query = { $and: [query, Config.db.getbasequery(req.user, [Rights.update], collectionname)] };
         const opresult = await collection.updateOne(_query, { $set: content }, { upsert: true });
-        if(opresult.matchedCount == 0 && opresult.upsertedCount == 0) {
+        if (opresult.matchedCount == 0 && opresult.upsertedCount == 0) {
           result += `Object ${content._id} in ${collectionname} failed ${JSON.stringify(opresult)}\n`;
         }
-        if(opresult.modifiedCount > 0) {
+        if (opresult.modifiedCount > 0) {
           updatedobjectcounter++;
-        } else if(opresult.upsertedCount > 0) {
+        } else if (opresult.upsertedCount > 0) {
           insertedobjectcounter++;
         }
+        // if(collectionname == "agents" && content._type == "package") {
+        //   console.log("Adding package file", content.fileid, "for package", content.name);
+        //   await handleObject("fs.files", content.fileid, null);
+        //   handleObject(Config.db.db.collection("fs.files"), "fs.files", files, file);
+        // }
       }
     }
-    for(let i = 0; i < objects.length; i++) {
+    for (let i = 0; i < objects.length; i++) {
       const collectionname = objects[i].collection;
       const treeobject = rootfiles.find(x => x.name == collectionname)
-      if(treeobject == null) {
+      if (treeobject == null) {
         result += "Collection " + collectionname + " not found in commit\n";
         continue;
       }
-      if(collections.indexOf(collectionname) == -1) collections.push(collectionname);
+      if (collections.indexOf(collectionname) == -1) collections.push(collectionname);
+      if(collectionname == "agents" || collectionname == "workitems" || collectionname == "openrpa") {
+        if (collections.indexOf("fs.files") == -1) collections.push("fs.files");
+      }
     }
-    for(let i = 0; i < collections.length; i++) {
+    for (let i = 0; i < collections.length; i++) {
       const collectionname = collections[i];
       const treeobject = rootfiles.find(x => x.name == collectionname)
       const treesha = treeobject.sha;
-      const files = await repo.GetTree(treesha, false); 
+      const files = await repo.GetTree(treesha, false);
       const collection = Config.db.db.collection(collectionname);
-      for(let j = 0; j < files.length; j++) {
+      for (let j = 0; j < files.length; j++) {
         const file = files[j];
-        if(file.mode != 33188) continue;
+        if (file.mode != 33188) continue;
         promises.push(handleObject(collection, collectionname, files, file));
         objectcounter++;
-        if (promises.length >= concurrency) {
+        if (promises.length >= batchSize) {
           await Promise.all(promises);
           promises = [];
         }
-        if(objectcounter % 100 == 0 && objectcounter > 0) {
+        if (objectcounter % 100 == 0 && objectcounter > 0) {
           const ms = (Date.now() - startTime)
           const msbyobjct = Math.round(ms / objectcounter);
           console.timeLog("restoresnapshot", "handled " + objectcounter + " objects ( " + msbyobjct + " ms/object )");
         }
       }
     }
-    if (promises.length >= concurrency) {
+    if (promises.length > 0) {
       await Promise.all(promises);
       promises = [];
     }
     const ms = (Date.now() - startTime)
     const msbyobjct = Math.round(ms / objectcounter);
-    if(msbyobjct == Infinity) {
+    if (msbyobjct == Infinity) {
       result += `Restore scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds  (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated)`;
     } else {
       result += `Restore scanned scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated / ${msbyobjct}ms pr object)`;
     }
-    return result;    
+    return result;
   } catch (error) {
     console.error("error", error.message);
     return "Internal Server Error: " + error.message;
@@ -776,7 +819,7 @@ async function restoresnapshot(req, repo, tree) {
     console.timeEnd("restoresnapshot");
   }
 }
-async function snapshot(repo, req, res, next, tools, jwt, parent) {
+async function snapshot(repo, req, tree, jwt, parent) {
   const formatcontent = (content: any) => JSON.stringify(content, null, 2);
   try {
     // try {
@@ -801,9 +844,15 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     let updatedobjectcounter = 0;
     let deletedobjectcounter = 0;
     let updated = false;
-    const mainref = await repo.getHeadRef();
+
+    if (tree == null || tree == "") {
+      // return "No tree specified";
+      tree = await repo.getHeadRef();
+    }
+    // const mainref = await repo.getHeadRef();
     const branches = await repo.getRefs();
-    const branch = branches.find(x => x.ref == mainref);
+    const branch = branches.find(x => x.sha == tree || x.ref == tree);
+    if(branch == null) throw new Error(`Branch not found from ${tree}`);
     const branchtree = await repo.GetTree(branch.sha, true);
     const snapshotobjects = branchtree.find(x => x.name == "objects.json");
     const obj = await repo.getObject(undefined, snapshotobjects.sha);
@@ -812,11 +861,11 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     const treeMap = new Map();
 
 
-    
+
 
     function getTreeObject(collection: string) {
       let treeobject = treeMap.get(collection);
-      if(treeobject != null) return treeobject;
+      if (treeobject != null) return treeobject;
       treeobject = branchtree.find(x => x.name == collection);
       if (!treeobject) {
         treeobject = {
@@ -829,9 +878,9 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
         updated = true;
         branchtree.push(treeobject);
       } else {
-        if(treeobject.origin == null) {
+        if (treeobject.origin == null) {
           treeobject.origin = [...treeobject.subtree];
-        }      
+        }
       }
       treeMap.set(collection, treeobject);
       return treeobject;
@@ -853,23 +902,23 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
       };
       objectcounter++;
 
-      if(collection.endsWith(".files") && ismetadata == false) {
+      if (collection.endsWith(".files") && ismetadata == false) {
         let metadata = content;
-        if(content == null) {
+        if (content == null) {
           metadata = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
         }
-        if(metadata == null) {
+        if (metadata == null) {
           throw new Error("File not found in " + collection + " " + id);
         }
 
         const existingFile = treeobject.origin.find(x => x.name == filename);
-        if(existingFile != null) {
-          const metasha = tools.objectSha({objectType: 3, data: Buffer.from(formatcontent(metadata))});
-          if(existingFile.sha == metasha) {
+        if (existingFile != null) {
+          const metasha = tools.objectSha({ objectType: 3, data: Buffer.from(formatcontent(metadata)) });
+          if (existingFile.sha == metasha) {
             const entries = treeobject.origin.filter(x => x.name.startsWith(id + "."));
-            if(entries.length != 2) throw new Error("Invalid entries in " + collection + " " + id);
-            treeobject.subtree.push(entries[0]);
-            treeobject.subtree.push(entries[1]);
+            if (entries.length != 2) throw new Error("Invalid entries in " + collection + " " + id + " expected 2 found " + entries.length);
+            if(treeobject.subtree.find(x => x.name == entries[0].name) == null) treeobject.subtree.push(entries[0]);
+            if(treeobject.subtree.find(x => x.name == entries[1].name) == null) treeobject.subtree.push(entries[1]);
             Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists`, null, { cls: "GitProxy" });
             return;
           } else {
@@ -896,13 +945,43 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
         object.contentType = metadata.contentType;
         object["data"] = content;
         await handleObject(collection, id, metadata, true);
-      } else if(content == null) {
-        if(content == null) content = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
+      } else if (collection == "agents") {
+        if (content == null) content = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
+        object["data"] = Buffer.from(formatcontent(content));
+        if(content._type == "package" && content.fileid != null && content.fileid != "") {
+          console.log("Adding package file", content.fileid, "for package", content.name);
+          await handleObject("fs.files", content.fileid, null);
+        }
+      } else if (collection == "workitems") {
+        if (content == null) content = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
+        object["data"] = Buffer.from(formatcontent(content));
+        if(content.files != null && Array.isArray(content.files)) {
+          for(let i = 0; i < content.files.length; i++) {
+            console.log("Adding package file", content.files[i]._id, content.files[i].filename, "for workitem", content.name);
+            await handleObject("fs.files", content.files[i]._id, null);
+          }
+        }
+      } else if (collection == "openrpa") {
+        if (content == null) content = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
+        object["data"] = Buffer.from(formatcontent(content));
+        if(content._type == "workflow" && content.Xaml != null && content.Xaml != "") {
+          // using regular expression find all instances if ID like this Image="ID"
+          const matches = content.Xaml.match(/Image="([a-f0-9]{24})"/g);
+          if(matches != null) {
+            for(let i = 0; i < matches.length; i++) {
+              const fileid = matches[i].substring(7, 31);
+              console.log("Adding image file", fileid, "for workflow", content.name);
+              await handleObject("fs.files", fileid, null);
+            }
+          }
+        }
+      } else if (content == null) {
+        if (content == null) content = await Config.db.GetOne<any>({ collectionname: collection, query: { _id: id }, jwt }, parent);
         object["data"] = Buffer.from(formatcontent(content));
       } else {
         object["data"] = Buffer.from(formatcontent(content));
       }
-      if(content == null) {
+      if (content == null) {
         throw new Error("Object in " + collection + " " + id + " not found");
       }
       object["sha"] = tools.objectSha(object)
@@ -910,7 +989,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
 
       promises.push(repo.storeObject(object));
       const existingFile = treeobject.origin.find(x => x.name == filename);
-      if(treeobject.subtree.find(x => x.name == filename) == null) {
+      if (treeobject.subtree.find(x => x.name == filename) == null) {
         treeobject.subtree.push({ mode: 33188, name: filename, sha: object.sha });
         if (!existingFile) {
           updated = true;
@@ -921,12 +1000,12 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
         }
       }
       // objectcounter++;
-      if (promises.length >= concurrency) {
-      // if (promises.length >= 1) {
+      if (promises.length >= batchSize) {
+        // if (promises.length >= 1) {
         await Promise.all(promises);
         promises = [];
       }
-      if(objectcounter % 100 == 0 && objectcounter > 0) {
+      if (objectcounter % 100 == 0 && objectcounter > 0) {
         const ms = (Date.now() - startTime)
         const msbyobjct = Math.round(ms / objectcounter);
         console.timeLog("snapshot", "handled " + objectcounter + " objects ( " + msbyobjct + " ms/object )");
@@ -934,7 +1013,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     }
 
     for (const obj of objects) {
-      if(obj.collection == null || obj.collection == "") {
+      if (obj.collection == null || obj.collection == "") {
         throw new Error("Collection not specified in " + JSON.stringify(obj));
       }
       if (obj.ids) {
@@ -944,7 +1023,7 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
       } else if (obj.pipeline) {
         const base = Config.db.getbasequery(req.user, [Rights.read], obj.collection);
         obj.pipeline.unshift({ $match: base });
-        if(obj.collection.endsWith(".files")) {
+        if (obj.collection.endsWith(".files")) {
           obj.pipeline.push({ $sort: { uploadDate: 1 } });
         }
         const cursor = await Config.db.db.collection(obj.collection).aggregate(obj.pipeline);
@@ -964,36 +1043,36 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     const username = user.name || user.username || "guest";
     const email = user.email || user.username || "guest";
     // update deletedobjectcounter
-    for(let k = 0; k < branchtree.length; k++) {
-      if(branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
+    for (let k = 0; k < branchtree.length; k++) {
+      if (branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
         const subtreeobj = tools.createTree(branchtree[k].subtree);
-        if(subtreeobj.sha != branchtree[k].sha) {
+        if (subtreeobj.sha != branchtree[k].sha) {
           updated = true;
         }
       }
     }
-    
-    if(!updated) {
+
+    if (!updated) {
       const ms = (Date.now() - startTime)
       const msbyobjct = Math.round(ms / objectcounter);
       Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " discarded after " + (Date.now() - startTime) / 1000 + " seconds, due to no new/changed items", null, { cls: "GitProxy" });
 
-      if(msbyobjct == Infinity) {
+      if (msbyobjct == Infinity) {
         console.timeLog("snapshot", "completed with " + objectcounter + " objects discarded due to no new/changed items");
       } else {
         console.timeLog("snapshot", "completed with " + objectcounter + " objects " + msbyobjct + " ms/object discarded due to no new/changed items");
       }
-      if(msbyobjct == Infinity) {
+      if (msbyobjct == Infinity) {
         return `Nothing new to snapshot, scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds  (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated)`;
       }
       return `Nothing new to snapshot, scanned ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated / ${msbyobjct}ms pr object)`;
     }
 
-    for(let k = 0; k < branchtree.length; k++) {
-      if(branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
+    for (let k = 0; k < branchtree.length; k++) {
+      if (branchtree[k].mode == 40000 || branchtree[k].mode == 16384) {
         const subtree = branchtree[k].subtree;
         const subtreeobj = tools.createTree(subtree);
-        if(subtreeobj.sha != branchtree[k].sha) {
+        if (subtreeobj.sha != branchtree[k].sha) {
           await repo.storeObject(subtreeobj);
           branchtree[k].sha = subtreeobj.sha;
         } else {
@@ -1017,22 +1096,22 @@ async function snapshot(repo, req, res, next, tools, jwt, parent) {
     await repo.storeObject(commit);
 
     // Update the branch reference
-    await repo.upsertRef(mainref, commit.sha);
+    await repo.upsertRef(branch.ref, commit.sha);
 
     const ms = (Date.now() - startTime)
     const msbyobjct = Math.round(ms / objectcounter);
     Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " completed in " + (Date.now() - startTime) / 1000 + " seconds", null, { cls: "GitProxy" });
 
     // objectcounter += promises.length;
-    if(msbyobjct == Infinity) {
+    if (msbyobjct == Infinity) {
       console.timeLog("snapshot", "completed with " + objectcounter + " objects");
     } else {
       console.timeLog("snapshot", "completed with " + objectcounter + " objects " + msbyobjct + " ms/object");
     }
-    if(repo.postProcess != null) {
+    if (repo.postProcess != null) {
       repo.postProcess();
     }
-    if(msbyobjct == Infinity) {
+    if (msbyobjct == Infinity) {
       return `Snapshot completed with ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated)`;
     }
     return `Snapshot completed with ${objectcounter} objects in ${(Date.now() - startTime) / 1000} seconds (${objectcounter} scanned / ${insertedobjectcounter} inserted / ${updatedobjectcounter} updated / ${msbyobjct}ms pr object)`;
@@ -1048,7 +1127,7 @@ async function getfile(repo, filename) {
   const main = branch.find(x => x.ref == head);
   const tree = await repo.GetTree(main.sha, true);
   const file = tree.find(x => x.name == filename);
-  if(file == null) {
+  if (file == null) {
     return "File not found";
   }
   const object = await repo.getObject(undefined, file.sha);
@@ -1060,7 +1139,7 @@ async function editorupdatefile(repo, filename, content) {
   const main = branch.find(x => x.ref == head);
   const tree = await repo.GetTree(main.sha, true);
   const file = tree.find(x => x.name == filename);
-  if(file == null) {
+  if (file == null) {
     return "File not found";
   }
   const object = {
