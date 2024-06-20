@@ -1026,6 +1026,11 @@ export class OpenAPIProxy {
     Logger.instanse.debug("Updating servers to " + url, null, { cls: "OpenAPIProxy" });
     // schema["servers"] = [{ url }]
     schema2["servers"] = [{ url }]
+    // @ts-ignore
+    let components:any = schema2?.components;
+    if(components?.securitySchemes?.oidc?.openIdConnectUrl != null) {
+      components.securitySchemes.oidc.openIdConnectUrl = Config.baseurl() + "oidc/.well-known/openid-configuration";
+    }
     var options = {
       explorer: true
     };
