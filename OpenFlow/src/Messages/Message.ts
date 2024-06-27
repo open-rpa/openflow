@@ -26,6 +26,7 @@ import { RateLimiterMemory } from "rate-limiter-flexible";
 import got from "got";
 import pako from "pako";
 import { HouseKeeping } from "../HouseKeeping.js";
+import { GitProxy } from "../ee/GitProxy.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -4792,7 +4793,74 @@ export class Message {
                 }
                 //  throw new Error("Access denied");
                 msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
-                break;            
+                break;
+            case "snapshotcreate":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                var repo = await GitProxy.GetRepo(data.repo);
+                if(repo == null) throw new Error("Repo not found");
+                var branches = await repo.getRefs();
+                var branchref = "";
+                for(var i = 0; i < branches.length; i++) {
+                    if(branches[i].ref == data.branch || branches[i].ref == "refs/heads/" + data.branch || branches[i].ref == "refs/tags/" + data.branch) {
+                        branchref = branches[i].ref;
+                    }
+                }
+                if(branchref == "") branchref = await repo.getHeadRef();
+                // var arr = await repo.repocollection.find({ repo: repo.repoName, ref: branchref, _type: "hash" }).toArray()
+                var arr = await repo.repocollection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray() // for now, lets just check HEAD
+                if (arr != null && arr.length > 0) {
+                  const main = arr[0];
+                  if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.update)) {
+                    Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
+                    branchref = ""
+                    throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
+                  }
+                } else {
+                    branchref = ""
+                }
+                if(branchref == "" || branchref == null) throw new Error("Branch not found");
+                msg.result = await GitProxy.snapshot(repo, this.tuser, branchref, this.jwt, parent);
+                break;
+            case "snapshotrestore":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                var repo = await GitProxy.GetRepo(data.repo);
+                if(repo == null) throw new Error("Repo not found");
+                let tree = "";
+                if(data.tree != null && data.tree != "") {
+                    tree = data.tree;
+                }
+                if(data.commit != null && data.commit != "") {
+                    tree = data.commit;
+                }
+                if(tree == "") {
+                    var branches = await repo.getRefs();
+                    var branchref = "";
+                    for(var i = 0; i < branches.length; i++) {
+                        if(branches[i].ref == data.branch || branches[i].ref == "refs/heads/" + data.branch || branches[i].ref == "refs/tags/" + data.branch) {
+                            branchref = branches[i].ref;
+                        }
+                    }
+                    if(branchref == "") branchref = await repo.getHeadRef();
+                    // var arr = await repo.repocollection.find({ repo: repo.repoName, ref: branchref, _type: "hash" }).toArray()
+                    var arr = await repo.repocollection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray() // for now, lets just check HEAD
+                    if (arr != null && arr.length > 0) {
+                      const main = arr[0];
+                      if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.read)) {
+                        Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
+                        branchref = ""
+                        throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
+                      }
+                    } else {
+                        branchref = ""
+                    }
+                    if(branchref == "" || branchref == null) throw new Error("Branch not found");
+                    const b = branches.find(x => x.ref == branchref);
+                    tree = b.sha;
+                }
+                msg.result = await GitProxy.restoresnapshot(repo, this.tuser, tree, this.jwt);
+                break;
             default:
                 msg.error = "Unknown custom command";
         }
