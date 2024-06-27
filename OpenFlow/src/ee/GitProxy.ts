@@ -339,20 +339,22 @@ export class GitProxy {
             next();
             return;
           }
-          var _repos2 = await Config.db.query<any>({ collectionname: GitProxy.mongocol, query: { "_type": "hash" }, projection: { ref: 1, repo: 1 }, jwt }, parent);
+          // var _repos2 = await Config.db.query<any>({ collectionname: GitProxy.mongocol, query: { "_type": "hash" }, projection: { ref: 1, repo: 1 }, top: 1000, jwt }, parent);
           // distinct repos
-          const _repos = _repos2.map(x => x.repo).filter((v, i, a) => a.indexOf(v) === i);
+          // const _repos = _repos2.map(x => x.repo).filter((v, i, a) => a.indexOf(v) === i);
+
+          const _repos = await Config.db.distinct({ collectionname: GitProxy.mongocol, field: "repo", query: { "_type": "hash" }, jwt }, parent);
 
           var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/git">repos</a> | <a href="/#/Entities/git">Permissions</a><ul>`;
           for (var i = 0; i < _repos.length; i++) {
-            const branches = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/heads/") > -1);
-            const tags = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/tags/") > -1);
-            if (tags.length == 0) {
-              html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches`;
-            } else {
-              html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches and ${tags.length} tags`;
-
-            }
+            // const branches = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/heads/") > -1);
+            // const tags = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/tags/") > -1);
+            // if (tags.length == 0) {
+            //   html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches`;
+            // } else {
+            //   html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches and ${tags.length} tags`;
+            // }
+            html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a>`;
             // html += ` <a href="/git/${_repos[i]}/snapshot">snapshot</a>`;
             html += ` <a href="/git/${_repos[i]}/delete">del</a></li>`;
           }
@@ -412,7 +414,7 @@ button {
           const main = branches.find(x => x.ref == "HEAD");
           let mainref = "";
           if (main != null) {
-            const mainb = branches.find(x => x.sha == main.sha && x.ref != "HEAD");
+            const mainb = branches.find(x => x.sha == main.sha && x.ref != "HEAD" );
             mainref = mainb?.ref;
             if (mainref != null) {
               mainref = mainref.split("/")[mainref.split("/").length - 1]
@@ -959,7 +961,7 @@ git push -u origin main</pre></p>`
       }
       // const mainref = await repo.getHeadRef();
       const branches = await repo.getRefs();
-      const branch = branches.find(x => x.sha == tree || x.ref == tree);
+      const branch = branches.find(x => (x.sha == tree || x.ref == tree) && x.ref != "HEAD");
       if (branch == null) throw new Error(`Branch not found from ${tree}`);
       const branchtree: any[] = await repo.GetTree(branch.sha, true);
       const snapshotobjects = branchtree.find(x => x.name == "objects.json");
@@ -1229,8 +1231,16 @@ git push -u origin main</pre></p>`
       const commit = tools.createCommit({ tree: treeobj.sha, parents: branch.sha, author, committer, message });
       await repo.storeObject(commit, { snapshot: true });
 
+
       // Update the branch reference
       await repo.upsertRef(branch.ref, commit.sha);
+
+      const mainref = await repo.getHeadRef();
+      if(mainref == branch.ref) {
+        await repo.upsertRef("HEAD", commit.sha);
+      }
+
+
 
       const ms = (Date.now() - startTime)
       const msbyobjct = Math.round(ms / objectcounter);
