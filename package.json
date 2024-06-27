@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.5.10.24",
+  "version": "1.5.10.25",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {

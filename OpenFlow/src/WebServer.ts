@@ -92,12 +92,18 @@ export class WebServer {
                         var ipBlock = blocklist[x];
                         if (!NoderedUtil.IsNullEmpty(ipBlock)) {
                             ipBlock = ipBlock.toLowerCase();
-                            if (ip.isEqual(ipBlock, remoteip)) {
-                                // Direct IP match
-                                return true;
-                            } else if (ip.cidrSubnet(ipBlock).contains(remoteip)) {
-                                // IP falls within the block
-                                return true;
+                            try {
+                                if(ipBlock.indexOf("/") > -1) {
+                                    if (ip.default.cidrSubnet(ipBlock).contains(remoteip)) {
+                                        return true;
+                                    }
+                                } else {
+                                    if (ip.default.isEqual(ipBlock, remoteip)) {
+                                        return true;
+                                    }
+                                }
+                            } catch (error) {
+                                Logger.instanse.error(error, null);                                
                             }
                         }
                     }
