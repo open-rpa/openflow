@@ -424,8 +424,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!NoderedUtil.IsNullUndefinded(item.ips) && item.ips.length > 0) {
                         for (let i = 0; i < WebSocketServer._clients.length; i++) {
                             let _cli = WebSocketServer._clients[i];
-                            if (item.ips.indexOf(_cli.remoteip) > -1) {
-                                Logger.instanse.warn("Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list!", span, { collection: collectionname, user: _cli.username });
+                            // if (item.ips.indexOf(_cli.remoteip) > -1) {
+                            //     Logger.instanse.warn("Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list!", span, { collection: collectionname, user: _cli.username });
+                            //     WebSocketServer._clients[i].Close(span);
+                            // }
+                            if(WebServer.isIPBlocked(_cli.remoteip)) {
+                                Logger.instanse.warn("Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list! " + _cli.remoteip, span, { collection: collectionname, user: _cli.username });
                                 WebSocketServer._clients[i].Close(span);
                             }
                         }

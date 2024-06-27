@@ -2,6 +2,7 @@ import mimetype from "mimetype";
 import webpush from "web-push";
 import stream from "stream";
 import os from "os";
+import * as ip from 'ip';
 import path from "path";
 import http from "http";
 import https from "https";
@@ -78,29 +79,39 @@ export class WebServer {
     public static BaseRateLimiter: any;
     public static server: http.Server = null;
     public static wss: WebSocket.Server;
-    public static async isBlocked(req: express.Request): Promise<boolean> {
-        try {
-            var remoteip = LoginProvider.remoteip(req);
-            if (!NoderedUtil.IsNullEmpty(remoteip)) {
-                remoteip = remoteip.toLowerCase();
-                var blocks = await Logger.DBHelper.GetIPBlockList(null);
-                if (blocks && blocks.length > 0) {
-                    for (var i = 0; i < blocks.length; i++) {
-                        var block: any = blocks[i];
-                        var blocklist = block.ips;
-                        if (blocklist && Array.isArray(blocklist)) {
-                            for (var x = 0; x < blocklist.length; x++) {
-                                var ip = blocklist[x];
-                                if (!NoderedUtil.IsNullEmpty(ip)) {
-                                    ip = ip.toLowerCase();
-                                    if (ip == remoteip) {
-                                        return true;
-                                    }
-                                }
+    public static async isIPBlocked(remoteip: string): Promise<boolean> {
+        if(remoteip == null || remoteip == "") return false;
+        remoteip = remoteip.toLowerCase();
+        var blocks = await Logger.DBHelper.GetIPBlockList(null);
+        if (blocks && blocks.length > 0) {
+            for (var i = 0; i < blocks.length; i++) {
+                var block: any = blocks[i];
+                var blocklist = block.ips;
+                if (blocklist && Array.isArray(blocklist)) {
+                    for (var x = 0; x < blocklist.length; x++) {
+                        var ipBlock = blocklist[x];
+                        if (!NoderedUtil.IsNullEmpty(ipBlock)) {
+                            ipBlock = ipBlock.toLowerCase();
+                            if (ip.isEqual(ipBlock, remoteip)) {
+                                // Direct IP match
+                                return true;
+                            } else if (ip.cidrSubnet(ipBlock).contains(remoteip)) {
+                                // IP falls within the block
+                                return true;
                             }
                         }
                     }
                 }
+            }
+        }
+        return false;
+    }
+   
+    public static async isBlocked(req: express.Request): Promise<boolean> {
+        try {
+            var remoteip = LoginProvider.remoteip(req);
+            if (!NoderedUtil.IsNullEmpty(remoteip)) {
+                return this.isIPBlocked(remoteip);
             }
         } catch (error) {
             Logger.instanse.error(error, null);
