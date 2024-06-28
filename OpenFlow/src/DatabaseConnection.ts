@@ -428,7 +428,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             //     Logger.instanse.warn("Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list!", span, { collection: collectionname, user: _cli.username });
                             //     WebSocketServer._clients[i].Close(span);
                             // }
-                            if(WebServer.isIPBlocked(_cli.remoteip)) {
+                            if((await WebServer.isIPBlocked(_cli.remoteip)) == true) {
                                 Logger.instanse.warn("Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list! " + _cli.remoteip, span, { collection: collectionname, user: _cli.username });
                                 WebSocketServer._clients[i].Close(span);
                             }
