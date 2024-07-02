@@ -1,3 +1,9 @@
+import { config } from "dotenv";
+const env = path.join(process.cwd(), "config", ".env");
+if(fs.existsSync(env)) {
+    console.log("Loading env file: " + env);
+    config({ path: env }); // , debug: false 
+}
 import xml2js from "xml2js";
 import https from "https";
 import http from "http";
