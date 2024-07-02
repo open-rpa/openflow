@@ -7,11 +7,10 @@ import browserify from 'browserify';
 import tsify from 'tsify';
 import watchify from 'watchify';
 import exorcist from 'exorcist'
-import ts from 'gulp-typescript';
 import through2 from 'through2';
 import * as __sass from 'sass';
 import _sass from 'gulp-sass';
-const sass = _sass(__sass); 
+const sass = _sass((__sass.default != null ? __sass.default : __sass)); 
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
@@ -200,28 +199,7 @@ gulp.task("latest", async function (done) {
     return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64 --push .`])();
 });
     
-gulp.task("bumpprojectfiles", function () {
-    var _json = fs.readFileSync("package.json");
-    let data = JSON.parse(_json);
-    console.log(data.version + " updated to " + version);
-    data.version = version;
-    let json = JSON.stringify(data, null, 2);
-    fs.writeFileSync("package.json", json);
-    return gulp.src('.');
-
-});
-
-var tsOpenFlowProject = ts.createProject('OpenFlow/tsconfig.json');
-gulp.task('ts-openflow', function () {
-    var tsResult = tsOpenFlowProject.src().pipe(tsOpenFlowProject());
-    return tsResult.js.pipe(gulp.dest('dist'));
-});
-gulp.task("ts", gulp.series("ts-openflow"));
-
-gulp.task("build", gulp.series("copyfiles1", "sass", "ts", "browserify", "copyfiles1"));
-
-
-gulp.task("bump", gulp.series("bumpprojectfiles", "copyfiles1"));
+gulp.task("build", gulp.series("copyfiles1", "sass", "browserify", "copyfiles1"));
 
 gulp.task("watch", gulp.series("setwatch", "browserify", "copyfiles1", "dowatch"));
 gulp.task("default", gulp.series("copyfiles1", "browserify", "copyfiles1"));

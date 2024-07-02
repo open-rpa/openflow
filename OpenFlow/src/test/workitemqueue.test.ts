@@ -1,6 +1,6 @@
 import fs from "fs";
 import pako from "pako";
-import wtf from "wtfnode";
+// import wtf from "wtfnode";
 import { AddWorkitem, MessageWorkitemFile, NoderedUtil, WebSocketClient, Workitem } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
 import assert from "assert";

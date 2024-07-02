@@ -442,14 +442,14 @@ textarea{
 }
 
 .dark-mode .shepherd-element .shepherd-content header .shepherd-title {
-  color: hsla(0deg, 0%, 100%, 0.75);
+  color: hsla(0, 0%, 100%, 0.75);
   display: flex;
   flex: 1 0 auto;
   font-size: 1.1em;
 }
 
 .dark-mode .shepherd-element .shepherd-content header .shepherd-cancel-link {
-  color: hsla(0deg, 0%, 100%, 0.75);
+  color: hsla(0, 0%, 100%, 0.75);
   font-size: 2em;
   margin-left: auto;
   text-decoration: none;
@@ -461,18 +461,18 @@ textarea{
 }
 
 .dark-mode .shepherd-element .shepherd-content header .shepherd-cancel-link:hover {
-  color: hsla(0deg, 0%, 100%, 0.75);
+  color: hsla(0, 0%, 100%, 0.75);
 }
 
 .dark-mode .shepherd-element .shepherd-content .shepherd-text {
-  color: hsla(0deg, 0%, 100%, 0.75);
+  color: hsla(0, 0%, 100%, 0.75);
   line-height: 1.3em;
   padding: 0.75em;
 }
 
 .dark-mode .shepherd-element .shepherd-content .shepherd-text a, .shepherd-element .shepherd-content .shepherd-text a:active, .shepherd-element .shepherd-content .shepherd-text a:visited {
-  border-bottom: 1px dotted hsla(0deg, 0%, 100%, 0.75);
-  color: hsla(0deg, 0%, 100%, 0.75);
+  border-bottom: 1px dotted hsla(0, 0%, 100%, 0.75);
+  color: hsla(0, 0%, 100%, 0.75);
   text-decoration: none;
 }
 
@@ -519,7 +519,7 @@ textarea{
   background: #3288e6;
   border: 0;
   border-radius: 3px;
-  color: hsla(0deg, 0%, 100%, 0.75);
+  color: hsla(0, 0%, 100%, 0.75);
   cursor: pointer;
   font-family: inherit;
   font-size: 0.8em;
