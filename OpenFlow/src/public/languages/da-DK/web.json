@@ -248,6 +248,7 @@
     "payload": "Payload",
     "errormessage": "Fejlbesked",
     "agentlanguages": "Agent sprog",
+    "language": "Sprog",
     "haschromium": "Har chromium",
     "Portal": "Portal"
 }

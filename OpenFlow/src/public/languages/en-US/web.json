@@ -248,6 +248,7 @@
     "payload": "Payload",
     "errormessage": "Error message",
     "agentlanguages": "Agent languages",
+    "language": "Language",
     "haschromium": "Has Chromium",
     "portal": "Portal"
  }

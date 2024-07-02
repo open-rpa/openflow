@@ -8096,9 +8096,7 @@ export class AgentCtrl extends entityCtrl<any> {
         if(this.model != null && this.model.runas != null) {
             queryas = this.model.runas;
         }
-        console.log("RunasUpdated queryas:", queryas)
         this.allpackages = await NoderedUtil.Query({ collectionname: "agents", query: { "_type": "package" }, queryas });
-        console.log("newpackage", this.newpackage);
         if (this.model?.languages == null || this.model?.languages.length == 0) {
             this.packages = [];
         } else {
@@ -8728,6 +8726,7 @@ export class PackageCtrl extends entityCtrl<Base> {
                 this.model.language = "nodejs";
                 // @ts-ignore
                 this.model.fileid = "";
+                if (!this.$scope.$$phase) { this.$scope.$apply(); }
             }
         });
     }
