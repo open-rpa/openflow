@@ -48,6 +48,28 @@
       </div>
     </div>
 
+    <div class="input-group" ng-show="ctrl.gitbranches.length > 0">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">git repository</span>
+      </div>
+      <select id="gitrepository" ng-model="ctrl.model.repo" ng-disabled="ctrl.loading==true"
+        class="form-control" ng-options="item as item for item in ctrl.gitrepositories" ng-change="ctrl.selectBranch()">
+      </select>
+    </div>
+    <div class="input-group" ng-show="ctrl.gitbranches.length > 0">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">git branch</span>
+      </div>
+      <select id="gitbranch" ng-model="ctrl.model.ref" ng-disabled="ctrl.loading==true"
+        class="form-control" ng-options="branch.ref as branch.name for branch in ctrl.gitbranches | filter:{repo: ctrl.model.repo}">
+      </select>
+    </div>
+    <div class="input-group" ng-show="ctrl.gitbranches.length > 0">
+      <div class="input-group-prepend">
+        <span class="input-group-text" translate lib="web">sha</span>
+      </div>
+      <input type="text" name="sha" id="sha" ng-model="ctrl.model.sha" ng-disabled="ctrl.loading==true">
+    </div>
     <div class="input-group">
       <div class="input-group-prepend">
         <span class="input-group-text" translate lib="web">upload</span>

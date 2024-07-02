@@ -537,7 +537,7 @@ git push -u origin main</pre></p>`
               html += `<option value="/git/${reponame}/tree/${encodeURIComponent(ref)}"`;
               if (ref == tree) {
                 // html += ` selected`;
-                html += `>* branch ${ref}</option>`;
+                html += ` selected>* branch ${ref}</option>`;
               } else {
                 html += `>branch ${ref}</option>`;
               }
@@ -974,6 +974,9 @@ git push -u origin main</pre></p>`
 
 
       function getTreeObject(collection: string) {
+        if(collection == null) {
+          return null;
+        }
         let treeobject = treeMap.get(collection);
         if (treeobject != null) return treeobject;
         treeobject = branchtree.find(x => x.name == collection);
@@ -1005,7 +1008,7 @@ git push -u origin main</pre></p>`
       for (let i = 0; i < branchtree.length; i++) {
         const btree = branchtree[i];
         if (btree.mode == 16384) {
-          const treeobject = getTreeObject(obj.collection);
+          const treeobject = getTreeObject(btree.name);
           treeobject.subtree = [];
         }
       }

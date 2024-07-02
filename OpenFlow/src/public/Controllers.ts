@@ -8698,6 +8698,8 @@ export class PackageCtrl extends entityCtrl<Base> {
     e: any = null;
     languages: string[] = ["nodejs", "python", "dotnet", "powershell"];
     oldfileid: string = "";
+    gitrepositories: any[];
+    gitbranches: any[];
     constructor(
         public $rootScope: ng.IRootScopeService,
         public $scope: ng.IScope,
@@ -8713,6 +8715,10 @@ export class PackageCtrl extends entityCtrl<Base> {
         console.debug("PackageCtrl");
         this.collection = "agents";
         WebSocketClientService.onSignedin(async (user: TokenUser) => {
+            this.gitbranches = await NoderedUtil.Query({ collectionname: "git", query: { _type: "hash", ref: {"$ne": "HEAD"} }, projection: {"repo": 1, "ref": 1, "name": 1}, top: 1000 });
+            // disting by repo
+            this.gitrepositories = this.gitbranches.map(x => x.repo).filter((value, index, self) => self.indexOf(value) === index);
+            console.log("gitrepositories", this.gitrepositories)
             if (this.id !== null && this.id !== undefined) {
                 await this.loadData();
             } else {
@@ -8725,12 +8731,32 @@ export class PackageCtrl extends entityCtrl<Base> {
             }
         });
     }
+    selectBranch() {
+        const model:any = this.model
+        console.log("model", model)
+        var filteredBranches = this.gitbranches.filter((branch) => {
+            return branch.repo === model.repo;
+        });
+        console.log("filteredBranches", filteredBranches)
+        if (filteredBranches.length > 0) {
+            console.log("selected", filteredBranches[0])
+            model.ref = filteredBranches[0].ref;
+        } else {
+            model.ref = null;
+        }
+        if (!this.$scope.$$phase) { this.$scope.$apply(); }
+    }
     async submit(): Promise<void> {
         try {
-            await this.Upload()
             // @ts-ignore
-            if (this.model.fileid == null || this.model.fileid == "") {
-                throw new Error("File is required")
+            const repo = this.model.repo;
+            // @ts-ignore
+            const ref = this.model.ref;
+            // @ts-ignore
+            const fileid = this.model.fileid;
+            await this.Upload()            
+            if ((fileid == null || fileid == "") && (repo == null || repo == "") && (ref == null || ref == "")) {
+                throw new Error("File or gitrepo is required")
             }
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
