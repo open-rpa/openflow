@@ -1203,7 +1203,8 @@ export class LoginProvider {
             forceddomains: forceddomains,
             grafana_url: Config.grafana_url,
             llmchat_queue: Config.llmchat_queue,
-            enable_analytics: Config.enable_analytics
+            enable_analytics: Config.enable_analytics,
+            enable_gitserver: Config.enable_gitserver,
         }
         if(Config.otel_trace_url != null && Config.otel_trace_url != "") {
             res2["otel_trace_url"] = Config.otel_trace_url;

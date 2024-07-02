@@ -250,5 +250,6 @@
     "agentlanguages": "Agent languages",
     "language": "Language",
     "haschromium": "Has Chromium",
-    "portal": "Portal"
+    "portal": "Portal",
+    "gitrepository": "Git repository"
  }

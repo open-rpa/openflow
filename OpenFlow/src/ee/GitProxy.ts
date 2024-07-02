@@ -345,7 +345,7 @@ export class GitProxy {
 
           const _repos = await Config.db.distinct({ collectionname: GitProxy.mongocol, field: "repo", query: { "_type": "hash" }, jwt }, parent);
 
-          var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/git">repos</a> | <a href="/#/Entities/git">Permissions</a><ul>`;
+          var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/">home</a> | <a href="/git">repos</a> | <a href="/#/Entities/git">Permissions</a><ul>`;
           for (var i = 0; i < _repos.length; i++) {
             // const branches = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/heads/") > -1);
             // const tags = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/tags/") > -1);
@@ -379,7 +379,7 @@ export class GitProxy {
         } else if (tree == "" && deleterequest == false && snapshotrequest == false && restorerequest == false) {
           var branches = await repo.GetBranches();
           branches.sort((a, b) => a.ref.localeCompare(b.ref));
-          var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/git">repos</a> | <a href="/#/Entities/git">Permissions</a><ul>`;
+          var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/">home</a> | <a href="/git">repos</a> | <a href="/#/Entities/git">Permissions</a><ul>`;
           html += `<style>
 pre {
   background-color: #f5f5f5;
@@ -482,7 +482,7 @@ git push -u origin main</pre></p>`
             }
           }
           const back = blob.split("/").slice(0, blob.split("/").length - 1).join("/");
-          var html = `<body><a href="/git">repos</a> | <a href="/git/${reponame}/${type}/${encodeURIComponent(tree)}/${back}">back</a><ul>`;
+          var html = `<body><a href="/">home</a> | <a href="/git">repos</a> | <a href="/git/${reponame}/${type}/${encodeURIComponent(tree)}/${back}">back</a><ul>`;
           let codeblock = "";
           const parts = repo.repoName.split("/");
           if ((req.user as any).name == "guest") {
@@ -631,7 +631,7 @@ git push -u origin main</pre></p>`
             }
             var treeobj = await repo.getObject(null, blobentry.sha);
             const back = blob.split("/").slice(0, blob.split("/").length - 1).join("/");
-            var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/git">repos</a> | <a href="/git/${reponame}/tree/${encodeURIComponent(tree)}/${back}">back</a><ul>`;
+            var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/">home</a> | <a href="/git">repos</a> | <a href="/git/${reponame}/tree/${encodeURIComponent(tree)}/${back}">back</a><ul>`;
             if (contentType.startsWith("image")) {
               html += `<p><img src="data:${contentType};base64,${treeobj.data.toString("base64")}"></p>`;
             } else {

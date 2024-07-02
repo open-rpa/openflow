@@ -51,6 +51,7 @@ export class WebSocketClientService {
                 this.validlicense = data.validlicense;
                 this.grafana_url = data.grafana_url
                 this.llmchat_queue = data.llmchat_queue
+                this.enable_gitserver = data.enable_gitserver;
 
 
                 if (NoderedUtil.IsNullUndefinded(WebSocketClient.instance)) {
@@ -213,6 +214,7 @@ export class WebSocketClientService {
     public validlicense: boolean = false;
     public grafana_url: string = "";
     public llmchat_queue: string = "";
+    public enable_gitserver: boolean = false;
 
     getJSON(url: string, callback: any): void {
         const xhr: XMLHttpRequest = new XMLHttpRequest();
