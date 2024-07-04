@@ -8073,7 +8073,11 @@ export class AgentCtrl extends entityCtrl<any> {
         });
     }
     refreshtimer: any;
+    original: any;
     async processData(): Promise<void> {
+        if(this.model != null) {
+            this.original = JSON.parse(JSON.stringify(this.model));
+        }
         if (this.model.stripeprice == null) this.model.stripeprice = "";
         if ( this.model.schedules == null) this.model.schedules = [];
         if(this.model.environment == null) this.model.environment = {}
@@ -8491,9 +8495,38 @@ export class AgentCtrl extends entityCtrl<any> {
 
             if (this.model._id) {
                 await NoderedUtil.UpdateOne({ collectionname: this.collection, item: this.model });
-                if(this.instances.length == 0 && this.model.image != null && this.model.image != "") {
-                    await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
+                if(this.model.image != null && this.model.image != "") {
+                    let restart = false;
+                    if(this.original != null) {
+                        if(this.original.runas != this.model.runas) {
+                            console.log("runas changed, restart")
+                            restart = true;
+                        }
+                        if(this.original.image != this.model.image) {
+                            console.log("image changed, restart")
+                            restart = true;
+                        }
+                        if(this.original.stripeprice != this.model.stripeprice) {
+                            console.log("stripeprice changed, restart")
+                            restart = true;
+                        }
+                        if(this.original.port != this.model.port) {
+                            console.log("port changed, restart")
+                            restart = true;
+                        }
+                        if(JSON.stringify(this.original.environment) != JSON.stringify(this.model.environment)) {
+                            console.log("environment changed, restart")
+                            restart = true;
+                        }
+                    }
+                    if(restart) {
+                        this.StopAgent(); // no need to await
+                        this.StartAgent();
+                    } else if(this.instances.length == 0 && this.model.image != null && this.model.image != "") { 
+                        await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
+                    }
                 }
+                this.original = JSON.parse(JSON.stringify(this.model));
             } else {
                 var tmp = await NoderedUtil.InsertOne({ collectionname: this.collection, item: this.model });
                 if (this.model) {
@@ -8501,6 +8534,7 @@ export class AgentCtrl extends entityCtrl<any> {
                     this.id = this.model._id
                     this.basequery = { _id: this.id };
                     await NoderedUtil.CustomCommand({ command: "startagent", id: this.model._id, name: this.model.slug })
+                    this.original = JSON.parse(JSON.stringify(this.model));
                 }
                 this.$location.path("/Agent/" + this.id);
             }
