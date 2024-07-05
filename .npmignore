@@ -33,3 +33,4 @@ docker-package.json
 .dockerignore
 *.heapsnapshot
 .clinic
+/public
