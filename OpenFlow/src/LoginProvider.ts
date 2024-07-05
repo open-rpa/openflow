@@ -1,5 +1,6 @@
 import url from "url";
 import express from "express";
+import fs from "fs";
 import path from "path";
 import passportsaml from "@node-saml/passport-saml";
 import OpenIDConnectStrategy from "passport-openidconnect";
@@ -23,6 +24,7 @@ import got from "got";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { WebServer } from "./WebServer.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -188,6 +190,8 @@ export class LoginProvider {
         app.post("/AddTokenRequest", LoginProvider.post_AddTokenRequest.bind(this));
         app.get("/GetTokenRequest", LoginProvider.get_GetTokenRequest.bind(this));
         app.get("/login", LoginProvider.get_login.bind(this));
+        app.get("/login/*", LoginProvider.get_login2.bind(this));
+        app.get("/auth/signinwin/main", LoginProvider.get_login3.bind(this));
         app.get("/validateuserform", LoginProvider.get_validateuserform.bind(this));
         app.get("/read/:id", LoginProvider.get_read.bind(this));
         app.post("/validateuserform", LoginProvider.post_validateuserform.bind(this));
@@ -1405,9 +1409,6 @@ export class LoginProvider {
                         this.redirect(res, "/");
                     }
                     return;
-                    
-                    this.redirect(res, originalUrl);
-                    return;
                 }
             }
             if (tuser != null && tuser.validated) {
@@ -1415,9 +1416,85 @@ export class LoginProvider {
                 this.redirect(res, "/");
             } else {
                 Logger.instanse.debug("return PassiveLogin.html", span, {cls: "LoginProvider", func: "getlogin"});
-                const file = path.join(__dirname, "public", "PassiveLogin.html");
-                res.sendFile(file);
+                const localfile = path.join(__dirname, 'public', "PassiveLogin.html");
+                const webappfile = path.join(WebServer.webapp_file_path, "PassiveLogin.html");
+                const webappfile2 = path.join(WebServer.webapp_file_path, "client/PassiveLogin.html");
+                const webappfile3 = path.join(WebServer.webapp_file_path, "client/ui/PassiveLogin.html");
+                if(fs.existsSync(webappfile)) {
+                    console.log("serve webapp " + webappfile);
+                    res.sendFile(webappfile);
+                } else if(fs.existsSync(webappfile2)) {
+                    console.log("serve file " + webappfile2);
+                    res.sendFile(webappfile2);
+                } else if(fs.existsSync(webappfile3)) {
+                    console.log("serve file " + webappfile3);
+                    res.sendFile(webappfile3);
+                } else if(fs.existsSync(localfile)) {
+                    console.log("serve file " + localfile);
+                    res.sendFile(localfile);
+                } else {
+                    console.log("file not found " + localfile);
+                    res.status(404).send("Not found");
+                }
             }
+        } catch (error) {
+            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getlogin"});
+            try {
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } catch (error) {
+            }
+        }
+        Logger.otel.endSpan(span);
+    }
+    static async get_login2(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
+        try {
+            var requestedfile = req.url.split("?")[0].split("#")[0].replace("/login/", "");
+            Logger.instanse.debug("return PassiveLogin.html", span, {cls: "LoginProvider", func: "getlogin"});
+            const localfile = path.join(__dirname, 'public', requestedfile);
+            const webappfile = path.join(WebServer.webapp_file_path, requestedfile);
+            if(fs.existsSync(webappfile)) {
+                console.log("serve webapp " + webappfile);
+                res.sendFile(webappfile);
+            } else if(fs.existsSync(localfile)) {
+                console.log("serve file " + localfile);
+                res.sendFile(localfile);
+            } else {
+                const localfile = path.join(__dirname, 'public', "PassiveLogin.html");
+                const webappfile = path.join(WebServer.webapp_file_path, "PassiveLogin.html");
+                if(fs.existsSync(webappfile)) {
+                    console.log("serve webapp " + webappfile);
+                    res.sendFile(webappfile);
+                } else if(fs.existsSync(localfile)) {
+                    console.log("serve file " + localfile);
+                    res.sendFile(localfile);
+                } else {
+                    console.log("file not found " + localfile);
+                    res.status(404).send("Not found");
+                }
+            }
+        } catch (error) {
+            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getlogin"});
+            try {
+                return res.status(500).send({ message: error.message ? error.message : error });
+            } catch (error) {
+            }
+        }
+        Logger.otel.endSpan(span);
+    }
+    static async get_login3(req: any, res: any, next: any): Promise<void> {
+        const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
+        try {
+            var basepath = WebServer.webapp_file_path;
+            if(fs.existsSync(basepath + "/index.html")) {
+                res.sendFile(basepath + "/index.html");
+            } else if(fs.existsSync(basepath + "/index.htm")) {
+                res.sendFile(basepath + "/index.html");
+            } else {
+                console.log("file not found ");
+                res.status(404).send("Not found");
+            }
+
         } catch (error) {
             Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getlogin"});
             try {

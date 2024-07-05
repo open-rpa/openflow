@@ -213,7 +213,12 @@ export class Message {
             this.jwt = cli.jwt;
         }
         if (NoderedUtil.IsNullEmpty(this.jwt) && jwtrequired) {
-            throw new Error("Not signed in, and missing jwt");
+            if (Config.enable_guest == true) {
+                this.tuser = await Crypt.guestUser();
+                this.jwt = Crypt.createToken(this.tuser, Config.shorttoken_expires_in);
+            } else {
+                throw new Error("Not signed in, and missing jwt");
+            }
             // this.Reply("error");
             // this.data = "{\"message\": \"Not signed in, and missing jwt\", \"error\": \"Not signed in, and missing jwt\"}";
             // cli?.Send(this);

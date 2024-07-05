@@ -2,6 +2,7 @@ import mimetype from "mimetype";
 import webpush from "web-push";
 import stream from "stream";
 import os from "os";
+import fs from "fs";
 import * as ip from 'ip';
 import path from "path";
 import http from "http";
@@ -148,7 +149,8 @@ export class WebServer {
                 }
                 next();
             });
-            this.app.use("/", express.static(path.join(__dirname, "/public")));
+            WebServer.webapp_file_path = path.join(__dirname, "./public");
+            // this.app.use("/", express.static(path.join(__dirname, "/public")));
             this.app.use(compression());
             // this.app.use(express.urlencoded({ extended: true }));
             // this.app.use(express.json());
@@ -306,6 +308,8 @@ export class WebServer {
 
             config.doDumpMesssages = false;
             config.DoDumpToConsole = false;
+
+            await WebServer.addWebserverRoutes();
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -314,6 +318,37 @@ export class WebServer {
             return null;
         } finally {
             Logger.otel.endSpan(span);
+        }
+    }
+    static webapp_file_path = "";
+    static async addWebserverRoutes() {
+        this.app.get("/", (req, res) => {
+            res.status(402).redirect("/ui/")
+        });
+        if(fs.existsSync( path.join(WebServer.webapp_file_path, 'handler.js' ) )) {
+            const handler = await import(path.join(WebServer.webapp_file_path, 'handler.js'));
+
+            this.app.use((req, res, next) => {
+                if(req.url != null && req.url.startsWith("/ui")) {
+                    handler.handler(req, res, next)
+                } else {
+                    next();
+                }
+            });
+        } else {
+            this.app.use('/ui', express.static(WebServer.webapp_file_path));
+            this.app.get('/ui/*', (req, res, next) => {
+                // Only redirect to index.html if the request accepts HTML, this prevents redirection for missing assets like .js, .css, images, etc.
+                if (req.accepts('html')) {
+                    console.log("serve file " + path.join(WebServer.webapp_file_path, 'index.html') + " for " + req.originalUrl + " (" + req.url + ")");
+                    res.setHeader('Content-Type', 'text/html');
+                    res.sendFile(path.join(WebServer.webapp_file_path, 'index.html'));
+                } else {
+                    // Optionally, send a 404 for unknown types if the file is not found
+                    // res.status(404).send('Not Found');
+                    return next();
+                }
+            });
         }
     }
     public static Listen() {
