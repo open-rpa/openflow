@@ -9,6 +9,8 @@ import { Auth } from "../Auth.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import mimetype from "mimetype";
 import _ from "angular-route";
+import showdown from "showdown";
+const converter = new showdown.Converter();
 const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
 let batchSize = 100;
 import { GridFSBucket, ObjectId } from "mongodb";
@@ -670,7 +672,7 @@ git push -u origin main</pre></p>`
           }
           html += "</ul>";
           if (readme != null && readme != "") {
-            html += "<p><pre>" + readme + "</pre></p>";
+            html += "<p><pre>" + converter.makeHtml(readme) + "</pre></p>";
           }
           html += "</body></html>";
           res.status(200).send(html);

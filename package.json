@@ -1,6 +1,6 @@
 {
   "name": "@openiap/openflow",
-  "version": "1.5.10.30",
+  "version": "1.5.10.31",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -78,7 +78,7 @@
     "request": "2.88.2",
     "saml20": "0.1.14",
     "samlp": "6.0.2",
-    "showdown": "2.1.0",
+    "showdown": "^2.1.0",
     "swagger-ui-express": "4.6.3",
     "systeminformation": "5.22.11",
     "tsoa": "5.1.1",
