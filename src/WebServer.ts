@@ -351,7 +351,7 @@ export class WebServer {
             this.app.get('/ui/*', (req, res, next) => {
                 // Only redirect to index.html if the request accepts HTML, this prevents redirection for missing assets like .js, .css, images, etc.
                 if (req.accepts('html')) {
-                    console.log("serve file " + path.join(WebServer.webapp_file_path, 'index.html') + " for " + req.originalUrl + " (" + req.url + ")");
+                    // console.log("serve file " + path.join(WebServer.webapp_file_path, 'index.html') + " for " + req.originalUrl + " (" + req.url + ")");
                     res.setHeader('Content-Type', 'text/html');
                     res.sendFile(path.join(WebServer.webapp_file_path, 'index.html'));
                 } else {
