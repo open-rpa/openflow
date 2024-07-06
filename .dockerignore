@@ -5,7 +5,6 @@ temp
 letsencrypt
 .cache
 .npmrc
-.openflowapicache
 .scannerwork
 docker-package.json
 .env

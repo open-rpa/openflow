@@ -2,19 +2,17 @@
 .vscode
 .npmrc
 .cache
-.openflowapicache
+src
 config
 docs
 node_modules
 logs
 package-lock.json
 tsconfig.json
-OpenFlow
 temp
 letsencrypt
 webpack.config.js
 gulpfile.js
-OpenFlow.code-workspace
 CONTRIBUTING
 Dockerfile
 docker-compose.yml
@@ -34,3 +32,4 @@ docker-package.json
 *.heapsnapshot
 .clinic
 /public
+/public2
