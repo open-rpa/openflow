@@ -8,7 +8,6 @@ import { User, Rights } from "@openiap/openflow-api";
 import { Auth } from "../Auth.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import mimetype from "mimetype";
-import _ from "angular-route";
 import showdown from "showdown";
 const converter = new showdown.Converter();
 const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
