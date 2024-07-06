@@ -1,0 +1,1192 @@
+{
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"Ace": {
+				"properties": {
+					"deny": {
+						"type": "boolean"
+					},
+					"_id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"rights": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "number",
+								"format": "double"
+							}
+						]
+					}
+				},
+				"required": [
+					"deny",
+					"_id",
+					"name",
+					"rights"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"User": {
+				"properties": {
+					"_id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"_created": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"_createdby": {
+						"type": "string"
+					},
+					"_createdbyid": {
+						"type": "string"
+					},
+					"_modified": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"_modifiedby": {
+						"type": "string"
+					},
+					"_modifiedbyid": {
+						"type": "string"
+					},
+					"_type": {
+						"type": "string"
+					},
+					"_acl": {
+						"items": {
+							"$ref": "#/components/schemas/Ace"
+						},
+						"type": "array"
+					},
+					"_name": {
+						"type": "string"
+					},
+					"_encrypt": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"_version": {
+						"type": "number",
+						"format": "double"
+					},
+					"email": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"dbusage": {
+						"type": "number",
+						"format": "double"
+					},
+					"dblocked": {
+						"type": "boolean"
+					},
+					"newpassword": {
+						"type": "string"
+					},
+					"federationids": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"_id",
+					"name",
+					"_created",
+					"_createdby",
+					"_createdbyid",
+					"_modified",
+					"_modifiedby",
+					"_modifiedbyid",
+					"_type",
+					"_acl",
+					"_name",
+					"_encrypt",
+					"_version",
+					"email",
+					"username",
+					"dbusage",
+					"dblocked",
+					"newpassword",
+					"federationids"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Pick_User.name-or-email-or-username-or-newpassword_": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"newpassword": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"email",
+					"username",
+					"newpassword"
+				],
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"UserCreationParams": {
+				"$ref": "#/components/schemas/Pick_User.name-or-email-or-username-or-newpassword_"
+			},
+			"WorkflowParameter": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"direction": {
+						"type": "string",
+						"enum": [
+							"in",
+							"out",
+							"inout"
+						]
+					}
+				},
+				"required": [
+					"name",
+					"type",
+					"direction"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Workflow": {
+				"properties": {
+					"_id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"_created": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"_createdby": {
+						"type": "string"
+					},
+					"_createdbyid": {
+						"type": "string"
+					},
+					"_modified": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"_modifiedby": {
+						"type": "string"
+					},
+					"_modifiedbyid": {
+						"type": "string"
+					},
+					"_type": {
+						"type": "string"
+					},
+					"_acl": {
+						"items": {
+							"$ref": "#/components/schemas/Ace"
+						},
+						"type": "array"
+					},
+					"_name": {
+						"type": "string"
+					},
+					"_encrypt": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"_version": {
+						"type": "number",
+						"format": "double"
+					},
+					"Parameters": {
+						"items": {
+							"$ref": "#/components/schemas/WorkflowParameter"
+						},
+						"type": "array"
+					},
+					"background": {
+						"type": "boolean"
+					},
+					"Serializable": {
+						"type": "boolean"
+					},
+					"Filename": {
+						"type": "string"
+					},
+					"projectandname": {
+						"type": "string"
+					},
+					"Xaml": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"_id",
+					"name",
+					"_created",
+					"_createdby",
+					"_createdbyid",
+					"_modified",
+					"_modifiedby",
+					"_modifiedbyid",
+					"_type",
+					"_acl",
+					"_name",
+					"_encrypt",
+					"_version",
+					"Parameters",
+					"background",
+					"Serializable",
+					"Filename",
+					"projectandname",
+					"Xaml"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Pick_Workflow.name-or-background-or-Serializable-or-Filename-or-projectandname-or-Xaml_": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"background": {
+						"type": "boolean"
+					},
+					"Serializable": {
+						"type": "boolean"
+					},
+					"Filename": {
+						"type": "string"
+					},
+					"projectandname": {
+						"type": "string"
+					},
+					"Xaml": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"background",
+					"Serializable",
+					"Filename",
+					"projectandname",
+					"Xaml"
+				],
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"OpenRPAWorkflowCreationParams": {
+				"$ref": "#/components/schemas/Pick_Workflow.name-or-background-or-Serializable-or-Filename-or-projectandname-or-Xaml_"
+			},
+			"Collection": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"collection",
+							"timeseries"
+						]
+					}
+				},
+				"required": [
+					"name",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CreateCollectionOptions": {
+				"properties": {
+					"timeseries": {
+						"properties": {
+							"metaField": {
+								"type": "string"
+							},
+							"timeField": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"expireAfterSeconds": {
+						"type": "number",
+						"format": "double"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object"
+			},
+			"IRecordOfAny": {
+				"properties": {},
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"CreateIndexOptions": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"options": {
+						"$ref": "#/components/schemas/IRecordOfAny"
+					},
+					"keypath": {
+						"$ref": "#/components/schemas/IRecordOfAny"
+					}
+				},
+				"required": [
+					"keypath"
+				],
+				"type": "object"
+			},
+			"IStringToStringDictionary": {
+				"properties": {},
+				"type": "object",
+				"additionalProperties": {
+					"type": "string"
+				}
+			},
+			"QueryParams": {
+				"properties": {
+					"explain": {
+						"type": "boolean"
+					},
+					"queryas": {
+						"type": "string"
+					},
+					"sort": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"$ref": "#/components/schemas/IStringToStringDictionary"
+							}
+						]
+					},
+					"skip": {
+						"type": "number",
+						"format": "double"
+					},
+					"top": {
+						"type": "number",
+						"format": "double"
+					},
+					"projection": {
+						"$ref": "#/components/schemas/IStringToStringDictionary"
+					},
+					"query": {}
+				},
+				"required": [
+					"query"
+				],
+				"type": "object"
+			},
+			"AggregateParams": {
+				"properties": {
+					"explain": {
+						"type": "boolean"
+					},
+					"queryas": {
+						"type": "string"
+					},
+					"pipeline": {}
+				},
+				"required": [
+					"pipeline"
+				],
+				"type": "object"
+			},
+			"RunOpenRPAWorkflowParams": {
+				"properties": {
+					"rpc": {
+						"type": "boolean"
+					},
+					"Parameters": {
+						"$ref": "#/components/schemas/IRecordOfAny"
+					},
+					"workflowid": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"rpc",
+					"workflowid"
+				],
+				"type": "object"
+			},
+			"QueueMessageParams": {
+				"properties": {
+					"rpc": {
+						"type": "boolean"
+					},
+					"Payload": {}
+				},
+				"required": [
+					"rpc",
+					"Payload"
+				],
+				"type": "object"
+			}
+		},
+		"securitySchemes": {
+			"oidc": {
+				"type": "openIdConnect",
+				"openIdConnectUrl": "https://app.openiap.io/oidc/.well-known/openid-configuration"
+			}
+		}
+	},
+	"info": {
+		"title": "@openiap/core",
+		"version": "1.5.10.4",
+		"description": "Simple  wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
+		"license": {
+			"name": "MPL-2.0"
+		},
+		"contact": {
+			"name": "OpenIAP ApS / Allan Zimmermann"
+		}
+	},
+	"openapi": "3.0.0",
+	"paths": {
+		"/api/v1/me": {
+			"get": {
+				"operationId": "Me",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/User"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns the current user",
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/api/v1/users": {
+			"get": {
+				"operationId": "GetUsers",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/User"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Return a list of users ( max 100 by default)\neach users properties are limited to name, username, email, lastseen, Ude GetUser with _id to get all properties",
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "projection",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "CreateUser",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UserCreationParams"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/users/{id}": {
+			"get": {
+				"operationId": "GetUser",
+				"responses": {
+					"200": {
+						"description": "User",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					}
+				},
+				"description": "Return a user by _id",
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"description": "_id of user to return",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "DeleteUser",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/openrpaworkflows": {
+			"get": {
+				"operationId": "GetOpenrpaworkflows",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Workflow"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "projection",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "CreateOpenRPAWorkflow",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Workflow"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/OpenRPAWorkflowCreationParams"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/openrpaworkflows/{id}": {
+			"get": {
+				"operationId": "GetOpenRPAWorkflow",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Workflow"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "DeleteOpenRPAWorkflow",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/collections": {
+			"get": {
+				"operationId": "GetCollections",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Collection"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "includesystem",
+						"required": false,
+						"schema": {
+							"type": "boolean"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "CreateCollection",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Collection"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateCollectionOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/collections/{collectionname}": {
+			"get": {
+				"operationId": "GetCollection",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Collection"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"delete": {
+				"operationId": "DropCollection",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/indexes/{collectionname}": {
+			"get": {
+				"operationId": "GetIndexes",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"post": {
+				"operationId": "CreateIndex",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateIndexOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/indexes/{collectionname}/{name}": {
+			"delete": {
+				"operationId": "DropIndex",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "name",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/api/v1/query/{collectionname}": {
+			"post": {
+				"operationId": "Query",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/QueryParams"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/aggregate/{collectionname}": {
+			"post": {
+				"operationId": "Aggregate",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AggregateParams"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/runopenrpaworkflow/{robotname}": {
+			"post": {
+				"operationId": "RunOpenRPAWorkflow",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRecordOfAny"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "robotname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RunOpenRPAWorkflowParams"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/queuemessage/{queuename}": {
+			"post": {
+				"operationId": "QueueMessage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/IRecordOfAny"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "queuename",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/QueueMessageParams"
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "/"
+		}
+	]
+}

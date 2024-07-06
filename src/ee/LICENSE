@@ -1,0 +1,37 @@
+The OpenIAP Enterprise Edition (EE) license (the "EE License")
+Copyright (c) 2015-2024 OpenIAP ApS
+
+With regard to the OpenIAP flow Software:
+
+This software and associated documentation files (the "Software") may only be
+used in production, if you (and any entity that you represent) have agreed to,
+and are in compliance with, the OpenIAP Subscription Terms of Service,
+available at https://openiap.io/terms (the "EE Terms"), or other agreement
+governing the use of the Software, as agreed by you and OpenIAP, and otherwise
+have a valid OpenIAP subscription for the correct number of instances. 
+Subject to the foregoing sentence, you are free to modify this Software and publish 
+patches to the Software. You agree that OpenIAP and/or its licensors (as applicable) 
+retain all right, title and interest in and to all such modifications and/or patches,
+and all such modifications and/or patches may only be used, copied, modified, displayed, 
+distributed, or otherwise exploited with a valid OpenIAP subscription for the correct number
+of instances. Notwithstanding the foregoing, you may copy and modify the Software
+for development and testing purposes, without requiring a Subscription. You agree
+that OpenIAP and/or its licensors (as applicable) retain all right, title and
+interest in and to all such modifications. You are not granted any other rights
+beyond what is expressly stated herein.  Subject to the foregoing, it is forbidden
+to copy, merge, publish, distribute, sublicense, and/or sell the Software.
+
+This EE License applies only to the part of this Software that is located in and under the ee folder.
+All other parts is geerally copyrighted under the MPL-2.0 license license unless the source file specifies otherwize
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+For all third-party components incorporated into the OpenIAP Software,
+those components are licensed under the original license provided by the owner
+of the applicable component.

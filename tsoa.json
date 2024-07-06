@@ -1,10 +1,10 @@
 {
-    "entryFile": "OpenFlow/src/ee/OpenAPIProxy.ts",
+    "entryFile": "src/ee/OpenAPIProxy.ts",
     "noImplicitAdditionalProperties": "throw-on-extras",
     "controllerPathGlobs2": ["src/**/*Controller.ts"],
-    "controllerPathGlobs": ["OpenFlow/src/ee/OpenAPIuser.ts"],
+    "controllerPathGlobs": ["src/ee/OpenAPIuser.ts"],
     "spec": {
-      "outputDirectory": "OpenFlow/src/public",
+      "outputDirectory": "src/public",
       "specVersion": 3,
       "securityDefinitions": {
         "oidc": {
@@ -15,7 +15,7 @@
       }
     },
     "routes": {
-      "routesDir": "OpenFlow/src/ee/build",
-      "authenticationModule": "OpenFlow/src/ee/OpenAPIauthentication.ts"
+      "routesDir": "src/ee/build",
+      "authenticationModule": "src/ee/OpenAPIauthentication.ts"
     }
   }

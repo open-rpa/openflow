@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "skipLibCheck": true,
+        "module": "ESNext",
+        "target": "ESNext",
+        "outDir": "dist",
+        "rootDir": "src",
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "declaration": true,
+        "lib": [
+            "es2018",
+            "dom"
+        ]
+    },
+    "exclude": [
+        "dist",
+        "public",
+        "node_modules"
+    ]
+}
