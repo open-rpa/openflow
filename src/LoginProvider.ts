@@ -1177,6 +1177,9 @@ export class LoginProvider {
                 forceddomains = forceddomains.concat(provider.forceddomains);
             }
         }
+        const loginproviders = (await Logger.DBHelper.GetProviders(null)).map((x:any)=> (
+            {name: x.name, id: x.id, provider: x.provider, issuer: x.issuer, logo: x.logo}
+        ))
         const res2 = {
             wshost: _url,
             wsurl: _url,
@@ -1209,6 +1212,7 @@ export class LoginProvider {
             llmchat_queue: Config.llmchat_queue,
             enable_analytics: Config.enable_analytics,
             enable_gitserver: Config.enable_gitserver,
+            loginproviders,
         }
         if(Config.otel_trace_url != null && Config.otel_trace_url != "") {
             res2["otel_trace_url"] = Config.otel_trace_url;
