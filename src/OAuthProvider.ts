@@ -24,6 +24,7 @@ export class OAuthProvider {
             for (var i = 0; i < this.instance.clients.length; i++) {
                 var cli = this.instance.clients[i];
                 var auth = ctx.oidc.session.authorizations[cli.id];
+                if(auth == null) auth = ctx.oidc.session.authorizations[cli.client_id];
                 if (auth) {
                     if (cli.openflowsignout && cli.openflowsignout == true) {
                         ctx.req.logout();
@@ -141,6 +142,22 @@ export class OAuthProvider {
                 // https://github.com/panva/node-oidc-provider/blob/64edda69a84e556531f45ac814788c8c92ab6212/test/claim_types/claim_types.test.js
                 if (cli.grant_types == null) cli.grant_types = ["implicit", "authorization_code"];
             });
+            var agent = instance.clients.find(x => x.client_id == "webapp");
+            if(agent == null) {
+                instance.clients.push({
+                        grants: ['password', 'refresh_token', 'authorization_code'],
+                        defaultrole : "Viewer",
+                        rolemappings : { "admins": "Admin" },
+                        clientId: "webapp",client_id: "webapp", 
+                        token_endpoint_auth_method: "none",
+                        response_types: ['code', 'id_token', 'code id_token'],
+                        grant_types: ['implicit', 'authorization_code'],
+                        post_logout_redirect_uris: [],
+                        redirect_uris: [],
+                        openflowsignout: true
+                    }
+                )
+            }
             var agent = instance.clients.find(x => x.client_id == "agent");
             if(agent == null) {
                 instance.clients.push({
