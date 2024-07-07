@@ -618,7 +618,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return result;
     }
-    static reserved_collection_names = ["workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"];
+    static reserved_collection_names = ["git", "workflow", "entities", "config", "audit", "jslog", "openrpa", "nodered", "openrpa_instances", "forms", "workflow_instances", "users"];
     async DropCollection(collectionname: string, jwt: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
         let user: User = null;
@@ -631,6 +631,17 @@ export class DatabaseConnection extends events.EventEmitter {
             if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
             Audit.AuditCollectionAction(user, "drop", collectionname, true, span);
+            if(collectionname.endsWith(".files")) {
+                await this.db.dropCollection(collectionname.replace(".files", ".chunks"));
+                Audit.AuditCollectionAction(user, "drop", collectionname.replace(".files", ".chunks"), true, span);
+            }
+            try {
+                if(!collectionname.endsWith("_hist")) {
+                    await this.db.dropCollection(collectionname + "_hist");
+                    Audit.AuditCollectionAction(user, "drop", collectionname + "_hist", true, span);
+                }
+            } catch (error) {
+            }
             await Logger.DBHelper.ClearGetCollections();
         } finally {
             Audit.AuditCollectionAction(user, "drop", collectionname, false, span);

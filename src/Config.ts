@@ -80,7 +80,7 @@ export class dbConfig extends Base {
             if(key == "disable_db_config") continue;
             
             if(["db", "api_ws_url", "mongodb_url", "mongodb_db", "domain", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
-            if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
+            if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "workitem_queue_monitoring_interval",
             "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", 
             "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
             "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
@@ -125,7 +125,7 @@ export class dbConfig extends Base {
                 // if(NoderedUtil.IsNullEmpty(value)) continue;
                 if(["db", "api_ws_url", "mongodb_url", "mongodb_db", "domain", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
 
-                if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "grafana_url", "workitem_queue_monitoring_interval",
+                if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "workitem_queue_monitoring_interval",
                 "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", 
                 "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
                 "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
