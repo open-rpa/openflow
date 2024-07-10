@@ -176,6 +176,7 @@ export class WebServer {
             this.app.use(cookieSession({
                 name: "session", secret: Config.cookie_secret, httpOnly: true
             }));
+
             if (Config.api_rate_limit) this.app.use(rateLimiter);
 
             this.app.get("/livenessprobe", WebServer.get_livenessprobe.bind(this));

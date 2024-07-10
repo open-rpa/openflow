@@ -282,7 +282,7 @@ export class LoginProvider {
         strategy.name = key;
         app.use("/" + key,
             express.urlencoded({ extended: false }),
-            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
+            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: false }),
             function (req: any, res: any, next: any): void {
                 const span: Span = Logger.otel.startSpanExpress("OpenIDStrategy", req);
                 try {
@@ -331,7 +331,7 @@ export class LoginProvider {
         strategy.name = key;
         app.use("/" + key,
             express.urlencoded({ extended: false }),
-            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
+            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: false }),
             function (req: any, res: any, next: any): void {
                 const span: Span = Logger.otel.startSpanExpress("GoogleStrategy", req);
                 try {
@@ -451,7 +451,7 @@ export class LoginProvider {
             });
         app.use("/" + key,
             express.urlencoded({ extended: false }),
-            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: true }),
+            passport.authenticate(key, { failureRedirect: "/" + key, failureFlash: false }),
             function (req: express.Request, res: express.Response, next: express.NextFunction): void {
                 const span: Span = Logger.otel.startSpanExpress("SAML" + key, req);
                 try {
