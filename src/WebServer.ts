@@ -688,6 +688,7 @@ export class WebServer {
                     reply.command = "pushworkitemsreply";
                 }
                 let res = result.data;
+                if(res == null || res == "") res = "{}"
                 if(typeof res == "string") res = JSON.parse(res);
                 delete res.password;
                 if(reply.command == "addworkitemqueuereply") {
