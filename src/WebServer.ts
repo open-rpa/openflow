@@ -402,9 +402,12 @@ export class WebServer {
             metadata._createdbyid = WellknownIds.root;
             metadata._modifiedby = "root";
             metadata._modifiedbyid = WellknownIds.root;
-            if(msg.metadata != null && msg.metadata != null) {
+            if(msg.metadata != null && msg.metadata != "") {
                 try {
-                    metadata = Object.assign(metadata, JSON.parse(msg.metadata));
+                    // is metadata a string ?
+                    if(typeof msg.metadata == "string") {
+                        metadata = Object.assign(metadata, JSON.parse(msg.metadata));
+                    }                    
                 } catch (error) {
                     Logger.instanse.error(error, null);
                 }
@@ -821,6 +824,9 @@ export class WebServer {
         client.onDisconnected = WebServer.onDisconnected;
         client.onMessage = WebServer.onMessage;
         WebSocketServer._clients.push(client);
+        if(client.ping != null) {
+            client.ping(null);
+        }
         info("Client connected, client count " + WebSocketServer._clients.length);
     }
     public static async onConnected(client: flowclient) {
