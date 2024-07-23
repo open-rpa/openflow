@@ -539,6 +539,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                         if(!next.fullDocument) next.fullDocument = item;
                                         if(next.fullDocument) {
                                             next.fullDocument = Config.db.decryptentity(next.fullDocument);
+                                            DatabaseConnection.traversejsondecode(next.fullDocument);
                                             this.parseResult(next.fullDocument, client.clientagent, client.clientversion)
                                             client.SendWatch(stream, next, span);
                                         }
