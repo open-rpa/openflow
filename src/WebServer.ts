@@ -415,6 +415,10 @@ export class WebServer {
             if(metadata.name == null || metadata.name == "") metadata.name = msg.filename;
             if(client.user)
             {
+                if(client.user._id == "65cb30c40ff51e174095573c" && Config.enable_guest_file_upload == false) {
+                    reject(new Error("Guests are not allowed to upload files"));
+                    return;
+                }
                 Base.addRight(metadata, client.user._id , client.user.name, [Rights.full_control]);
                 metadata._createdby = client.user.name;
                 metadata._createdbyid = client.user._id;

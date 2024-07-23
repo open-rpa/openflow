@@ -344,6 +344,7 @@ export class Config {
 
         multi_tenant: false,
         enable_guest: false, 
+        enable_guest_file_upload: false, 
         enable_gitserver: false, 
         enable_gitserver_guest: false, 
         enable_gitserver_guest_create: false, 
@@ -643,6 +644,7 @@ export class Config {
 
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant"));
     public static enable_guest: boolean = Config.parseBoolean(Config.getEnv("enable_guest"));
+    public static enable_guest_file_upload: boolean = Config.parseBoolean(Config.getEnv("enable_guest_file_upload"));    
     public static enable_gitserver: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver"));
     public static enable_gitserver_guest: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest"));
     public static enable_gitserver_guest_create: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest_create"));    
