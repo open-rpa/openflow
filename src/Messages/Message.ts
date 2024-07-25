@@ -1340,6 +1340,7 @@ export class Message {
                 msg.error = "Access denied, not signed in";
             } else {
                 const { query, field, collectionname, jwt, queryas } = msg;
+                msg = JSON.parse(JSON.stringify(msg));
                 msg.results = await Config.db.distinct({ query, field, collectionname, jwt, queryas }, span);
             }
             delete msg.query;
