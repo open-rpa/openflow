@@ -3713,7 +3713,9 @@ export class Message {
             for (var i = 0; i < msg.files.length; i++) {
                 var file = msg.files[i];
                 try {
-                    if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                    if (NoderedUtil.IsNullUndefinded(file.file)) {
+                        continue;
+                    }
                     const readable = new Readable();
                     readable._read = () => { }; // _read is required but you can noop it
                     if (file.file && (!file.compressed)) {
@@ -4080,7 +4082,6 @@ export class Message {
         if (msg.files) {
             for (var i = 0; i < msg.files.length; i++) {
                 var file = msg.files[i];
-                if (NoderedUtil.IsNullUndefinded(file.file)) continue;
                 var exists = wi.files.filter(x => x.name == file.filename);
                 if (exists.length > 0) {
                     try {
@@ -4090,6 +4091,7 @@ export class Message {
                     }
                     wi.files = wi.files.filter(x => x.name != file.filename);
                 }
+                if (NoderedUtil.IsNullUndefinded(file.file) || file.file.length == 0) continue;
                 try {
                     const readable = new Readable();
                     readable._read = () => { }; // _read is required but you can noop it
