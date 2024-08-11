@@ -4082,14 +4082,28 @@ export class Message {
         if (msg.files) {
             for (var i = 0; i < msg.files.length; i++) {
                 var file = msg.files[i];
-                var exists = wi.files.filter(x => x.name == file.filename);
-                if (exists.length > 0) {
-                    try {
-                        await Config.db.DeleteOne(exists[0]._id, "fs.files", false, rootjwt, parent);
-                    } catch (error) {
-                        Logger.instanse.error(msg.error, parent);
+                let deleteit = false;
+                let _id = JSON.parse(JSON.stringify((file as any)._id));
+                if (NoderedUtil.IsNullUndefinded(file.file) || file.file.length == 0) {
+                    if(_id == null || _id == "") {
+                        deleteit = true;
+                    } else {
+                        wi.files = wi.files.filter(x => x.name != file.filename);
+                        wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: (file as any)._id });
                     }
-                    wi.files = wi.files.filter(x => x.name != file.filename);
+                } else {
+                    deleteit = true;
+                }
+                if(deleteit) {
+                    var exists = wi.files.filter(x => x.name == file.filename);
+                    if (exists.length > 0) {
+                        try {
+                            await Config.db.DeleteOne(exists[0]._id, "fs.files", false, rootjwt, parent);
+                        } catch (error) {
+                            Logger.instanse.error(msg.error, parent);
+                        }
+                        wi.files = wi.files.filter(x => x.name != file.filename);
+                    }
                 }
                 if (NoderedUtil.IsNullUndefinded(file.file) || file.file.length == 0) continue;
                 try {
