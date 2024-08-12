@@ -3685,11 +3685,23 @@ export class Message {
         wi.priority = msg.priority;
         wi.nextrun = msg.nextrun;
         // @ts-ignore
-        if(wi.nextrun?.seconds && wi.nextrun?.nanos) {
+        if(wi.nextrun?.seconds || wi.nextrun?.nanos) {
             // @ts-ignore
-            const milliseconds = parseInt(wi.nextrun.seconds) * 1000 + Math.floor(wi.nextrun.nanos / 1000000);
-            const date = new Date(milliseconds);
-            wi.nextrun = date;
+            let seconds = wi.nextrun?.seconds;
+            // @ts-ignore
+            let nanos = wi.nextrun?.nanos;
+            if(seconds != null && nanos != null) {
+                const milliseconds = parseInt(seconds) * 1000 + Math.floor(nanos / 1000000);
+                const date = new Date(milliseconds);
+                wi.nextrun = date;
+            } else if (seconds != null) {
+                const date = new Date(parseInt(seconds) * 1000);
+                wi.nextrun = date;
+            } else {
+                const milliseconds = Math.floor(nanos / 1000000);
+                const date = new Date(milliseconds);
+                wi.nextrun = date;
+            }
         }
         if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
         if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
@@ -3712,8 +3724,13 @@ export class Message {
         if (msg.files) {
             for (var i = 0; i < msg.files.length; i++) {
                 var file = msg.files[i];
+                // @ts-ignore
+                let _id = file._id;
                 try {
                     if (NoderedUtil.IsNullUndefinded(file.file)) {
+                        if(!NoderedUtil.IsNullEmpty(file.filename) && !NoderedUtil.IsNullEmpty(_id) ) {
+                            wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: _id });
+                        }
                         continue;
                     }
                     const readable = new Readable();
@@ -3882,11 +3899,23 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
             wi.nextrun = item.nextrun;
             // @ts-ignore
-            if(wi.nextrun?.seconds && wi.nextrun?.nanos) {
+            if(wi.nextrun?.seconds || wi.nextrun?.nanos) {
                 // @ts-ignore
-                const milliseconds = parseInt(wi.nextrun.seconds) * 1000 + Math.floor(wi.nextrun.nanos / 1000000);
-                const date = new Date(milliseconds);
-                wi.nextrun = date;
+                let seconds = wi.nextrun?.seconds;
+                // @ts-ignore
+                let nanos = wi.nextrun?.nanos;
+                if(seconds != null && nanos != null) {
+                    const milliseconds = parseInt(seconds) * 1000 + Math.floor(nanos / 1000000);
+                    const date = new Date(milliseconds);
+                    wi.nextrun = date;
+                } else if (seconds != null) {
+                    const date = new Date(parseInt(seconds) * 1000);
+                    wi.nextrun = date;
+                } else {
+                    const milliseconds = Math.floor(nanos / 1000000);
+                    const date = new Date(milliseconds);
+                    wi.nextrun = date;
+                }
             }
 
             wi.state = "new"
