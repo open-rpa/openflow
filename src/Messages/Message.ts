@@ -1376,12 +1376,20 @@ export class Message {
         this.Reply();
         let msg: GetDocumentVersionMessage
         try {
+            var version = undefined;
+            try {
+                // @ts-ignore
+                version = this.data.version;
+            } catch (error) {                
+            }
             msg = GetDocumentVersionMessage.assign(this.data);
+            if(msg && msg.version) version = msg.version;
+            if(version < 0) version = undefined;
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 msg.error = "Access denied, not signed in";
             } else {
-                msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg.id, version: msg.version, jwt: msg.jwt }, span);
+                msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg.id, version: version, jwt: msg.jwt }, span);
                 if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
             }
             delete msg.jwt;
