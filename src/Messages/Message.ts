@@ -4473,7 +4473,11 @@ export class Message {
         user = this.tuser;
 
         if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
-        wiq.name = msg.name;
+        if(wiq.name != msg.name) {
+            let exists = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
+            if (exists.length > 0) throw new Error("Work item queue with name " + msg.name + " already exists");
+            wiq.name = msg.name;
+        }
         wiq.workflowid = msg.workflowid;
         wiq.robotqueue = msg.robotqueue;
         wiq.projectid = msg.projectid;
@@ -4491,7 +4495,10 @@ export class Message {
         if (!NoderedUtil.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
 
 
-        if (msg._acl) wiq._acl = msg._acl;
+        if (msg._acl) {
+            // wiq._acl = msg._acl;
+            wiq._acl = JSON.parse(JSON.stringify(msg._acl));
+        }
         msg = JSON.parse(JSON.stringify(msg));
 
         msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
