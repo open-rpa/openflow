@@ -645,7 +645,7 @@ export class Message {
                         case "issuelicense":
                             await this.IssueLicense(cli, span);
                             break;
-                        case "invokeopenra":
+                        case "invokeopenrpa":
                             await this.InvokeOpenRPA(cli, span);
                             break;
                         case "customcommand":
