@@ -3317,8 +3317,13 @@ export class Message {
             }
 
             let customer: Customer = null;
-            if (msg.customer != null && msg.customer._id != null) {
+            if (msg.customer != null && msg.customer._id != null && msg.customer._id != "") {
                 const customers = await Config.db.query<Customer>({ query: { _type: "customer", "_id": msg.customer._id }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
+                if (customers.length > 0) {
+                    customer = customers[0];
+                }
+            } else if (msg.customer != null && msg.customer.name != null && msg.customer.name != "") {
+                const customers = await Config.db.query<Customer>({ query: { _type: "customer", "name": msg.customer.name }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                 if (customers.length > 0) {
                     customer = customers[0];
                 }
