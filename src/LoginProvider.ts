@@ -191,6 +191,8 @@ export class LoginProvider {
         app.get("/GetTokenRequest", LoginProvider.get_GetTokenRequest.bind(this));
         app.get("/login", LoginProvider.get_login.bind(this));
         app.get("/login/*", LoginProvider.get_login2.bind(this));
+        app.get("/Login", LoginProvider.get_login.bind(this));
+        app.get("/Login/*", LoginProvider.get_login2.bind(this));
         app.get("/auth/signinwin/main", LoginProvider.get_login3.bind(this));
         app.get("/validateuserform", LoginProvider.get_validateuserform.bind(this));
         app.get("/read/:id", LoginProvider.get_read.bind(this));
