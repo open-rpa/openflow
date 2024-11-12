@@ -408,7 +408,7 @@ export class Config {
         downloadtoken_expires_in: "15m",
         personalnoderedtoken_expires_in: "365d",
 
-        agent_images: [{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs", "python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["dotnet"]} , {"name":"PowerShell 7.3", "image":"openiap/nodeagent:pwsh", "languages": ["powershell"]} ],
+        agent_images: [{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs","exec","python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs","exec","python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["nodejs","exec","python","dotnet","powershell"]}  ],
         agent_domain_schema: "",
         agent_node_selector: "",
         agent_apiurl: "",
