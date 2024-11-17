@@ -1,9 +1,20 @@
-FROM node:lts-alpine
-RUN apk add --no-cache bash nano
+# FROM node:lts-alpine
+# FROM node:22.9.0-alpine3.20 AS base
+# FROM node:lts-alpine3.16
+FROM node:22.9-slim
+# alpine
+# RUN apk add --no-cache bash nano
+# debian
+RUN apt-get update && apt-get install -y nano git curl && rm -rf /var/lib/apt/lists/* 
+
 RUN mkdir /app
 WORKDIR /app
 COPY package.json /app/
-RUN npm install --omit=dev --production --verbose
+# https://github.com/nodejs/docker-node/issues/1946#issuecomment-2459881919
+# ENV NPM_VERSION=10.3.0
+# RUN npm install -g npm@"${NPM_VERSION}" --omit=dev --production --no-audit --verbose --force
+
+RUN npm install --omit=dev --production --no-audit --verbose --force
 COPY . /app/
 RUN npm run build
 COPY public /app/dist/public

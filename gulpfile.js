@@ -56,7 +56,9 @@ gulp.task("compose", async function (done) {
         versions.push("-t openiap/openflow:" + majorversion);
     }
     console.log(versions)
-    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64 --push .`])();
+    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7 --push .`])();
+    // return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .`])();
+    // return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/arm64 --push .`])();
 });
 gulp.task("latest", async function (done) {
     var versions = ["-t openiap/openflow:latest", "-t openiap/openflow:edge", "-t openiap/openflow:" + version]
