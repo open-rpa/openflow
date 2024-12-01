@@ -616,6 +616,10 @@ export class LoginProvider {
                 }
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
+                    if(info && info.message) {
+                        console.log(info.message);
+                        // if(err == null) { err = new Error(info.message); }
+                    }
                     if (err) {
                         Logger.instanse.error(err, null, {cls: "LoginProvider", func: "Localauthenticate"});
                     }
