@@ -80,6 +80,15 @@ export type QueryParams = {
   queryas?: string;
   explain?: boolean;
 }
+export type CountParams = {
+  query: any; //IStringToStringDictionary;
+  queryas?: string;
+}
+export type DistinctParams = {
+  query: any; //IStringToStringDictionary;
+  field: string;
+  queryas?: string;
+}
 export type AggregateParams = {
   pipeline: any; // IRecordOfAny[];
   queryas?: string;
@@ -288,9 +297,7 @@ export class collectionsController extends Controller {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
     if(includesystem == null) includesystem = false;
     var collections = await Config.db.ListCollections(true, Crypt.rootToken());
-    collections = collections.filter(x => x.name != "fs.chunks");
-    collections = collections.filter(x => x.name != "uploads.files");
-    collections = collections.filter(x => x.name != "uploads.chunks");
+    collections = collections.filter(x => !x.name.endsWith(".chunks"));
     collections = collections.filter(x => !x.name.endsWith("_hist"));
     if(!includesystem) {
       collections = collections.filter(x => x.name.indexOf("system.") === -1);
@@ -388,7 +395,58 @@ export class QueryController extends Controller {
   ): Promise<any[]> {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-      var res = await Config.db.query<any>({ collectionname, ...requestBody, jwt }, null)
+      const options = { collectionname, ...requestBody, jwt };
+      if(options.queryas == "string") options.queryas = "";
+      if(options.query == "string") options.query = "{}";
+      var res = await Config.db.query<any>(options, null)
+      return res;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+}
+@Route("api/v1/count")
+export class CountController extends Controller {
+  @Post("{collectionname}")
+  @Security("oidc")
+  // @SuccessResponse("204", "No Content")
+  public async Count(
+    @Body() requestBody: CountParams,
+    @Path() collectionname: string,
+    @Request() request: express.Request
+  ): Promise<number> {
+    try {
+      const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
+      const options = { collectionname, ...requestBody, jwt };
+      if(options.queryas == "string") options.queryas = "";
+      if(options.query == "string") options.query = "{}";
+      var res = await Config.db.count(options, null)
+      return res;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+}
+@Route("api/v1/distinct")
+export class DistinctController extends Controller {
+  @Post("{collectionname}")
+  @Security("oidc")
+  // @SuccessResponse("204", "No Content")
+  public async Distinct(
+    @Body() requestBody: DistinctParams,
+    @Path() collectionname: string,
+    @Request() request: express.Request
+  ): Promise<string[]> {
+    try {
+      const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
+      const options = { collectionname, ...requestBody, jwt };
+      if(options.queryas == "string") options.queryas = "";
+      if(options.query == "string") options.query = "{}";
+      var res = await Config.db.distinct(options, null)
       return res;
     } catch (error) {
       console.error(error);
@@ -409,6 +467,8 @@ export class AggregateController extends Controller {
   ): Promise<any[]> {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
+      if(requestBody.queryas == "string") requestBody.queryas = "";
+      if(requestBody.pipeline == "string") requestBody.pipeline = "[]";
       var res = await Config.db.aggregate<any>(requestBody.pipeline, collectionname, jwt, null, requestBody.queryas, requestBody.explain, null)
       return res;
     } catch (error) {

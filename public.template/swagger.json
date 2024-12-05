@@ -429,6 +429,34 @@
 				],
 				"type": "object"
 			},
+			"CountParams": {
+				"properties": {
+					"queryas": {
+						"type": "string"
+					},
+					"query": {}
+				},
+				"required": [
+					"query"
+				],
+				"type": "object"
+			},
+			"DistinctParams": {
+				"properties": {
+					"queryas": {
+						"type": "string"
+					},
+					"field": {
+						"type": "string"
+					},
+					"query": {}
+				},
+				"required": [
+					"field",
+					"query"
+				],
+				"type": "object"
+			},
 			"AggregateParams": {
 				"properties": {
 					"explain": {
@@ -485,8 +513,8 @@
 	},
 	"info": {
 		"title": "@openiap/core",
-		"version": "1.5.10.4",
-		"description": "Simple  wrapper around NodeRed, RabbitMQ and MongoDB to support a more scaleable NodeRed implementation.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
+		"version": "1.5.10.50",
+		"description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
 		"license": {
 			"name": "MPL-2.0"
 		},
@@ -1050,6 +1078,94 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/QueryParams"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/count/{collectionname}": {
+			"post": {
+				"operationId": "Count",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "number",
+									"format": "double"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CountParams"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/distinct/{collectionname}": {
+			"post": {
+				"operationId": "Distinct",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"security": [
+					{
+						"oidc": []
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "collectionname",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DistinctParams"
 							}
 						}
 					}
