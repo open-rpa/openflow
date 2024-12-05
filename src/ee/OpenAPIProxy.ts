@@ -223,7 +223,7 @@ export class OpenAPIProxy {
         try {
           var jwt = await OpenAPIProxy.GetToken(req);
           const tuser = await Auth.Token2User(jwt, null);
-          if(tuser == null) { res.status(401).json({ error: "Access denied" }); return; }
+          // if(tuser == null) { res.status(401).json({ error: "Access denied" }); return; }
           let result = await WebServer.ProcessMessage(req, tuser, jwt);
           res.json(result.data);
         } catch (error) {

@@ -19,9 +19,6 @@ export function expressAuthentication(request: express.Request, securityName: st
     token = token?.replace("Bearer ", "");
 
     return new Promise(async (resolve, reject) => {
-      if (!token) {
-        return reject(new Error("No token provided"));
-      }
       let user: User = null;
       try {
         user = await Auth.Token2User(token, null);
