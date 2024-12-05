@@ -150,7 +150,7 @@ export class OAuthProvider {
                         rolemappings : { "admins": "Admin" },
                         clientId: "webapp",client_id: "webapp", 
                         token_endpoint_auth_method: "none",
-                        response_types: ['code', 'id_token', 'code id_token'],
+                        response_types: ["code", "id_token", "code id_token"],
                         grant_types: ['implicit', 'authorization_code'],
                         post_logout_redirect_uris: [],
                         redirect_uris: [],
@@ -234,6 +234,7 @@ export class OAuthProvider {
                 formats: {
                     AccessToken: "jwt",
                 },
+                responseTypes: ["code", "id_token", "code id_token"],
                 ttl: {
                     AccessToken: (Config.oidc_access_token_ttl * 60),
                     AuthorizationCode: (Config.oidc_authorization_code_ttl * 60),
