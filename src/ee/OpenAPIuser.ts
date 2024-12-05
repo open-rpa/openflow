@@ -122,6 +122,7 @@ import {
   Controller,
   Delete,
   Get,
+  Put,
   Path,
   Post,
   Query,
@@ -133,7 +134,7 @@ import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { OpenAPIProxy } from "./OpenAPIProxy.js";
 import { Logger } from "../Logger.js";
-import { NoderedUtil, TokenUser } from "@openiap/openflow-api";
+import { NoderedUtil, TokenUser, UpdateOneMessage } from "@openiap/openflow-api";
 import { amqpwrapper } from "../amqpwrapper.js";
 import { Auth } from "../Auth.js";
 
@@ -579,4 +580,54 @@ export class QueueMessageController extends Controller {
     }
   }
 
+}
+
+
+
+@Route("api/v1/entities")
+export class EntitiesController extends Controller {
+
+
+
+  
+  
+  @Post("{collectionname}")
+  @Security("oidc")
+  public async CreateEntities(
+    @Body() requestBody: IRecordOfAny,
+    @Path() collectionname: string,
+    @Request() request: express.Request
+  ): Promise<IRecordOfAny> {
+    const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
+    var item = { ...requestBody } as IRecordOfAny;
+    return Config.db.InsertOne<any>(item, collectionname, 1, true, jwt, null)
+  }
+  @Put("{collectionname}")
+  @Security("oidc")
+  public async UpdateEntities(
+    @Body() requestBody: IRecordOfAny,
+    @Path() collectionname: string,
+    @Request() request: express.Request
+  ): Promise<any> {
+    const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
+    var item = { ...requestBody } as any;
+    let msg = new UpdateOneMessage();
+    msg.collectionname = collectionname;
+    msg.item = item as any;
+    msg.j = false;
+    msg.w = 1;
+    msg.jwt = jwt;
+    let result = await Config.db.UpdateOne<any>(msg, null);
+    return result.item;
+  }
+  @Delete("{collectionname}/{id}")
+  @Security("oidc")
+  public async DeleteEntities(
+    @Path() id: string,
+    @Path() collectionname: string,
+    @Request() request: express.Request
+  ): Promise<number> {
+    const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
+    return await Config.db.DeleteOne(id, collectionname, false, jwt , null);
+  }
 }

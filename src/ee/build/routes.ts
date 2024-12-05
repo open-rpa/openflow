@@ -24,6 +24,8 @@ import { AggregateController } from './../OpenAPIuser.js';
 import { RunOpenRPAWorkflowController } from './../OpenAPIuser.js';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { QueueMessageController } from './../OpenAPIuser.js';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { EntitiesController } from './../OpenAPIuser.js';
 import { expressAuthentication } from './../OpenAPIauthentication.js';
 // @ts-ignore - no great way to install types from subpackage
 import promiseAny from 'promise.any';
@@ -795,6 +797,90 @@ export function RegisterRoutes(app: Router) {
 
 
               const promise = controller.QueueMessage.apply(controller, validatedArgs as any);
+              promiseHandler(controller, promise, response, undefined, next);
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        app.post('/api/v1/entities/:collectionname',
+            authenticateMiddleware([{"oidc":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(EntitiesController)),
+            ...(fetchMiddlewares<RequestHandler>(EntitiesController.prototype.CreateEntities)),
+
+            function EntitiesController_CreateEntities(request: any, response: any, next: any) {
+            const args = {
+                    requestBody: {"in":"body","name":"requestBody","required":true,"ref":"IRecordOfAny"},
+                    collectionname: {"in":"path","name":"collectionname","required":true,"dataType":"string"},
+                    request: {"in":"request","name":"request","required":true,"dataType":"object"},
+            };
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = getValidatedArgs(args, request, response);
+
+                const controller = new EntitiesController();
+
+
+              const promise = controller.CreateEntities.apply(controller, validatedArgs as any);
+              promiseHandler(controller, promise, response, undefined, next);
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        app.put('/api/v1/entities/:collectionname',
+            authenticateMiddleware([{"oidc":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(EntitiesController)),
+            ...(fetchMiddlewares<RequestHandler>(EntitiesController.prototype.UpdateEntities)),
+
+            function EntitiesController_UpdateEntities(request: any, response: any, next: any) {
+            const args = {
+                    requestBody: {"in":"body","name":"requestBody","required":true,"ref":"IRecordOfAny"},
+                    collectionname: {"in":"path","name":"collectionname","required":true,"dataType":"string"},
+                    request: {"in":"request","name":"request","required":true,"dataType":"object"},
+            };
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = getValidatedArgs(args, request, response);
+
+                const controller = new EntitiesController();
+
+
+              const promise = controller.UpdateEntities.apply(controller, validatedArgs as any);
+              promiseHandler(controller, promise, response, undefined, next);
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        app.delete('/api/v1/entities/:collectionname/:id',
+            authenticateMiddleware([{"oidc":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(EntitiesController)),
+            ...(fetchMiddlewares<RequestHandler>(EntitiesController.prototype.DeleteEntities)),
+
+            function EntitiesController_DeleteEntities(request: any, response: any, next: any) {
+            const args = {
+                    id: {"in":"path","name":"id","required":true,"dataType":"string"},
+                    collectionname: {"in":"path","name":"collectionname","required":true,"dataType":"string"},
+                    request: {"in":"request","name":"request","required":true,"dataType":"object"},
+            };
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = getValidatedArgs(args, request, response);
+
+                const controller = new EntitiesController();
+
+
+              const promise = controller.DeleteEntities.apply(controller, validatedArgs as any);
               promiseHandler(controller, promise, response, undefined, next);
             } catch (err) {
                 return next(err);
