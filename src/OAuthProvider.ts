@@ -9,6 +9,7 @@ import { Logger } from "./Logger.js";
 import { Audit } from "./Audit.js";
 import { Auth } from "./Auth.js";
 import jose from "jose";
+import { DatabaseConnection } from "./DatabaseConnection.js";
 export class OAuthProvider {
     private app: express.Express;
     public static instance: OAuthProvider = null;
@@ -468,11 +469,27 @@ export class Account {
         if (user.name == user.email) {
             user.name = "user " + user.email;
         }
-        if (!NoderedUtil.IsNullUndefinded(user.roles) && Array.isArray(user.roles) && user.roles.length > 0) {
+        let roles = [];
+        if (user._id == "65cb30c40ff51e174095573c") {
+            roles.push("guests");
+        } else if (!NoderedUtil.IsNullUndefinded(user.roles) && Array.isArray(user.roles) && user.roles.length > 0) {
             if (!NoderedUtil.IsNullEmpty(user.roles[0].name)) {
-                user.roles = user.roles.map(x => x.name) as any;
+                for(let i = 0; i < Config.db.WellknownIdsArray.length; i++) {
+                    let hasrole = user.roles.find(x => x._id == Config.db.WellknownIdsArray[i]);
+                    if (hasrole) {
+                        roles.push(hasrole.name);
+                    }
+                }
+                if(roles.indexOf("users") == -1){
+                    roles.push("users");
+                }                
+                for (let i = 0; i < user.roles.length && roles.length < Config.oidc_max_roles; i++) {
+                    if(roles.indexOf(user.roles[i].name) == -1) {
+                        roles.push(user.roles[i].name);
+                    }                    
+                }
+                user.roles = roles;
             }
-
         } else {
             user.roles = ["users"] as any;
         }

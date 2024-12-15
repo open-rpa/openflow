@@ -320,6 +320,7 @@ export class Config {
         oidc_client_credentials_ttl: 480, // 8 hours
         oidc_refresh_token_ttl: 20160, // 14 days in seconds
         oidc_session_ttl: 20160, // 14 days in seconds
+        oidc_max_roles: 25,
 
         oidc_cookie_key: "Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss=",
         api_rate_limit: true,
@@ -620,6 +621,7 @@ export class Config {
     public static oidc_client_credentials_ttl: number = parseInt(Config.getEnv("oidc_client_credentials_ttl"));
     public static oidc_refresh_token_ttl: number = parseInt(Config.getEnv("oidc_refresh_token_ttl"));
     public static oidc_session_ttl: number = parseInt(Config.getEnv("oidc_session_ttl"));
+    public static oidc_max_roles: number = parseInt(Config.getEnv("oidc_max_roles"));
     public static oidc_cookie_key: string = Config.getEnv("oidc_cookie_key");
 
     public static api_rate_limit: boolean = Config.parseBoolean(Config.getEnv("api_rate_limit"));
