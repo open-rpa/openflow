@@ -409,6 +409,8 @@ export class Logger {
             } else {
                 Logger.License = {} as any;
                 Logger.License.ofid = Logger.ofid;
+                Logger.License.validlicense = false;
+                Logger.License.validate = () => { throw new Error("License is not valid"); }
                 Logger.License.shutdown = () => undefined;
             }
         }
