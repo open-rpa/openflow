@@ -651,6 +651,10 @@ export class Message {
                         case "customcommand":
                             await this.CustomCommand(cli, span);
                             break;
+                        case "watchevent":
+                            // why is a client sending a server watchevent ?
+                            Logger.instanse.verbose("recevied unknown WatchEvent from client", span, Logger.parsecli(cli));
+                            break;
                         default:
                             if (command != "error") {
                                 this.UnknownCommand();
@@ -3525,9 +3529,9 @@ export class Message {
                 await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
 
-            const global_customer_admins: Role = await Logger.DBHelper.EnsureRole(rootjwt, "customer admins", WellknownIds.customer_admins, span);
+            const global_customer_admins: Role = await Logger.DBHelper.EnsureRole("customer admins", WellknownIds.customer_admins, span);
 
-            const customeradmins: Role = await Logger.DBHelper.EnsureRole(rootjwt, msg.customer.name + " admins", msg.customer.admins, span);
+            const customeradmins: Role = await Logger.DBHelper.EnsureRole(msg.customer.name + " admins", msg.customer.admins, span);
             customeradmins.name = msg.customer.name + " admins";
             Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
@@ -3546,7 +3550,7 @@ export class Message {
             customeradmins.customerid = msg.customer._id;
             await Logger.DBHelper.Save(customeradmins, rootjwt, span);
 
-            const customerusers: Role = await Logger.DBHelper.EnsureRole(rootjwt, msg.customer.name + " users", msg.customer.users, span);
+            const customerusers: Role = await Logger.DBHelper.EnsureRole(msg.customer.name + " users", msg.customer.users, span);
             customerusers.name = msg.customer.name + " users";
             customerusers.customerid = msg.customer._id;
             Base.addRight(customerusers, customeradmins._id, customeradmins.name, [Rights.full_control]);
@@ -3619,7 +3623,7 @@ export class Message {
     }
     private async Housekeeping(parent: Span): Promise<void> {
         this.Reply();
-        const span: Span = Logger.otel.startSubSpan("message.GetNoderedInstance", parent);
+        const span: Span = Logger.otel.startSubSpan("message.Housekeeping", parent);
         let msg: any;
         try {
             msg = JSON.parse(this.data);
@@ -3650,7 +3654,7 @@ export class Message {
             // if(customers.length == 1) msg.customerid = user.customerid;
         }
         user = this.tuser;
-        if (Config.db.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
+        if (DatabaseConnection.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
 
         const UpdateDoc: any = { "$set": {} };
         UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
@@ -4386,9 +4390,9 @@ export class Message {
         user = this.tuser;
 
         var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
-        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", parent);
+        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole("workitem queue admins", "625440c4231309af5f2052cd", parent);
         if (!skiprole) {
-            const wiqusers: Role = await Logger.DBHelper.EnsureRole(jwt, msg.name + " users", null, parent);
+            const wiqusers: Role = await Logger.DBHelper.EnsureRole(msg.name + " users", null, parent);
             Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
             // Base.removeRight(wiqusers, user._id, [Rights.delete]);
