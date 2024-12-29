@@ -70,7 +70,7 @@ import { i_license_data } from "../commoninterfaces.js";
         assert.strictEqual(Logger.License.data.domain, "localhost.openiap.io");
 
         Config.domain = "notlocalhost.openiap.io";
-        assert.throws(lic.validate.bind(lic), Error);
+        Logger.License.validate(); // will not error anymore, will just set validlicense to false // assert.throws(lic.validate.bind(lic), Error);        
         assert.strictEqual(Logger.License.validlicense, false);
         assert.strictEqual(Logger.License.data.domain, "localhost.openiap.io");
         let ofid2 = Logger.License.ofid(true);
