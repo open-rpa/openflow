@@ -1,15 +1,15 @@
-import express from "express";
-import { Base, NoderedUtil, User, InsertOrUpdateOneMessage } from "@openiap/openflow-api";
-import { Config } from "./Config.js";
-import { Crypt } from "./Crypt.js";
-import { Provider, KoaContextWithOIDC } from "oidc-provider";
-import { MongoAdapter } from "./MongoAdapter.js";
+import { Base, InsertOrUpdateOneMessage, NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Logger } from "./Logger.js";
+import express from "express";
+import jose from "jose";
+import { KoaContextWithOIDC, Provider } from "oidc-provider";
 import { Audit } from "./Audit.js";
 import { Auth } from "./Auth.js";
-import jose from "jose";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
 import { DatabaseConnection } from "./DatabaseConnection.js";
+import { Logger } from "./Logger.js";
+import { MongoAdapter } from "./MongoAdapter.js";
 export class OAuthProvider {
     private app: express.Express;
     public static instance: OAuthProvider = null;

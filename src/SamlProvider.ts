@@ -1,9 +1,9 @@
-import express from "express";
-import samlp from "samlp";
-import { Config } from "./Config.js";
-import { Audit } from "./Audit.js";
 import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
+import express from "express";
+import samlp from "samlp";
+import { Audit } from "./Audit.js";
+import { Config } from "./Config.js";
 import { Logger } from "./Logger.js";
 
 export class SamlProvider {

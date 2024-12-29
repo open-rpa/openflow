@@ -1,4 +1,4 @@
-import { Base, NoderedUser, NoderedUtil, ResourceUsage, User, WellknownIds } from "@openiap/openflow-api";
+import { NoderedUtil, User } from "@openiap/openflow-api";
 import { iAgent, i_agent_driver } from "./commoninterfaces.js";
 import { Logger } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
@@ -6,7 +6,6 @@ import { Crypt } from "./Crypt.js";
 import { Config } from "./Config.js";
 import os from "os";
 import Docker from "dockerode";
-// const { Docker, Dockerode } = dockerode;
 import { Audit } from "./Audit.js";
 import { Auth } from "./Auth.js";
 export class dockerdriver implements i_agent_driver {
@@ -17,7 +16,6 @@ export class dockerdriver implements i_agent_driver {
             return true;
         } catch (error) {
             Logger.instanse.info("Docker not detected: " + error.message, null);
-            // Logger.instanse.error(error, null);
         }
         return false;
     }

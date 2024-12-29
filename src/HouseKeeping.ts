@@ -1,13 +1,12 @@
 import { Base, NoderedUtil, Resource, ResourceUsage, Rights, Role, UpdateManyMessage, User, WellknownIds } from "@openiap/openflow-api";
-import { Crypt } from "./Crypt.js";
-import { Logger } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
-import { Config } from "./Config.js";
-import { iAgent } from "./commoninterfaces.js";
-import { DatabaseConnection } from "./DatabaseConnection.js";
 import { Binary, FindCursor } from "mongodb";
+import { iAgent } from "./commoninterfaces.js";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
+import { DatabaseConnection } from "./DatabaseConnection.js";
+import { Logger } from "./Logger.js";
 import { Message } from "./Messages/Message.js";
-import fs from "fs";
 export class HouseKeeping {
   public static lastHouseKeeping: Date = null;
   public static ReadyForHousekeeping(): boolean {
@@ -904,49 +903,6 @@ export class HouseKeeping {
     if (Config.dbConfig.needsupdate) {
         await Config.dbConfig.Save(jwt, span);
     }
-
-
-    // const personal_nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "personal nodered users", WellknownIds.personal_nodered_users, span);
-    // personal_nodered_users.AddMember(admins);
-    // Base.addRight(personal_nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
-    // Base.removeRight(personal_nodered_users, WellknownIds.admins, [Rights.delete]);
-    // if (Config.multi_tenant) {
-    //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + personal_nodered_users.name + " from self", span);
-    //     Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
-    // } else if (Config.update_acl_based_on_groups) {
-    //     Base.removeRight(personal_nodered_users, personal_nodered_users._id, [Rights.full_control]);
-    //     Base.addRight(personal_nodered_users, personal_nodered_users._id, "personal nodered users", [Rights.read]);
-    // }
-    // await Logger.DBHelper.Save(personal_nodered_users, jwt, span);
-    // const nodered_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered admins", WellknownIds.nodered_admins, span);
-    // nodered_admins.AddMember(admins);
-    // Base.addRight(nodered_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-    // Base.removeRight(nodered_admins, WellknownIds.admins, [Rights.delete]);
-    // await Logger.DBHelper.Save(nodered_admins, jwt, span);
-    // const nodered_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered users", WellknownIds.nodered_users, span);
-    // nodered_users.AddMember(admins);
-    // Base.addRight(nodered_users, WellknownIds.admins, "admins", [Rights.full_control]);
-    // Base.removeRight(nodered_users, WellknownIds.admins, [Rights.delete]);
-    // if (Config.multi_tenant) {
-    //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_users.name + " from self", span);
-    //     Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
-    // } else if (Config.update_acl_based_on_groups) {
-    //     Base.removeRight(nodered_users, nodered_users._id, [Rights.full_control]);
-    //     Base.addRight(nodered_users, nodered_users._id, "nodered users", [Rights.read]);
-    // }
-    // await Logger.DBHelper.Save(nodered_users, jwt, span);
-    // const nodered_api_users: Role = await Logger.DBHelper.EnsureRole(jwt, "nodered api users", WellknownIds.nodered_api_users, span);
-    // nodered_api_users.AddMember(admins);
-    // Base.addRight(nodered_api_users, WellknownIds.admins, "admins", [Rights.full_control]);
-    // Base.removeRight(nodered_api_users, WellknownIds.admins, [Rights.delete]);
-    // if (Config.multi_tenant) {
-    //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + nodered_api_users.name + " from self", span);
-    //     Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
-    // } else if (Config.update_acl_based_on_groups) {
-    //     Base.removeRight(nodered_api_users, nodered_api_users._id, [Rights.full_control]);
-    //     Base.addRight(nodered_api_users, nodered_api_users._id, "nodered api users", [Rights.read]);
-    // }
-    // await Logger.DBHelper.Save(nodered_api_users, jwt, span);
 
     if (Config.multi_tenant) {
         try {

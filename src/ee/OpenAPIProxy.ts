@@ -1,14 +1,14 @@
-import { Config } from "../Config.js";
-import express from "express";
+import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import hjson from "hjson";
+import express from "express";
 import fs from "fs";
+import hjson from "hjson";
+import swaggerUi from "swagger-ui-express";
+import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
-import { amqpwrapper } from "../amqpwrapper.js";
-import { NoderedUtil, User } from "@openiap/openflow-api";
 import { WebServer } from "../WebServer.js";
-import swaggerUi from "swagger-ui-express";
+import { amqpwrapper } from "../amqpwrapper.js";
 let schema2 = {}
 try {
   var dir = fs.readdirSync(".");
@@ -39,10 +39,10 @@ try {
   Logger.instanse.error(error, null, { cls: "OpenAPIProxy" });  
 }
 
-import { RegisterRoutes } from "./build/routes.js";
-import { ValidateError } from "tsoa";
 import { NextFunction } from "express";
+import { ValidateError } from "tsoa";
 import { Auth } from "../Auth.js";
+import { RegisterRoutes } from "./build/routes.js";
 export class OpenAPIProxy {
   public static amqp_promises = [];
   public static createPromise = () => {

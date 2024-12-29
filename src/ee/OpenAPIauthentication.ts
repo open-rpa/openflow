@@ -1,5 +1,5 @@
-import express from "express";
 import { User } from "@openiap/openflow-api";
+import express from "express";
 import { Auth } from "../Auth.js";
 
 export function expressAuthentication(request: express.Request, securityName: string, scopes?: string[]): Promise<any> {
