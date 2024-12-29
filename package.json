@@ -41,7 +41,7 @@
     "@node-saml/passport-saml": "4.0.1",
     "@openiap/cloud-git-mongodb": "1.0.38",
     "@openiap/nodeapi": "0.0.38",
-    "@openiap/openflow-api": "2.1.11",
+    "@openiap/openflow-api": "2.1.12",
     "@opentelemetry/exporter-metrics-otlp-grpc": "0.43.0",
     "@opentelemetry/sdk-node": "0.43.0",
     "@testdeck/mocha": "0.3.3",
