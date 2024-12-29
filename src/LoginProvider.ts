@@ -743,7 +743,7 @@ export class LoginProvider {
                             await Logger.DBHelper.Save(role, jwt, span);
                         }
                     }
-                    _user = await Logger.DBHelper.DecorateWithRoles(_user, span);
+                    _user = await Auth.RefreshUser(_user, "", span);
                 }
             }
 

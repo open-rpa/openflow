@@ -1782,6 +1782,8 @@ export class Message {
 
                 if ((tuser as any).impostor !== null && (tuser as any).impostor !== undefined && (tuser as any).impostor !== "") {
                     impostor = (tuser as any).impostor;
+                } else if (cli != null && cli.user != null && (cli.user as any).impostor != null) {
+                    impostor = (cli.user as any).impostor;
                 }
 
                 if (user !== null && user !== undefined) {
@@ -3609,7 +3611,12 @@ export class Message {
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
         await Logger.DBHelper.CheckCache("users", cli.user, false, false, parent);
-        cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
+        // cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
+        if(cli.user != null && cli.user.impersonating != null )  {
+            cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, parent);    
+        } else {
+            cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, parent);
+        }
         cli.jwt = await Auth.User2Token(cli.user, Config.shorttoken_expires_in, parent);
         if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
         l.jwt = cli.jwt;
