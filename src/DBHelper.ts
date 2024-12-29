@@ -460,8 +460,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, () => { return this.FindRoleByIdWrap(_id, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             const result = Role.assign(item);
-            // @ts-ignore
-            delete result.nodered;
             return result as any;
         } finally {
             Logger.otel.endSpan(span);
@@ -698,8 +696,6 @@ export class DBHelper {
             let item = await this.memoryCache.wrap(key, async () => { return this.FindRoleByNameWrap(name, jwt, span) });
             if (NoderedUtil.IsNullUndefinded(item)) return null;
             const result = Role.assign(item);
-            // @ts-ignore
-            delete result.nodered;
             return result as any;
         } finally {
             Logger.otel.endSpan(span);
@@ -847,9 +843,10 @@ export class DBHelper {
     public async Save(item: User | Role, jwt: string, parent: Span): Promise<void> {
         await Config.db._UpdateOne(null, item, "users", 2, false, jwt, parent);
     }
-    public async EnsureRole(jwt: string, name: string, id: string, parent: Span): Promise<Role> {
+    public async EnsureRole(name: string, id: string, parent: Span): Promise<Role> {
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureRole", parent);
         try {
+            const jwt = Crypt.rootToken();
             Logger.instanse.verbose(`FindRoleByName ${name}`, span);
             let role: Role = await this.FindRoleByName(name, jwt, span);
             if (role == null) {
@@ -865,17 +862,42 @@ export class DBHelper {
             Logger.instanse.verbose(`Adding new role ${name}`, span);
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
             role = Role.assign(role);
-            // @ts-ignore
-            delete role.nodered;
             if (Config.force_add_admins) Base.addRight(role, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(role, role._id, role.name, [Rights.full_control]);
             if (Config.force_add_admins) Base.removeRight(role, role._id, [Rights.delete]);
             Logger.instanse.verbose(`Updating ACL for new role ${name}`, span);
             await this.Save(role, jwt, span);
             const result = Role.assign(role);
-            // @ts-ignore
-            delete result.nodered;
             return result as any;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public async EnsureUniqueRole(name: string, id: string, parent: Span): Promise<Role> {
+        const jwt = Crypt.rootToken();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureUniqueRole", parent);
+        let role: Role = await this.FindRoleById(id, jwt, span);
+        if(role != null) {
+            if(role.name != name) {
+                role.name = name;
+                await this.Save(role, jwt, span);
+            }
+            return role;
+        }
+        try {
+            let newname = name;
+            do {
+                Logger.instanse.verbose(`FindRoleByName ${newname}`, span);
+                let role: Role = await this.FindRoleByName(newname, jwt, span);
+                if (role == null) {
+                    Logger.instanse.verbose(`FindRoleById ${newname}`, span);
+                    role = await this.FindRoleById(newname, jwt, span);
+                }
+                if (role === null) {
+                    return await this.EnsureRole(newname, id, span);
+                }
+                newname = name + " " + Math.random().toString(36).substring(2, 4 );
+            } while (true);
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -930,7 +952,7 @@ export class DBHelper {
 
             let noderedadmins = await this.FindRoleByName(name + "noderedadmins", jwt, parent);
             if (noderedadmins == null) {
-                noderedadmins = await this.EnsureRole(jwt, name + "noderedadmins", null, parent);
+                noderedadmins = await this.EnsureRole(name + "noderedadmins", null, parent);
                 Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
                 Base.removeRight(noderedadmins, user._id, [Rights.delete]);
                 noderedadmins.AddMember(user as User);
@@ -946,7 +968,7 @@ export class DBHelper {
 
             let noderedadmins = await this.FindRoleByName(name + "nodered api users", jwt, parent);
             if (noderedadmins == null) {
-                noderedadmins = await this.EnsureRole(jwt, name + "nodered api users", null, parent);
+                noderedadmins = await this.EnsureRole(name + "nodered api users", null, parent);
                 Base.addRight(noderedadmins, user._id, user.username, [Rights.full_control]);
                 Base.removeRight(noderedadmins, user._id, [Rights.delete]);
                 noderedadmins.AddMember(user as User);

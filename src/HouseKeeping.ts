@@ -90,10 +90,10 @@ export class HouseKeeping {
     try {
       const jwt: string = Crypt.rootToken();
       Logger.instanse.debug("Begin validating builtin roles", span, { cls: "Housekeeping" });
-      for (var i = 0; i < Config.db.WellknownIdsArray.length; i++) {
+      for (var i = 0; i < DatabaseConnection.WellknownIdsArray.length; i++) {
         const item: Role = await Config.db.GetOne<Role>({
           query: {
-            _id: Config.db.WellknownIdsArray[i],
+            _id: DatabaseConnection.WellknownIdsArray[i],
             "_type": "role"
           }, collectionname: "users", jwt
         }, span);
@@ -808,7 +808,7 @@ export class HouseKeeping {
             { "$project": { "name": 1, "dbusage": 1, "dblocked": 1 } }];
           const cursor2 = await Config.db.db.collection("users").aggregate(pipe2);
           for await (const c of cursor2) {
-            if (Config.db.WellknownIdsArray.indexOf(c._id) > -1) continue;
+            if (DatabaseConnection.WellknownIdsArray.indexOf(c._id) > -1) continue;
             if (c.dbusage == null) c.dbusage = 0;
             if (c.dbusage > resource.defaultmetadata.dbusage) {
               Logger.instanse.debug("dbblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping" });
@@ -839,8 +839,8 @@ export class HouseKeeping {
   public static async ensureBuiltInUsersAndRoles(span: Span) {
     Logger.instanse.debug("Begin validating built in users and roles", span, { cls: "Housekeeping" });
     const jwt: string = Crypt.rootToken();
-    const admins: Role = await Logger.DBHelper.EnsureRole(jwt, "admins", WellknownIds.admins, span);
-    const users: Role = await Logger.DBHelper.EnsureRole(jwt, "users", WellknownIds.users, span);
+    const admins: Role = await Logger.DBHelper.EnsureRole("admins", WellknownIds.admins, span);
+    const users: Role = await Logger.DBHelper.EnsureRole("users", WellknownIds.users, span);
     const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, null, span);
 
     Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -950,7 +950,7 @@ export class HouseKeeping {
 
     if (Config.multi_tenant) {
         try {
-            const resellers: Role = await Logger.DBHelper.EnsureRole(jwt, "resellers", WellknownIds.resellers, span);
+            const resellers: Role = await Logger.DBHelper.EnsureRole("resellers", WellknownIds.resellers, span);
             // @ts-ignore
             resellers.hidemembers = true;
             Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -959,7 +959,7 @@ export class HouseKeeping {
             resellers.AddMember(admins);
             await Logger.DBHelper.Save(resellers, jwt, span);
 
-            const customer_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "customer admins", WellknownIds.customer_admins, span);
+            const customer_admins: Role = await Logger.DBHelper.EnsureRole("customer admins", WellknownIds.customer_admins, span);
             // @ts-ignore
             customer_admins.hidemembers = true;
             Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
@@ -996,7 +996,7 @@ export class HouseKeeping {
         await Logger.DBHelper.Save(admins, jwt, span);
     }
 
-    const filestore_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "filestore admins", WellknownIds.filestore_admins, span);
+    const filestore_admins: Role = await Logger.DBHelper.EnsureRole("filestore admins", WellknownIds.filestore_admins, span);
     filestore_admins.AddMember(admins);
     Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
@@ -1005,7 +1005,7 @@ export class HouseKeeping {
         Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(filestore_admins, jwt, span);
-    const filestore_users: Role = await Logger.DBHelper.EnsureRole(jwt, "filestore users", WellknownIds.filestore_users, span);
+    const filestore_users: Role = await Logger.DBHelper.EnsureRole("filestore users", WellknownIds.filestore_users, span);
     filestore_users.AddMember(admins);
     if (!Config.multi_tenant) {
         filestore_users.AddMember(users);
@@ -1023,7 +1023,7 @@ export class HouseKeeping {
 
 
 
-    const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue admins", "625440c4231309af5f2052cd", span);
+    const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole("workitem queue admins", "625440c4231309af5f2052cd", span);
     workitem_queue_admins.AddMember(admins);
     Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
@@ -1032,7 +1032,7 @@ export class HouseKeeping {
     }
     await Logger.DBHelper.Save(workitem_queue_admins, jwt, span);
 
-    const workitem_queue_users: Role = await Logger.DBHelper.EnsureRole(jwt, "workitem queue users", "62544134231309e2cd2052ce", span);
+    const workitem_queue_users: Role = await Logger.DBHelper.EnsureRole("workitem queue users", "62544134231309e2cd2052ce", span);
     Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
     if (Config.multi_tenant) {

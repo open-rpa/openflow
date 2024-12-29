@@ -20,7 +20,7 @@ import { Crypt } from "../Crypt.js";
         await Config.Load(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
-        this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
+        this.userToken = Crypt.createSlimToken(this.testUser._id, null, Config.shorttoken_expires_in);
     }
     async after() {
         await Logger.shutdown();
@@ -107,9 +107,8 @@ import { Crypt } from "../Crypt.js";
     }
     @test async "EnsureRole"() {
         var name = "dummytestrole" + NoderedUtil.GetUniqueIdentifier();
-        var dummyrole = await Logger.DBHelper.EnsureRole(this.rootToken, name, null, null);
+        var dummyrole = await Logger.DBHelper.EnsureRole(name, null, null);
         await Config.db.DeleteOne(dummyrole._id, "users", false, this.rootToken, null);
-        await assert.rejects(Logger.DBHelper.EnsureRole(null, null, null, null));
     }
 }
 // clear && ./node_modules/.bin/_mocha "src/test/**/DBHelper.test.ts"

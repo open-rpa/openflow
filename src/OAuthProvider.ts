@@ -474,8 +474,8 @@ export class Account {
             roles.push("guests");
         } else if (!NoderedUtil.IsNullUndefinded(user.roles) && Array.isArray(user.roles) && user.roles.length > 0) {
             if (!NoderedUtil.IsNullEmpty(user.roles[0].name)) {
-                for(let i = 0; i < Config.db.WellknownIdsArray.length; i++) {
-                    let hasrole = user.roles.find(x => x._id == Config.db.WellknownIdsArray[i]);
+                for(let i = 0; i < DatabaseConnection.WellknownIdsArray.length; i++) {
+                    let hasrole = user.roles.find(x => x._id == DatabaseConnection.WellknownIdsArray[i]);
                     if (hasrole) {
                         roles.push(hasrole.name);
                     }

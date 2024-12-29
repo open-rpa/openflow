@@ -26,7 +26,7 @@ import { AddWorkitemMessage, AddWorkitemQueueMessage, DeleteWorkitemMessage, Del
         this.rootToken = Crypt.rootToken();
         this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         assert.ok(!NoderedUtil.IsNullUndefinded(this.testUser), "Test user missing, was user deleted ?");
-        this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
+        this.userToken = Crypt.createSlimToken(this.testUser._id, null, Config.shorttoken_expires_in);
     }
     @timeout(10000)
     async after() {

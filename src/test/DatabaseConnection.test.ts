@@ -20,7 +20,7 @@ import { Crypt } from "../Crypt.js";
         await Config.Load(null);
         this.rootToken = Crypt.rootToken();
         this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
-        this.userToken = Crypt.createToken(this.testUser, Config.shorttoken_expires_in);
+        this.userToken = Crypt.createSlimToken(this.testUser._id, null, Config.shorttoken_expires_in);
     }
     async after() {
         await Logger.shutdown();
