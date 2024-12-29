@@ -225,6 +225,7 @@ export class WebSocketServerClient {
     public async RefreshToken(parent: Span): Promise<boolean> {
         const tuser: User = await Message.DoSignin(this, null, parent);
         if(tuser == null) return false;
+        await Logger.DBHelper.CheckCache("users", tuser, true, false, parent);
         const l: SigninMessage = new SigninMessage();
         this.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, parent);
         l.jwt = this.jwt;

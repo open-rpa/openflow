@@ -118,6 +118,7 @@ export class flowclient extends client {
     public async RefreshToken(parent: Span): Promise<boolean> {
         const tuser: User = await Message.DoSignin(this as any, null, parent);
         if (tuser == null) return false;
+        await Logger.DBHelper.CheckCache("users", tuser, true, false, parent);
         this.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, parent);
         const data = Any.create({type_url: "type.googleapis.com/openiap.RefreshToken", value: RefreshToken.encode(
             RefreshToken.create({jwt: this.jwt, user: tuser as any, username: tuser.username })).finish() })
