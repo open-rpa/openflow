@@ -41,6 +41,10 @@ export class Crypt {
             Logger.otel.endSpan(span);
         }
     }
+    public static GetUniqueIdentifier(length:number = 16): string {
+        return crypto.randomBytes(16).toString("hex")
+        // return Math.random().toString(36).substring(2, 11);
+    }
     public static async ValidatePassword(user: User, password: string, parent: Span): Promise<boolean> {
         const span: Span = Logger.otel.startSubSpan("Crypt.ValidatePassword", parent);
         try {
