@@ -1,6 +1,7 @@
 import { HrTime, Meter, Histogram, Span } from "@opentelemetry/api";
-import { Ace, User } from "@openiap/openflow-api";
+import { Ace } from "@openiap/openflow-api";
 import express from "express";
+import { Base } from "@openiap/nodeapi";
 
 export interface i_license_data {
     licenseVersion: number;
@@ -149,4 +150,75 @@ export interface iAgent extends iBase {
     assistant: boolean;
     daemon: boolean;
 constructor();
+}
+
+export declare class FederationId {
+    constructor(id: string, issuer: string);
+    id: string;
+    issuer: string;
+}
+export declare class Rolemember {
+    constructor(name: string, _id: string);
+    name: string;
+    _id: string;
+}
+export declare class TokenUser {
+    _type: string;
+    _id: string;
+    name: string;
+    username: string;
+    roles: Rolemember[];
+    role: string;
+    email: string;
+    impostor: string;
+    disabled: boolean;
+    validated: boolean;
+    emailvalidated: boolean;
+    formvalidated: boolean;
+    customerid: string;
+    selectedcustomerid: string;
+    dblocked: boolean;
+    static From(user: User | TokenUser): TokenUser;
+    static assign<T>(o: T): T;
+    HasRoleName(name: string): boolean;
+    HasRoleId(id: string): boolean;
+}
+declare class User extends Base {
+    constructor();
+    static assign<T>(o: any): T;
+    noderedname: string;
+    lastseen: Date;
+    _heartbeat: Date;
+    _rpaheartbeat: Date;
+    _noderedheartbeat: Date;
+    _powershellheartbeat: Date;
+    _lastclientagent: string;
+    _lastclientversion: string;
+    _lastopenrpaclientversion: string;
+    _lastnoderedclientversion: string;
+    _lastpowershellclientversion: string;
+    _hasbilling: boolean;
+    username: string;
+    passwordhash: string;
+    sid: string;
+    customerid: string;
+    selectedcustomerid: string;
+    firebasetoken: string;
+    onesignalid: string;
+    gpslocation: any;
+    device: any;
+    impersonating: string;
+    federationids: FederationId[];
+    roles: Rolemember[];
+    role: string;
+    email: string;
+    company: string;
+    disabled: boolean;
+    validated: boolean;
+    emailvalidated: boolean;
+    formvalidated: boolean;
+    dbusage: number;
+    dblocked: boolean;
+    HasRoleName(name: string): boolean;
+    HasRoleId(id: string): boolean;
 }
