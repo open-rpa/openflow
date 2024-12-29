@@ -4126,7 +4126,10 @@ export class Message {
             for (var i = 0; i < msg.files.length; i++) {
                 var file = msg.files[i];
                 let deleteit = false;
-                let _id = JSON.parse(JSON.stringify((file as any)._id));
+                let _id = null;
+                if((file as any)._id != null) {
+                    _id = JSON.parse(JSON.stringify((file as any)._id));
+                }                
                 if (NoderedUtil.IsNullUndefinded(file.file) || file.file.length == 0) {
                     if(_id == null || _id == "") {
                         deleteit = true;
