@@ -66,8 +66,7 @@ gulp.task("latest", async function (done) {
         versions.push("-t openiap/openflow:" + majorversion);
     }
     console.log(versions)
-    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7 --load .`])();
-    // return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64 --load .`])();
+    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7 --push .`])();
 });
     
 gulp.task("build", gulp.series("copyfiles1"));
