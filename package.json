@@ -54,7 +54,7 @@
     "cookie-session": "2.1.0",
     "dockerode": "3.3.4",
     "dotenv": "16.4.5",
-    "express": "4.19.2",
+    "express": "4.20.0",
     "got": "11.8.5",
     "hjson": "3.2.2",
     "ip": "2.0.1",
