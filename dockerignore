@@ -5,7 +5,7 @@ temp
 letsencrypt
 .cache
 .npmrc
-.openflowapicache
+src
 .scannerwork
 docker-package.json
 .env
@@ -19,3 +19,4 @@ crash.log
 .npmignore
 .gitignore
 .clinic
+docker-compose.yml

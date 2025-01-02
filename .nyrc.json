@@ -1,7 +1,7 @@
 {
     "extends": "@istanbuljs/nyc-config-typescript",
     "include": [
-        "OpenFlow/src/**/*.ts"
+        "src/**/*.ts"
     ],
     "exclude": [
         "node_modules/"

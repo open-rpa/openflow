@@ -1,32 +1,33 @@
-FROM node:lts-alpine as builder
-# --omit=optional
-RUN npm install gulp typescript browserify tsify -g
+# FROM node:lts-alpine
+# FROM node:22.9.0-alpine3.20 AS base
+# FROM node:lts-alpine3.16
+FROM node:22.9-slim
+# alpine
+# RUN apk add --no-cache bash nano
+# debian
+RUN apt-get update && apt-get install -y nano git curl && rm -rf /var/lib/apt/lists/* 
 
 RUN mkdir /app
 WORKDIR /app
-COPY package*.json /app/
-RUN npm install 
+COPY package.json /app/
+# https://github.com/nodejs/docker-node/issues/1946#issuecomment-2459881919
+# ENV NPM_VERSION=10.3.0
+# RUN npm install -g npm@"${NPM_VERSION}" --omit=dev --production --no-audit --verbose --force
+
+RUN npm install --omit=dev --production --no-audit --verbose --force
 COPY . /app/
-RUN gulp sass
+RUN npm run build
+COPY public /app/dist/public
+COPY public.template /app/dist/public.template
 
-RUN gulp
-RUN tsc --build OpenFlow/tsconfig.json
+WORKDIR /app/dist
 
-FROM node:lts-alpine
-ENV NODE_ENV=production
-RUN apk add --no-cache bash nano
+ENV HOME=.
 EXPOSE 3000
 EXPOSE 5858
-WORKDIR /data
-COPY --from=builder /app/package*.json .
-COPY --from=builder /app/dist/ .
-# RUN npm install --omit=dev 
-# RUN npm install mongodb
-ENV HOME=.
-RUN npm install --omit=dev --production
-
-# ENTRYPOINT ["/usr/local/bin/node", "index.js"]
 ENTRYPOINT ["/usr/local/bin/node", "--inspect=0.0.0.0:5858", "index.js"]
 
 # docker buildx build --platform linux/amd64 -t openiap/openflow:edge . --push
 # docker buildx build --platform linux/amd64 -t openiap/openflow:dev . --push
+
+# docker run -it --rm openiap/openflow:edge /bin/bash

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="Passive Login page for OpenIAP, used in robots or doing federated logins, learn more at https://github.com/openiap">
+  <title>Login</title>
+  <link rel="stylesheet" href="/login/libs/halfmoon.min.css">
+</head>
+
+<script>
+  function getCookieValue(a) {
+    const b = document.cookie.match('(^|[^;]+)\\s*' + a + '\\s*=\\s*([^;]+)');
+    return b ? b.pop() : '';
+  }
+  function parse_query_string(query) {
+    const vars = query.split("&");
+    const query_string = {};
+    for (let i = 0; i < vars.length; i++) {
+      const pair = vars[i].split("=");
+      const key = decodeURIComponent(pair[0]);
+      const value = decodeURIComponent(pair[1]);
+      // If first entry with this name
+      if (typeof query_string[key] === "undefined") {
+        query_string[key] = decodeURIComponent(value);
+        // If second entry with this name
+      } else if (typeof query_string[key] === "string") {
+        const arr = [query_string[key], decodeURIComponent(value)];
+        query_string[key] = arr;
+        // If third or later entry with this name
+      } else {
+        query_string[key].push(decodeURIComponent(value));
+      }
+    }
+    return query_string;
+  }
+  function getJSON(url, callback) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "json";
+    xhr.onload = function () {
+      const status = xhr.status;
+      if (status === 200) {
+        let data = xhr.response;
+        if (typeof data === "string" || data instanceof String) {
+          data = JSON.parse(data);
+        }
+        callback(null, data);
+      } else {
+        callback(status, xhr.response);
+      }
+    };
+    xhr.send();
+  }
+  function postJSON(url, data, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.onload = function () {
+      const status = xhr.status;
+      if (status === 200) {
+        let data = xhr.response;
+        if (typeof data === "string" || data instanceof String) {
+          try {
+            data = JSON.parse(data);
+          } catch (error) {
+            console.error(error);
+            throw error;
+          }
+        }
+        callback(null, data);
+      } else {
+        var err = xhr.response;
+        try {
+          err = JSON.parse(err);
+        } catch (error) {          
+        }
+        callback(status, err);
+      }
+    };
+    xhr.send(JSON.stringify(data));
+  }
+  function loadScript(url, callback) {
+    var script = document.createElement("script")
+    script.type = "text/javascript";
+    script.onload = function () {
+      if (callback) callback();
+    };
+    script.src = url;
+    document.getElementsByTagName("head")[0].appendChild(script);
+  }
+
+  function SettingsController2($scope, $http) {
+    this.errormessage = "";
+    this.user = null;
+    this.name = 'John Smith';
+    this.message = '';
+    // this.domain = "Donald duck";
+    this.localenabled = false;
+    this.domain = window.location.hostname;
+    let cerror = getCookieValue("error");
+
+    const query = window.location.search.substring(1);
+    const qs = parse_query_string(query);
+    cerror = qs.error;
+    if (cerror !== null && cerror !== undefined && cerror != "") {
+      this.message = "Unknown user or bad password";
+    }
+    this.process = function (err, data) {
+      if(err) {
+        this.errormessage = data.message ? data.message : data;
+      }
+      if (!$scope.$$phase) { $scope.$apply(); }
+      this.providers = data;
+      for (let i = this.providers.length - 1; i >= 0; i--) {
+        if (this.providers[i].provider == "local") {
+          this.providers.splice(i, 1);
+          this.localenabled = true;
+        }
+      }
+      if (!$scope.$$phase) { $scope.$apply(); }
+    };
+    this.loadform = function () {
+      getJSON("/validateuserform", async (err, data) => {
+        if (err) {
+          this.errormessage = data.message ? data.message : data;
+          if (!$scope.$$phase) { $scope.$apply(); }
+          retrun;
+        }
+        this.form = data;
+        this.formioRender = await Formio.createForm(document.getElementById('formio'), this.form.schema,
+          {
+            breadcrumbSettings: { clickable: true },
+            buttonSettings: { showCancel: false }
+          });
+        this.formioRender.submission = { data: this.user };
+        this.formioRender.on('submit', async submission => {
+          this.errormessage = "";
+          if (!$scope.$$phase) { $scope.$apply(); }
+          postJSON("/validateuserform", submission, (err, data) => {
+            if (err) {
+              this.errormessage = data.message ? data.message : data;
+              if (!$scope.$$phase) { $scope.$apply(); }
+              this.loadform.bind(this)();
+              return;
+            }
+            location.reload();
+          })
+        });
+        if (!$scope.$$phase) { $scope.$apply(); }
+      });
+
+    }
+    this.jwt = function (err, data) {
+      if(err) {
+        this.errormessage = data.message ? data.message : data;
+      }
+      if (!$scope.$$phase) { $scope.$apply(); }
+      if (this.user) {
+        if (this.validate_user_form != "" && this.user.formvalidated != true) {
+          delete this.user.roles;
+          if (!this.user.email && this.user.username) {
+            if (this.user.username.indexOf("@") > -1) this.user.email = this.user.username;
+          }
+          if (this.validate_user_form != "" && this.user.formvalidated != true) {
+            this.loadform.bind(this)();
+          }
+        } else if (this.validate_emails == true && this.user.emailvalidated != true) {
+          var ele = document.getElementById('formio');
+          ele.innerHTML = '<b>Please check you email, for a validation code</b>';
+          setTimeout(() => {
+            var ele = document.getElementById('code')
+            ele.focus();
+          }, 500);
+          if (!$scope.$$phase) { $scope.$apply(); }
+          setTimeout(() => {
+            var ele = document.getElementById('code')
+            ele.focus();
+          }, 250);
+          
+        }
+      } else {
+        getJSON("/loginproviders", this.process.bind(this));
+      }
+      if (!$scope.$$phase) { $scope.$apply(); }
+    };
+    this.config = function (err, data) {
+      if(err) {
+        this.errormessage = data.message ? data.message : data;
+      }
+      this.allow_user_registration = data.allow_user_registration;
+      this.validate_user_form = data.validate_user_form
+      this.validate_emails = data.validate_emails
+      this.forgot_pass_emails = data.forgot_pass_emails;
+      this.forceddomains = data.forceddomains;
+      if (!$scope.$$phase) { $scope.$apply(); }
+
+      getJSON("/user", async (err, data) => {
+      if (err) console.error(err);
+      if (data._id) {
+        this.user = data;
+      if(this.user.validated == true) {
+          location.reload();
+        } else {
+          this.jwt.bind(this)(null, null);
+        }
+      }
+      getJSON("/loginproviders", this.process.bind(this));
+    });
+
+    };
+
+    this.SubmitCode = function () {
+      this.errormessage = "";
+      if (!$scope.$$phase) { $scope.$apply(); }
+      var ele = document.getElementById('code')
+      if(ele.value && ele.value != '' ) {
+        var data = {"code": ele.value};
+        postJSON("/validateuserform", data, (err, data) => {
+          if (err) {
+            this.errormessage = data.message ? data.message : data;
+            if (!$scope.$$phase) { $scope.$apply(); }
+            // this.loadform.bind(this)();
+            return;
+          }
+          location.reload();
+        })
+      }
+    }
+    this.ResendCode = function () {
+      this.errormessage = "";
+      if (!$scope.$$phase) { $scope.$apply(); }
+      var data = {"resend": true};
+        postJSON("/validateuserform", data, (err, data) => {
+          if (err) {
+            this.errormessage = data.message ? data.message : data;
+            if (!$scope.$$phase) { $scope.$apply(); }
+            this.loadform.bind(this)();
+            return;
+          }
+          location.reload();
+        })
+    }
+    loadScript("/login/libs/formio.full.min.js", () => {
+      this.stage = 0;
+      if (window.location.href.indexOf("forgot") != -1)
+      {
+        this.stage = 1;
+      }
+      getJSON("/config", this.config.bind(this));
+    });
+
+    this.SkipForgotPassword = function () {
+      this.errormessage = "";
+      this.stage = 0;
+      if (!$scope.$$phase) { $scope.$apply(); }
+    }
+    this.BeginForgotPassword = function () {
+      this.errormessage = "";
+      if(!this.email || this.email == "") this.email = this.username;
+      this.stage = 1;
+      if (!$scope.$$phase) { $scope.$apply(); }
+    }
+    this.ForgotPasswordSendEmail = function () {
+      this.errormessage = "";
+      if(!this.email || this.email == "") return;
+      var mailformat = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      if(this.email.match(mailformat)) {
+        postJSON("/forgotpassword", {"email": this.email}, (err, data) => {
+          if (err) {
+            this.errormessage = data.message ? data.message : data;
+            if (!$scope.$$phase) { $scope.$apply(); }
+            return;
+          }
+          this.id = data.id;
+          this.stage = 2;
+          if (!$scope.$$phase) { $scope.$apply(); }
+        });
+      } else {
+        this.errormessage = "Email is not valid"
+      }
+      this.stage = 1;
+      if (!$scope.$$phase) { $scope.$apply(); }
+    }
+    this.ForgotPasswordValidate = function () {
+      this.errormessage = "";
+      if(!this.code || this.code == "") return;
+      postJSON("/forgotpassword", {"code": this.code, "id": this.id}, (err, data) => {
+          if (err) {
+            this.errormessage = data.message ? data.message : data;
+            if (!$scope.$$phase) { $scope.$apply(); }
+            return;
+          }
+          this.stage = 3;
+          if (!$scope.$$phase) { $scope.$apply(); }
+        });
+    }
+    this.ForgotPasswordReset = function () {
+      this.errormessage = "";
+      if(!this.id || this.id == "") return;
+      if(!this.code || this.code == "") return;
+      if(!this.newpassword || this.newpassword == "") return;
+      if(!this.newpasswordconfirm || this.newpasswordconfirm == "") return;
+      if(this.newpassword != this.newpasswordconfirm) {
+        this.errormessage = "passwords do not match";        
+        if (!$scope.$$phase) { $scope.$apply(); }
+        return;
+      }
+      postJSON("/forgotpassword", {"code": this.code, "id": this.id, "password": this.newpassword}, (err, data) => {
+          if (err) {
+            this.errormessage = data.message ? data.message : data;
+            if (!$scope.$$phase) { $scope.$apply(); }
+            return;
+          }
+          // location.reload();
+          document.location.href="/login";
+        });
+    }
+    this.usernameblur = function () {
+      var ele = document.getElementById('username');
+      var val = ele.value;
+      if(val && val.indexOf("@") > -1) {
+        var domain = val.substr(val.indexOf("@") + 1);
+        for (let d = 0; d < this.forceddomains.length; d++) {
+          let forceddomain = new RegExp(this.forceddomains[d], "i");
+          if(forceddomain.test(domain)) {
+            document.getElementById("password").style.display = "none";
+            document.getElementById("localbuttons").style.display = "none";
+            this.errormessage = "Please use provider button to login with this domain";
+            if (!$scope.$$phase) { $scope.$apply(); }
+            return;
+          }
+        }
+      }
+      this.errormessage = "";
+      if (!$scope.$$phase) { $scope.$apply(); }
+      document.getElementById("password").style.display = "block";
+      document.getElementById("localbuttons").style.display = "block";
+    }
+  }
+</script>
+
+<body ng-app="controllerExample">
+
+
+  <div ng-controller="SettingsController2 as ctrl">
+    <div class="row" ng-show="ctrl.user == null">
+      <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+        <div class="card card-signin my-2">
+          <div class="card-body">
+            <div ng-show="ctrl.errormessage != '' " class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+            <h5 class="card-title text-center"><span>signin</span> {{ctrl.domain}}</h5>
+            </h5>
+            <form class="form-signin" method='post' action='/local' ng-show="ctrl.stage == 0">
+              <div class="form-label-group" ng-show="ctrl.localenabled">
+                <input type="text" name="username" id="username" ng-model="ctrl.username" class="form-control" placeholder="email"
+                  required autofocus autocomplete='off' ng-change="ctrl.usernameblur()" ng-blur="ctrl.usernameblur()">
+                <label for="username">email</label>
+              </div>
+              <div class="form-label-group" ng-show="ctrl.localenabled" id="password">
+                <input type="password" name="password" ng-model="ctrl.password" class="form-control"
+                  placeholder="Password" required autocomplete="current-password">
+                <label for="password">password</label>
+              </div>
+              <div class="mb-3">
+
+                <label class="text-danger">{{ctrl.message}}</label>
+              </div>
+              <div id="localbuttons">
+              <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" ng-show="ctrl.localenabled"
+               >signin</button>
+                <hr class="my-4" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails">
+                <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button" ng-click="ctrl.BeginForgotPassword()" ng-show="ctrl.localenabled && ctrl.forgot_pass_emails"
+               >forgot password</button>
+              </div>
+                
+              <hr class="my-4" ng-show="ctrl.localenabled">
+
+              <a ng-href="/{{model.id}}" ng-repeat="model in ctrl.providers track by $index"
+                class="btn btn-lg btn-block text-uppercase">
+                <em style="padding-right: 5px;" class="fab {{model.logo}}"></em><span>{{model.name}}</span>
+              </a>
+
+              <div class="card-body" ng-show="ctrl.allow_user_registration==true">
+                <small><em>
+                    Select a provider or login using a local username and password.
+                    A new user will automaticly be created if username is unknown.
+                    Email validation will be requered to use the core functions.</em></small>
+              </div>
+            </form>
+            <div  ng-show="ctrl.stage == 1">
+              <div class="form-label-group">
+                <input type="text" name="email" id="email" ng-model="ctrl.email" class="form-control" placeholder="email"
+                  required autofocus autocomplete='off'>
+                <label for="email">email</label>
+              </div>
+              If a user with this email exists, we will send an email with a code to this email.<br>
+
+              <div class="form-label-group">
+                <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit"  ng-click="ctrl.ForgotPasswordSendEmail()"
+               >send code</button>
+                <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button"  ng-click="ctrl.SkipForgotPassword()"
+               >back</button>
+              </div>
+
+            </div>
+            <div  ng-show="ctrl.stage == 2">
+              <div class="form-label-group">
+                Validation Code: <input class="form-control" ng-model="ctrl.code" type="text"><br>
+              </div>
+              If a user with this email exists, you should now have received an email, please also check your smap folder<br>
+
+              <div class="form-label-group">
+                <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit"  ng-click="ctrl.ForgotPasswordValidate()"
+               >validate code</button>
+                <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button"  ng-click="ctrl.BeginForgotPassword()"
+               >back</button>
+              </div>
+
+            </div>
+            <form class="form-reset" ng-show="ctrl.stage == 3">
+              <div  >
+                <div class="form-label-group">
+                  set new password: <input class="form-control" ng-model="ctrl.newpassword" type="password" autocomplete="new-password"><br>
+                </div>
+                <div class="form-label-group">
+                  confirm password: <input class="form-control" ng-model="ctrl.newpasswordconfirm" type="password" autocomplete="new-password"><br>
+                </div>
+
+                <div class="form-label-group">
+                  <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit"  ng-click="ctrl.ForgotPasswordReset()"
+                 >reset password</button>
+                  <button class="btn btn-lg btn-primary btn-block text-uppercase" type="button"  ng-click="ctrl.BeginForgotPassword()"
+                 >back</button>
+                </div>
+
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" ng-show="ctrl.user != null">
+      <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+        <div class="card card-signin my-5">
+          <div class="card-body">
+            <div ng-show="ctrl.form==null">Hello {{ctrl.user.name}}<br></div>
+            <div ng-show="ctrl.errormessage != ''" class=" alert alert-danger" role="alert">{{ctrl.errormessage}}</div>
+    
+            <div id='formio' ng-show="ctrl.form!=null">
+            </div>
+            <div id='validatemail'
+              ng-show="ctrl.form==null && ctrl.validate_emails == true && ctrl.user.emailvalidated != true">
+              Please check your email for a validation code<br>
+              <div class="form-label-group" ng-show="ctrl.localenabled">
+                Validation Code: <input class="form-control" type="text" id="code" name="code"><br>
+              </div>
+              <input class="btn" type="button" id="Validate" value="Validate" ng-click="ctrl.SubmitCode()" />
+              <input class="btn" type="button" id="Resend code" value="Resend code" ng-click="ctrl.ResendCode()" />
+              <input class="btn" type="button" value="Update User Info" ng-click="ctrl.loadform()" />
+              <br />
+              If this is not a new account, you need to click Resend code, to get a fresh code.<br>
+              If you did not get an email, or you don't know what email you signed up with click Update User info to update your email address.
+              <br />
+            </div>
+            <a tabindex="-1" ng-href="/Signout" class="btn btn-lg btn-block text-uppercase">
+              <em class="fas fa-sign-out-alt"></em>
+              Signout
+            </a>
+    
+    
+          </div>
+        </div>
+      </div>
+    
+    </div>
+    </div>
+    <script src="/login/libs/angular.min.js"></script>
+    <script src="/login/libs/zepto.min.js"></script>
+    <script lang="javascript">
+      angular.module('controllerExample', [])
+        .controller('SettingsController2', SettingsController2);
+      SettingsController2.$inject = ['$scope', '$http'];
+    </script>
+    </body>
+  </html> 

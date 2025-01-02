@@ -6,7 +6,6 @@ temp
 letsencrypt
 .cache
 .npmrc
-.openflowapicache
 .scannerwork
 docker-package.json
 .env
@@ -18,3 +17,7 @@ package-lock.json
 *.heapsnapshot
 /proto
 .clinic
+docker-compose.yml
+.aider*
+/public
+/public2

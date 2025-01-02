@@ -5,15 +5,15 @@
             "args": [],
             "cwd": "${workspaceRoot}",
             "envFile": "${workspaceFolder}/config/.env",
-            "name": "OpenFlow",
+            "name": "Core",
             "outFiles": [
                 "${workspaceRoot}/dist/**/*",
                 "**/node_modules/@openiap/**/*",
             ],
             "outputCapture": "std",
-            "program": "${workspaceRoot}/OpenFlow/src/index.ts",
+            "program": "${workspaceRoot}/src/index.ts",
             "request": "launch",
-            "preLaunchTask": "tsc: watch - OpenFlow/tsconfig.json",
+            "preLaunchTask": "tsc: watch - tsconfig.json",
             "runtimeArgs": [
                 "--inspect"
             ],
@@ -22,7 +22,8 @@
             "stopOnEntry": false,
             "type": "node",
             "env": {
-                "otel_log_level": "info"
+                "otel_log_level": "info",
+                "GIT_DEBUG": "1"
             },
             "resolveSourceMapLocations": [
                 "${workspaceFolder}/**",
@@ -34,11 +35,11 @@
             "type": "node",
             "request": "attach",
             "name": "Attach to localhost",
-            "preLaunchTask": "tsc: watch - OpenFlow/tsconfig.json",
+            "preLaunchTask": "tsc: watch - tsconfig.json",
             "address": "localhost",
             "port": 5858,
             "localRoot": "${workspaceFolder}/dist",
-            "remoteRoot": "/data"
+            "remoteRoot": "/app/dist"
         }
     ]
 }

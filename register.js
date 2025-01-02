@@ -1,13 +1,12 @@
-/**
- * Overrides the tsconfig used for the app.
- * In the test environment we need some tweaks.
- */
+import path from "path";
+const env = path.join(process.cwd(), "config", ".env");
+import { config } from "dotenv";
+config({ path: env }); // , debug: false 
+process.env.TSX_TSCONFIG_PATH = path.join(process.cwd(), "tsconfig.json");
 
-const tsNode = require('ts-node');
-// const testTSConfig = require('./test/tsconfig.json');
-
-tsNode.register({
-    files: true,
-    transpileOnly: true,
-    project: './test/tsconfig.json.bin'
-});
+// import tsNode from "ts-node";
+// tsNode.register({
+//     files: true,
+//     transpileOnly: true,
+//     project: "./tsconfig.json"
+// });

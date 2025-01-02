@@ -1,4 +1,4 @@
-# OpenFlow
+# Core
 Collect, transport, store and report on events and data from humans, IT systems and the physical world
 
 Try it online here [here](https://app.openiap.io/)
