@@ -1438,8 +1438,10 @@ export class Message {
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
         msg.id = null;
+        // @ts-ignore
+        const paths = msg.aggregates || msg.paths
         // if (Config.supports_watch) {
-            msg.id = await cli.Watch(msg.aggregates, msg.collectionname, msg.jwt);
+            msg.id = await cli.Watch(paths, msg.collectionname, msg.jwt);
         // } else {
         //     msg.error = "Watch is not supported by this openflow";
         // }
