@@ -1204,6 +1204,7 @@ export class LoginProvider {
             agent_images: Config.agent_images,
             amqp_enabled_exchange: Config.amqp_enabled_exchange,
             multi_tenant: Config.multi_tenant,
+            workspace_enabled: Config.workspace_enabled,
             enable_entity_restriction: Config.enable_entity_restriction,
             enable_web_tours: Config.enable_web_tours,
             enable_nodered_tours: Config.enable_nodered_tours,

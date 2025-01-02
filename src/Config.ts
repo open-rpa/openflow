@@ -342,6 +342,7 @@ export class Config {
         allow_merge_acl: false,
 
         multi_tenant: false,
+        workspace_enabled: false,
         enable_guest: false, 
         enable_guest_file_upload: false, 
         enable_gitserver: false, 
@@ -643,6 +644,7 @@ export class Config {
     public static allow_merge_acl: boolean = Config.parseBoolean(Config.getEnv("allow_merge_acl"));
 
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant"));
+    public static workspace_enabled: boolean = Config.parseBoolean(Config.getEnv("workspace_enabled"));
     public static enable_guest: boolean = Config.parseBoolean(Config.getEnv("enable_guest"));
     public static enable_guest_file_upload: boolean = Config.parseBoolean(Config.getEnv("enable_guest_file_upload"));    
     public static enable_gitserver: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver"));
