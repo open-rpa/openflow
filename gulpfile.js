@@ -42,9 +42,6 @@ gulp.task("filewatch", function () {
         .concat('./src/proto/**/*.*')
         , gulp.series( "copyfiles1"));
 });
-
-
-
 //     // docker buildx create --name openiap --use
 //     // docker buildx use default
 //     // docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 -t openiap/openflow:edge .
@@ -56,7 +53,8 @@ gulp.task("compose", async function (done) {
         versions.push("-t openiap/openflow:" + majorversion);
     }
     console.log(versions)
-    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7 --push .`])();
+    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64 --push .`])();
+    // return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7 --push .`])();
     // return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push .`])();
     // return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/arm64 --push .`])();
 });
@@ -68,7 +66,8 @@ gulp.task("latest", async function (done) {
         versions.push("-t openiap/openflow:" + majorversion);
     }
     console.log(versions)
-    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64 --load .`])();
+    return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64,linux/arm64,linux/arm/v7 --load .`])();
+    // return shell.task([`docker buildx build ${versions.join(" ")} --platform linux/amd64 --load .`])();
 });
     
 gulp.task("build", gulp.series("copyfiles1"));
