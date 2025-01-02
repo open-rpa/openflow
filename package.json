@@ -58,7 +58,7 @@
     "got": "11.8.5",
     "hjson": "3.2.2",
     "ip": "2.0.1",
-    "jose": "2.0.6",
+    "jose": "4.15.5",
     "json-stable-stringify": "1.0.2",
     "jsondiffpatch": "0.4.1",
     "jsonpath-plus": "7.2.0",
