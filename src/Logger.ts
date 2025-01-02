@@ -416,6 +416,7 @@ export class Logger {
 
         if(Logger.otel == null) {
             try {
+                // @ts-ignore
                 if (!skipotel && Logger._otel_require == null) Logger._otel_require = await import("./ee/otel.js");
             } catch (error) {
                 console.error(error.message);
@@ -477,6 +478,7 @@ export class Logger {
             }
             if (this.agentdriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
                 try {
+                    // @ts-ignore
                     let _driver: any = await import("./ee/kubedriver.js");
                     this.agentdriver = new _driver.kubedriver();
                 } catch (error) {

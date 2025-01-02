@@ -256,6 +256,7 @@ var server: http.Server = null;
         Logger.instanse.debug("Configure Webserver", span, { cls: "index", func: "init" });
         server = await WebServer.configure(Config.baseurl(), span);
         try {
+            // @ts-ignore
             let GrafanaProxy: any = await import("./ee/grafana-proxy.js");
             Logger.instanse.debug("Configure grafana", span, { cls: "index", func: "init" });
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);

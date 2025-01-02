@@ -3,6 +3,7 @@ import { Config } from "../Config.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
 import { Logger } from "../Logger.js";
+// @ts-ignore
 import { KubeUtil } from "../ee/KubeUtil.js";
 
 @suite class kubeutil_test {
