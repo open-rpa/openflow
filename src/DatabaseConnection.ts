@@ -1691,7 +1691,6 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.addEvent("verityToken");
             const user: User = await Auth.Token2User(jwt, span);
             if(user == null) throw new Error("Access denied");
-            if(user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
@@ -2606,6 +2605,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 if (NoderedUtil.IsNullUndefinded((q as any).original)) {
                     original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, false, span);
+                    if(original == null) {
+                        throw new Error("item " + q.item._id + " not found in " + q.collectionname + " or Access Denied");
+                    }
                     if(q.item._id !== original._id) {
                         q.item._id = original._id;
                     }                    
@@ -4293,9 +4295,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 if(DatabaseConnection.WellknownIdsArray.indexOf(item._id) == -1) return false;
             }
         }       
-        if ((item as any).userid === user.username || (item as any).userid === user._id || (item as any).user === user.username) {
-            return true;
-        } else if (item._id === user._id) {
+        // if ((item as any).userid === user.username || (item as any).userid === user._id || (item as any).user === user.username) {
+        //     return true;
+        // } else 
+        if (item._id === user._id) {
             if (action === Rights.delete) { Logger.instanse.error("hasAuthorization, cannot delete self!", null, { user: user?.username }); return false; }
             return true;
         }
