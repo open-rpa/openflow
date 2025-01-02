@@ -39,7 +39,7 @@
             "address": "localhost",
             "port": 5858,
             "localRoot": "${workspaceFolder}/dist",
-            "remoteRoot": "/data"
+            "remoteRoot": "/app/dist"
         }
     ]
 }
