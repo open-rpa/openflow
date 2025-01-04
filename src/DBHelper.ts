@@ -1,4 +1,4 @@
-import { Base, NoderedUtil, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, User, WellknownIds, WorkitemQueue } from "@openiap/openflow-api";
+import { Base, NoderedUtil, Rights, Role, Rolemember, TokenUser, User, WellknownIds, WorkitemQueue } from "@openiap/openflow-api";
 import { Observable, Span } from "@opentelemetry/api";
 import { caching } from "cache-manager";
 import { redisStore } from "cache-manager-ioredis-yet";
@@ -13,6 +13,7 @@ import { TokenRequest } from "./TokenRequest.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { iAgent } from "./commoninterfaces.js";
+import { Resource, ResourceUsage } from "./ee/Resources.js";
 
 export class DBHelper {
 

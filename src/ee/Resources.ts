@@ -5,11 +5,27 @@ import { Base } from "@openiap/openflow-api";
 import { Logger } from "../Logger.js";
 import { Rights, WellknownIds } from "@openiap/nodeapi";
 
+export declare enum ResourceVariantType {
+    single = "singlevariant",
+    multiple = "multiplevariants"
+}
+export declare enum ResourceAssignedType {
+    single = "single",
+    multiple = "multiple",
+    metered = "metered"
+}
+export declare enum ResourceTargetType {
+    customer = "customer",
+    user = "user"
+}
 export declare class Resource extends Base {
     constructor();
-    target: "customer" | "user";
-    customerassign: "singlevariant" | "multiplevariants";
-    userassign: "singlevariant" | "multiplevariants";
+    _type: string;
+    target: ResourceTargetType;
+    customerassign: ResourceVariantType;
+    workspaceassign: ResourceVariantType;
+    userassign: ResourceVariantType;
+    memberassign: ResourceVariantType;
     defaultmetadata: any;
     products: ResourceVariant[];
     allowdirectassign: boolean;
@@ -19,8 +35,10 @@ export declare class ResourceVariant {
     name: string;
     stripeproduct: string;
     stripeprice: string;
-    customerassign: "single" | "multiple" | "metered";
-    userassign: "single" | "multiple" | "metered";
+    customerassign: ResourceVariantType;
+    workspaceassign: ResourceVariantType;
+    userassign: ResourceVariantType;
+    memberassign: ResourceVariantType;
     added_stripeprice: string;
     added_resourceid: string;
     added_quantity_multiplier: number;
@@ -34,7 +52,9 @@ export declare class ResourceUsage extends Base {
     resourceid: string;
     resource: string;
     userid: string;
+    memberid: string;
     customerid: string;
+    workspaceid: string;
     quantity: number;
     /** "subscription" */
     subid: string;
@@ -44,30 +64,33 @@ export declare class ResourceUsage extends Base {
 }
 export class Resources {
     public static async CreateResource(name: string,
-        target: "customer" | "user",
-        customerassign: "singlevariant" | "multiplevariants",
-        userassign: "singlevariant" | "multiplevariants",
+        target: ResourceTargetType,
+        userassign: ResourceVariantType,
+        memberassign: ResourceVariantType,
+        customerassign: ResourceVariantType,
+        workspaceassign: ResourceVariantType,
         defaultmetadata: any,
-        products: ResourceVariant[], allowdirectassign: boolean, customeradmins: boolean, order: number, parent: Span): Promise<Resource> {
+        products: ResourceVariant[], 
+        allowdirectassign: boolean, 
+        order: number, 
+        parent: Span): Promise<Resource> {
             const jwt = Crypt.rootToken();
-            var results = await Config.db.GetOne<Resource>({ collectionname: "config", query: { "name": name } }, parent);
-            const model: Resource = (results ? results : new Resource());
+            const model: Resource = new Resource();
+            model._type = "resource";
             model.name = name;
             model.target = target;
             model.customerassign = customerassign;
+            model.workspaceassign = workspaceassign;
             model.userassign = userassign;
+            model.memberassign = memberassign;
             model.defaultmetadata = defaultmetadata;
             model.products = products;
             model.allowdirectassign = allowdirectassign;
-            (model as any).order = order;
+            model.order = order;
             model._acl = [];
             Base.addRight(model, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(model, WellknownIds.users, "users", [Rights.read]);
-            if (model._id) {
-                return await Config.db.UpdateOne(model, "config", 1, true, jwt, parent);
-            } else {
-                return await Config.db.InsertOne(model, "config", 1, true, jwt, parent);
-            }
+            return Config.db.InsertOrUpdateOne2(model, "config", "_type,name", 1, true, jwt, parent);
     }
     public static async GetUserResources(userid: string, parent: Span) {
         const jwt = Crypt.rootToken();
