@@ -1,4 +1,4 @@
-import { Ace, Base, CountOptions, Customer, InsertOrUpdateOneMessage, NoderedUtil, QueryOptions, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, UpdateManyMessage, UpdateOneMessage, User, WellknownIds, Workitem } from "@openiap/openflow-api";
+import { Ace, Base, CountOptions, Customer, InsertOrUpdateOneMessage, NoderedUtil, QueryOptions, Rights, Role, Rolemember, TokenUser, UpdateManyMessage, UpdateOneMessage, User, WellknownIds, Workitem } from "@openiap/openflow-api";
 import { Histogram, ObservableUpDownCounter, Span } from "@opentelemetry/api";
 import events from "events";
 import _jsondiffpatch from "jsondiffpatch";
@@ -12,7 +12,7 @@ import { Auth } from "./Auth.js";
 import { iAgent } from "./commoninterfaces.js";
 import { Config, dbConfig } from "./Config.js";
 import { Crypt } from "./Crypt.js";
-import { Resources } from "./ee/Resources.js";
+import { Resource, Resources, ResourceUsage } from "./ee/Resources.js";
 import { Logger } from "./Logger.js";
 import { LoginProvider } from "./LoginProvider.js";
 import { OAuthProvider } from "./OAuthProvider.js";
@@ -4160,7 +4160,7 @@ export class DatabaseConnection extends events.EventEmitter {
     public static traversejsonencode(o) {
         const reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
         const reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
-        if(o == null) return;
+        if (o == null) return;
         const keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
@@ -4207,7 +4207,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
     }
     public static traversejsondecode(o) {
-        if(o == null) return;
+        if (o == null) return;
         const keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
