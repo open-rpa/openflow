@@ -24,6 +24,7 @@ import { QueueClient } from "../QueueClient.js";
 import { SocketMessage } from "../SocketMessage.js";
 import { WebSocketServer } from "../WebSocketServer.js";
 import { WebSocketServerClient } from "../WebSocketServerClient.js";
+import { Workspaces } from "../ee/Workspaces.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -4841,6 +4842,41 @@ export class Message {
                     tree = b.sha;
                 }
                 msg.result = await GitProxy.restoresnapshot(repo, this.tuser, tree, this.jwt);
+                break;
+            case "ensureworkspace":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.EnsureWorkspace(this.tuser, this.jwt, data, parent);
+                break;
+            case "inviteuser":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.InviteUserToWorkspace(this.tuser, this.jwt, data.email, data.workspaceid, data.role, parent);
+                break;
+            case "getinvite":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.GetInvite(this.tuser, this.jwt, data.token, parent);
+                break;
+            case "acceptinvite":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.AcceptInvite(this.tuser, this.jwt, data.token, parent);
+                break;
+            case "declineinvite":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.DeclineInvite(this.tuser, this.jwt, data.token, parent);
+                break;
+            case "updatemember":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.UpdateMember(this.tuser, this.jwt, data, parent);
+                break;
+            case "removemember":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.RemoveMember(this.tuser, this.jwt, msg.id, parent);
                 break;
             default:
                 msg.error = "Unknown custom command";
