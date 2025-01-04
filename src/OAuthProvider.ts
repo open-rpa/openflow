@@ -509,11 +509,8 @@ export class Account {
         return tokens[0];
     }
     static async AddTokenRequest(code: string, item: Base, parent: Span) {
-        var q: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
-        q.item = item; q.uniqeness = "_type,code"; q.collectionname = "oauthtokens", q.jwt = Crypt.rootToken();
-        q.w = 1; q.j = true;
-        let token = await Config.db.InsertOrUpdateOne<Base>(q, parent);
-        return token.item;
+        const result = await Config.db.InsertOrUpdateOne(item, "oauthtokens", "_type,code", 1, true, Crypt.rootToken(), parent);
+        return result;
     }
     static async RemoveTokenRequest(code: string, parent: Span) {
         let tokens = await Config.db.DeleteMany({ _type: "tokenrequest", "code": code }, null, "oauthtokens", null, false, Crypt.rootToken(), parent);

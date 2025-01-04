@@ -3155,7 +3155,7 @@ export class DatabaseConnection extends events.EventEmitter {
             });
         },
     });
-    async InsertOrUpdateOne2<T extends Base>(item: T, collectionname: string, uniqeness: string = "_id", w: number = 1, j: boolean = true, jwt: string, parent: Span): Promise<T> {
+    async InsertOrUpdateOne<T extends Base>(item: T, collectionname: string, uniqeness: string = "_id", w: number = 1, j: boolean = true, jwt: string, parent: Span): Promise<T> {
         const q: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
         q.collectionname = collectionname;
         q.item = item;
@@ -3165,9 +3165,6 @@ export class DatabaseConnection extends events.EventEmitter {
         q.uniqeness = uniqeness;
         const result = await this._InsertOrUpdateOne(q, parent);
         return result.item as T;
-    }
-    async InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
-        return this._InsertOrUpdateOne(q, parent);
     }
     private static InsertOrUpdateOneSemaphore = DatabaseConnection.Semaphore(1);
     /**
@@ -3396,7 +3393,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the delete, ensuring rights
      * @returns Promise<void>
      */
-    async DeleteOne(id: string | any, collectionname: string, recursive: boolean, jwt: string, parent: Span): Promise<number> {
+    async DeleteOne(id: string, collectionname: string, recursive: boolean, jwt: string, parent: Span): Promise<number> {
         if (id === null || id === undefined || id === "") { throw new Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteOne", parent);
         try {
@@ -3405,11 +3402,12 @@ export class DatabaseConnection extends events.EventEmitter {
             const user: User = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
             let _query: any = {};
-            if (typeof id === "string" || id instanceof String) {
-                _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
-            } else {
-                _query = { $and: [{ id }, this.getbasequery(user, [Rights.delete], collectionname)] };
-            }
+            // if (typeof id === "string" || id instanceof String) {
+            //     _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
+            // } else {
+            //     _query = { $and: [{ id }, this.getbasequery(user, [Rights.delete], collectionname)] };
+            // }
+            _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
             if (collectionname == "audit") {
                 if (!user.HasRoleId(WellknownIds.admins)) {
                     throw new Error("Access denied");
@@ -3510,7 +3508,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                         for (let i = 0; i < userdocs.length; i++) {
-                            await this.DeleteOne(userdocs[i]._id, "users", recursive, jwt, span);
+                            await this.DeleteOne(userdocs[i]._id.toString(), "users", recursive, jwt, span);
                         }
                     } else {
                         if (userdocs.length > 0) {
@@ -3556,7 +3554,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const subdocs = await cursor.toArray();
                     cursor.close();
                     for (var r of subdocs) {
-                        this.DeleteOne(r._id, "users", false, jwt, span);
+                        this.DeleteOne(r._id.toString(), "users", false, jwt, span);
                     }
                     if (Config.cleanup_on_delete_user || recursive) {
                         let skip_collections = [];
@@ -3587,7 +3585,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     const subdocs = await cursor.toArray();
                     cursor.close();
                     for (var r of subdocs) {
-                        this.DeleteOne(r._id, "config", false, jwt, span);
+                        this.DeleteOne(r._id.toString(), "config", false, jwt, span);
                     }
                 }
                 await Logger.DBHelper.CheckCache(collectionname, doc, false, false, span);

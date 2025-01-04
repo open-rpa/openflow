@@ -1509,7 +1509,7 @@ export class Message {
             }
         }
         if (msg.item && typeof msg.item === "string") msg.item = JSON.parse(msg.item);
-        msg = await Config.db.InsertOrUpdateOne(msg, parent);
+        msg = await Config.db._InsertOrUpdateOne(msg, parent);
         if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
         delete msg.item;
         if (msg != null) {

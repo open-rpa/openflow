@@ -249,12 +249,7 @@ export class WebServer {
                         if (NoderedUtil.IsNullEmpty(subscription._type)) subscription._type = "unknown";
                         subscription.userid = tuser._id;
                         subscription.name = tuser.name + " " + subscription._type + " " + subscription.host;
-                        var msg: InsertOrUpdateOneMessage = new InsertOrUpdateOneMessage();
-                        msg.collectionname = "webpushsubscriptions"; msg.jwt = jwt;
-                        msg.item = subscription;
-                        msg.uniqeness = "userid,_type,host,endpoint";
-
-                        await Config.db._InsertOrUpdateOne(msg, null);
+                        await Config.db.InsertOrUpdateOne(subscription, "webpushsubscriptions", "userid,_type,host,endpoint", 1, true, jwt, span);
                         Logger.instanse.info("Registered webpush subscription for " + tuser.name, span);
                         res.status(201).json({})
                     } catch (error) {

@@ -103,7 +103,7 @@ export class Workspaces {
         Base.addRight(workspace, workspaceusers._id, workspaceusers.name, [Rights.read]);
         workspace.admins = workspaceadmins._id;
         workspace.users = workspaceusers._id;
-        const result = await Config.db.InsertOrUpdateOne2(workspace, "users", "_id", 1, true, rootjwt, parent);
+        const result = await Config.db.InsertOrUpdateOne(workspace, "users", "_id", 1, true, rootjwt, parent);
 
         let member = await Config.db.GetOne<Member>({ collectionname: "users", query: { userid: tuser._id, workspaceid: result._id, "_type": "member" } }, parent);
         if (member == null) {

@@ -90,7 +90,7 @@ export class Resources {
             model._acl = [];
             Base.addRight(model, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(model, WellknownIds.users, "users", [Rights.read]);
-            return Config.db.InsertOrUpdateOne2(model, "config", "_type,name", 1, true, jwt, parent);
+            return Config.db.InsertOrUpdateOne(model, "config", "_type,name", 1, true, jwt, parent);
     }
     public static async GetUserResources(userid: string, parent: Span) {
         const jwt = Crypt.rootToken();
