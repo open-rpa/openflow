@@ -146,6 +146,8 @@ export class WebServer {
                 }
                 next();
             });
+            var wsapiurl = "ws://localhost:" + Config.port + "/ws/v2"
+            process.env.web_wsapiurl = wsapiurl;
             process.env.web_domain = Config.domain;
             process.env.web_client_id = "agent";
             process.env.web_protocol = Config.protocol;
@@ -313,7 +315,6 @@ export class WebServer {
             config.doDumpMesssages = false;
             config.DoDumpToConsole = false;
 
-            await WebServer.addWebserverRoutes();
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -382,6 +383,9 @@ export class WebServer {
         config.DoDumpToConsole = false;
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
         Logger.instanse.info("grpc listening on grpc://" + Config.domain + ":" + config.defaultgrpcport, null);
+        WebServer.addWebserverRoutes().catch((error) => {
+            Logger.instanse.error(error, null);
+        });
     }
     public static async ReceiveFileContent(client: flowclient, rid: string, msg: any) {
         return new Promise<string>((resolve, reject) => {
