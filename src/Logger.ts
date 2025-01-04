@@ -100,7 +100,7 @@ export class Logger {
     }
     public json(obj, span: Span) {
         if (Config.unittesting) return;
-        if(obj.func == "_Housekeeping") {
+        if (obj.func == "_Housekeeping") {
             obj.cls = "Housekeeping";
         }
 
@@ -120,9 +120,9 @@ export class Logger {
             }
             span.addEvent(obj.message, obj)
         }
-        if(Config.log_all_watches && obj.cls == "DatabaseConnection" && obj.func == "onchange") {
+        if (Config.log_all_watches && obj.cls == "DatabaseConnection" && obj.func == "onchange") {
 
-        } else if(Config.log_database_queries && obj.requestId != null) {
+        } else if (Config.log_database_queries && obj.requestId != null) {
         } else if (obj.ms != null && obj.ms != "" && obj.func != "query" && Config.log_database_queries) {
             if (obj.ms < Config.log_database_queries_ms) return;
         } else if (Logger.enabled[cls]) {
@@ -180,13 +180,13 @@ export class Logger {
             obj.cls = "";
             if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
-        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+        if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
         }
-        if(options?.cls != null && options?.cls != "") {
+        if (options?.cls != null && options?.cls != "") {
             obj.cls = options.cls;
         }
-        if(options?.func != null && options?.func != "") {
+        if (options?.func != null && options?.func != "") {
             obj.func = options.func;
         }
         this.json(obj, span);
@@ -206,13 +206,13 @@ export class Logger {
             obj.cls = "";
             if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
-        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+        if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
         }
-        if(options?.cls != null && options?.cls != "") {
+        if (options?.cls != null && options?.cls != "") {
             obj.cls = options.cls;
         }
-        if(options?.func != null && options?.func != "") {
+        if (options?.func != null && options?.func != "") {
             obj.func = options.func;
         }
         this.json(obj, span);
@@ -231,13 +231,13 @@ export class Logger {
             obj.cls = "";
             if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
-        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+        if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
         }
-        if(options?.cls != null && options?.cls != "") {
+        if (options?.cls != null && options?.cls != "") {
             obj.cls = options.cls;
         }
-        if(options?.func != null && options?.func != "") {
+        if (options?.func != null && options?.func != "") {
             obj.func = options.func;
         }
         this.json(obj, span);
@@ -256,19 +256,19 @@ export class Logger {
             obj.cls = "";
             if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
-        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+        if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
         }
-        if(options?.cls != null && options?.cls != "") {
+        if (options?.cls != null && options?.cls != "") {
             obj.cls = options.cls;
         }
-        if(options?.func != null && options?.func != "") {
+        if (options?.func != null && options?.func != "") {
             obj.func = options.func;
         }
         this.json(obj, span);
     }
     public verbose(message: string, span: Span, options?: any) {
-        if(!Config.log_verbose) return;
+        if (!Config.log_verbose) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -282,19 +282,19 @@ export class Logger {
             obj.cls = "";
             if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
-        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+        if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
         }
-        if(options?.cls != null && options?.cls != "") {
+        if (options?.cls != null && options?.cls != "") {
             obj.cls = options.cls;
         }
-        if(options?.func != null && options?.func != "") {
+        if (options?.func != null && options?.func != "") {
             obj.func = options.func;
         }
         this.json(obj, span);
     }
     public silly(message: string, span: Span, options?: any) {
-        if(!Config.log_silly) return;
+        if (!Config.log_silly) return;
         var s = Logger.getStackInfo(0);
         if (s.method == "") s = Logger.getStackInfo(1);
         if (s.method == "") s = Logger.getStackInfo(2);
@@ -308,13 +308,13 @@ export class Logger {
             obj.cls = "";
             if (s.file != "") obj.cls = s.file.replace(".js", "");
         }
-        if(obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+        if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
             obj.func = "anonymous";
         }
-        if(options?.cls != null && options?.cls != "") {
+        if (options?.cls != null && options?.cls != "") {
             obj.cls = options.cls;
         }
-        if(options?.func != null && options?.func != "") {
+        if (options?.func != null && options?.func != "") {
             obj.func = options.func;
         }
         this.json(obj, span);
@@ -328,13 +328,12 @@ export class Logger {
     public static async reload() {
         Logger.log_with_trace = Config.log_with_trace;
         Logger.usecolors = Config.log_with_colors;
-        // if (Config.NODE_ENV == "development") Logger.log_with_trace = true;
         Logger.enabled = {};
         if (Config.log_cache) Logger.enabled["DBHelper"] = level.Verbose;
         if (Config.log_amqp) Logger.enabled["amqpwrapper"] = level.Verbose;
         if (Config.log_openapi) Logger.enabled["OpenAIProxy"] = level.Verbose;
         if (Config.log_openapi) Logger.enabled["OpenAPIProxy"] = level.Verbose;
-        
+
         if (Config.log_login_provider) Logger.enabled["LoginProvider"] = level.Verbose;
         if (Config.log_websocket) Logger.enabled["WebSocketServer"] = level.Verbose;
         if (Config.log_websocket) Logger.enabled["WebSocketServerClient"] = level.Verbose;
@@ -353,7 +352,7 @@ export class Logger {
         try {
             await Logger.License?.validate();
         } catch (error) {
-            
+
         }
     }
     static hasDockerEnv(): boolean {
@@ -387,19 +386,19 @@ export class Logger {
         return true;
     }
     static async relaodotel() {
-        
+
     }
     static _otel_require: any = null;
     static async configure(skipotel: boolean, skiplic: boolean): Promise<void> {
         Logger.DBHelper = new DBHelper();
         await Logger.reload()
-        if(Logger.instanse == null) Logger.instanse = new Logger();
-        if(Logger.License == null) {
+        if (Logger.instanse == null) Logger.instanse = new Logger();
+        if (Logger.License == null) {
             let _lic_require: any = null;
             try {
                 // @ts-ignore
                 if (!skiplic && _lic_require == null) _lic_require = await import("./ee/license-file.js");
-                if(_lic_require != null) Logger.License = new _lic_require.LicenseFile();
+                if (_lic_require != null) Logger.License = new _lic_require.LicenseFile();
             } catch (error) {
                 console.error(error.message);
             }
@@ -414,7 +413,7 @@ export class Logger {
             }
         }
 
-        if(Logger.otel == null) {
+        if (Logger.otel == null) {
             try {
                 // @ts-ignore
                 if (!skipotel && Logger._otel_require == null) Logger._otel_require = await import("./ee/otel.js");
@@ -463,7 +462,7 @@ export class Logger {
         }
 
 
-        if(this.agentdriver == null) {
+        if (this.agentdriver == null) {
             this.agentdriver = null; // with npm -omit=optional we need to install npm i openid-client
 
             if (NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"])) {

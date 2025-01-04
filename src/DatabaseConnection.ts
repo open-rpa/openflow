@@ -12,6 +12,7 @@ import { Auth } from "./Auth.js";
 import { iAgent } from "./commoninterfaces.js";
 import { Config, dbConfig } from "./Config.js";
 import { Crypt } from "./Crypt.js";
+import { Resources } from "./ee/Resources.js";
 import { Logger } from "./Logger.js";
 import { LoginProvider } from "./LoginProvider.js";
 import { OAuthProvider } from "./OAuthProvider.js";
@@ -29,17 +30,15 @@ const formatBytes = (bytes, decimals = 2) => {
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
     if (bytes < 0) {
-      bytes = bytes * -1;
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return "-" + parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+        bytes = bytes * -1;
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return "-" + parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
     } else {
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
     }
-  }
-  
+}
 
-// tslint:disable-next-line: typedef
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const isoDatePattern = new RegExp(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z)/);
 const jsondiffpatch = _jsondiffpatch.create({
@@ -48,7 +47,6 @@ const jsondiffpatch = _jsondiffpatch.create({
         return obj.name || obj.id || obj._id || "$$index:" + index;
     }
 });
-
 
 export type GetDocumentVersionOptions = {
     collectionname: string,
@@ -68,7 +66,6 @@ export class DatabaseConnection extends events.EventEmitter {
     private cli: MongoClient;
     public db: Db;
     private _dbname: string;
-    // public static ot_mongodb_query_count: Counter;
     public static mongodb_query: Histogram;
     public static mongodb_count: Histogram;
     public static mongodb_aggregate: Histogram;
@@ -80,8 +77,6 @@ export class DatabaseConnection extends events.EventEmitter {
     public static mongodb_delete: Histogram;
     public static mongodb_deletemany: Histogram;
     public static mongodb_active_sessions: ObservableUpDownCounter;
-
-    // public static semaphore = Auth.Semaphore(1);
 
     public queuemonitoringhandle: NodeJS.Timeout = null;
     public queuemonitoringlastrun: Date = new Date();
@@ -98,7 +93,6 @@ export class DatabaseConnection extends events.EventEmitter {
             DatabaseConnection.mongodb_count = Logger.otel.meter.createHistogram("openflow_mongodb_count_seconds", {
                 description: "Duration for mongodb counts", valueType: 1, unit: "s"
             });
-            // valueType: ValueType.DOUBLE
             DatabaseConnection.mongodb_aggregate = Logger.otel.meter.createHistogram("openflow_mongodb_aggregate_seconds", {
                 description: "Duration for mongodb aggregates", valueType: 1, unit: "s"
             });
@@ -161,7 +155,7 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.instanse.error(error, null);
         }
     }
-    public hadWatchFault: boolean = false;   
+    public hadWatchFault: boolean = false;
     public lastWatchFault: Date = new Date();
     public watchFaultHandler: any = null;
     public replicat: string = null;
@@ -176,14 +170,13 @@ export class DatabaseConnection extends events.EventEmitter {
         if (this.cli !== null && this.cli !== undefined && this.isConnected) {
             return;
         }
-        if(this.host == "") {
+        if (this.host == "") {
             this.host = os.hostname();
         }
         const span: Span = Logger.otel.startSubSpan("db.connect", parent);
         span?.addEvent("connecting to mongodb");
         Logger.instanse.info("Connecting to mongodb", span);
         const options: MongoClientOptions = { minPoolSize: Config.mongodb_minpoolsize, maxPoolSize: Config.mongodb_maxpoolsize };
-        // options.monitorCommands = true;
         this.cli = await MongoClient.connect(this.mongodburl, options);
         Logger.instanse.info("Connected to mongodb", span);
         span?.addEvent("Connected to mongodb");
@@ -217,7 +210,6 @@ export class DatabaseConnection extends events.EventEmitter {
         this.db = this.cli.db(this._dbname);
         await Config.db.UpdateIndexTypes(span);
         this.doRegisterGlobalWatch(span);
-        // }
         this.isConnected = true;
         Logger.otel.endSpan(span);
         this.emit("connected");
@@ -225,23 +217,12 @@ export class DatabaseConnection extends events.EventEmitter {
     public ensureQueueMonitoring() {
         if (Config.workitem_queue_monitoring_enabled) {
             if (this.queuemonitoringhandle == null) {
-                // this.queuemonitoringhandle = setInterval(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
                 this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-                // } else {
-                //     Logger.instanse.warn("DatabaseConnection", "ensureQueueMonitoring", "queue monitoring restarted, clearing handle " + this.queuemonitoringhandle);
-                //     try {
-                //         clearTimeout(this.queuemonitoringhandle);
-                //     } catch (error) {
-                //     }
-                //     this.queuemonitoringhandle = setTimeout(this.queuemonitoring.bind(this), Config.workitem_queue_monitoring_interval);
-                //     Logger.instanse.warn("DatabaseConnection", "ensureQueueMonitoring", "queue monitoring restarted, enabled: " +
-                //         Config.workitem_queue_monitoring_enabled + " handle: " + this.queuemonitoringhandle);
             }
         } else if (this.queuemonitoringhandle != null) {
             Logger.instanse.warn("queue monitoring stopeed, clearing enabled: " +
                 Config.workitem_queue_monitoring_enabled + " handle: " + this.queuemonitoringhandle, null);
             try {
-                // clearInterval(this.queuemonitoringhandle);
                 clearTimeout(this.queuemonitoringhandle);
             } catch (error) {
             }
@@ -260,16 +241,11 @@ export class DatabaseConnection extends events.EventEmitter {
             const collectionname = "workitems";
             var queues = await Logger.DBHelper.GetPushableQueues(null);
             var test = queues.find(x => x._id == "63b6a9b41e86860136c2cc8b");
-            // wiq._id == "63b6a9b41e86860136c2cc8b"
             for (let i = 0; i < queues.length; i++) {
                 const wiq = queues[i];
                 const count = await Logger.DBHelper.GetPendingWorkitemsCount(wiq._id, null);
                 if (count < 1) continue;
-                // const query = { "wiqid": wiq._id, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
                 var payload = null;
-                // const payload = await this.GetOne({ jwt, collectionname, query }, null);
-                // if (payload == null) continue;
-                // var queueid = "";
                 let queueids = [];
                 if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
                     if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
@@ -279,11 +255,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
                     let queueid = wiq.amqpqueue.toLowerCase();
-                    if(queueids.indexOf(queueid) == -1) {
+                    if (queueids.indexOf(queueid) == -1) {
                         queueids.push(queueid);
-                    }                    
+                    }
                 }
-                if (queueids.length == 0) { continue;}
+                if (queueids.length == 0) { continue; }
                 for (var _cid = 0; _cid < WebSocketServer._clients.length; _cid++) {
                     const client = WebSocketServer._clients[_cid];
                     if (NoderedUtil.IsNullUndefinded(client.user)) continue;
@@ -297,9 +273,8 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                     if (sendit) {
-                        // if (payload == null) payload = await this.GetOne({ jwt, collectionname, query }, null);
                         payload = {
-                            "wiq": wiq.name, 
+                            "wiq": wiq.name,
                             "wiqid": wiq._id,
                             "packageid": (wiq as any).packageid,
                         }
@@ -308,15 +283,15 @@ export class DatabaseConnection extends events.EventEmitter {
                             sendthis = {
                                 command: "invoke",
                                 workflowid: wiq.workflowid,
-                                data: { },
+                                data: {},
                                 "wiq": wiq.name, "wiqid": wiq._id, "packageid": (wiq as any).packageid,
                             }
                         }
                         if (payload != null) {
                             Logger.instanse.debug("Send workitem payload '" + payload.name + "' to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null, { workflowid: wiq.workflowid, wi: payload._id, name: payload.name });
                             try {
-                                for(let _y = 0; _y < queueids.length; _y++) {
-                                    client.Queue(JSON.stringify(sendthis), queueids[_y], {} as any, null).catch(e=> {
+                                for (let _y = 0; _y < queueids.length; _y++) {
+                                    client.Queue(JSON.stringify(sendthis), queueids[_y], {} as any, null).catch(e => {
                                         Logger.instanse.error(e, null);
                                     });
                                 }
@@ -346,21 +321,17 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             var _id = next.documentKey._id;
             if (next.operationType == "update" && collectionname == "users") {
-                // update document
-                if(next.updateDescription != null && next.updateDescription.updatedFields != null) {
-                    // var keys = Object.keys(next.updateDescription.updatedFields);
+                if (next.updateDescription != null && next.updateDescription.updatedFields != null) {
                     if (next.updateDescription.updatedFields.hasOwnProperty("_heartbeat")) return;
                     if (next.updateDescription.updatedFields.hasOwnProperty("lastseen")) return;
                     if (next.updateDescription.updatedFields.hasOwnProperty("_rpaheartbeat")) return;
                     if (next.updateDescription.updatedFields.hasOwnProperty("_webheartbeat")) return;
                     if (next.updateDescription.updatedFields.hasOwnProperty("_noderedheartbeat")) return;
                     if (next.updateDescription.updatedFields.hasOwnProperty("_powershellheartbeat")) return;
-                    // if (next.updateDescription.updatedFields.hasOwnProperty("clientagent") &&
-                    //     next.updateDescription.updatedFields.hasOwnProperty("clientversion")) return;
                     if (next.updateDescription.updatedFields.hasOwnProperty("remoteip") &&
                         next.updateDescription.updatedFields.hasOwnProperty("clientversion")) return;
                     if (next.updateDescription.updatedFields.hasOwnProperty("clientagent")) return;
-    
+
                 }
             }
             var item = next.fullDocument;
@@ -378,7 +349,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
 
             if (!NoderedUtil.IsNullUndefinded(item)) {
-                if(Config.log_all_watches == true) {
+                if (Config.log_all_watches == true) {
                     Logger.instanse.debug(collectionname + " watch " + next?.fullDocument?._type + " " + next?.operationType + " " + next?.fullDocument?.name, span, { cls: "DatabaseConnection", func: "onchange", collection: collectionname });
                 }
             }
@@ -424,11 +395,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!NoderedUtil.IsNullUndefinded(item.ips) && item.ips.length > 0) {
                         for (let i = 0; i < WebSocketServer._clients.length; i++) {
                             let _cli = WebSocketServer._clients[i];
-                            // if (item.ips.indexOf(_cli.remoteip) > -1) {
-                            //     Logger.instanse.warn("Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list!", span, { collection: collectionname, user: _cli.username });
-                            //     WebSocketServer._clients[i].Close(span);
-                            // }
-                            if((await WebServer.isIPBlocked(_cli.remoteip)) == true) {
+                            if ((await WebServer.isIPBlocked(_cli.remoteip)) == true) {
                                 Logger.instanse.warn("Disconnecting [" + _cli.username + "/" + _cli.clientagent + "/" + _cli.id + "] who is now on blocked list! " + _cli.remoteip, span, { collection: collectionname, user: _cli.username });
                                 WebSocketServer._clients[i].Close(span);
                             }
@@ -442,7 +409,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "config" && _type === "config") {
                     discardspan = false;
                     await dbConfig.Reload(Crypt.rootToken(), true, span);
-                    
+
                 }
             }
             span.updateName("Watch " + collectionname + " " + next.operationType + " " + _type);
@@ -505,7 +472,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                         if (ismatch) notify = true;
                                     } else {
                                         var paths = stream.paths;
-                                        if(paths == null || paths.length == 0) paths = stream.aggregates as any; // Backward compatibility
+                                        if (paths == null || paths.length == 0) paths = stream.aggregates as any; // Backward compatibility
                                         if (Array.isArray(paths)) {
                                             for (let p = 0; p < paths.length; p++) {
                                                 let path = paths[p];
@@ -536,14 +503,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                     }
                                     if (notify) {
                                         discardspan = false;
-                                        if(!next.fullDocument) next.fullDocument = item;
-                                        if(next.fullDocument) {
+                                        if (!next.fullDocument) next.fullDocument = item;
+                                        if (next.fullDocument) {
                                             next.fullDocument = Config.db.decryptentity(next.fullDocument);
                                             DatabaseConnection.traversejsondecode(next.fullDocument);
                                             this.parseResult(next.fullDocument, client.clientagent, client.clientversion)
                                             client.SendWatch(stream, next, span);
                                         }
-                                        
+
                                     }
                                 }
 
@@ -583,19 +550,19 @@ export class DatabaseConnection extends events.EventEmitter {
                 this.hadWatchFault = true;
                 this.lastWatchFault = new Date();
                 this.stream.stream = null;
-                if(this.watchFaultHandler == null) {
+                if (this.watchFaultHandler == null) {
                     this.watchFaultHandler = setTimeout(() => {
                         try {
                             this.doRegisterGlobalWatch(null);
-                        } catch (error) {  
+                        } catch (error) {
                             Logger.instanse.error(error, span);
                         }
-                    }, 5000);            
+                    }, 5000);
                 }
             });
-            this.stream.stream.on("change", async (next:any) => {
+            this.stream.stream.on("change", async (next: any) => {
                 const collectionname = next.ns.coll;
-                this.GlobalWatchCallback(collectionname, next) 
+                this.GlobalWatchCallback(collectionname, next)
             });
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -603,9 +570,8 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     async ListCollections(includesystem: boolean, jwt: string): Promise<any[]> {
-        // let result = await DatabaseConnection.toArray(this.db.listCollections());
         let result = await Logger.DBHelper.GetCollections(null);
-        if(includesystem == false) {
+        if (includesystem == false) {
             result = result.filter(x => x.name.indexOf("system.") === -1);
         } else {
             // remove all that starts with system. except system.profile
@@ -613,8 +579,8 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
         const user = await Auth.Token2User(jwt, null);
-        if(user==null) throw new Error("Access denied");
-        if(user._id == "65cb30c40ff51e174095573c") {
+        if (user == null) throw new Error("Access denied");
+        if (user._id == "65cb30c40ff51e174095573c") {
             result = result.filter(x => x.name != "audit");
         }
         return result;
@@ -625,19 +591,19 @@ export class DatabaseConnection extends events.EventEmitter {
         let user: User = null;
         try {
             user = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
             if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
             Audit.AuditCollectionAction(user, "drop", collectionname, true, span);
-            if(collectionname.endsWith(".files")) {
+            if (collectionname.endsWith(".files")) {
                 await this.db.dropCollection(collectionname.replace(".files", ".chunks"));
                 Audit.AuditCollectionAction(user, "drop", collectionname.replace(".files", ".chunks"), true, span);
             }
             try {
-                if(!collectionname.endsWith("_hist")) {
+                if (!collectionname.endsWith("_hist")) {
                     await this.db.dropCollection(collectionname + "_hist");
                     Audit.AuditCollectionAction(user, "drop", collectionname + "_hist", true, span);
                 }
@@ -653,9 +619,9 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.CreateCollection", parent);
         let user: User = null;
         try {
-            if(collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             user = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
@@ -664,15 +630,15 @@ export class DatabaseConnection extends events.EventEmitter {
             delete options.priority;
             delete options.collectionname;
             var _options = JSON.parse(JSON.stringify(options))
-            if(_options.expireAfterSeconds != null && _options.expireAfterSeconds > 0) {
-                if(_options.metadata == null) {
+            if (_options.expireAfterSeconds != null && _options.expireAfterSeconds > 0) {
+                if (_options.metadata == null) {
                     delete _options.expireAfterSeconds;
                 }
             }
             await this.db.createCollection(collectionname, _options);
             Audit.AuditCollectionAction(user, "create", collectionname, true, span);
-            if(options.expireAfterSeconds != null && options.expireAfterSeconds > 0) {
-                if(options.metadata == null) {
+            if (options.expireAfterSeconds != null && options.expireAfterSeconds > 0) {
+                if (options.metadata == null) {
                     await this.createIndex(collectionname, null, { "_created": 1 }, { expireAfterSeconds: options.expireAfterSeconds }, span);
                 }
             }
@@ -815,9 +781,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
             }
-            if (!DatabaseConnection.hasAuthorization(user , item, Rights.read)) {
+            if (!DatabaseConnection.hasAuthorization(user, item, Rights.read)) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
-            } else if (!DatabaseConnection.hasAuthorization(user , item, Rights.update)) {
+            } else if (!DatabaseConnection.hasAuthorization(user, item, Rights.update)) {
                 Base.addRight(item, user._id, user.name, [Rights.full_control]);
             }
             item = this.ensureResource(item, collectionname);
@@ -829,7 +795,7 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     async Cleanmembers<T extends Role>(item: T, original: T, force: boolean, span: Span): Promise<T> {
         const removed: Rolemember[] = [];
-        if(force == false && DatabaseConnection.WellknownIdsArray.indexOf(item._id) >= 0) return item;
+        if (force == false && DatabaseConnection.WellknownIdsArray.indexOf(item._id) >= 0) return item;
         if (NoderedUtil.IsNullUndefinded(item.members)) item.members = [];
         if (original != null && Config.update_acl_based_on_groups === true) {
             for (let i = original.members.length - 1; i >= 0; i--) {
@@ -1024,7 +990,6 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param {boolean} decrypt Decrypt encrypted data, default: true
      * @returns Promise<T[]> Array of results
      */
-    // tslint:disable-next-line: max-line-length
     async query<T extends Base>(options: QueryOptions, span: Span): Promise<T[]> {
         let { query, projection, top, skip, orderby, collectionname, jwt, queryas, hint, decrypt } = Object.assign({
             top: 100,
@@ -1111,7 +1076,7 @@ export class DatabaseConnection extends events.EventEmitter {
         for (let key of keys) {
             if (key === "_id") {
                 const id: string = query._id;
-                if(id.length == 12 || id.length == 24) {
+                if (id.length == 12 || id.length == 24) {
                     const safeid = safeObjectID(id);
                     if (safeid !== null && safeid !== undefined) {
                         delete query._id;
@@ -1125,8 +1090,8 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         span?.addEvent("verityToken");
         const user: User = await Auth.Token2User(jwt, span);
-        if(user == null) throw new Error("Access denied");
-        if(user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user == null) throw new Error("Access denied");
+        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
             return [];
         }
 
@@ -1159,7 +1124,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let arr: T[] = [];
         let findoptions: FindOptions = {};
         // @ts-ignore
-        if(options.explain === true) {
+        if (options.explain === true) {
             console.log("explain quey");
             // @ts-ignore
             findoptions.explain = options.explain;
@@ -1178,25 +1143,23 @@ export class DatabaseConnection extends events.EventEmitter {
             let size = 0;
             for await (const c of _pipe) {
                 size += getObjectSize(c);
-                if(Config.max_memory_query_mb > 0 && size > (Config.max_memory_query_mb * 1024 * 1024)) {
+                if (Config.max_memory_query_mb > 0 && size > (Config.max_memory_query_mb * 1024 * 1024)) {
                     Logger.instanse.error("Query size exceeded " + Config.max_memory_query_mb + " mb (" + formatBytes(size) + " with " + arr.length + " items)", span, { collection: collectionname, user: user?.username, count: arr.length });
                     throw new Error("Query size exceeded " + Config.max_memory_query_mb + " mb (" + formatBytes(size) + " with " + arr.length + " items)");
                 }
                 arr.push(c as any);
             }
-            // Logger.instanse.debug("Query gave " + arr.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, ms, count: arr.length });
             Logger.instanse.debug("Query gave " + arr.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, count: arr.length });
         } finally {
             _pipe.close();
             ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
         }
-        // arr = await _pipe.toArray();
-        if(collectionname === "users") {
+        if (collectionname === "users") {
             var clients = WebSocketServer.getclients(user)
-            for(var i=0; i<arr.length; i++) {
-                if(arr[i]._type == "user") {
+            for (var i = 0; i < arr.length; i++) {
+                if (arr[i]._type == "user") {
                     var client = clients.find(c => c.user?._id == arr[i]._id);
-                    if(client != null) {
+                    if (client != null) {
                         // @ts-ignore
                         arr[i].lastseen = client.lastheartbeat;
                     }
@@ -1221,7 +1184,6 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param {string} jwt JWT of user who is making the query, to limit results based on permissions
      * @returns Promise<T[]> Array of results
      */
-    // tslint:disable-next-line: max-line-length
     async count(options: CountOptions, span: Span): Promise<number> {
         let { query, collectionname, jwt, queryas } = Object.assign({
         }, options);
@@ -1268,8 +1230,8 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         span?.addEvent("verityToken");
         const user: User = await Auth.Token2User(jwt, span);
-        if(user == null) throw new Error("Access denied");
-        if(user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user == null) throw new Error("Access denied");
+        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
             return 0;
         }
 
@@ -1349,8 +1311,8 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         span?.addEvent("verityToken");
         const user: User = await Auth.Token2User(jwt, span);
-        if(user == null) throw new Error("Access denied");
-        if(user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user == null) throw new Error("Access denied");
+        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
             return [];
         }
 
@@ -1478,8 +1440,6 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     async getbyusername<T extends Base>(username: string, issuer: string, jwt: string, decrypt: boolean, span: Span): Promise<T> {
         if (username === null || username === undefined || username === "") { throw new Error("Name cannot be null"); }
-        // const byuser = { username: new RegExp(["^", username, "$"].join(""), "i") };
-        // const byid = { federationids: new RegExp(["^", username, "$"].join(""), "i") }
         const byemail = { email: username };
         const byuser = { username: username };
         const byid = { $or: [{ "federationids.id": username, "federationids.issuer": issuer }, { "federationids": username }] };
@@ -1499,7 +1459,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt
      * @returns Promise
      */
-    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, queryas:string, explain:boolean, parent: Span): Promise<T[]> {
+    async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, queryas: string, explain: boolean, parent: Span): Promise<T[]> {
         const span: Span = Logger.otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
@@ -1540,14 +1500,13 @@ export class DatabaseConnection extends events.EventEmitter {
                 return value; // leave any other value as-is
         });
         const user: User = await Auth.Token2User(jwt, span);
-        if(user == null) throw new Error("Access denied");
-        if(user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user == null) throw new Error("Access denied");
+        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
             return [];
         }
         if (Config.otel_trace_include_query) span?.setAttribute("aggregates", JSON.stringify(aggregates));
         span?.setAttribute("collection", collectionname);
         span?.setAttribute("username", user.username);
-        // const aggregatesjson = JSON.stringify(aggregates, null, 2)
         const aggregatesjson = JSON.stringify(aggregates)
         span?.addEvent("getbasequery");
         let base: object;
@@ -1556,7 +1515,7 @@ export class DatabaseConnection extends events.EventEmitter {
             let impersonationquery;
             if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
             if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
-                base = { $and: [ this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
+                base = { $and: [this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 base = this.getbasequery(user, [Rights.read], collectionname);
             }
@@ -1578,7 +1537,7 @@ export class DatabaseConnection extends events.EventEmitter {
             aggregates.push({ "$limit": 500 });
         }
         const options: AggregateOptions = {};
-        if(explain === true) {
+        if (explain === true) {
             console.log("explain aggregate")
             // @ts-ignore
             options.explain = explain;
@@ -1594,25 +1553,19 @@ export class DatabaseConnection extends events.EventEmitter {
                 let size = 0;
                 for await (const c of cursor) {
                     size += getObjectSize(c);
-                    if(Config.max_memory_aggregate_mb > 0 && size > (Config.max_memory_aggregate_mb * 1024 * 1024)) {
+                    if (Config.max_memory_aggregate_mb > 0 && size > (Config.max_memory_aggregate_mb * 1024 * 1024)) {
                         Logger.instanse.error("Aggregate size exceeded " + Config.max_memory_aggregate_mb + " mb (" + formatBytes(size) + " with " + items.length + " items)", span, { collection: collectionname, user: user?.username, count: items.length });
                         throw new Error("Aggregate size exceeded " + Config.max_memory_aggregate_mb + " mb (" + formatBytes(size) + " with " + items.length + " items)");
                     }
                     items.push(c as any);
                 }
-                // Logger.instanse.debug("Aggregate gave " + arr.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, ms, count: arr.length });
                 Logger.instanse.debug("Aggregate gave " + items.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, count: items.length });
             } finally {
                 ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
                 cursor.close();
             }
-    
-            // // @ts-ignore
-            // const items: T[] = await cursor.toArray();
-            // cursor.close();
-            span?.setAttribute("results", items.length);
 
-            // let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
+            span?.setAttribute("results", items.length);
             DatabaseConnection.traversejsondecode(items);
             if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
                 Logger.instanse.debug(aggregatesjson, span, { collection: collectionname, user: user?.username, ms, count: items.length });
@@ -1657,7 +1610,7 @@ export class DatabaseConnection extends events.EventEmitter {
         } else { aggregates = null; }
 
         const user: User = await Auth.Token2User(jwt, null);
-        if(user == null) throw new Error("Access denied");
+        if (user == null) throw new Error("Access denied");
         // TODO: Should we filter on rights other than read ? should a person with reade be allowed to know when it was updated ?
         // a person with read, would beablt to know anyway, so guess read should be enough for now ... 
         const base = this.getbasequery(user, [Rights.read], "fullDocument._acl");
@@ -1690,7 +1643,7 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             span?.addEvent("verityToken");
             const user: User = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
@@ -1705,7 +1658,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 item._modifiedby = user.name;
                 item._modifiedbyid = user._id;
                 item._modified = item._created;
-                if( item._id == "") delete item._id;
+                if (item._id == "") delete item._id;
                 if (collectionname == "audit") {
                     delete item._modifiedby;
                     delete item._modifiedbyid;
@@ -1721,7 +1674,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     item = this.ensureResource(item, collectionname);
                 }
             } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
-                if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                     item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                 }
                 if (collectionname == "audit") {
@@ -1740,7 +1693,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     item = this.ensureResource(item, collectionname);
                 }
             } else {
-                if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                     item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                 }
                 let metadata = DatabaseConnection.metadataname(collectionname);
@@ -1750,12 +1703,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (item.hasOwnProperty("name")) {
                     // @ts-ignore
                     item[metadata].name = item.name;
-                    // delete item.name;
                 }
                 if (item.hasOwnProperty("_type")) {
                     // @ts-ignore
                     item[metadata]._type = item._type;
-                    // delete item._type;
                 }
                 if (item.hasOwnProperty("_acl")) {
                     // @ts-ignore
@@ -1772,7 +1723,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     // @ts-ignore
                     delete item.username;
                 }
-                if( item._id == "") delete item._id;
+                if (item._id == "") delete item._id;
                 if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item[metadata], span)) {
                     // @ts-ignore
                     throw new Error("Create " + item[metadata]._type + " access denied");
@@ -1807,25 +1758,25 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
             if (collectionname == "workitems" && item._type == "workitem") {
                 wi.state = "new";
-                if(NoderedUtil.IsNullEmpty(wi.wiq) && NoderedUtil.IsNullEmpty(wi.wiqid)) {
+                if (NoderedUtil.IsNullEmpty(wi.wiq) && NoderedUtil.IsNullEmpty(wi.wiqid)) {
                     throw new Error("Workitemqueue (wiq or wiqid) is required");
                 }
-                if(NoderedUtil.IsNullEmpty(wi.wiq)) {
-                    var wiq = await this.GetOne({collectionname:"mq", query: { _id: wi.wiqid, _type: "workitemqueue" }, jwt}, span);
-                    if(NoderedUtil.IsNullEmpty(wiq)) {
+                if (NoderedUtil.IsNullEmpty(wi.wiq)) {
+                    var wiq = await this.GetOne({ collectionname: "mq", query: { _id: wi.wiqid, _type: "workitemqueue" }, jwt }, span);
+                    if (NoderedUtil.IsNullEmpty(wiq)) {
                         throw new Error("Workitemqueue " + wi.wiqid + " not found");
                     }
                     wi.wiq = wiq.name;
                     wi._acl = wiq._acl;
                 } else {
-                    var wiq = await this.GetOne({collectionname:"mq", query: { name: wi.wiq, _type: "workitemqueue" }, jwt}, span);
-                    if(NoderedUtil.IsNullEmpty(wiq)) {
+                    var wiq = await this.GetOne({ collectionname: "mq", query: { name: wi.wiq, _type: "workitemqueue" }, jwt }, span);
+                    if (NoderedUtil.IsNullEmpty(wiq)) {
                         throw new Error("Workitemqueue " + wi.wiq + " not found");
                     }
                     wi.wiqid = wiq._id;
                     wi._acl = wiq._acl;
                 }
-                if(NoderedUtil.IsNullEmpty(wi.nextrun)) {
+                if (NoderedUtil.IsNullEmpty(wi.nextrun)) {
                     wi.nextrun = new Date(new Date().toISOString());
                 }
             }
@@ -1834,28 +1785,28 @@ export class DatabaseConnection extends events.EventEmitter {
                 var runas = item.runas;
                 // @ts-ignore
                 var runasname = item.runasname;
-                if(!NoderedUtil.IsNullEmpty(runas) && runas != user._id) {
+                if (!NoderedUtil.IsNullEmpty(runas) && runas != user._id) {
                     if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                         throw new Error("Access denied");
                     }
                 }
-                if(!NoderedUtil.IsNullEmpty(runas)) {
+                if (!NoderedUtil.IsNullEmpty(runas)) {
                     let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
                     runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
 
                     if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
-                        if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
-                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                        if (NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                         } else {
                             customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
-                            if(customer != null) {
+                            if (customer != null) {
                                 Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
                                 Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
                             } else {
                                 Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                             }
                         }
-                        
+
                     }
                 }
 
@@ -1865,7 +1816,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     var f = await this.getbyid<any>(fileid, "fs.files", jwt, true, span);
                     if (f == null) throw new Error("File " + fileid + " not found");
                 }
-                if(item._type == "agent") {
+                if (item._type == "agent") {
                     // @ts-ignore
                     if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
                         if (!user.HasRoleName("admins")) {
@@ -1891,41 +1842,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (NoderedUtil.IsNullEmpty(agent.runas)) {
                         agent.runas = user._id
                     }
-                    
-                    if (!NoderedUtil.IsNullEmpty(agent.runas)) {
-                        // SKIP !!!
-                        // We do the check on docker/kubernetes driver level
-
-                        // var agentcount = 1;
-                        // const resource: Resource = await Config.db.GetResource("Agent Instance", span);
-                        // if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
-                        //     agentcount = parseInt(resource.defaultmetadata.agentcount);
-                        // } else {
-                        //     agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
-                        // }
-                        // var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-                        // if (agentuser.customerid != null && agentuser.customerid != "") {
-                        //     const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                        //     if (assigned != null) {
-                        //         for (let i = 0; i < assigned.length; i++) {
-                        //             const element = assigned[i];
-                        //             agentcount += element.quantity
-                        //         }
-                        //     }
-                        //     var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
-                        //     if (agents.length >= agentcount) {
-                        //         if(agent.stripeprice != null && agent.stripeprice != "") {
-                        //         }
-                        //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                        //     }
-                        // } else {
-                        //     var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
-                        //     if (agents.length >= agentcount) {
-                        //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                        //     }
-                        // }
-                    }
-
                 }
             }
             if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
@@ -2093,12 +2009,6 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (collectionname === "users" && item._type === "user") {
                 Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
-
-                // Skip, we are adding all users automatically 
-                // await this.db.collection("users").updateOne(
-                //     { _id: WellknownIds.users },
-                //     { "$push": { members: new Rolemember(item.name, item._id) } }
-                // );
                 let user2: User = User.assign(item as any);
                 if (Config.validate_emails && user2.emailvalidated || !Config.validate_emails) {
                     let domain: string = user2.username;
@@ -2181,7 +2091,7 @@ export class DatabaseConnection extends events.EventEmitter {
             DatabaseConnection.traversejsondecode(item);
             Logger.instanse.debug("inserted " + item.name, span, { collection: collectionname, user: user.username });
             let collections = await Logger.DBHelper.GetCollections(span);
-            if(collections.find(x => x.name == collectionname) == null) {
+            if (collections.find(x => x.name == collectionname) == null) {
                 await Logger.DBHelper.ClearGetCollections()
             }
         } finally {
@@ -2199,7 +2109,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             await this.connect(span);
             const user = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
@@ -2213,7 +2123,6 @@ export class DatabaseConnection extends events.EventEmitter {
             let wiqids = [];
             for (let i = 0; i < items.length; i++) {
                 let item = items[i];
-                // let item = this.ensureResource(items[i], collectionname);
                 DatabaseConnection.traversejsonencode(item);
 
                 if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
@@ -2235,19 +2144,18 @@ export class DatabaseConnection extends events.EventEmitter {
                         Base.addRight(item, user._id, user.name, [Rights.full_control]);
                     }
                     item = this.ensureResource(item, collectionname);
-                // } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) { 
-                } else if (DatabaseConnection.istimeseries(collectionname)) { 
-                    if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                } else if (DatabaseConnection.istimeseries(collectionname)) {
+                    if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                         item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                     }
-                    if(DatabaseConnection.usemetadata(collectionname)) {
+                    if (DatabaseConnection.usemetadata(collectionname)) {
                         if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
                             Base.addRight(item, user._id, user.name, [Rights.full_control]);
                             item = this.ensureResource(item, collectionname);
                         }
                     }
                 } else { // fs.files ?
-                    if(NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                    if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                         item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                     }
                     let metadata = DatabaseConnection.metadataname(collectionname);
@@ -2256,25 +2164,25 @@ export class DatabaseConnection extends events.EventEmitter {
                     item[metadata] = this.ensureResource(item[metadata], collectionname);
                     item[metadata]._version = 0;
                     item[metadata]._createdby = user.name;
-                    item[metadata]._createdbyid = user._id;                    
+                    item[metadata]._createdbyid = user._id;
                     if (!DatabaseConnection.hasAuthorization(user, item[metadata], Rights.create)) {
                         Base.addRight(item[metadata], user._id, user.name, [Rights.full_control]);
                         item[metadata] = this.ensureResource(item[metadata], collectionname);
                     }
                 }
 
-                if( item._id == "") delete item._id;
+                if (item._id == "") delete item._id;
                 item = this.encryptentity(item) as T;
                 var user2: User = item as any;
 
                 if (collectionname === "agents") {
                     // @ts-ignore
-                    if(!NoderedUtil.IsNullEmpty(item.runas) && item.runas != user._id) {
+                    if (!NoderedUtil.IsNullEmpty(item.runas) && item.runas != user._id) {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                             throw new Error("Access denied");
                         }
                     }
-                    
+
                     // @ts-ignore
                     var fileid = item.fileid;
                     if (item._type == "package" && fileid != "" && fileid != null) {
@@ -2282,30 +2190,30 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (f == null) throw new Error("File " + fileid + " not found");
                     }
 
-                    if(item._type == "agent") {
+                    if (item._type == "agent") {
                         // @ts-ignore
                         var runas = item.runas;
                         // @ts-ignore
                         var runasname = item.runasname;
-                        if(!NoderedUtil.IsNullEmpty(runas)) {
+                        if (!NoderedUtil.IsNullEmpty(runas)) {
                             let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
                             runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
                             if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
-                                if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
-                                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                                if (NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                                 } else {
                                     customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
-                                    if(customer != null) {
+                                    if (customer != null) {
                                         Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
                                         Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
                                     } else {
                                         Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                                     }
                                 }
-                                
+
                             }
                         }
-        
+
                         // @ts-ignore
                         if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
                             if (!user.HasRoleName("admins")) {
@@ -2313,7 +2221,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                         // @ts-ignore
-                        if(NoderedUtil.IsNullEmpty(item.slug)) {
+                        if (NoderedUtil.IsNullEmpty(item.slug)) {
                             throw new Error("Slug is required for agents");
                         }
                         // @ts-ignore
@@ -2333,37 +2241,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         var agent: iAgent = (item as any);
                         if (NoderedUtil.IsNullEmpty(agent.runas)) {
                             agent.runas = user._id
-                        }
-                        if (!NoderedUtil.IsNullEmpty(agent.runas)) {
-                            // SKIP !!!
-                            // We do the check on docker/kubernetes driver level
-
-                            // var agentcount = 1;
-                            // const resource: Resource = await Config.db.GetResource("Agent Instance", span);
-                            // if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
-                            //     agentcount = parseInt(resource.defaultmetadata.agentcount);
-                            // } else {
-                            //     agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
-                            // }
-                            // var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-                            // if (agentuser.customerid != null && agentuser.customerid != "") {
-                            //     const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                            //     if (assigned != null) {
-                            //         for (let i = 0; i < assigned.length; i++) {
-                            //             const element = assigned[i];
-                            //             agentcount += element.quantity
-                            //         }
-                            //     }
-                            //     var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt }, parent);
-                            //     if (agents.length >= agentcount) {
-                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                            //     }
-                            // } else {
-                            //     var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent" , "image": {"$exists": false}}, collectionname: "agents", jwt }, parent);
-                            //     if (agents.length >= agentcount) {
-                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                            //     }
-                            // }
                         }
                     }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
@@ -2386,7 +2263,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (item._type == "workitemqueue") { hadWorkitemQueue = true; wiqids.push(item._id); }
                     if (item._type === "exchange") {
                         await amqpwrapper.Instance().PreRegisterExchange(item, span);
-                    }        
+                    }
                 }
                 if (collectionname == "workitems" && item._type == "workitem") {
                     // @ts-ignore
@@ -2395,11 +2272,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     // @ts-ignore
                     if (item.hasOwnProperty("wiqid")) wiqids.push(item.wiqid);
                     // @ts-ignore
-                    if(NoderedUtil.IsNullEmpty(item.nextrun)) item.nextrun = new Date(new Date().toISOString());
+                    if (NoderedUtil.IsNullEmpty(item.nextrun)) item.nextrun = new Date(new Date().toISOString());
                 }
                 // @ts-ignore
                 if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
-                
+
                 if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
                     if (item._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
                         user2.username = user2.username.toLowerCase();
@@ -2409,7 +2286,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
-                
+
                 if (item._id != null) {
                     const basehist = await this.query<any>({ query: { id: item._id }, projection: { _version: 1 }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", jwt: Crypt.rootToken() }, span);
                     if (basehist.length > 0) {
@@ -2447,13 +2324,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
                 } else {
                     // skip clean acl, to expensive
-                    // let metadata = DatabaseConnection.metadataname(collectionname);
-                    // item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
-                    // if (item._type === "role" && collectionname === "users") {
-                    //     item[metadata] = await this.Cleanmembers(item[metadata] as any, null, false, span);
-                    // }
                 }
-                
+
 
                 if (collectionname === "users" && item._type === "user") {
                     const u: TokenUser = (item as any);
@@ -2520,15 +2392,14 @@ export class DatabaseConnection extends events.EventEmitter {
             if (hadWorkitemQueue) {
                 if (wiqids.length == 0) await Logger.DBHelper.WorkitemQueueUpdate(null, false, span);
                 for (var i = 0; i < wiqids.length; i++) {
-                    // await Logger.DBHelper.WorkitemQueueUpdate(wiqids[i], false, span);
                     await Logger.DBHelper.CheckCache(collectionname, wiqids[i], false, false, span);
                 }
 
             }
-            result = items;            
+            result = items;
             Logger.instanse.verbose("inserted " + counter + " items in database", span, { collection: collectionname, user: user.username, count: counter });
             let collections = await Logger.DBHelper.GetCollections(span);
-            if(collections.find(x => x.name == collectionname) == null) {
+            if (collections.find(x => x.name == collectionname) == null) {
                 await Logger.DBHelper.ClearGetCollections()
             }
         } finally {
@@ -2574,10 +2445,10 @@ export class DatabaseConnection extends events.EventEmitter {
             let itemReplace: boolean = true;
             if (q === null || q === undefined) { throw new Error("UpdateOneMessage cannot be null"); }
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
-            if(typeof q.item === "string") q.item = JSON.parse(q.item);
+            if (typeof q.item === "string") q.item = JSON.parse(q.item);
             await this.connect(span);
             const user: User = await Auth.Token2User(q.jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (q.query === null || q.query === undefined) {
                 if (!DatabaseConnection.usemetadata(q.collectionname)) {
@@ -2605,12 +2476,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
                 if (NoderedUtil.IsNullUndefinded((q as any).original)) {
                     original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, false, span);
-                    if(original == null) {
+                    if (original == null) {
                         throw new Error("item " + q.item._id + " not found in " + q.collectionname + " or Access Denied");
                     }
-                    if(q.item._id !== original._id) {
+                    if (q.item._id !== original._id) {
                         q.item._id = original._id;
-                    }                    
+                    }
                 } else {
                     original = (q as any).original;
                 }
@@ -2620,11 +2491,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (!DatabaseConnection.hasAuthorization(user, original, Rights.update)) {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
-                if(q.collectionname === "config" && q.item._type === "config") {
+                if (q.collectionname === "config" && q.item._type === "config") {
                     if (!user.HasRoleId(WellknownIds.admins)) throw new Error("Access denied, no authorization to update config");
                     dbConfig.cleanAndApply(q.item as any, span);
                 }
-    
+
                 await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
 
                 if (q.collectionname === "agents") {
@@ -2633,35 +2504,34 @@ export class DatabaseConnection extends events.EventEmitter {
                     // @ts-ignore;
                     var runasname = q.item.runasname;
                     // @ts-ignore
-                    if(original.runas != runas && runas != user._id) {
+                    if (original.runas != runas && runas != user._id) {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                             throw new Error("Access denied");
                         }
                     }
-                    if(!NoderedUtil.IsNullEmpty(runas)) {
+                    if (!NoderedUtil.IsNullEmpty(runas)) {
                         let runasuser = await this.getbyid<User>(runas, "users", q.jwt, true, span);
                         runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
                         if (!DatabaseConnection.hasAuthorization(runasuser as any, q.item, Rights.update)) {
-                            if(NoderedUtil.IsNullEmpty(runasuser.customerid)) {
-                                Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);                                
+                            if (NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                             } else {
                                 customer = await this.getbyid<Customer>(runasuser.customerid, "users", q.jwt, true, span);
-                                if(customer != null) {
+                                if (customer != null) {
                                     Base.addRight(q.item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
                                     Base.addRight(q.item, customer.admins, customer.name + " admins", [Rights.full_control]);
                                 } else {
                                     Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                                 }
                             }
-                            
+
                         }
                     }
                     // @ts-ignore
                     var fileid = q.item.fileid;
                     if (q.item._type == "package" && fileid != "" && fileid != null) {
                         var f = await this.getbyid<any>(fileid, "fs.files", q.jwt, true, span);
-                        // if (f == null) throw new Error("File " + fileid + " not found");
-                        if(f != null) {
+                        if (f != null) {
                             // is f.metadata._acl different from q.item._acl ?
                             f.metadata._acl = q.item._acl;
                             await this._UpdateOne(null, f, "fs.files", 1, false, q.jwt, span);
@@ -2671,7 +2541,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (oldfileid != fileid && oldfileid != null && oldfileid != "") {
                                     try {
                                         await this.DeleteOne(oldfileid, "fs.files", false, q.jwt, span);
-                                    } catch (error) {                                        
+                                    } catch (error) {
                                     }
                                 }
                             }
@@ -2701,7 +2571,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullEmpty(agent.runas)) {
                             agent.runas = user._id
                         }
-                        if(NoderedUtil.IsNullEmpty(agent.slug)) {
+                        if (NoderedUtil.IsNullEmpty(agent.slug)) {
                             throw new Error("Agent slug cannot be empty");
                         }
                         agent.slug = agent.slug.toLowerCase();
@@ -2709,42 +2579,9 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (!user.HasRoleName("admins") && agent.slug != original.slug) {
                             throw new Error("Access denied, changing slug");
                         }
-
-                        if (!NoderedUtil.IsNullEmpty(agent.runas)) {
-                            // SKIP !!!
-                            // We do the check on docker/kubernetes driver level
-
-                            // var agentcount = 1;
-                            // const resource: Resource = await Config.db.GetResource("Agent Instance", span);
-                            // if (resource != null && resource.defaultmetadata.agentcount != null && resource.defaultmetadata.agentcount != "") {
-                            //     agentcount = parseInt(resource.defaultmetadata.agentcount);
-                            // } else {
-                            //     agentcount = 999; // if Agent Instance resource is not defined, assume we don't want a limit
-                            // }
-                            // var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt: q.jwt }, parent);
-                            // if (agentuser.customerid != null && agentuser.customerid != "") {
-                            //     const assigned = await Config.db.GetResourceCustomerUsage("Agent Instance", agentuser.customerid, span);
-                            //     if (assigned != null) {
-                            //         for (let i = 0; i < assigned.length; i++) {
-                            //             const element = assigned[i];
-                            //             agentcount += element.quantity
-                            //         }
-                            //     }
-                            //     var agents = await Config.db.query<iAgent>({ query: { customerid: agentuser.customerid, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt: q.jwt }, parent);
-                            //     if (agents.length > agentcount) {
-                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                            //     }
-                            // } else {
-                            //     var agents = await Config.db.query<iAgent>({ query: { runas: agent.runas, "_type": "agent", "image": {"$exists": false} }, collectionname: "agents", jwt: q.jwt }, parent);
-                            //     if (agents.length > agentcount) {
-                            //         throw new Error("You have reached your maximum allowed number of agents, please add more plans to add more agents");
-                            //     }
-                            // }
-                        }
-
                     }
                 }
-    
+
                 if (q.collectionname === "users" && (q.item._type === "user" || q.item._type === "role")) {
                     let user2: User = q.item as any;
                     if (DatabaseConnection.WellknownIdsArray.indexOf(q.item._id) > -1) {
@@ -2766,7 +2603,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                         if (exists2 != null && exists2._id != q.item._id) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                     }
-    
+
                     if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
                         // User can update, just not created ?
                         // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
@@ -2843,7 +2680,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     // force cleaning members, to clean up mess with auto added members
                     if (q.item._type === "role" && q.collectionname === "users") {
                         q.item = await this.Cleanmembers(q.item as any, original, false, span);
-                        // DBHelper.cached_roles = [];
                     }
 
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
@@ -2856,8 +2692,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
                         if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
                         if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
-                        // Base.addRight(q.item, q.item._id, q.item.name, [Rights.read, Rights.update, Rights.invoke]);
-                        // q.item = this.ensureResource(q.item, q.collectionname);
                     }
 
                     DatabaseConnection.traversejsonencode(q.item);
@@ -2868,7 +2702,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!DatabaseConnection.hasAuthorization(user, q.item[metadata], Rights.update)) {
                         throw new Error("Access denied, no authorization to UpdateOne file " + (q.item as any).filename + " to database");
                     }
-                    if(!user.HasRoleId(WellknownIds.admins)) {
+                    if (!user.HasRoleId(WellknownIds.admins)) {
                         if (!DatabaseConnection.hasAuthorization(user, original[metadata], Rights.update)) {
                             throw new Error("Access denied, no authorization to UpdateOne file " + (original as any).filename + " to database");
                         }
@@ -2943,7 +2777,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                 }
-            } else { // if (q.query === null || q.query === undefined) {
+            } else {
                 let json: string = q.item as any;
                 if (typeof json !== "string") {
                     json = JSON.stringify(json);
@@ -2960,7 +2794,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 itemReplace = false;
                 if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
-                    if(q.collectionname === "agents" &&  q.item["$set"].hasOwnProperty("runas")) {
+                    if (q.collectionname === "agents" && q.item["$set"].hasOwnProperty("runas")) {
                         if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                             throw new Error("Access denied");
                         }
@@ -2988,7 +2822,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (q.query === null || q.query === undefined) {
                 const id: string = q.item._id;
-                if(id.length == 12 || id.length == 24) {
+                if (id.length == 12 || id.length == 24) {
                     const safeid = safeObjectID(id);
                     q.query = { _id: id };
                     if (safeid != null) {
@@ -3021,7 +2855,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         q.item = await this.CleanACL(q.item, user, q.collectionname, span);
                     } else {
                         let metadata = DatabaseConnection.metadataname(q.collectionname);
-                            q.item[metadata] = await this.CleanACL(q.item[metadata], user, q.collectionname, span);
+                        q.item[metadata] = await this.CleanACL(q.item[metadata], user, q.collectionname, span);
                     }
                 }
                 if (q.item._type === "role" && q.collectionname === "users") {
@@ -3061,7 +2895,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else {
                     const fsc = Config.db.db.collection(q.collectionname);
                     const ot_end = Logger.otel.startTimer();
-                        let metadata = DatabaseConnection.metadataname(q.collectionname);
+                    let metadata = DatabaseConnection.metadataname(q.collectionname);
                     q.opresult = await fsc.updateOne(_query, { $set: { metadata: q.item[metadata] } });
                     Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_update, DatabaseConnection.otel_label(q.collectionname, user, "update"));
                     if ((q.opresult && q.opresult.matchedCount == 0) && (q.w != 0)) {
@@ -3096,7 +2930,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 q.item = this.decryptentity(q.item);
             } else {
                 let metadata = DatabaseConnection.metadataname(q.collectionname);
-                    q.item[metadata] = this.decryptentity<T>(q.item[metadata]);
+                q.item[metadata] = this.decryptentity<T>(q.item[metadata]);
             }
             if (original != null) {
                 await Logger.DBHelper.CheckCache(q.collectionname, original, false, false, span);
@@ -3203,9 +3037,8 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
             await this.connect();
             const user: User = await Auth.Token2User(q.jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
-            // if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to UpdateMany"); }
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
                 (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -3215,7 +3048,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (typeof json !== "string") {
                 json = JSON.stringify(json);
             }
-            if(typeof q.query === "string") {
+            if (typeof q.query === "string") {
                 q.query = JSON.parse(q.query);
             }
             q.item = JSON.parse(json, (key, value) => {
@@ -3230,9 +3063,9 @@ export class DatabaseConnection extends events.EventEmitter {
             for (let key in q.query) {
                 if (key === "_id") {
                     const id: string = (q.query as any)._id;
-                    if(id.length == 12 || id.length == 24) {
+                    if (id.length == 12 || id.length == 24) {
                         const safeid = safeObjectID(id);
-                        if(safeid != null) {
+                        if (safeid != null) {
                             delete (q.query as any)._id;
                             (q.query as any).$or = [{ _id: id }, { _id: safeObjectID(id) }];
                         }
@@ -3257,7 +3090,7 @@ export class DatabaseConnection extends events.EventEmitter {
             (q.item["$set"])._modifiedbyid = user._id;
             (q.item["$set"])._modified = new Date(new Date().toISOString());
 
-            if(q.collectionname === "agents" &&  q.item["$set"].hasOwnProperty("runas")) {
+            if (q.collectionname === "agents" && q.item["$set"].hasOwnProperty("runas")) {
                 if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
                     throw new Error("Access denied");
                 }
@@ -3336,7 +3169,7 @@ export class DatabaseConnection extends events.EventEmitter {
             user = (q as any).user;
             if (NoderedUtil.IsNullUndefinded(user)) {
                 user = await Auth.Token2User(q.jwt, span);
-                if(user == null) throw new Error("Access denied");
+                if (user == null) throw new Error("Access denied");
             } else {
                 delete (q as any).user;
             }
@@ -3361,7 +3194,6 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             let exists: Base[] = [];
             if (query != null) {
-                // exists = await this.query(query, { name: 1 }, 2, 0, null, q.collectionname, q.jwt);
                 exists = await this.query({ query, top: 2, collectionname: q.collectionname, jwt: q.jwt }, span);
             }
             if (exists.length === 1) {
@@ -3375,12 +3207,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 Base.addRight(q.item, user._id, user.name, [Rights.full_control], false);
                 this.ensureResource(q.item, q.collectionname);
             }
-            // if (!this.hasAuthorization(user, q.item, Rights.update)) { throw new Error("Access denied, no authorization to InsertOrUpdateOne"); }
-
 
             if (exists.length === 1) {
                 const uq = new UpdateOneMessage();
-                // uq.query = query; 
                 uq.item = q.item; uq.collectionname = q.collectionname; uq.w = q.w; uq.j = q.j; uq.jwt = q.jwt;
                 (uq as any).original = exists[0];
                 const keys = Object.keys(exists[0]);
@@ -3406,9 +3235,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 Logger.instanse.debug("insert new entity " + q.item.name, span, { collection: q.collectionname, user: user.username });
                 q.result = await this.InsertOne(q.item, q.collectionname, q.w, q.j, q.jwt, span);
             }
-            if (q.collectionname === "users" && q.item._type === "role") {
-                // DBHelper.cached_roles = [];
-            }
             return q;
         } finally {
             DatabaseConnection.InsertOrUpdateOneSemaphore.up();
@@ -3427,7 +3253,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             await this.connect(span);
             const user = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
@@ -3527,7 +3353,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return result;
     }
-    private async _DeleteFile(id: string, collectionname:string): Promise<void> {
+    private async _DeleteFile(id: string, collectionname: string): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
             try {
                 const _id = new ObjectId(id);
@@ -3556,7 +3382,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
             await this.connect();
             const user: User = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             let _query: any = {};
             if (typeof id === "string" || id instanceof String) {
                 _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
@@ -3571,13 +3397,13 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
-                if(id.length == 12 || id.length == 24) {
+                if (id.length == 12 || id.length == 24) {
                     const safeid = safeObjectID(id);
-                    if(safeid != null) {
+                    if (safeid != null) {
                         _query = { $and: [{ _id: safeObjectID(id) }, this.getbasequery(user, [Rights.delete], collectionname)] };
                     } else {
                         _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
-                    }                    
+                    }
                 } else {
                     _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
                 }
@@ -3591,7 +3417,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (arr.length === 1) {
                     // since admins by default can do everything using getbasequery, we need to check if the user really has delete
-                    if(arr[0].metadata != null) {
+                    if (arr[0].metadata != null) {
                         if (!DatabaseConnection.hasAuthorization(user, arr[0].metadata, Rights.delete)) {
                             throw new Error(`[${user.name}] Access denied, missing delete permission`);
                         }
@@ -3602,13 +3428,13 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     let cursor = this.db.collection("agents").find({ "fileid": id });
                     let locked = await cursor.hasNext();
-                    if(locked) {
+                    if (locked) {
                         let item = await cursor.next();
                         throw new Error("Cannot delete file, it is in use by an agent " + item._id + " " + item.name);
                     }
                     cursor = this.db.collection("workitems").find({ "files._id": id });
                     locked = await cursor.hasNext();
-                    if(locked) {
+                    if (locked) {
                         let item = await cursor.next();
                         throw new Error("Cannot delete file, it is in use by a workitem " + item._id + " " + item.name);
                     }
@@ -3632,16 +3458,12 @@ export class DatabaseConnection extends events.EventEmitter {
                 // @ts-ignore
                 let doc: Customer = docs[i];
                 if (collectionname == "users" && doc._type == "user") {
-                    const subcursor = this.db.collection("config").find({ "userid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } });
-                    const usagedocs = await subcursor.toArray();
-                    subcursor.close();
-                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete user with active resourceusage");
+                    const count = await Resources.GetUserResourcesCount(doc._id, span);
+                    if (count > 0) throw new Error("Access Denied, cannot delete user with active resourceusage");
                 }
                 if (collectionname == "users" && doc._type == "customer") {
-                    const subcursor = this.db.collection("config").find({ "customerid": doc._id, "_type": "resourceusage", "quantity": { "$gt": 0 } });
-                    const usagedocs = await subcursor.toArray();
-                    subcursor.close();
-                    if (usagedocs.length > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage (" + usagedocs[0].name + ")");
+                    const count = await Resources.GetCustomerResourcesCount(doc._id, span);
+                    if (count > 0) throw new Error("Access Denied, cannot delete customer with active resourceusage");
                     const subsubcursor = this.db.collection("users").find({ "customerid": doc._id });
                     let userdocs = await subsubcursor.toArray();
                     subsubcursor.close();
@@ -3655,16 +3477,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                         if (Config.cleanup_on_delete_customer || recursive) {
                             Logger.instanse.warn("Cleaning up after up after company " + doc.name, span, { collection: collectionname, user: user?.username });
-                            // let queries = [];
-                            // for (var y = 0; y < userdocs.length; y++) {
-                            //     if (userdocs[y]._type == "user") {
-                            //         queries.push({ "_createdbyid": userdocs[y]._id });
-                            //         // queries.push({ "_modifiedbyid": userdocs[y]._id });
-                            //     }
-                            // }
-                            // let query = { "$or": queries };
-                            // if (queries.length > 0) {
-                            // let collections = await DatabaseConnection.toArray(this.db.listCollections());
                             let collections = await Logger.DBHelper.GetCollections(span);
                             collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
                                 && !x.name.endsWith(".chunks") && x.name != "audit" && !x.name.endsWith("_hist")
@@ -3672,11 +3484,9 @@ export class DatabaseConnection extends events.EventEmitter {
                                 && x.name != "oauthtokens" && x.name != "users");
                             for (let i = 0; i < collections.length; i++) {
                                 let collection = collections[i];
-                                // var res = await this.DeleteMany(query, null, collection.name, null, jwt, span);
                                 var res = await this.DeleteMany({}, null, collection.name, doc._id, false, jwt, span);
                                 Logger.instanse.info("Deleted " + res + " items from " + collection.name + " cleaning up after company " + doc.name, span, { collection: collectionname, user: user?.username, count: res });
                             }
-                            // }
                         }
                         for (let i = 0; i < userdocs.length; i++) {
                             await this.DeleteOne(userdocs[i]._id, "users", recursive, jwt, span);
@@ -3731,7 +3541,6 @@ export class DatabaseConnection extends events.EventEmitter {
                         let skip_collections = [];
                         if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
 
-                        // let collections = await DatabaseConnection.toArray(this.db.listCollections());
                         let collections = await Logger.DBHelper.GetCollections(span);
                         collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
                             && !x.name.endsWith(".chunks") && x.name != "audit" && !x.name.endsWith("_hist")
@@ -3780,13 +3589,13 @@ export class DatabaseConnection extends events.EventEmitter {
         try {
             await this.connect();
             const user: User = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
 
             let baseq: any = {};
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas,  [Rights.delete], collectionname, span);
+                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.delete], collectionname, span);
                 if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
                     baseq = impersonationquery;
                 } else {
@@ -3807,7 +3616,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname == "files" || collectionname == "fs.files") {
                     for (let i = 0; i < ids.length; i++) {
                         try {
-                            if(ids[i] != null && ids[i].trim() != "") objectids.push(safeObjectID(ids[i]))
+                            if (ids[i] != null && ids[i].trim() != "") objectids.push(safeObjectID(ids[i]))
                         } catch (error) {
                             Logger.instanse.error(error, span);
                         }
@@ -3815,7 +3624,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else {
                     for (let i = 0; i < ids.length; i++) {
                         try {
-                            if(ids[i] != null && ids[i].trim() != "") objectids.push(ids[i])
+                            if (ids[i] != null && ids[i].trim() != "") objectids.push(ids[i])
                         } catch (error) {
                             Logger.instanse.error(error, span);
                         }
@@ -3846,7 +3655,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (let key of keys) {
                         if (key === "_id") {
                             const id: string = query._id;
-                            if(id.length == 12 || id.length == 24) {
+                            if (id.length == 12 || id.length == 24) {
                                 const safeid = safeObjectID(id);
                                 if (safeid !== null && safeid !== undefined) {
                                     delete query._id;
@@ -3870,9 +3679,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 const ot_end = Logger.otel.startTimer();
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label(collectionname, user, "query"));
                 let deletecounter = 0;
-                if(collectionname.endsWith(".files") || collectionname == "files"){
+                if (collectionname.endsWith(".files") || collectionname == "files") {
                     const cursor = await this.db.collection(collectionname).find(_query)
-                        if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
+                    if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
                         Logger.instanse.debug("Query: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms });
                     } else {
                         Logger.instanse.debug("Deleting multiple files in database", span, { collection: collectionname, user: user?.username, ms });
@@ -3916,7 +3725,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (skip_array.indexOf(collectionname) == -1) {
                     if (!collectionname.endsWith("_hist")) addToHist = true;
                 }
-                if(DatabaseConnection.istimeseries(collectionname)) {
+                if (DatabaseConnection.istimeseries(collectionname)) {
                     addToHist = false;
                 }
 
@@ -4009,8 +3818,6 @@ export class DatabaseConnection extends events.EventEmitter {
     private _shouldEncryptValue(keys: string[], key: string, value: object = null): boolean {
         const shouldEncryptThisKey: boolean = keys.includes(key);
         return value && shouldEncryptThisKey;
-        // const isString: boolean = typeof value === "string";
-        // return value && shouldEncryptThisKey && isString;
     }
     _encryptentity(item, newObj, key) {
         let value: any = item[key];
@@ -4026,7 +3833,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 newObj[key] = value;
             }
         } catch (error) {
-            // Logger.instanse.error(error, null);
             var errormessage = error.message ? error.message : error;
             Logger.instanse.debug(errormessage, null);
             newObj[key] = value;
@@ -4059,7 +3865,6 @@ export class DatabaseConnection extends events.EventEmitter {
                 newObj[key] = value;
             }
         } catch (error) {
-            // Logger.instanse.error(error, null);
             var errormessage = error.message ? error.message : error;
             Logger.instanse.debug(errormessage, null);
             newObj[key] = value;
@@ -4082,13 +3887,10 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {number[]} bits Permission wanted on objects
      * @returns Object MongoDB query
      */
-    public getbasequery(user: TokenUser | User,  bits: number[], collectionname: string): Object {
-        let field = "_acl"; 
-        // var bypassquery:any = { _id: { $ne: "bum" } }
-        var bypassquery:any = { }
-        if(DatabaseConnection.usemetadata(collectionname)) {
-            // bypassquery = { }
-            // bypassquery[DatabaseConnection.metadataname(collectionname) + "._id"] = { $ne: "bum" }
+    public getbasequery(user: TokenUser | User, bits: number[], collectionname: string): Object {
+        let field = "_acl";
+        var bypassquery: any = {}
+        if (DatabaseConnection.usemetadata(collectionname)) {
             field = DatabaseConnection.metadataname(collectionname) + "._acl";
         }
         if (Config.api_bypass_perm_check) {
@@ -4168,12 +3970,6 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         if (Config.force_add_admins && item._id != WellknownIds.root) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-            // var fakeadmins: TokenUser = {_id: WellknownIds.admins } as any
-            // if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.read)) {
-            //     Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-            // } else if (!DatabaseConnection.hasAuthorization(fakeadmins , item, Rights.update)) {
-            //     Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
-            // }
         }
         if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
             var _searchnames = [];
@@ -4256,48 +4052,45 @@ export class DatabaseConnection extends events.EventEmitter {
         if (action === Rights.update && item._id === WellknownIds.root && item.name.toLowerCase() !== "root") {
             return false;
         }
-        if(item._type == "user" || item._type == "role") {
-            if(item.name.toLowerCase() == "root" && item._id != WellknownIds.root) return false;
-            if(item.name.toLowerCase() == "admins" && item._id != WellknownIds.admins) return false;
-            if(item.name.toLowerCase() == "users" && item._id != WellknownIds.users) return false;
-            if(item.name.toLowerCase() == "noderedusers" && item._id != WellknownIds.nodered_users) return false;
-            if(item.name.toLowerCase() == "noderedadmins" && item._id != WellknownIds.nodered_admins) return false;
-            if(item.name.toLowerCase() == "noderedapiusers" && item._id != WellknownIds.nodered_api_users) return false;
-            if(item.name.toLowerCase() == "filestoreusers" && item._id != WellknownIds.filestore_users) return false;
-            if(item.name.toLowerCase() == "filestoreadmins" && item._id != WellknownIds.filestore_admins) return false;
-            if(item.name.toLowerCase() == "robotusers" && item._id != WellknownIds.robot_users) return false;
-            if(item.name.toLowerCase() == "robotadmins" && item._id != WellknownIds.robot_admins) return false;
-            if(item.name.toLowerCase() == "personalnoderedusers" && item._id != WellknownIds.personal_nodered_users) return false;
-            if(item.name.toLowerCase() == "robotagentusers" && item._id != WellknownIds.robot_agent_users) return false;
-            if(item.name.toLowerCase() == "customeradmins" && item._id != WellknownIds.customer_admins) return false;
-            if(item.name.toLowerCase() == "resellers" && item._id != WellknownIds.resellers) return false;
-            if(item.name.toLowerCase() == "guest" && item._id != "65cb30c40ff51e174095573c") return false;
-            if(item.name.toLowerCase() == "workitem queue users" && item._id != "62544134231309e2cd2052ce") return false;
-            if(item.name.toLowerCase() == "workitem queue admins" && item._id != "625440c4231309af5f2052cd") return false;
-            if(item.name.toLowerCase() != "root" && item._id == WellknownIds.root) return false;
-            if(item.name.toLowerCase() != "admins" && item._id == WellknownIds.admins) return false;
-            if(item.name.toLowerCase() != "users" && item._id == WellknownIds.users) return false;
-            if(item.name.toLowerCase() != "noderedusers" && item._id == WellknownIds.nodered_users) return false;
-            if(item.name.toLowerCase() != "noderedadmins" && item._id == WellknownIds.nodered_admins) return false;
-            if(item.name.toLowerCase() != "noderedapiusers" && item._id == WellknownIds.nodered_api_users) return false;
-            if(item.name.toLowerCase() != "filestoreusers" && item._id == WellknownIds.filestore_users) return false;
-            if(item.name.toLowerCase() != "filestoreadmins" && item._id == WellknownIds.filestore_admins) return false;
-            if(item.name.toLowerCase() != "robotusers" && item._id == WellknownIds.robot_users) return false;
-            if(item.name.toLowerCase() != "robotadmins" && item._id == WellknownIds.robot_admins) return false;
-            if(item.name.toLowerCase() != "personalnoderedusers" && item._id == WellknownIds.personal_nodered_users) return false;
-            if(item.name.toLowerCase() != "robotagentusers" && item._id == WellknownIds.robot_agent_users) return false;
-            if(item.name.toLowerCase() != "customeradmins" && item._id == WellknownIds.customer_admins) return false;
-            if(item.name.toLowerCase() != "resellers" && item._id == WellknownIds.resellers) return false;
-            if(item.name.toLowerCase() != "guest" && item._id == "65cb30c40ff51e174095573c") return false;
-            if(item.name.toLowerCase() != "workitem queue users" && item._id == "62544134231309e2cd2052ce") return false;
-            if(item.name.toLowerCase() != "workitem queue admins" && item._id == "625440c4231309af5f2052cd") return false;
-            if(DatabaseConnection.WellknownNamesArray.indexOf(item.name.toLowerCase()) > -1) {
-                if(DatabaseConnection.WellknownIdsArray.indexOf(item._id) == -1) return false;
+        if (item._type == "user" || item._type == "role") {
+            if (item.name.toLowerCase() == "root" && item._id != WellknownIds.root) return false;
+            if (item.name.toLowerCase() == "admins" && item._id != WellknownIds.admins) return false;
+            if (item.name.toLowerCase() == "users" && item._id != WellknownIds.users) return false;
+            if (item.name.toLowerCase() == "noderedusers" && item._id != WellknownIds.nodered_users) return false;
+            if (item.name.toLowerCase() == "noderedadmins" && item._id != WellknownIds.nodered_admins) return false;
+            if (item.name.toLowerCase() == "noderedapiusers" && item._id != WellknownIds.nodered_api_users) return false;
+            if (item.name.toLowerCase() == "filestoreusers" && item._id != WellknownIds.filestore_users) return false;
+            if (item.name.toLowerCase() == "filestoreadmins" && item._id != WellknownIds.filestore_admins) return false;
+            if (item.name.toLowerCase() == "robotusers" && item._id != WellknownIds.robot_users) return false;
+            if (item.name.toLowerCase() == "robotadmins" && item._id != WellknownIds.robot_admins) return false;
+            if (item.name.toLowerCase() == "personalnoderedusers" && item._id != WellknownIds.personal_nodered_users) return false;
+            if (item.name.toLowerCase() == "robotagentusers" && item._id != WellknownIds.robot_agent_users) return false;
+            if (item.name.toLowerCase() == "customeradmins" && item._id != WellknownIds.customer_admins) return false;
+            if (item.name.toLowerCase() == "resellers" && item._id != WellknownIds.resellers) return false;
+            if (item.name.toLowerCase() == "guest" && item._id != "65cb30c40ff51e174095573c") return false;
+            if (item.name.toLowerCase() == "workitem queue users" && item._id != "62544134231309e2cd2052ce") return false;
+            if (item.name.toLowerCase() == "workitem queue admins" && item._id != "625440c4231309af5f2052cd") return false;
+            if (item.name.toLowerCase() != "root" && item._id == WellknownIds.root) return false;
+            if (item.name.toLowerCase() != "admins" && item._id == WellknownIds.admins) return false;
+            if (item.name.toLowerCase() != "users" && item._id == WellknownIds.users) return false;
+            if (item.name.toLowerCase() != "noderedusers" && item._id == WellknownIds.nodered_users) return false;
+            if (item.name.toLowerCase() != "noderedadmins" && item._id == WellknownIds.nodered_admins) return false;
+            if (item.name.toLowerCase() != "noderedapiusers" && item._id == WellknownIds.nodered_api_users) return false;
+            if (item.name.toLowerCase() != "filestoreusers" && item._id == WellknownIds.filestore_users) return false;
+            if (item.name.toLowerCase() != "filestoreadmins" && item._id == WellknownIds.filestore_admins) return false;
+            if (item.name.toLowerCase() != "robotusers" && item._id == WellknownIds.robot_users) return false;
+            if (item.name.toLowerCase() != "robotadmins" && item._id == WellknownIds.robot_admins) return false;
+            if (item.name.toLowerCase() != "personalnoderedusers" && item._id == WellknownIds.personal_nodered_users) return false;
+            if (item.name.toLowerCase() != "robotagentusers" && item._id == WellknownIds.robot_agent_users) return false;
+            if (item.name.toLowerCase() != "customeradmins" && item._id == WellknownIds.customer_admins) return false;
+            if (item.name.toLowerCase() != "resellers" && item._id == WellknownIds.resellers) return false;
+            if (item.name.toLowerCase() != "guest" && item._id == "65cb30c40ff51e174095573c") return false;
+            if (item.name.toLowerCase() != "workitem queue users" && item._id == "62544134231309e2cd2052ce") return false;
+            if (item.name.toLowerCase() != "workitem queue admins" && item._id == "625440c4231309af5f2052cd") return false;
+            if (DatabaseConnection.WellknownNamesArray.indexOf(item.name.toLowerCase()) > -1) {
+                if (DatabaseConnection.WellknownIdsArray.indexOf(item._id) == -1) return false;
             }
-        }       
-        // if ((item as any).userid === user.username || (item as any).userid === user._id || (item as any).user === user.username) {
-        //     return true;
-        // } else 
+        }
         if (item._id === user._id) {
             if (action === Rights.delete) { Logger.instanse.error("hasAuthorization, cannot delete self!", null, { user: user?.username }); return false; }
             return true;
@@ -4367,7 +4160,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         try {
                             o[key] = new Date(o[key]);
                         } catch (error) {
-                            
+
                         }
                     }
                 }
@@ -4400,7 +4193,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         try {
                             o[key] = new Date(o[key]);
                         } catch (error) {
-                            
+
                         }
                     }
                 }
@@ -4473,7 +4266,6 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     async SaveDiff(collectionname: string, original: any, item: any, parent: Span) {
-        // let decrypt: boolean = false;
         const span: Span = Logger.otel.startSubSpan("db.SaveDiff", parent);
         const roundDown = function (num, precision): number {
             num = parseFloat(num);
@@ -4484,19 +4276,19 @@ export class DatabaseConnection extends events.EventEmitter {
 
         let roughObjSize1 = -1;
         let roughObjSize2 = -1;
-        if(original != null) roughObjSize1 = JSON.stringify(original).length;
-        if(item != null) roughObjSize2 = JSON.stringify(item).length;
+        if (original != null) roughObjSize1 = JSON.stringify(original).length;
+        if (item != null) roughObjSize2 = JSON.stringify(item).length;
         try {
-            if(roughObjSize1 > Config.history_obj_max_kb_size * 1024) {
+            if (roughObjSize1 > Config.history_obj_max_kb_size * 1024) {
                 console.error("SaveDiff1: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize1);
                 return item._version;
             }
-            if(roughObjSize2 > Config.history_obj_max_kb_size * 1024) {
+            if (roughObjSize2 > Config.history_obj_max_kb_size * 1024) {
                 console.error("SaveDiff2: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize2);
                 return item._version;
             }
         } catch (error) {
-            return 0;            
+            return 0;
         }
 
 
@@ -4625,12 +4417,6 @@ export class DatabaseConnection extends events.EventEmitter {
         } catch (error) {
             Logger.instanse.error(error, span, { collection: collectionname, user: item?._modifiedby });
         } finally {
-            // try {
-            //     if (original != null && decrypt == true) {
-            //         original = this.decryptentity(original);
-            //     }
-            // } catch (error) {
-            // }
             Logger.otel.endSpan(span);
         }
         return _version;
@@ -4640,9 +4426,9 @@ export class DatabaseConnection extends events.EventEmitter {
         return new Promise<string>((resolve, reject) => {
             try {
                 Logger.instanse.info("Adding index " + name + " to " + collectionname, span, { collection: collectionname });
-                if(typeof keypath === "string") keypath = JSON.parse(keypath);
+                if (typeof keypath === "string") keypath = JSON.parse(keypath);
                 if (NoderedUtil.IsNullEmpty(options)) options = {};
-                if(typeof options === "string") options = JSON.parse(options);
+                if (typeof options === "string") options = JSON.parse(options);
                 if (!NoderedUtil.IsNullEmpty(name)) options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
                     if (err) {
@@ -4686,7 +4472,6 @@ export class DatabaseConnection extends events.EventEmitter {
     private async ParseTimeseries(span: Span) {
         Logger.instanse.debug("Parse timeseries collections", span);
         span?.addEvent("Get collections");
-        // let collections = await DatabaseConnection.toArray(this.db.listCollections());
         let collections = await Logger.DBHelper.GetCollections(span);
         collections = collections.filter(x => x.name.indexOf("system.") === -1);
         collections = collections.filter(x => x.type == "timeseries");
@@ -4697,7 +4482,7 @@ export class DatabaseConnection extends events.EventEmitter {
             var collection = collections[i];
             DatabaseConnection.timeseries_collections = DatabaseConnection.timeseries_collections.filter(x => x != collection.name);
             DatabaseConnection.timeseries_collections.push(collection.name);
-            if(collection.options && collection.options.timeseries) {
+            if (collection.options && collection.options.timeseries) {
                 DatabaseConnection.timeseries_collections_metadata[collection.name] = collection.options.timeseries.metaField;
                 DatabaseConnection.timeseries_collections_time[collection.name] = collection.options.timeseries.timeField;
             }
@@ -4713,22 +4498,16 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname == "files" || collectionname.endsWith(".files") || collectionname.endsWith(".chunks")) {
             return true;
         }
-        if(collectionname == "fullDocument._acl") return true;
-        // old way
-        // if(Config.metadata_collections.indexOf(collectionname) > -1) {
-        //     const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
-        //     if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
-        // }
+        if (collectionname == "fullDocument._acl") return true;
         const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
-        if(metadataname == "metadata") return true;
-        // if(!NoderedUtil.IsNullEmpty(metadataname)) return true;
+        if (metadataname == "metadata") return true;
         return false;
     }
     static metadataname(collectionname: string) {
         if (collectionname == "files" || collectionname.endsWith(".files") || collectionname.endsWith(".chunks")) {
             return "metadata";
         }
-        if(collectionname == "fullDocument._acl") return "fullDocument._acl";
+        if (collectionname == "fullDocument._acl") return "fullDocument._acl";
         const metadataname = DatabaseConnection.timeseries_collections_metadata[collectionname];
         return metadataname;
     }
@@ -4736,7 +4515,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname == "files" || collectionname.endsWith(".files") || collectionname.endsWith(".chunks")) {
             return "_created";
         }
-        if(collectionname == "fullDocument._acl") return "fullDocument._created";
+        if (collectionname == "fullDocument._acl") return "fullDocument._created";
         const timefield = DatabaseConnection.timeseries_collections_time[collectionname];
         return timefield;
     }
@@ -4813,18 +4592,6 @@ export class DatabaseConnection extends events.EventEmitter {
                     } else {
                         switch (collection.name) {
                             case "workflow":
-                                // if (indexnames.indexOf("_created_1") === -1) {
-                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("_modified_1") === -1) {
-                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("queue_1") === -1) {
-                                //     await this.createIndex(collection.name, "queue_1", { "queue": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("_acl") === -1) {
-                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                // }
                                 break;
                             case "openrpa_instances":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -4845,9 +4612,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_acl") === -1) {
                                     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("_createdbyid_1") === -1) {
-                                //     await this.createIndex(collection.name, "_createdbyid_1", { "_createdbyid": 1 }, null, span)
-                                // }
                                 break;
                             case "workflow_instances":
                                 if (indexnames.indexOf("_created_1") === -1) {
@@ -4874,54 +4638,24 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                                 break;
                             case "users":
-                                // if (indexnames.indexOf("name_1") === -1) {
-                                //     await this.createIndex(collection.name, "name_1", { "name": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("_type_1") === -1) {
-                                //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
-                                // }
                                 if (indexnames.indexOf("_created_1") === -1) {
                                     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("_modified_1") === -1) {
-                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                // }
                                 // if (indexnames.indexOf("unique_username_1") === -1) {
                                 //     await this.createIndex(collection.name, "unique_username_1", { "username": 1 },
                                 //         { "unique": true, "name": "unique_username_1", "partialFilterExpression": { "_type": "user" } }, span)
-                                // }
-                                // if (indexnames.indexOf("username_1") === -1) {
-                                //     await this.createIndex(collection.name, "username_1", { "username": 1 }, null, span)
                                 // }
                                 if (indexnames.indexOf("members._id_1") === -1) {
                                     await this.createIndex(collection.name, "members._id_1", { "members._id": 1 },
                                         { "partialFilterExpression": { "_type": "role" } }, span)
                                 }
-                                // if (indexnames.indexOf("_acl") === -1) {
-                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                // }
                                 break;
                             case "openrpa":
-                                // if (indexnames.indexOf("_created_1") === -1) {
-                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("_modified_1") === -1) {
-                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                // }
                                 if (indexnames.indexOf("_type_projectid_name_1") === -1) {
                                     await this.createIndex(collection.name, "_type_projectid_name_1", { _type: 1, "{projectid:-1,name:-1}": 1 }, null, span)
                                 }
-                                // if (indexnames.indexOf("_acl") === -1) {
-                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                // }
                                 break;
                             case "dbusage":
-                                // if (indexnames.indexOf("_created_1") === -1) {
-                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("_modified_1") === -1) {
-                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                // }
                                 if (!DatabaseConnection.usemetadata("audit")) {
                                     if (indexnames.indexOf("collection_1_timestamp_1_userid_1") === -1) {
                                         await this.createIndex(collection.name, "collection_1_timestamp_1_userid_1", { _type: 1, "{collection:1,timestamp:1,userid:1}": 1 }, null, span)
@@ -4933,9 +4667,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                         await this.createIndex(collection.name, "timestamp_1", { _type: 1, "{timestamp:1}": 1 }, null, span)
                                     }
                                 }
-                                // if (indexnames.indexOf("_acl") === -1) {
-                                //     await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                // }
                                 break;
                             case "workitems":
                                 if (indexnames.indexOf("_acl") === -1) {
@@ -4969,24 +4700,6 @@ export class DatabaseConnection extends events.EventEmitter {
                                         { "unique": true, "name": "unique_slug_1", "partialFilterExpression": { "_type": "agent" } }, span)
                                 }
                             default:
-                                // if (indexnames.indexOf("_type_1") === -1) {
-                                //     await this.createIndex(collection.name, "_type_1", { "_type": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("_created_1") === -1) {
-                                //     await this.createIndex(collection.name, "_created_1", { "_created": 1 }, null, span)
-                                // }
-                                // if (indexnames.indexOf("_modified_1") === -1) {
-                                //     await this.createIndex(collection.name, "_modified_1", { "_modified": 1 }, null, span)
-                                // }
-                                // if (DatabaseConnection.timeseries_collections.indexOf(collection.name) > -1) {
-                                //     if (indexnames.indexOf("metadata._acl") === -1) {
-                                //         await this.createIndex(collection.name, "metadata._acl", { "metadata._acl._id": 1, "metadata._acl.rights": 1, "metadata._acl.deny": 1 }, null, span)
-                                //     }
-                                // } else {
-                                //     if (indexnames.indexOf("_acl") === -1) {
-                                //         await this.createIndex(collection.name, "_acl", { "_acl._id": 1, "_acl.rights": 1, "_acl.deny": 1 }, null, span)
-                                //     }
-                                // }
                                 break;
                         }
                     }
@@ -5032,36 +4745,11 @@ export class DatabaseConnection extends events.EventEmitter {
         if(_resources.length == 0) return null;
         return _resources[0]
     }
-    public async GetResourceUserUsage(resourcename:string, userid: string, parent: Span): Promise<ResourceUsage> {
-        let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByUserID(userid, parent);
-        assigned = assigned.filter(x => x.resource == resourcename);
-        if(assigned.length == 0) return null; // No found
-        if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
-        if (assigned[0].quantity == 0) return null; // No longer assigned
-        return assigned[0]
-    }
-    public async GetResourceCustomerUsage(resourcename:string, customerid: string, parent: Span): Promise<ResourceUsage[]> {
-        let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
-        assigned = assigned.filter(x => x.resource == resourcename);
-        if(!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) ) {
-            assigned = assigned.filter(x => !NoderedUtil.IsNullEmpty(x.siid)); // Not completed payment
-        }
-        assigned = assigned.filter(x => x.quantity > 0);
-        if(assigned.length == 0) return null; // No found
-        return assigned;
-
-        // let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
-        // assigned = assigned.filter(x => x.resource == resourcename);
-        // if(assigned.length == 0) return null; // No found
-        // if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
-        // if (assigned[0].quantity == 0) return null; // No longer assigned
-        // return assigned[0]
-    }
     public async GetProductResourceCustomerUsage(resourcename:string, stripeprice: string,  customerid: string, parent: Span): Promise<ResourceUsage> {
         let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
         assigned = assigned.filter(x => x.resource == resourcename && x.product.stripeprice == stripeprice);
         if(assigned.length == 0) return null; // No found
-        if (NoderedUtil.IsNullEmpty(assigned[0].siid)) return null;  // Not completed payment
+        if (assigned[0].siid == null || assigned[0].siid == "") return null;  // Not completed payment
         if (assigned[0].quantity == 0) return null; // No longer assigned
         return assigned[0]
     }

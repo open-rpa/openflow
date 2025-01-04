@@ -25,7 +25,6 @@ export class FormioEP {
                             if (err) {
                                 return reject(err);
                             }
-                            // const filename = buf.toString("hex") + path.extname(file.originalname);
                             const filename = file.originalname;
                             const fileInfo = {
                                 filename: filename,
@@ -36,7 +35,7 @@ export class FormioEP {
                             const authHeader = req.headers.authorization;
                             if (authHeader) {
                                 user = await Auth.Token2User(authHeader, null);
-                                if(user == null) throw new Error("Access denied");
+                                if (user == null) throw new Error("Access denied");
                                 jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, null);
                             }
                             else if (req.user) {
@@ -67,7 +66,7 @@ export class FormioEP {
                             }
                             Base.addRight(fileInfo.metadata, user._id, user.name, [Rights.full_control]);
                             Base.addRight(fileInfo.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-                            if(!Config.multi_tenant) {
+                            if (!Config.multi_tenant) {
                                 Base.addRight(fileInfo.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
                             }
                             // Fix acl
@@ -96,7 +95,7 @@ export class FormioEP {
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -142,7 +141,7 @@ export class FormioEP {
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -203,7 +202,7 @@ export class FormioEP {
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -220,7 +219,6 @@ export class FormioEP {
                             return;
                         }
                         LoginProvider.redirect(res, req.headers.referer);
-                        // res.json({ error_code: 0, err_desc: null });
                     });
                 } catch (error) {
                     Logger.instanse.error(error, span);
@@ -238,7 +236,7 @@ export class FormioEP {
                     let jwt: string = null;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -283,7 +281,7 @@ export class FormioEP {
                     const skip = req.query.skip;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -338,7 +336,7 @@ export class FormioEP {
                     const sort = req.query.sort;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -397,10 +395,6 @@ export class FormioEP {
                     var dbresults = await Config.db.aggregate<Base>(resource.aggregates, resource.collection, jwt, null, null, false, span);
                     var results = [];
                     dbresults.forEach(result => {
-                        // @ts-ignore
-                        // if (NoderedUtil.IsNullEmpty(result.label)) result.label = result.name;
-                        // results.push({ _id: result._id, data: result })
-                        // results.push({ _id: result._id, data: result })
                         results.push({ "data": result, label: result.name, id: result._id });
                     });
                     Logger.instanse.info("Return " + dbresults.length + " items based of resource " + resource.name, span);

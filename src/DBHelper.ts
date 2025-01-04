@@ -1,43 +1,27 @@
-import { Crypt } from "./Crypt.js";
-import { User, Role, Rolemember, WellknownIds, Rights, NoderedUtil, Base, TokenUser, WorkitemQueue, Resource, ResourceUsage } from "@openiap/openflow-api";
-import { Config } from "./Config.js";
-import { Span, Observable } from "@opentelemetry/api";
-import { Logger } from "./Logger.js";
-import { Auth } from "./Auth.js";
-import { WebSocketServerClient } from "./WebSocketServerClient.js";
-import { LoginProvider, Provider } from "./LoginProvider.js";
+import { Base, NoderedUtil, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, User, WellknownIds, WorkitemQueue } from "@openiap/openflow-api";
+import { Observable, Span } from "@opentelemetry/api";
 import { caching } from "cache-manager";
-import { TokenRequest } from "./TokenRequest.js";
-import { amqpwrapper } from "./amqpwrapper.js";
-import { EntityRestriction } from "./EntityRestriction.js";
-import { iAgent } from "./commoninterfaces.js";
+import { redisStore } from "cache-manager-ioredis-yet";
 import { CollectionInfo } from "mongodb";
-import { redisStore } from "cache-manager-ioredis-yet"
+import { Auth } from "./Auth.js";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
+import { EntityRestriction } from "./EntityRestriction.js";
+import { Logger } from "./Logger.js";
+import { LoginProvider, Provider } from "./LoginProvider.js";
+import { TokenRequest } from "./TokenRequest.js";
+import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { amqpwrapper } from "./amqpwrapper.js";
+import { iAgent } from "./commoninterfaces.js";
 
 export class DBHelper {
 
     public memoryCache: any;
-    // public mongoCache: any;
     public async init() {
         if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
 
         const ttl = (Config.cache_store_ttl_seconds) * 1000;
         const max = Config.cache_store_max;
-
-        // this.mongoCache = await caching(mongoStore, {
-        //     uri: Config.mongodb_url,
-        //     options: {
-        //         collection: "_cache",
-        //         compression: false,
-        //         poolSize: 5
-        //     }
-        // });
-
-        // if (Config.cache_store_type == "mongodb") {
-        //     this.memoryCache = this.mongoCache;
-        //     this.ensureotel();
-        //     return;
-        // } else 
         if (Config.cache_store_type == "redis") {
 
             this.memoryCache = await caching(redisStore, {
@@ -49,32 +33,28 @@ export class DBHelper {
                     return true
                 }
             })
-            // listen for redis connection error event
-            // var redisClient = this.memoryCache.store.getClient();
-            // redisClient.on("error", (error) => {
-            //     Logger.instanse.error(error, null);
-            // });
             this.ensureotel();
             return;
         }
-        this.memoryCache = await caching("memory", { max, ttl,
+        this.memoryCache = await caching("memory", {
+            max, ttl,
             isCacheable: (val: unknown) => {
                 return true
             }
-            });
+        });
         this.ensureotel();
     }
     public async clearCache(reason: string, span: Span) {
         await this.init();
         var keys: string[];
         if (Config.cache_store_type == "redis") {
-            if(this.memoryCache.keys) {
+            if (this.memoryCache.keys) {
                 keys = await this.memoryCache.keys("*");
             } else {
                 keys = await this.memoryCache.store.keys("*");
             }
         } else {
-            if(this.memoryCache.keys) {
+            if (this.memoryCache.keys) {
                 keys = await this.memoryCache.keys();
             } else {
                 keys = await this.memoryCache.store.keys();
@@ -98,14 +78,14 @@ export class DBHelper {
                 try {
                     if (Config.cache_store_type == "redis" && this.memoryCache && this.memoryCache.keys) {
                         keys = await this.memoryCache.keys("*");
-                    } else if(this.memoryCache && this.memoryCache.keys) {
-                        if(this.memoryCache.keys.get) {
+                    } else if (this.memoryCache && this.memoryCache.keys) {
+                        if (this.memoryCache.keys.get) {
                             keys = await this.memoryCache.keys.get();
                         } else {
                             keys = await this.memoryCache.keys();
                         }
-                    } else if(this.memoryCache &&this.memoryCache.store && this.memoryCache.store.keys) {
-                        if(this.memoryCache.store.keys.get) {
+                    } else if (this.memoryCache && this.memoryCache.store && this.memoryCache.store.keys) {
+                        if (this.memoryCache.store.keys.get) {
                             keys = await this.memoryCache.store.keys.get();
                         } else {
                             keys = await this.memoryCache.store.keys();
@@ -152,7 +132,7 @@ export class DBHelper {
         if (collectionname === "config" && item._type === "restriction") {
             await Logger.DBHelper.ClearEntityRestrictions();
         }
-        if( collectionname === "agents" && item._type === "agent") {
+        if (collectionname === "agents" && item._type === "agent") {
             await Logger.DBHelper.AgentUpdate(item._id, (item as any).slug, watch, span);
         }
     }
@@ -245,15 +225,11 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetProviders", parent);
         try {
             let items = await this.memoryCache.wrap("providers", () => { return this.GetProvidersWrap(span) });
-            // const result: Provider[] = [];
-            // https://www.w3schools.com/icons/fontawesome5_icons_brands.asp
             items.forEach(provider => {
-                // const item: any = { name: provider.name, id: provider.id, provider: provider.provider, logo: "fa-question-circle" };
                 provider.logo = "fa-microsoft";
                 if (provider.provider === "oidc") { provider.logo = "fa-openid"; }
                 if (provider.provider === "google") { provider.logo = "fa-google"; }
                 if (provider.provider === "saml") { provider.logo = "fa-windows"; }
-                //result.push(item);
             });
             if (items.length === 0) {
                 const item: any = { name: "Local", id: "local", provider: "local", logo: "fa-question-circle" };
@@ -338,7 +314,6 @@ export class DBHelper {
             return this.DecorateWithRoles(User.assign(item), span);
         }
         const b64auth = (authorization || "").split(" ")[1].toString() || ""
-        // const [login, password] = new Buffer(b64auth, "base64").toString().split(":")
         const [login, password] = Buffer.from(b64auth, "base64").toString().split(":")
         if (!NoderedUtil.IsNullEmpty(login) && !NoderedUtil.IsNullEmpty(password)) {
             let item: User = await this.memoryCache.wrap(b64auth, () => { return this.FindByAuthorizationWrap2(login, password, jwt, span) });
@@ -349,11 +324,15 @@ export class DBHelper {
     public FindAgentBySlugOrIdWrap(_id, jwt, span) {
         if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
         var agentslug = _id;
-        if(_id.endsWith("agent")) agentslug = _id.substring(0, _id.length - 5 );
+        if (_id.endsWith("agent")) agentslug = _id.substring(0, _id.length - 5);
         Logger.instanse.debug("Add queue to cache : " + _id, span);
-        return Config.db.GetOne<iAgent>({ query: {"_type": "agent", "$or": [
-            { _id },
-            { slug: _id }, { slug: agentslug } ]} , collectionname: "agents", jwt }, span);
+        return Config.db.GetOne<iAgent>({
+            query: {
+                "_type": "agent", "$or": [
+                    { _id },
+                    { slug: _id }, { slug: agentslug }]
+            }, collectionname: "agents", jwt
+        }, span);
 
     }
     public async FindAgentBySlugOrId(_id: string, jwt: string, parent: Span): Promise<iAgent> {
@@ -390,12 +369,15 @@ export class DBHelper {
     public FindQueueByNameWrap(name, jwt, span: Span) {
         if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
         Logger.instanse.debug("Add queue to cache : " + name, span);
-        return Config.db.GetOne<User>({ query: {"$or": [
-            { name, "_type": "queue" },
-            { name: new RegExp(["^", name, "$"].join(""), "i"), "_type": "workitemqueue" },
-            { queue: name, "_type": "workitemqueue"}
-        ]} , collectionname: "mq", jwt }, span);
-        // return Config.db.GetOne<User>({ query: { name }, collectionname: "mq", jwt }, span);
+        return Config.db.GetOne<User>({
+            query: {
+                "$or": [
+                    { name, "_type": "queue" },
+                    { name: new RegExp(["^", name, "$"].join(""), "i"), "_type": "workitemqueue" },
+                    { queue: name, "_type": "workitemqueue" }
+                ]
+            }, collectionname: "mq", jwt
+        }, span);
     }
     public async FindQueueByName(name: string, jwt: string, parent: Span): Promise<User> {
         await this.init();
@@ -527,58 +509,57 @@ export class DBHelper {
     DecorateWithRolesWrap(user, span: Span) {
         Logger.instanse.debug("Add userroles to cache : " + user._id + " " + user.name, span);
         const pipe: any = [{ "$match": { "_id": user._id } },
-            {
-                "$graphLookup": {
-                    from: "users",
-                    startWith: "$_id",
-                    connectFromField: "_id",
-                    connectToField: "members._id",
-                    as: "roles",
-                    maxDepth: Config.max_recursive_group_depth,
-                    depthField: "depth"
-                    , restrictSearchWithMatch: { "_type": "role" }
-                    // , "_id": { $nin: Config.db.WellknownIdsArray }, "members._id": { $nin: Config.db.WellknownIdsArray }
-                }
-            }, {
-                "$graphLookup": {
-                    from: "users",
-                    startWith: "$_id",
-                    connectFromField: "members._id",
-                    connectToField: "members._id",
-                    as: "roles2",
-                    maxDepth: 0,
-                    depthField: "depth",
-                    restrictSearchWithMatch: { "_type": "role" }
-                }
-            },
-            {
-                "$project": {
-                    _id: 1,
-                    name: 1,
-                    username: 1,
-                    roles: {
-                        $map: {
-                            input: "$roles",
-                            as: "roles",
-                            in: {
-                                "name": "$$roles.name",
-                                "_id": "$$roles._id"
-                            }
-                        }
-                    },
-                    roles2: {
-                        $map: {
-                            input: "$roles2",
-                            as: "roles2",
-                            in: {
-                                "name": "$$roles2.name",
-                                "_id": "$$roles2._id"
-                            }
+        {
+            "$graphLookup": {
+                from: "users",
+                startWith: "$_id",
+                connectFromField: "_id",
+                connectToField: "members._id",
+                as: "roles",
+                maxDepth: Config.max_recursive_group_depth,
+                depthField: "depth"
+                , restrictSearchWithMatch: { "_type": "role" }
+            }
+        }, {
+            "$graphLookup": {
+                from: "users",
+                startWith: "$_id",
+                connectFromField: "members._id",
+                connectToField: "members._id",
+                as: "roles2",
+                maxDepth: 0,
+                depthField: "depth",
+                restrictSearchWithMatch: { "_type": "role" }
+            }
+        },
+        {
+            "$project": {
+                _id: 1,
+                name: 1,
+                username: 1,
+                roles: {
+                    $map: {
+                        input: "$roles",
+                        as: "roles",
+                        in: {
+                            "name": "$$roles.name",
+                            "_id": "$$roles._id"
                         }
                     }
-
+                },
+                roles2: {
+                    $map: {
+                        input: "$roles2",
+                        as: "roles2",
+                        in: {
+                            "name": "$$roles2.name",
+                            "_id": "$$roles2._id"
+                        }
+                    }
                 }
+
             }
+        }
         ]
         return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, null, false, span);
     }
@@ -635,12 +616,6 @@ export class DBHelper {
                 if (hasusers.length == 0 && user.username != "guest") {
                     user.roles.push(new Rolemember("users", WellknownIds.users));
                     Logger.instanse.verbose("also adding user to users " + WellknownIds.users, span);
-                    // Logger.instanse.debug(user.name + " missing from users, adding it", span);
-                    // Skip, we are adding all users automatically 
-                    // await Config.db.db.collection("users").updateOne(
-                    //     { _id: WellknownIds.users },
-                    //     { "$push": { members: new Rolemember(user.name, user._id) } }
-                    // );
                 }
                 return user;
             }
@@ -723,16 +698,6 @@ export class DBHelper {
     }
     private _doClear(watch: boolean, span: Span) {
         return true;
-        // var doit: boolean = false;
-        // if (watch) {
-        //     doit = false;
-        //     if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
-        //         doit = true;
-        //     }
-        // } else {
-        //     doit = true;
-        // }
-        // return doit;
     }
     private async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean, span: Span) {
         if (NoderedUtil.IsNullUndefinded(userrole)) return;
@@ -805,7 +770,7 @@ export class DBHelper {
                 "$or": [
                     { robotqueue: { "$exists": true, $nin: [null, "", "(empty)"] }, workflowid: { "$exists": true, $nin: [null, "", "(empty)"] } },
                     { amqpqueue: { "$exists": true, $nin: [null, "", "(empty)"] } }]
-            }, top:1000, collectionname: "mq", jwt: Crypt.rootToken()
+            }, top: 1000, collectionname: "mq", jwt: Crypt.rootToken()
         }, span);
     }
     public async GetPushableQueues(parent: Span): Promise<WorkitemQueue[]> {
@@ -813,14 +778,13 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPushableQueues", parent);
         try {
             if (!Config.cache_workitem_queues) return await this.GetPushableQueuesWrap(span);
-            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) }); // , { ttl: Config.workitem_queue_monitoring_interval / 1000 }
+            let items = await this.memoryCache.wrap("pushablequeues", () => { return this.GetPushableQueuesWrap(span) });
             return items;
         } finally {
             Logger.otel.endSpan(span);
         }
     }
     public GetPendingWorkitemsCountWrap(wiqid: string, span: Span) {
-        // Logger.instanse.debug("Saving pending workitems count for wiqid " + wiqid, span);
         // TODO: skip nextrun ? or accept neextrun will always be based of cache TTL or substract the TTL ?
         const query = { "wiqid": wiqid, state: "new", "_type": "workitem", "nextrun": { "$lte": new Date(new Date().toISOString()) } };
         return Config.db.count({
@@ -831,11 +795,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetPendingWorkitemsCount", parent);
         try {
-            //if (!Config.cache_workitem_queues) return await this.GetPendingWorkitemsCountWrap(wiqid, span);
             return await this.GetPendingWorkitemsCountWrap(wiqid, span);
-            var key = ("pendingworkitems_" + wiqid).toString().toLowerCase();
-            let count = await this.memoryCache.wrap(key, () => { return this.GetPendingWorkitemsCountWrap(wiqid, span); }); // , { ttl: Config.workitem_queue_monitoring_interval / 1000 }
-            return count;
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -877,8 +837,8 @@ export class DBHelper {
         const jwt = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureUniqueRole", parent);
         let role: Role = await this.FindRoleById(id, jwt, span);
-        if(role != null) {
-            if(role.name != name) {
+        if (role != null) {
+            if (role.name != name) {
                 role.name = name;
                 await this.Save(role, jwt, span);
             }
@@ -896,7 +856,7 @@ export class DBHelper {
                 if (role === null) {
                     return await this.EnsureRole(newname, id, span);
                 }
-                newname = name + " " + Math.random().toString(36).substring(2, 4 );
+                newname = name + " " + Math.random().toString(36).substring(2, 4);
             } while (true);
         } finally {
             Logger.otel.endSpan(span);
@@ -944,8 +904,6 @@ export class DBHelper {
     public async EnsureNoderedRoles(user: TokenUser | User, jwt: string, force: boolean, parent: Span): Promise<void> {
         if (Config.auto_create_personal_nodered_group || force) {
             let name = user.username;
-            // name = name.split("@").join("").split(".").join("");
-            // name = name.toLowerCase();
             name = name.toLowerCase();
             name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
 
@@ -961,8 +919,6 @@ export class DBHelper {
         }
         if (Config.auto_create_personal_noderedapi_group || force) {
             let name = user.username;
-            // name = name.split("@").join("").split(".").join("");
-            // name = name.toLowerCase();
             name = name.toLowerCase();
             name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
 
@@ -998,16 +954,6 @@ export class DBHelper {
             cli.user._powershellheartbeat = dt;
             return { $set: { ...updatedoc, _powershellheartbeat: new Date(new Date().toISOString()), _lastpowershellclientversion: cli.clientversion } };
         }
-        // if (cli.clientagent ==  "mobileapp" || cli.clientagent == "aiotmobileapp") {
-        //     (cli.user as any)._webheartbeat = dt;
-        //     (cli.user as any)._mobilheartbeat = dt;
-        //     return {
-        //         $set: {
-        //             ...updatedoc, _webheartbeat: new Date(new Date().toISOString()), _lastwebappclientversion: cli.clientversion
-        //             , _mobilheartbeat: new Date(new Date().toISOString()), _lastmobilclientversion: cli.clientversion
-        //         }
-        //     };
-        // }
         else {
             return { $set: updatedoc };
         }

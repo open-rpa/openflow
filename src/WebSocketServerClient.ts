@@ -177,7 +177,6 @@ export class WebSocketServerClient {
     private close(e: CloseEvent): void {
         Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent, null, Logger.parsecli(this));
         this.init_complete = false;
-        // this.Close(null);
     }
     private error(e: Event): void {
         Logger.instanse.error(e, null, Logger.parsecli(this));
@@ -224,7 +223,7 @@ export class WebSocketServerClient {
     }
     public async RefreshToken(parent: Span): Promise<boolean> {
         const tuser: User = await Message.DoSignin(this, null, parent);
-        if(tuser == null) return false;
+        if (tuser == null) return false;
         await Logger.DBHelper.CheckCache("users", tuser, true, false, parent);
         const l: SigninMessage = new SigninMessage();
         this.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, parent);
@@ -261,7 +260,6 @@ export class WebSocketServerClient {
         await semaphore.down();
         for (let i = this._queues.length - 1; i >= 0; i--) {
             try {
-                // await this.CloseConsumer(this._queues[i]);
                 await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._queues[i], parent);
                 this._queues.splice(i, 1);
                 this._queuescurrent--;
@@ -365,7 +363,7 @@ export class WebSocketServerClient {
             let exchange = exchangename;
             if (NoderedUtil.IsNullEmpty(exchange)) {
                 // @ts-ignore
-                if(this.clientagent == "") this.clientagent = "unknown"
+                if (this.clientagent == "") this.clientagent = "unknown"
                 exchange = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
             }
             let exchangequeue: amqpexchange = null;
@@ -419,7 +417,7 @@ export class WebSocketServerClient {
             let qname = queuename;
             if (NoderedUtil.IsNullEmpty(qname)) {
                 // @ts-ignore
-                if(this.clientagent == "") this.clientagent = "unknown"
+                if (this.clientagent == "") this.clientagent = "unknown"
                 qname = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
             }
             await this.CloseConsumer(this.user, qname, span);
@@ -438,7 +436,6 @@ export class WebSocketServerClient {
                     }
                 }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(this.user, qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                    // const _data = msg;
                     let span: Span = null;
                     var _data = msg;
                     try {
@@ -448,8 +445,6 @@ export class WebSocketServerClient {
                         Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
                         _data = await this.Queue(msg, qname, options, span);;
                         ack();
-                        // const result = await this.Queue(msg, qname, options);
-                        // done(result);
                         Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
                     } catch (error) {
                         setTimeout(() => {
@@ -525,18 +520,17 @@ export class WebSocketServerClient {
                         const singleresult: Message = Message.frommessage(first, first.data);
                         singleresult.priority = first.priority;
                         if (singleresult.command != "ping" && singleresult.command != "pong") {
-                            singleresult.Process(this).then(msg=> {
-                                if(msg==null) return;
-                                if(msg.command == "error" && !msg.error && msg.data) {
+                            singleresult.Process(this).then(msg => {
+                                if (msg == null) return;
+                                if (msg.command == "error" && !msg.error && msg.data) {
                                     msg.data = JSON.parse(msg.data.replace(/\n/g, "\\n"));
                                     msg.data.error = msg.data.message;
                                     msg.data = JSON.stringify(msg.data);
-                                    // msg.error =  msg.data; // backward compaility
                                 }
                                 this.Send(msg);
-                            }) .catch((error) => {
+                            }).catch((error) => {
                                 singleresult.command = "error";
-                                singleresult.data = JSON.stringify({"error": error.message});
+                                singleresult.data = JSON.stringify({ "error": error.message });
                                 this.Send(singleresult);
                                 Logger.instanse.error(error, span, Logger.parsecli(this));
                             });
@@ -550,9 +544,9 @@ export class WebSocketServerClient {
                         const result: Message = Message.frommessage(first, chunk);
                         result.priority = first.priority;
                         if (result.command != "ping" && result.command != "pong") {
-                            result.Process(this).then(msg=> {
-                                if(msg != null) this.Send(msg);
-                            }) .catch((error) => {
+                            result.Process(this).then(msg => {
+                                if (msg != null) this.Send(msg);
+                            }).catch((error) => {
                                 Logger.instanse.error(error, span, Logger.parsecli(this));
                             });
                         }
@@ -578,7 +572,7 @@ export class WebSocketServerClient {
     }
     public async Send<T>(message: Message, parent: Span = null): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
-            if(message == null) return reject("message is null");
+            if (message == null) return reject("message is null");
             this._Send(message, ((msg) => {
                 if (!NoderedUtil.IsNullUndefinded(msg.error)) { return reject(msg.error); }
                 resolve(msg);
@@ -630,10 +624,9 @@ export class WebSocketServerClient {
                 }
             }
         });
-    }    
+    }
     public chunkString(str: string, length: number): string[] | null {
         if (NoderedUtil.IsNullEmpty(str)) { return null; }
-        // tslint:disable-next-line: quotemark
         return str.match(new RegExp(".{1," + length + "}", "g"));
     }
     async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<any[]> {
@@ -670,24 +663,13 @@ export class WebSocketServerClient {
             } catch (error) {
             }
         }
-        // if (Array.isArray(aggregates)) {
-        //     for (let p = 0; p < aggregates.length; p++) {
-        //         let path = aggregates[p];
-        //         if (typeof path === "string") {
-        //             try {
-        //                 path = JSON.parse(path);
-        //             } catch (error) {
-        //             }
-        //         }
-        //     }
-        // }
         const stream: clsstream = new clsstream();
         stream.id = NoderedUtil.GetUniqueIdentifier();
         stream.collectionname = collectionname;
         stream.aggregates = aggregates;
         if (id == null) id = NoderedUtil.GetUniqueIdentifier();
         this.watches[id] = {
-            aggregates, collectionname, id //, streamid: stream.id
+            aggregates, collectionname, id
         } as ClientWatch;
         return id;
     }

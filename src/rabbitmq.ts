@@ -47,7 +47,6 @@ export class rabbitmq {
         try {
             result = await promiseRetry(async () => {
                 const queue = await rabbitmq.getqueue(Config.amqp_url, "/", queuename);
-                // const queue = await amqpwrapper.getqueue(queuename);
                 let hasConsumers: boolean = false;
                 if (queue.consumers > 0) {
                     hasConsumers = true;
@@ -62,7 +61,6 @@ export class rabbitmq {
                 if (hasConsumers == false) {
                     hasConsumers = false;
                     throw new Error("No consumer listening at " + queuename);
-                    // return bail();
                 }
                 return hasConsumers;
             }, 10, 1000);

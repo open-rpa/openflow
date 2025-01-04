@@ -72,8 +72,6 @@ export class QueueClient {
                         Logger.instanse.silly("[queue][ack] Received response for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, null)
                         this.messages = this.messages.filter(x => x.correlationId != options.correlationId);
                         exists[0].cb(msg);
-                    } else {
-                        // throw new Error("Failed locating receiving message");
                     }
                 } else {
                     ack(false);
@@ -87,7 +85,7 @@ export class QueueClient {
     public static async SendForProcessing(msg: Message, priority: number, span: Span) {
         return new Promise<Message>(async (resolve, reject) => {
             try {
-                if(this.queue == null) {
+                if (this.queue == null) {
                     throw new Error("Queue is not initialized");
                 }
                 var d = Object.assign({}, msg);
@@ -112,8 +110,6 @@ export class QueueClient {
                 if (NoderedUtil.IsNullUndefinded(this.queue)) {
                     Logger.instanse.warn("SendForProcessing queue is null, shutdown amqp connection", span);
                     process.exit(406);
-                    // amqpwrapper.Instance().shutdown();
-                    // amqpwrapper.Instance().connect(null);
                 } else {
                     Logger.instanse.error(error, span);
                 }

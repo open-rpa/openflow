@@ -41,15 +41,14 @@ export class Crypt {
             Logger.otel.endSpan(span);
         }
     }
-    public static GetUniqueIdentifier(length:number = 16): string {
+    public static GetUniqueIdentifier(length: number = 16): string {
         return crypto.randomBytes(16).toString("hex")
-        // return Math.random().toString(36).substring(2, 11);
     }
     public static async ValidatePassword(user: User, password: string, parent: Span): Promise<boolean> {
         const span: Span = Logger.otel.startSubSpan("Crypt.ValidatePassword", parent);
         try {
             if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
-            if(Config.enable_guest && user.username == "guest") return true;
+            if (Config.enable_guest && user.username == "guest") return true;
             if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
         } finally {
@@ -120,7 +119,7 @@ export class Crypt {
         const key = Crypt.encryption_key;
         if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
         if (NoderedUtil.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
-        const user = {_id: id, impostor: impostor}
+        const user = { _id: id, impostor: impostor }
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
@@ -149,7 +148,7 @@ export class Crypt {
                 throw new Error("jwt must be provided");
             }
             if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-            if(Config.allow_signin_with_expired_jwt == false) ignoreExpiration = false;
+            if (Config.allow_signin_with_expired_jwt == false) ignoreExpiration = false;
             const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: ignoreExpiration });
             let impostor: string = null;
             if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
@@ -173,12 +172,11 @@ export class Crypt {
                     const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: true });
                     if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
                         // fake login, so we can track who was trying to login with an expired token
-                        if (cli != null && cli.user == null) { 
+                        if (cli != null && cli.user == null) {
                             cli.user = TokenUser.assign(o.data);
                             cli.username = cli.user?.username;
                         }
                         e = new Error(error.message + " for token with exp " + o.exp + " for " + o.data.name + " username: " + o.data.username + " and id: " + o.data._id);
-                        // Logger.instanse.error(JSON.stringify(o));
                     }
                 }
             } catch (error) {

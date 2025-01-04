@@ -60,7 +60,6 @@ export class GitProxy {
             return res.status(401).send("Access denied to update " + repo.repoName + " (for " + (req.user as any).name + ")")
           }
         } else {
-          // new
           if (parts[parts.length - 1] == "git-receive-pack") {
             if ((req.user as any).username == "guest" && Config.enable_gitserver_guest_create == false) {
               res.set("WWW-AuthehasRolenticate", `Basic realm="${Config.domain}"`)
@@ -80,7 +79,7 @@ export class GitProxy {
           if (exists == null) {
             repo._acl.push({ _id: (req.user as any)._id, name: (req.user as any).name, rights: Rights.full_control });
           }
-        } // new
+        }
         next();
       }
 
@@ -157,7 +156,6 @@ export class GitProxy {
           return next();
         } else {
           if (repo != null) {
-            // var arr = await repo.repocollection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray()
             var arr = await repo.repocollection.find({ repo: repo.repoName, _type: "hash" }).toArray()
             if (arr != null && arr.length > 0) {
               const main = arr[0];
@@ -308,8 +306,6 @@ export class GitProxy {
                 repo: reponame,
                 headref: null,
                 sha: null
-                // headref: "refs/heads/main",
-                // sha: ""
               }
 
               if ((req.user as any).username == "guest" && Config.enable_gitserver_guest_create == false) {
@@ -340,23 +336,11 @@ export class GitProxy {
             next();
             return;
           }
-          // var _repos2 = await Config.db.query<any>({ collectionname: GitProxy.mongocol, query: { "_type": "hash" }, projection: { ref: 1, repo: 1 }, top: 1000, jwt }, parent);
-          // distinct repos
-          // const _repos = _repos2.map(x => x.repo).filter((v, i, a) => a.indexOf(v) === i);
-
           const _repos = await Config.db.distinct({ collectionname: GitProxy.mongocol, field: "repo", query: { "_type": "hash" }, jwt }, parent);
 
           var html = `<html translate="no" lang="en"><head><meta http-equiv="Content-Language" content="en" /><head><body><a href="/">home</a> | <a href="/git">repos</a> | <a href="/#/Entities/git">Permissions</a><ul>`;
           for (var i = 0; i < _repos.length; i++) {
-            // const branches = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/heads/") > -1);
-            // const tags = _repos2.filter(x => x.repo == _repos[i] && x.ref.indexOf("/tags/") > -1);
-            // if (tags.length == 0) {
-            //   html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches`;
-            // } else {
-            //   html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a> with ${branches.length} branches and ${tags.length} tags`;
-            // }
             html += `<li><a href="/git/${_repos[i]}">${_repos[i]}</a>`;
-            // html += ` <a href="/git/${_repos[i]}/snapshot">snapshot</a>`;
             html += ` <a href="/git/${_repos[i]}/delete">del</a></li>`;
           }
           var keys = Object.keys(GitProxy.repos);
@@ -407,7 +391,6 @@ button {
             if (ref == "HEAD") continue;
             ref = ref.split("/")[ref.split("/").length - 1]
             html += `<li><a href="/git/${reponame}/${type}/${encodeURIComponent(ref)}">branch ${ref}</a>`;
-            // html += ` <a href="/git/${reponame}/${type}/${encodeURIComponent(ref)}/snapshot">snapshot</a>`;
             html += `</li>`;
           }
           const parts = repo.repoName.split("/");
@@ -415,7 +398,7 @@ button {
           const main = branches.find(x => x.ref == "HEAD");
           let mainref = "";
           if (main != null) {
-            const mainb = branches.find(x => x.sha == main.sha && x.ref != "HEAD" );
+            const mainb = branches.find(x => x.sha == main.sha && x.ref != "HEAD");
             mainref = mainb?.ref;
             if (mainref != null) {
               mainref = mainref.split("/")[mainref.split("/").length - 1]
@@ -537,12 +520,10 @@ git push -u origin main</pre></p>`
             if (branches[i].ref.indexOf("refs/heads/") == 0) {
               html += `<option value="/git/${reponame}/tree/${encodeURIComponent(ref)}"`;
               if (ref == tree) {
-                // html += ` selected`;
                 html += ` selected>* branch ${ref}</option>`;
               } else {
                 html += `>branch ${ref}</option>`;
               }
-              // html += `>branch ${ref}</option>`;
             }
           }
           html += `</select>`;
@@ -562,10 +543,6 @@ git push -u origin main</pre></p>`
                 } else {
                   html += `>tag ${ref}</option>`;
                 }
-                // if (ref == tree) {
-                //   html += ` selected`;
-                // }
-                // html += `>tag ${ref}</option>`;
               }
             }
             html += `</select>`;
@@ -589,7 +566,6 @@ git push -u origin main</pre></p>`
               } else {
                 html += `>${message.substring(0, 50)}</option>`;
               }
-              // html += `>${message.substring(0, 50)}</option>`;
             }
             html += `</select>`;
           }
@@ -619,11 +595,6 @@ git push -u origin main</pre></p>`
                 "Content-Disposition": `attachment; filename="${blobentry.name}"`,
               });
               if (repo.db != null) {
-                // const entries = await repo.collection.find({ "sha": blobentry.sha }).toArray()
-                // const dbentry = entries[0]
-                // const file = await repo.db.collection(repo.bucketName + ".files").findOne({ "filename": `blob_${blobentry.sha}` });
-                // const downloadStream = repo.bucket.openDownloadStream(file._id);
-                // downloadStream.pipe(res);
                 res.send((await repo.getObject(undefined, blobentry.sha)).data);
               } else {
                 res.status(200).send((await repo.getObject(undefined, blobentry.sha)).data);
@@ -666,7 +637,6 @@ git push -u origin main</pre></p>`
             if (file.name.toLowerCase() == "readme.md") readme = (await repo.getObject(undefined, file.sha)).data.toString("utf8");
             html += `<li><a href="${basepath}${encodeURIComponent(file.name)}">${file.name}</a>`;
             html += ` | <a href="${basepath}${encodeURIComponent(file.name)}?download=${Math.random().toString(36).substring(7)}">download</a>`;
-            // html += `${file.sha}`;
             html += `</li>`;
           }
           html += "</ul>";
@@ -690,13 +660,10 @@ git push -u origin main</pre></p>`
           repo.removeExpress(app, "/git/" + reponame);
           delete this.repos[reponame];
           res.status(200).send(`Deleted<p><a href="/git">back</p>`);
-          // res.redirect("/git");
           next();
         } else if (snapshotrequest == true) {
 
           const result = await GitProxy.snapshot(repo, req.user as any, tree, jwt, parent);
-          // res.redirect("/git/" + reponame);
-          // next();
           res.status(200).send(`${result.message.split(`\n`).join(`<br />`)}<p><a href="/git/${reponame}">back</p>`);
           return next();
         } else if (restorerequest == true) {
@@ -714,7 +681,7 @@ git push -u origin main</pre></p>`
         next();
       }
     });
-  } // constructor
+  }
   static async GetToken(req) {
     let authorization = "";
     let jwt = "";
@@ -741,7 +708,7 @@ git push -u origin main</pre></p>`
       return "";
     }
     return jwt;
-  } // GetToken
+  }
 
 
   static async restoresnapshot(repo: any, user: User, tree: string, jwt: string) {
@@ -774,7 +741,6 @@ git push -u origin main</pre></p>`
           const bucketName = collectionname.substring(0, collectionname.length - 6);
           const fileexists = await Config.db.GetOne<any>({ collectionname: collectionname, query: { _id: metadata._id }, jwt: Crypt.rootToken() }, null);
           if (fileexists != null) {
-            // result += `File ${metadata.filename} #${metadata._id} in ${collectionname} already exists\n`;
             const meta1 = JSON.stringify(metadata.metadata);
             const meta2 = JSON.stringify(fileexists.metadata);
             if (meta1 != meta2) {
@@ -784,20 +750,9 @@ git push -u origin main</pre></p>`
                 } else
                   return value; // leave any other value as-is
               });
-
-              // try {
-              //   await Config.db._UpdateOne(null, item, collectionname, 1, true, jwt, null);
-              //   updatedobjectcounter++;
-              // } catch (error) {
-              //   failedobjectcounter++;
-              //   result += `Object ${metadata._id} in ${collectionname} failed ${error.message}\n`;
-              // }
               let query = { _id: safeObjectID(metadata._id) };
               let _query = { $and: [query, Config.db.getbasequery(user, [Rights.update], collectionname)] };
-
               const opresult = await collection.updateOne(_query, { $set: { "metadata": item.metadata } }, { upsert: false });
-              // const opresult = await collection.updateOne(_query, { $set: item }, { upsert: false });
-              // const opresult = await collection.updateOne(_query, { $set: content }, { upsert: true });
               if (opresult.matchedCount == 0 && opresult.upsertedCount == 0) {
                 failedobjectcounter++;
                 result += `Object ${metadata._id} in ${collectionname} failed ${JSON.stringify(opresult)}\n`;
@@ -828,7 +783,6 @@ git push -u origin main</pre></p>`
           // *ARGH* Stupid mongoDB not support setting uploadDate
           // so SHA will change for metadata doing next restore, but the actual file will be the same
         } else {
-          // const content = JSON.parse(filecontent.data.toString("utf8"));
           const json = filecontent.data.toString("utf8");
           const content = JSON.parse(json, (key, value) => {
             if (typeof value === "string" && value.match(isoDatePattern)) {
@@ -933,20 +887,6 @@ git push -u origin main</pre></p>`
   static async snapshot(repo: any, user: User, tree: string, jwt: string, parent: Span) {
     const formatcontent = (content: any) => JSON.stringify(content, null, 2);
     try {
-      // try {
-      //   const currentfile = JSON.parse(await getfile(repo, "objects.json"));
-      //   if(currentfile[0].ids.length == 3) {
-      //     const newobj = [{"ids": ["5d6d109a7cfa681d84adb10b", "5d6d10a97cfa681d84adb10d"], collection: "fs.files"}];
-      //     await editorupdatefile(repo, "objects.json", formatcontent(newobj));
-      //   } else {
-      //     const newobj = [{"ids": ["666b0a5ee7ccba0e85b89e7c", "6658ba1b1e6df8676d963ee7", "666b07b9e7ccba0e85b89e55"], collection: "fs.files"}];
-      //     await editorupdatefile(repo, "objects.json", formatcontent(newobj));
-      //   }
-      // } catch (error) {
-      //   console.error("error", error.message);      
-      // }
-
-
       const startTime = Date.now();
       console.time("snapshot");
       console.timeLog("snapshot", "start");
@@ -957,10 +897,8 @@ git push -u origin main</pre></p>`
       let updated = false;
 
       if (tree == null || tree == "") {
-        // return "No tree specified";
         tree = await repo.getHeadRef();
       }
-      // const mainref = await repo.getHeadRef();
       const branches = await repo.getRefs();
       const branch = branches.find(x => (x.sha == tree || x.ref == tree) && x.ref != "HEAD");
       if (branch == null) throw new Error(`Branch not found from ${tree}`);
@@ -975,7 +913,7 @@ git push -u origin main</pre></p>`
 
 
       function getTreeObject(collection: string) {
-        if(collection == null) {
+        if (collection == null) {
           return null;
         }
         let treeobject = treeMap.get(collection);
@@ -1126,9 +1064,7 @@ git push -u origin main</pre></p>`
             updatedobjectcounter++;
           }
         }
-        // objectcounter++;
         if (promises.length >= batchSize) {
-          // if (promises.length >= 1) {
           await Promise.all(promises);
           promises = [];
         }
@@ -1240,7 +1176,7 @@ git push -u origin main</pre></p>`
       await repo.upsertRef(branch.ref, commit.sha);
 
       const mainref = await repo.getHeadRef();
-      if(mainref == branch.ref) {
+      if (mainref == branch.ref) {
         await repo.upsertRef("HEAD", commit.sha);
       }
 
@@ -1250,7 +1186,6 @@ git push -u origin main</pre></p>`
       const msbyobjct = Math.round(ms / objectcounter);
       Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " completed in " + (Date.now() - startTime) / 1000 + " seconds", null, { cls: "GitProxy" });
 
-      // objectcounter += promises.length;
       if (msbyobjct == Infinity) {
         console.timeLog("snapshot", "completed with " + objectcounter + " objects");
       } else {
@@ -1328,4 +1263,4 @@ git push -u origin main</pre></p>`
     await repo.upsertRef(head, commit.sha);
     return commit.sha;
   }
-} // class
+}

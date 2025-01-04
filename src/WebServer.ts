@@ -20,7 +20,6 @@ import { Logger } from "./Logger.js";
 import { LoginProvider } from "./LoginProvider.js";
 import { SamlProvider } from "./SamlProvider.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
-
 import { BeginStream, config, DownloadResponse, EndStream, ErrorResponse, GetElementResponse, protowrap, RegisterExchangeRequest, Stream, UploadResponse, Workitem } from "@openiap/nodeapi";
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any.js";
 import { Timestamp } from "@openiap/nodeapi/lib/proto/google/protobuf/timestamp.js";
@@ -36,22 +35,20 @@ const { info, warn, err } = config;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-
 var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
     if (req.originalUrl.indexOf("/oidc") > -1) {
         Logger.instanse.verbose("SKip validate for " + req.originalUrl, null);
-        // Logger.instanse.info("Ignore for " + req.originalUrl, null);
         return next();
     }
     try {
-        if(Config.api_rate_limit_duration != WebServer.BaseRateLimiter.duration || Config.api_rate_limit_points != WebServer.BaseRateLimiter.points) {
+        if (Config.api_rate_limit_duration != WebServer.BaseRateLimiter.duration || Config.api_rate_limit_points != WebServer.BaseRateLimiter.points) {
             Logger.instanse.info("Create new api rate limitter", span);
             WebServer.BaseRateLimiter = new RateLimiterMemory({
                 points: Config.api_rate_limit_points,
                 duration: Config.api_rate_limit_duration,
-            });            
+            });
         }
 
         Logger.instanse.verbose("Validate for " + req.originalUrl, null);
@@ -81,7 +78,7 @@ export class WebServer {
     public static server: http.Server = null;
     public static wss: WebSocket.Server;
     public static async isIPBlocked(remoteip: string): Promise<boolean> {
-        if(remoteip == null || remoteip == "") return false;
+        if (remoteip == null || remoteip == "") return false;
         remoteip = remoteip.toLowerCase();
         var blocks = await Logger.DBHelper.GetIPBlockList(null);
         if (blocks && blocks.length > 0) {
@@ -94,7 +91,7 @@ export class WebServer {
                         if (!NoderedUtil.IsNullEmpty(ipBlock)) {
                             ipBlock = ipBlock.toLowerCase();
                             try {
-                                if(ipBlock.indexOf("/") > -1) {
+                                if (ipBlock.indexOf("/") > -1) {
                                     if (ip.default.cidrSubnet(ipBlock).contains(remoteip)) {
                                         return true;
                                     }
@@ -104,7 +101,7 @@ export class WebServer {
                                     }
                                 }
                             } catch (error) {
-                                Logger.instanse.error(error, null);                                
+                                Logger.instanse.error(error, null);
                             }
                         }
                     }
@@ -113,7 +110,7 @@ export class WebServer {
         }
         return false;
     }
-   
+
     public static async isBlocked(req: express.Request): Promise<boolean> {
         try {
             var remoteip = LoginProvider.remoteip(req);
@@ -149,26 +146,21 @@ export class WebServer {
                 }
                 next();
             });
-            if(fs.existsSync(path.join(__dirname, "./public"))) {
+            if (fs.existsSync(path.join(__dirname, "./public"))) {
                 WebServer.webapp_file_path = path.join(__dirname, "./public");
-            } else if(fs.existsSync(path.join(__dirname, "../public"))) {
+            } else if (fs.existsSync(path.join(__dirname, "../public"))) {
                 WebServer.webapp_file_path = path.join(__dirname, "../public");
-            } else if(fs.existsSync(path.join(__dirname, "./public.template"))) {
+            } else if (fs.existsSync(path.join(__dirname, "./public.template"))) {
                 WebServer.webapp_file_path = path.join(__dirname, "./public.template");
-            } else if(fs.existsSync(path.join(__dirname, "../public.template"))) {
+            } else if (fs.existsSync(path.join(__dirname, "../public.template"))) {
                 WebServer.webapp_file_path = path.join(__dirname, "../public.template");
             } else {
                 Logger.instanse.error("Cannot find public folder", span);
             }
-        
-            // this.app.use("/", express.static(path.join(__dirname, "/public")));
+
             this.app.use(compression());
-            // this.app.use(express.urlencoded({ extended: true }));
-            // this.app.use(express.json());
-            // this.app.use(express.urlencoded({ extended: true, limit: "50mb", parameterLimit:50000 }));
-            // this.app.use(express.json({limit: "50mb"}));
             this.app.use(express.urlencoded({ extended: true }));
-            this.app.use(express.json({limit: "150mb"}));
+            this.app.use(express.json({ limit: "150mb" }));
 
             this.app.use(cookieParser());
             this.app.set("trust proxy", 1)
@@ -180,9 +172,6 @@ export class WebServer {
             if (Config.api_rate_limit) this.app.use(rateLimiter);
 
             this.app.get("/livenessprobe", WebServer.get_livenessprobe.bind(this));
-
-            // this.app.get("/heapdump", WebServer.get_heapdump.bind(this))
-            // this.app.get("/crashme", WebServer.get_crashme.bind(this))
 
             this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
                 if (await WebServer.isBlocked(req)) {
@@ -325,7 +314,6 @@ export class WebServer {
             return WebServer.server;
         } catch (error) {
             Logger.instanse.error(error, span);
-            // WebServer.server.close();
             process.exit(404);
             return null;
         } finally {
@@ -337,11 +325,11 @@ export class WebServer {
         this.app.get("/", (req, res) => {
             res.status(402).redirect("/ui/")
         });
-        if(fs.existsSync( path.join(WebServer.webapp_file_path, 'handler.js' ) )) {
+        if (fs.existsSync(path.join(WebServer.webapp_file_path, 'handler.js'))) {
             const handler = await import(path.join(WebServer.webapp_file_path, 'handler.js'));
 
             this.app.use((req, res, next) => {
-                if(req.url != null && req.url.startsWith("/ui")) {
+                if (req.url != null && req.url.startsWith("/ui")) {
                     handler.handler(req, res, next)
                 } else {
                     next();
@@ -352,7 +340,6 @@ export class WebServer {
             this.app.get('/ui/*', (req, res, next) => {
                 // Only redirect to index.html if the request accepts HTML, this prevents redirection for missing assets like .js, .css, images, etc.
                 if (req.accepts('html')) {
-                    // console.log("serve file " + path.join(WebServer.webapp_file_path, 'index.html') + " for " + req.originalUrl + " (" + req.url + ")");
                     res.setHeader('Content-Type', 'text/html');
                     res.sendFile(path.join(WebServer.webapp_file_path, 'index.html'));
                 } else {
@@ -371,18 +358,18 @@ export class WebServer {
                 process.exit(404);
             }
         });
-        if(Config.grpc_keepalive_time_ms > -1) protowrap.grpc_server_options["grpc.keepalive_time_ms"] = Config.grpc_keepalive_time_ms;
-        if(Config.grpc_keepalive_timeout_ms > -1) protowrap.grpc_server_options["grpc.keepalive_timeout_ms"] = Config.grpc_keepalive_timeout_ms;
-        if(Config.grpc_http2_min_ping_interval_without_data_ms > -1) protowrap.grpc_server_options["grpc.http2.min_ping_interval_without_data_ms"] = Config.grpc_http2_min_ping_interval_without_data_ms;
-        if(Config.grpc_max_connection_idle_ms > -1) protowrap.grpc_server_options["grpc.max_connection_idle_ms"] = Config.grpc_max_connection_idle_ms;
-        if(Config.grpc_max_connection_age_ms > -1) protowrap.grpc_server_options["grpc.max_connection_age_ms"] = Config.grpc_max_connection_age_ms;
-        if(Config.grpc_max_connection_age_grace_ms > -1) protowrap.grpc_server_options["grpc.max_connection_age_grace_ms"] = Config.grpc_max_connection_age_grace_ms;
-        if(Config.grpc_http2_max_pings_without_data > -1) protowrap.grpc_server_options["grpc.http2.max_pings_without_data"] = Config.grpc_http2_max_pings_without_data;
-        if(Config.grpc_keepalive_permit_without_calls > -1) protowrap.grpc_server_options["grpc.keepalive_permit_without_calls"] = Config.grpc_keepalive_permit_without_calls;
-        if(Config.grpc_max_receive_message_length > -1) protowrap.grpc_server_options["grpc.max_receive_message_length"] = Config.grpc_max_receive_message_length;
-        if(Config.grpc_max_send_message_length > -1) protowrap.grpc_server_options["grpc.max_send_message_length"] = Config.grpc_max_send_message_length;
+        if (Config.grpc_keepalive_time_ms > -1) protowrap.grpc_server_options["grpc.keepalive_time_ms"] = Config.grpc_keepalive_time_ms;
+        if (Config.grpc_keepalive_timeout_ms > -1) protowrap.grpc_server_options["grpc.keepalive_timeout_ms"] = Config.grpc_keepalive_timeout_ms;
+        if (Config.grpc_http2_min_ping_interval_without_data_ms > -1) protowrap.grpc_server_options["grpc.http2.min_ping_interval_without_data_ms"] = Config.grpc_http2_min_ping_interval_without_data_ms;
+        if (Config.grpc_max_connection_idle_ms > -1) protowrap.grpc_server_options["grpc.max_connection_idle_ms"] = Config.grpc_max_connection_idle_ms;
+        if (Config.grpc_max_connection_age_ms > -1) protowrap.grpc_server_options["grpc.max_connection_age_ms"] = Config.grpc_max_connection_age_ms;
+        if (Config.grpc_max_connection_age_grace_ms > -1) protowrap.grpc_server_options["grpc.max_connection_age_grace_ms"] = Config.grpc_max_connection_age_grace_ms;
+        if (Config.grpc_http2_max_pings_without_data > -1) protowrap.grpc_server_options["grpc.http2.max_pings_without_data"] = Config.grpc_http2_max_pings_without_data;
+        if (Config.grpc_keepalive_permit_without_calls > -1) protowrap.grpc_server_options["grpc.keepalive_permit_without_calls"] = Config.grpc_keepalive_permit_without_calls;
+        if (Config.grpc_max_receive_message_length > -1) protowrap.grpc_server_options["grpc.max_receive_message_length"] = Config.grpc_max_receive_message_length;
+        if (Config.grpc_max_send_message_length > -1) protowrap.grpc_server_options["grpc.max_send_message_length"] = Config.grpc_max_send_message_length;
 
-      
+
         var servers = [];
         servers.push(protowrap.serve("pipe", this.onClientConnected, config.defaultsocketport, "testpipe", WebServer.wss, WebServer.app, WebServer.server, flowclient));
         servers.push(protowrap.serve("socket", this.onClientConnected, config.defaultsocketport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
@@ -393,7 +380,7 @@ export class WebServer {
         Logger.instanse.info("Listening on " + Config.baseurl(), null);
         Logger.instanse.info("grpc listening on grpc://" + Config.domain + ":" + config.defaultgrpcport, null);
     }
-    public static async ReceiveFileContent(client: flowclient, rid:string, msg: any) {
+    public static async ReceiveFileContent(client: flowclient, rid: string, msg: any) {
         return new Promise<string>((resolve, reject) => {
             const bucket = new GridFSBucket(Config.db.db);
             var metadata = new Base();
@@ -402,24 +389,23 @@ export class WebServer {
             metadata._createdbyid = WellknownIds.root;
             metadata._modifiedby = "root";
             metadata._modifiedbyid = WellknownIds.root;
-            if(msg.metadata != null && msg.metadata != "") {
+            if (msg.metadata != null && msg.metadata != "") {
                 try {
                     // is metadata a string ?
-                    if(typeof msg.metadata == "string") {
+                    if (typeof msg.metadata == "string") {
                         metadata = Object.assign(metadata, JSON.parse(msg.metadata));
-                    }                    
+                    }
                 } catch (error) {
                     Logger.instanse.error(error, null);
                 }
             }
-            if(metadata.name == null || metadata.name == "") metadata.name = msg.filename;
-            if(client.user)
-            {
-                if(client.user._id == "65cb30c40ff51e174095573c" && Config.enable_guest_file_upload == false) {
+            if (metadata.name == null || metadata.name == "") metadata.name = msg.filename;
+            if (client.user) {
+                if (client.user._id == "65cb30c40ff51e174095573c" && Config.enable_guest_file_upload == false) {
                     reject(new Error("Guests are not allowed to upload files"));
                     return;
                 }
-                Base.addRight(metadata, client.user._id , client.user.name, [Rights.full_control]);
+                Base.addRight(metadata, client.user._id, client.user.name, [Rights.full_control]);
                 metadata._createdby = client.user.name;
                 metadata._createdbyid = client.user._id;
                 metadata._modifiedby = client.user.name;
@@ -427,35 +413,35 @@ export class WebServer {
             }
             metadata._created = new Date(new Date().toISOString());
             metadata._modified = metadata._created;
-    
+
             Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            if(!Config.multi_tenant) {
+            if (!Config.multi_tenant) {
                 Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
             }
 
-    
+
             const rs = new stream.Readable;
             rs._read = () => { };
             const s = protowrap.SetStream(client, rs, rid)
             if (NoderedUtil.IsNullEmpty(msg.mimetype)) {
                 msg.mimetype = mimetype.lookup(msg.filename);
             }
-   
+
             let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
             let id = uploadStream.id
-            uploadStream.on("finish", ()=> {
+            uploadStream.on("finish", () => {
                 resolve(id.toString());
             })
-            uploadStream.on("error", (err)=> {
+            uploadStream.on("error", (err) => {
                 reject(err);
             });
             rs.pipe(uploadStream);
         });
     }
-    static sendFileContent(client:flowclient, rid, id, collectionname):Promise<void> {
+    static sendFileContent(client: flowclient, rid, id, collectionname): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
-            if(collectionname != null && collectionname != "") {
-                if(collectionname.endsWith(".files")) {
+            if (collectionname != null && collectionname != "") {
+                if (collectionname.endsWith(".files")) {
                     collectionname = collectionname.substring(0, collectionname.length - 6);
                 }
             } else {
@@ -463,15 +449,17 @@ export class WebServer {
             }
             const bucket = new GridFSBucket(Config.db.db, { bucketName: collectionname });
             let downloadStream = bucket.openDownloadStream(safeObjectID(id));
-            const data = Any.create({type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
+            const data = Any.create({ type_url: "type.googleapis.com/openiap.BeginStream", value: BeginStream.encode(BeginStream.create()).finish() })
             protowrap.sendMesssag(client, { rid, command: "beginstream", data: data }, null, true);
             downloadStream.on("data", (chunk) => {
-                const data = Any.create({type_url: "type.googleapis.com/openiap.Stream", value: Stream.encode(Stream.create({data: chunk})).finish() })
-                protowrap.sendMesssag(client, { rid, command: "stream", 
-                data: data }, null, true);
+                const data = Any.create({ type_url: "type.googleapis.com/openiap.Stream", value: Stream.encode(Stream.create({ data: chunk })).finish() })
+                protowrap.sendMesssag(client, {
+                    rid, command: "stream",
+                    data: data
+                }, null, true);
             });
-            downloadStream.on("end", ()=> {
-                const data = Any.create({type_url: "type.googleapis.com/openiap.EndStream", value: EndStream.encode(EndStream.create()).finish() })
+            downloadStream.on("end", () => {
+                const data = Any.create({ type_url: "type.googleapis.com/openiap.EndStream", value: EndStream.encode(EndStream.create()).finish() })
                 protowrap.sendMesssag(client, { rid, command: "endstream", data: data }, null, true);
                 resolve();
             });
@@ -479,25 +467,25 @@ export class WebServer {
                 reject(err);
             });
         });
-      }
+    }
 
     public static async ProcessMessage(req: any, tuser: User, jwt: string): Promise<any> {
-        const client:any = {user: tuser, jwt: jwt};
+        const client: any = { user: tuser, jwt: jwt };
         const msg = new Message();
         const urlPath = req.path;
         msg.command = urlPath.replace("/rest/v1/", "").toLowerCase();
 
-        if(msg.command == "updatedocument") {
-            msg.command = "updatemany" // new command to new
+        if (msg.command == "updatedocument") {
+            msg.command = "updatemany"
         }
-        if(msg.command == "unregisterqueue") {
-            msg.command = "closequeue" // new command to new
+        if (msg.command == "unregisterqueue") {
+            msg.command = "closequeue"
         }
-        if(msg.command == "pushworkitem") {
-            msg.command = "addworkitem" // new command to new
+        if (msg.command == "pushworkitem") {
+            msg.command = "addworkitem"
         }
-        if(msg.command == "pushworkitems") {
-            msg.command = "addworkitems" // new command to new
+        if (msg.command == "pushworkitems") {
+            msg.command = "addworkitems"
         }
 
         msg.id = NoderedUtil.GetUniqueIdentifier();
@@ -513,15 +501,15 @@ export class WebServer {
         let command, msg, reply;
         try {
             [command, msg, reply] = protowrap.unpack(message);
-            if(message.command == "") throw new Error("Invalid/empty command");
-            if(command == "registerexchange") {
+            if (message.command == "") throw new Error("Invalid/empty command");
+            if (command == "registerexchange") {
                 msg = RegisterExchangeRequest.decode(message.data.value);
             }
         } catch (error) {
             err(error);
             message.command = "error";
             if (typeof error == "string") error = new Error(error);
-            const data = Any.create({type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
+            const data = Any.create({ type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
             message.data = data
             message.rid = message.id;
             return message;
@@ -529,180 +517,150 @@ export class WebServer {
         try {
             if (command == "noop" || command == "pong") {
                 reply.command = "noop";
-            } else if ( command == "queuemessagereply") {
+            } else if (command == "queuemessagereply") {
                 reply.command = "noop";
             } else if (command == "ping") {
                 reply.command = "pong";
             } else if (command == "getelement") {
-                if(NoderedUtil.IsNullUndefinded(msg)) msg = {xpath: ""};
+                if (NoderedUtil.IsNullUndefinded(msg)) msg = { xpath: "" };
                 msg.xpath = "Did you say " + msg?.xpath + " ?";
                 reply.data = GetElementResponse.encode(GetElementResponse.create(msg)).finish()
             } else if (command == "send") {
                 let len = msg.count;
                 reply.command = "getelement"
                 for (var i = 1; i < len; i++) {
-                    const data = Any.create({type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test" + (i + 1) })).finish() })
-                    var payload = { ...reply, 
-                        data: data };
+                    const data = Any.create({ type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test" + (i + 1) })).finish() })
+                    var payload = {
+                        ...reply,
+                        data: data
+                    };
                     protowrap.sendMesssag(client, payload, null, true);
                 }
-                const data = Any.create({type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test1" })).finish() })
+                const data = Any.create({ type_url: "type.googleapis.com/openiap.GetElementResponse", value: GetElementResponse.encode(GetElementResponse.create({ xpath: "test1" })).finish() })
                 reply.data = data
 
             } else if (command == "upload") {
                 var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
                 reply.command = "uploadreply"
-                const data = Any.create({type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id, filename: msg.filename })).finish() })
+                const data = Any.create({ type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id, filename: msg.filename })).finish() })
                 reply.data = data
-                // var filename = msg.filename;
-                // let name = path.basename(filename);
-                // name = "upload.png";
-                // const result = await protowrap.ReceiveFileContent(client, reply.rid, name, SendFileHighWaterMark);
-                // reply.data = protowrap.pack("upload", result);
-                // // @ts-ignore
-                // info(`recived ${name} (${(result.mb).toFixed(2)} Mb) in ${(result.elapsedTime / 1000).toFixed(2)}  seconds in ${result.chunks} chunks`);
             } else if (command == "download") {
-                if((msg.id && msg.id != "") || (msg.filename != null && msg.filename != "")) {
+                if ((msg.id && msg.id != "") || (msg.filename != null && msg.filename != "")) {
                     reply.command = "downloadreply"
-                    let rows =[];
-                    if(msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") {
+                    let rows = [];
+                    if (msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") {
                         msg.collectionname = "fs.files";
                     }
-                    if(msg.id != null && msg.id != "") {
+                    if (msg.id != null && msg.id != "") {
                         rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
                     } else if (msg.filename != null && msg.filename != "") {
                         rows = await Config.db.query({ query: { filename: msg.filename }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
                     }
-                    if((msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") && (msg.id != null && msg.id != "")) {
-                        if(rows.length == 0) {
-                            const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package"}, top:1, collectionname: "agents", jwt: client.jwt }, null);
-                            if(rows2.length > 0) {
+                    if ((msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") && (msg.id != null && msg.id != "")) {
+                        if (rows.length == 0) {
+                            const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package" }, top: 1, collectionname: "agents", jwt: client.jwt }, null);
+                            if (rows2.length > 0) {
                                 rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: Crypt.rootToken() }, null);
                             }
                         }
                     }
-                    if(rows.length > 0) {
+                    if (rows.length > 0) {
                         result = rows[0];
                         await WebServer.sendFileContent(client, reply.rid, result._id, msg.collectionname)
                         result = rows[0];
-                        reply.data =  Any.create({type_url: "type.googleapis.com/openiap.DownloadResponse",
+                        reply.data = Any.create({
+                            type_url: "type.googleapis.com/openiap.DownloadResponse",
                             value: DownloadResponse.encode(DownloadResponse.create({
-                            filename: result.filename,
-                            mimetype: result.contentType,
-                            id: result._id.toString()})).finish()})
+                                filename: result.filename,
+                                mimetype: result.contentType,
+                                id: result._id.toString()
+                            })).finish()
+                        })
 
                     } else {
                         throw new Error("Access denied, downloading " + msg.id)
                     }
                 } else {
                     throw new Error("Access denied (No id)")
-                    // var filename = msg.filename;
-                    // await protowrap.sendFileContent(client, reply.rid, filename, SendFileHighWaterMark);
-                    // msg.filename = path.basename(filename);
-                    // reply.data = protowrap.pack(command, msg);
                 }
             } else if (command == "clientconsole") {
                 throw new Error("Access denied")
-                // var rs = new Readable;
-                // rs._read = function () { };
-                // protowrap.SetStream(client, rs, reply.rid);
-                // protowrap.sendMesssag(client, reply, null, true);
-                // rs.pipe(process.stdout); // pipe the read stream to stdout
             } else if (command == "console") {
                 throw new Error("Access denied")
-                // var old = process.stdout.write;
-                // const rid = reply.rid;
-                // // @ts-ignore
-                // process.stdout.write = (function (write) {
-                //     return function (string, encoding, fd) {
-                //         try {
-                //             write.apply(process.stdout, arguments);
-                //             protowrap.sendMesssag(client, { rid, command: "stream", data: protowrap.pack("stream", { data: Buffer.from(string) }) }, null, false);
-                //         } catch (error) {
-                //             process.stdout.write = old;
-                //             err(error);
-                //         }
-                //     }
-                // })(process.stdout.write);
             } else {
-                if(message.command == "updatedocument") {
+                if (message.command == "updatedocument") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                    msg.item = msg.document; // new style to new 
+                    msg.item = msg.document;
                     delete msg.document;
-                    message.command = "updatemany" // new command to new
+                    message.command = "updatemany"
                 }
-                if(message.command == "unregisterqueue") {
+                if (message.command == "unregisterqueue") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                    message.command = "closequeue" // new command to new
+                    message.command = "closequeue"
                 }
-                if(message.command == "pushworkitem") {
+                if (message.command == "pushworkitem") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                    if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
-                    message.command = "addworkitem" // new command to new
+                    if (typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
+                    message.command = "addworkitem"
                 }
-                if(message.command == "pushworkitems") {
+                if (message.command == "pushworkitems") {
                     msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                    if(msg.items != null ) {
+                    if (msg.items != null) {
                         msg.items.forEach(wi => {
-                            if(typeof wi.payload == "string") wi.payload = JSON.parse(wi.payload); // new style to new 
+                            if (typeof wi.payload == "string") wi.payload = JSON.parse(wi.payload); // new style to new 
                         });
                     }
-                    message.command = "addworkitems" // new command to new
+                    message.command = "addworkitems"
                 }
-                if(message.command == "updateworkitem") {
-                    if(msg.workitem && typeof msg.workitem.payload == "string") msg.workitem.payload = JSON.parse(msg.workitem.payload); 
-                    // if(msg.workitem) {
-                    //     msg.workitem = JSON.parse(JSON.stringify(msg.workitem))
-                    // }
-                    // msg = JSON.parse(JSON.stringify(msg)) // un-wrap properties or we cannot JSON.stringify it later
-                    // if(typeof msg.payload == "string") msg.payload = JSON.parse(msg.payload); // new style to new 
-                    if(msg.workitem && msg.workitem.files && msg.workitem.files.length > 0) {
-                        if(msg.files && msg.files.length > 0) {
+                if (message.command == "updateworkitem") {
+                    if (msg.workitem && typeof msg.workitem.payload == "string") msg.workitem.payload = JSON.parse(msg.workitem.payload);
+                    if (msg.workitem && msg.workitem.files && msg.workitem.files.length > 0) {
+                        if (msg.files && msg.files.length > 0) {
                             msg.files.forEach(f => {
-                                msg.workitem.files.push(f)                                
+                                msg.workitem.files.push(f)
                             });
                         }
                         delete msg.files;
                     } else if (msg.workitem && msg.files && msg.files.length > 0) {
                         msg.files.forEach(f => {
-                            msg.workitem.files.push(f)                                
+                            msg.workitem.files.push(f)
                         });
                         delete msg.files;
                     }
-                    if(msg.workitem) msg = Object.assign(msg.workitem, msg);
+                    if (msg.workitem) msg = Object.assign(msg.workitem, msg);
                     delete msg.workitem;
-                    if(msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
-                    delete msg.Id;                    
+                    if (msg._id == null && msg._id == "" && msg.Id != null && msg.Id != "") msg._id = msg.Id;
+                    delete msg.Id;
                 }
-                if(message.command == "signin") {
+                if (message.command == "signin") {
                     msg.clientagent = msg.agent;
                     msg.clientversion = msg.version;
                 }
                 var _msg = Message.fromjson({ ...message, data: msg });
                 var result = await _msg.Process(client as any);
-                if(message.rid != null && message.rid != "" && result.command == "error") {
+                if (message.rid != null && message.rid != "" && result.command == "error") {
                     return null;
                 }
                 reply.command = result.command + "reply"
                 if (reply.command == "errorreply") reply.command = "error";
                 if (reply.command == "updatemanyreply") reply.command = "updatedocumentreply";
                 if (reply.command == "closequeuereply") reply.command = "unregisterqueuereply";
-                if(reply.command == "addworkitemreply") {
+                if (reply.command == "addworkitemreply") {
                     reply.command = "pushworkitemreply";
                     reply.workitem = result.result;
                 }
-                if(reply.command == "addworkitemsreply") {
+                if (reply.command == "addworkitemsreply") {
                     reply.command = "pushworkitemsreply";
                 }
                 let res = result.data;
-                if(res == null || res == "") res = "{}"
-                if(typeof res == "string") res = JSON.parse(res);
+                if (res == null || res == "") res = "{}"
+                if (typeof res == "string") res = JSON.parse(res);
                 delete res.password;
-                if(reply.command == "addworkitemqueuereply") {
+                if (reply.command == "addworkitemqueuereply") {
                     res.workitemqueue = res.result;
                     delete res.result;
                 }
-                if(reply.command == "updateworkitemqueuereply") {
+                if (reply.command == "updateworkitemqueuereply") {
                     res.workitemqueue = res.result;
                     delete res.result;
                 }
@@ -711,7 +669,7 @@ export class WebServer {
                         client.doping = msg.ping;
                     }
                     res.config = await LoginProvider.config();
-                    if(res.config == null) res.config = {};
+                    if (res.config == null) res.config = {};
                     res.config.openflow_uniqueid = Config.openflow_uniqueid;
                     if (Config.otel_trace_interval > 0) res.config.otel_trace_interval = Config.otel_trace_interval;
                     if (Config.otel_metric_interval > 0) res.config.otel_metric_interval = Config.otel_metric_interval;
@@ -722,24 +680,24 @@ export class WebServer {
                     res.config.otel_metric_interval = Config.otel_metric_interval;
                     res.config = JSON.stringify(res.config);
                 }
-                if(result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
-                    if(res.results == null && res.result != null) {
+                if (result.command == "query" || result.command == "aggregate" || result.command == "listcollections") {
+                    if (res.results == null && res.result != null) {
                         res.results = res.result;
                         delete res.result;
                     }
                 }
-                if(result.command == "addworkitem" || result.command == "pushworkitem" || result.command == "updateworkitem" || result.command == "popworkitem") {
+                if (result.command == "addworkitem" || result.command == "pushworkitem" || result.command == "updateworkitem" || result.command == "popworkitem") {
                     res.workitem = res.result;
-                    if(res.workitem && res.workitem.errormessage) {
-                        if(typeof res.workitem.errormessage !== "string") {
+                    if (res.workitem && res.workitem.errormessage) {
+                        if (typeof res.workitem.errormessage !== "string") {
                             res.workitem.errormessage = JSON.stringify(res.workitem.errormessage);
                         }
-                        
+
                     }
                     delete res.result;
-                    if(res.workitem != null) {
+                    if (res.workitem != null) {
                         const wi: Workitem = res.workitem;
-                        if(wi.lastrun != null) {
+                        if (wi.lastrun != null) {
                             const timeMS = new Date(wi.lastrun);
                             var dt = Timestamp.create();
                             // @ts-ignore
@@ -749,7 +707,7 @@ export class WebServer {
                             // @ts-ignore
                             wi.lastrun = dt;
                         }
-                        if(wi.nextrun != null) {
+                        if (wi.nextrun != null) {
                             const timeMS = new Date(wi.nextrun);
                             var dt = Timestamp.create();
                             // @ts-ignore
@@ -762,63 +720,54 @@ export class WebServer {
                     }
 
                 }
-                if(reply.command == "pushworkitemsreply") {
+                if (reply.command == "pushworkitemsreply") {
                     res.workitems = res.items;
-                    if(res.workitem && res.workitem.errormessage) {
-                        if(typeof res.workitem.errormessage !== "string") {
+                    if (res.workitem && res.workitem.errormessage) {
+                        if (typeof res.workitem.errormessage !== "string") {
                             res.workitem.errormessage = JSON.stringify(res.workitem.errormessage);
                         }
-                        
+
                     }
                     delete res.items;
                 }
-                if(result.command == "popworkitem") {
+                if (result.command == "popworkitem") {
                     let includefiles = msg.includefiles || false;
                     // @ts-ignore
                     let compressed = msg.compressed || false;
-                    if(res.workitem && includefiles == true) {
-                        for(var i = 0; i < res.workitem.files.length; i++) {
+                    if (res.workitem && includefiles == true) {
+                        for (var i = 0; i < res.workitem.files.length; i++) {
                             var file = res.workitem.files[i];
                             var buf: Buffer = await _msg._GetFile(file._id, compressed);
-                            // @ts-ignore
-                            // b = new Uint8Array(b);
-                            // b = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
                             // @ts-ignore
                             file.compressed = compressed;
                             // @ts-ignore
                             file.file = buf;
                             // @ts-ignore
                             res.workitem.file = buf;
-                            // Slice (copy) its segment of the underlying ArrayBuffer
-                            // @ts-ignore
-                            // file.file = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);                            
                         }
                     }
                 }
-                // if(res.result) res.result = Buffer.from(JSON.stringify(res.result));
-                // if(res.results) res.results = Buffer.from(JSON.stringify(res.results));
-                if(res.result && result.command != "createindex") res.result = JSON.stringify(res.result);
-                if(res.workitem && !NoderedUtil.IsNullUndefinded(res.workitem.payload) ) {
+                if (res.result && result.command != "createindex") res.result = JSON.stringify(res.result);
+                if (res.workitem && !NoderedUtil.IsNullUndefinded(res.workitem.payload)) {
                     res.workitem.payload = JSON.stringify(res.workitem.payload);
                 }
-                if(res.workitems) {
-                    for(let i = 0; i < res.workitems.length; i++) {
+                if (res.workitems) {
+                    for (let i = 0; i < res.workitems.length; i++) {
                         const wi = res.workitems[i];
-                        if(!NoderedUtil.IsNullUndefinded(wi.payload)) {
+                        if (!NoderedUtil.IsNullUndefinded(wi.payload)) {
                             wi.payload = JSON.stringify(wi.payload);
                         }
                     }
                 }
-                if(res.results && reply.command != "distinctreply") res.results = JSON.stringify(res.results);
-                if(reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
-                // reply.data = QueueMessageResponse.encode(QueueMessageResponse.create(res)).finish()
+                if (res.results && reply.command != "distinctreply") res.results = JSON.stringify(res.results);
+                if (reply.command == "queuemessagereply") res.data = JSON.stringify(res.data);
                 reply.data = protowrap.pack(reply.command, res);
             }
         } catch (error) {
             err(error);
             reply.command = "error";
             if (typeof error == "string") error = new Error(error);
-            const data = Any.create({type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
+            const data = Any.create({ type_url: "type.googleapis.com/openiap.ErrorResponse", value: ErrorResponse.encode(ErrorResponse.create(error)).finish() })
             reply.data = data
         }
         return reply;
@@ -828,7 +777,7 @@ export class WebServer {
         client.onDisconnected = WebServer.onDisconnected;
         client.onMessage = WebServer.onMessage;
         WebSocketServer._clients.push(client);
-        if(client.ping != null) {
+        if (client.ping != null) {
             client.ping(null);
         }
         info("Client connected, client count " + WebSocketServer._clients.length);
@@ -849,10 +798,10 @@ export class WebServer {
     }
     static async get_crashme(req: any, res: any, next: any): Promise<void> {
         const remoteip = LoginProvider.remoteip(req);
-        if(remoteip != "127.0.0.1" && remoteip != "::ffff:127.0.0.1") {
+        if (remoteip != "127.0.0.1" && remoteip != "::ffff:127.0.0.1") {
             // Add security check at some point to only allow from localhost !!!
             res.statusCode = 500;
-            return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip,"hostname": _hostname, dt: new Date() }));
+            return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip, "hostname": _hostname, dt: new Date() }));
         }
         let array = [];
         while (true) {
@@ -860,13 +809,13 @@ export class WebServer {
             await new Promise(resolve => { setTimeout(resolve, 1000) });
         }
     }
-        
+
     static async get_heapdump(req: any, res: any, next: any): Promise<void> {
         const remoteip = LoginProvider.remoteip(req);
-        if(remoteip != "127.0.0.1" && remoteip != "::ffff:127.0.0.1") {
+        if (remoteip != "127.0.0.1" && remoteip != "::ffff:127.0.0.1") {
             // Add security check at some point to only allow from localhost !!!
             res.statusCode = 500;
-            return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip,"hostname": _hostname, dt: new Date() }));
+            return res.end(JSON.stringify({ "error": "Go away !!!", "remoteip": remoteip, "hostname": _hostname, dt: new Date() }));
         }
         await Logger.otel.createheapdump(null);
         res.end(JSON.stringify({ "success": "true", "remoteip": remoteip, "hostname": _hostname, dt: new Date() }));
@@ -883,8 +832,10 @@ export class WebServer {
             span.setStatus({ code: 200 });
         } catch (error) {
             Logger.instanse.error(error, span);
-            // @ts-ignore
-            span.setStatus({code: 500, message: error instanceof Error ? error.message : undefined,
+            span.setStatus({
+                // @ts-ignore
+                code: 500,
+                message: error instanceof Error ? error.message : undefined,
             });
         } finally {
             span.end();

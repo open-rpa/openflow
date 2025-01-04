@@ -45,7 +45,6 @@ export class Provider extends Base {
     public introspection_client_secret: string;
     public saml_signout_url: string;
 }
-// tslint:disable-next-line: class-name
 export class googleauthstrategyoptions {
     public clientID: string = "";
     public clientSecret: string = "";
@@ -53,7 +52,6 @@ export class googleauthstrategyoptions {
     public scope: string[] = ["profile", "email"];
     public verify: any;
 }
-// tslint:disable-next-line: class-name
 export class samlauthstrategyoptions {
     public callbackUrl: string = "auth/strategy/callback/";
     public entryPoint: string = "";
@@ -69,8 +67,6 @@ export class samlauthstrategyoptions {
 }
 export class LoginProvider {
     public static _providers: any = {};
-    // public static login_providers: Provider[] = [];
-
     public static remoteip(req: express.Request) {
         let remoteip: string = req.socket.remoteAddress;
         if (req.headers["X-Forwarded-For"] != null) remoteip = req.headers["X-Forwarded-For"] as string;
@@ -103,12 +99,12 @@ export class LoginProvider {
                 const options = {
                     publicKey: Buffer.from(Config.signing_crt, "base64").toString("ascii")
                 }
-                Logger.instanse.verbose("saml.validate", span, {cls: "LoginProvider", func: "validateToken"});
+                Logger.instanse.verbose("saml.validate", span, { cls: "LoginProvider", func: "validateToken" });
                 saml.validate(rawAssertion, options, async (err, profile) => {
                     const span: Span = Logger.otel.startSpan("saml.validate", null, null);
                     try {
                         if (err) {
-                            Logger.instanse.error(err, span, {cls: "LoginProvider", func: "validateToken"});
+                            Logger.instanse.error(err, span, { cls: "LoginProvider", func: "validateToken" });
                             return reject(err);
                         }
                         const claims = profile.claims; // Array of user attributes;
@@ -116,17 +112,17 @@ export class LoginProvider {
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
                             claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
 
-                        Logger.instanse.verbose("lookup " + username, span, {cls: "LoginProvider", func: "validateToken"});
+                        Logger.instanse.verbose("lookup " + username, span, { cls: "LoginProvider", func: "validateToken" });
                         const user = await Logger.DBHelper.FindByUsername(username, null, span);
                         if (user) {
-                            Logger.instanse.debug("succesfull", span, {cls: "LoginProvider", func: "validateToken"});
+                            Logger.instanse.debug("succesfull", span, { cls: "LoginProvider", func: "validateToken" });
                             resolve(user);
                         } else {
-                            Logger.instanse.error(new Error("Unknown user"), span, {cls: "LoginProvider", func: "validateToken"});
+                            Logger.instanse.error(new Error("Unknown user"), span, { cls: "LoginProvider", func: "validateToken" });
                             reject("Unknown user");
                         }
                     } catch (error) {
-                        Logger.instanse.error(error, span, {cls: "LoginProvider", func: "validateToken"});
+                        Logger.instanse.error(error, span, { cls: "LoginProvider", func: "validateToken" });
                         reject(error);
                     } finally {
                         Logger.otel.endSpan(span);
@@ -134,7 +130,7 @@ export class LoginProvider {
 
                 });
             } catch (error) {
-                Logger.instanse.error(error, span, {cls: "LoginProvider", func: "validateToken"});
+                Logger.instanse.error(error, span, { cls: "LoginProvider", func: "validateToken" });
             } finally {
                 Logger.otel.endSpan(span);
             }
@@ -145,36 +141,21 @@ export class LoginProvider {
         app.use(passport.session());
         passport.serializeUser(async function (user: any, done: any): Promise<void> {
             const tuser: User = user;
-            // await Auth.AddUser(tuser as any, tuser._id, "passport");
             done(null, user._id);
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
-            Logger.instanse.silly("userid " + userid, null, {cls: "LoginProvider", func: "deserializeUser"});
+            Logger.instanse.silly("userid " + userid, null, { cls: "LoginProvider", func: "deserializeUser" });
             if (NoderedUtil.IsNullEmpty(userid)) return done("missing userid", null);
             if (typeof userid !== "string") userid = (userid as any)._id
             if (NoderedUtil.IsNullEmpty(userid)) return done("missing userid", null);
             const _user = await Logger.DBHelper.FindById(userid, null);
             if (_user == null) {
-                Logger.instanse.error("Failed locating user " + userid, null, {cls: "LoginProvider", func: "deserializeUser"});
+                Logger.instanse.error("Failed locating user " + userid, null, { cls: "LoginProvider", func: "deserializeUser" });
                 done(null, null);
             } else {
-                Logger.instanse.verbose("found user " + userid + " " + _user.name, null, {cls: "LoginProvider", func: "deserializeUser"});
+                Logger.instanse.verbose("found user " + userid + " " + _user.name, null, { cls: "LoginProvider", func: "deserializeUser" });
                 done(null, _user);
             }
-            // const _user = await Auth.getUser(userid, "passport");
-            // if (_user == null) {
-            //     const user = await DBHelper.FindById(userid, null, null);
-            //     if (user != null) {
-            //         const tuser = TokenUser.From(user);
-            //         await Auth.AddUser(tuser as any, tuser._id, "passport");
-            //         done(null, tuser);
-            //     } else {
-            //         done(null, null);
-            //     }
-
-            // } else {
-            //     done(null, _user);
-            // }
         });
         app.get("/dashboardauth", LoginProvider.get_dashboardauth.bind(this));
         app.get("/Signout", LoginProvider.get_Signout.bind(this));
@@ -226,7 +207,7 @@ export class LoginProvider {
                     }
                     if (provider.provider === "local") { hasLocal = true; }
                 } catch (error) {
-                    Logger.instanse.error(error, span, {cls: "LoginProvider", func: "RegisterProviders"});
+                    Logger.instanse.error(error, span, { cls: "LoginProvider", func: "RegisterProviders" });
                 }
             });
             if (hasLocal === true) {
@@ -239,7 +220,7 @@ export class LoginProvider {
                 let key = keys[i];
                 var exists = providers.filter(x => x.id == key || (key == "local" && x.provider == "local"));
                 if (exists.length == 0) {
-                    Logger.instanse.debug("[loginprovider] Removing passport strategy " + key, span, {cls: "LoginProvider", func: "RegisterProviders"});
+                    Logger.instanse.debug("[loginprovider] Removing passport strategy " + key, span, { cls: "LoginProvider", func: "RegisterProviders" });
                     passport.unuse(key);
                 }
             }
@@ -261,7 +242,7 @@ export class LoginProvider {
 
 
     static async CreateOpenIDStrategy(app: express.Express, discoveryurl: string, key: string, clientID: string, clientSecret: string, baseurl: string, span: Span): Promise<any> {
-        Logger.instanse.debug("Adding new google strategy " + key, span, {cls: "LoginProvider", func: "CreateOpenIDStrategy"});
+        Logger.instanse.debug("Adding new google strategy " + key, span, { cls: "LoginProvider", func: "CreateOpenIDStrategy" });
         const response = await got.get(discoveryurl, options as any);
         const document = JSON.parse(response.body);
         var options = {
@@ -286,7 +267,7 @@ export class LoginProvider {
             function (req: any, res: any, next: any): void {
                 const span: Span = Logger.otel.startSpanExpress("OpenIDStrategy", req);
                 try {
-                    if(req.user != null) {
+                    if (req.user != null) {
                         // @ts-ignore
                         if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
                             res.redirect("/login");
@@ -295,21 +276,21 @@ export class LoginProvider {
                     }
                     const originalUrl: any = req.cookies.originalUrl;
                     try {
-                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });    
-                    } catch (error) {                        
+                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                    } catch (error) {
                     }
-                    
+
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                         try {
-                            res.cookie("originalUrl", "", { expires: new Date(0) });    
-                        } catch (error) {                            
-                        }                        
+                            res.cookie("originalUrl", "", { expires: new Date(0) });
+                        } catch (error) {
+                        }
                         LoginProvider.redirect(res, originalUrl);
                     } else {
                         res.redirect("/");
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, span, {cls: "LoginProvider", func: "CreateOpenIDStrategy"});
+                    Logger.instanse.error(error, span, { cls: "LoginProvider", func: "CreateOpenIDStrategy" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -319,7 +300,7 @@ export class LoginProvider {
         return strategy;
     }
     static CreateGoogleStrategy(app: express.Express, key: string, consumerKey: string, consumerSecret: string, baseurl: string, span: Span): any {
-        Logger.instanse.debug("Adding new google strategy " + key, span, {cls: "LoginProvider", func: "CreateGoogleStrategy"});
+        Logger.instanse.debug("Adding new google strategy " + key, span, { cls: "LoginProvider", func: "CreateGoogleStrategy" });
         const options: googleauthstrategyoptions = new googleauthstrategyoptions();
         options.clientID = consumerKey;
         options.clientSecret = consumerSecret;
@@ -335,7 +316,7 @@ export class LoginProvider {
             function (req: any, res: any, next: any): void {
                 const span: Span = Logger.otel.startSpanExpress("GoogleStrategy", req);
                 try {
-                    if(req.user != null) {
+                    if (req.user != null) {
                         // @ts-ignore
                         if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
                             res.redirect("/login");
@@ -344,21 +325,21 @@ export class LoginProvider {
                     }
                     const originalUrl: any = req.cookies.originalUrl;
                     try {
-                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });    
-                    } catch (error) {                        
+                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                    } catch (error) {
                     }
-                    
+
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                         try {
-                            res.cookie("originalUrl", "", { expires: new Date(0) });    
-                        } catch (error) {                            
-                        }                        
+                            res.cookie("originalUrl", "", { expires: new Date(0) });
+                        } catch (error) {
+                        }
                         LoginProvider.redirect(res, originalUrl);
                     } else {
                         res.redirect("/");
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, span, {cls: "LoginProvider", func: "CreateGoogleStrategy"});
+                    Logger.instanse.error(error, span, { cls: "LoginProvider", func: "CreateGoogleStrategy" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -368,9 +349,8 @@ export class LoginProvider {
         return strategy;
     }
 
-    // tslint:disable-next-line: max-line-length
     static CreateSAMLStrategy(app: express.Express, key: string, cert: string, singin_url: string, issuer: string, baseurl: string, span: Span): passport.Strategy {
-        Logger.instanse.debug("Adding new SAML strategy " + key, span, {cls: "LoginProvider", func: "CreateSAMLStrategy"});
+        Logger.instanse.debug("Adding new SAML strategy " + key, span, { cls: "LoginProvider", func: "CreateSAMLStrategy" });
         const options: samlauthstrategyoptions = new samlauthstrategyoptions();
         (options as any).passReqToCallback = true;
         options.entryPoint = singin_url;
@@ -384,12 +364,6 @@ export class LoginProvider {
         const strategy: passport.Strategy = new SamlStrategy(options, options.verify, undefined);
         passport.use(key, strategy);
         strategy.name = key;
-
-        // app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
-        //     wsfed.metadata({
-        //         cert: Buffer.from(Config.signing_crt, "base64").toString("ascii"),
-        //         issuer: issuer
-        //     }));
         const CertPEM = Buffer.from(Config.signing_crt, "base64").toString("ascii").replace(/(-----(BEGIN|END) CERTIFICATE-----|\n)/g, "");
         app.get("/" + key + "/FederationMetadata/2007-06/FederationMetadata.xml",
             (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -443,7 +417,7 @@ export class LoginProvider {
                         `);
 
                 } catch (error) {
-                    Logger.instanse.error(error, span, {cls: "LoginProvider", func: "CreateSAMLStrategy"});
+                    Logger.instanse.error(error, span, { cls: "LoginProvider", func: "CreateSAMLStrategy" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -455,7 +429,7 @@ export class LoginProvider {
             function (req: express.Request, res: express.Response, next: express.NextFunction): void {
                 const span: Span = Logger.otel.startSpanExpress("SAML" + key, req);
                 try {
-                    if(req.user != null) {
+                    if (req.user != null) {
                         // @ts-ignore
                         if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
                             res.redirect("/login");
@@ -464,21 +438,21 @@ export class LoginProvider {
                     }
                     const originalUrl: any = req.cookies.originalUrl;
                     try {
-                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });    
-                    } catch (error) {                        
+                        res.cookie("provider", key, { maxAge: 900000, httpOnly: true });
+                    } catch (error) {
                     }
-                    
+
                     if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                         try {
-                            res.cookie("originalUrl", "", { expires: new Date(0) });    
-                        } catch (error) {                            
-                        }                        
+                            res.cookie("originalUrl", "", { expires: new Date(0) });
+                        } catch (error) {
+                        }
                         LoginProvider.redirect(res, originalUrl);
                     } else {
                         res.redirect("/");
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, span, {cls: "LoginProvider", func: "CreateSAMLStrategy"});
+                    Logger.instanse.error(error, span, { cls: "LoginProvider", func: "CreateSAMLStrategy" });
                     // @ts-ignore
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
@@ -493,7 +467,7 @@ export class LoginProvider {
     static CreateLocalStrategy(app: express.Express, baseurl: string): passport.Strategy {
         const strategy: passport.Strategy = new LocalStrategy({ passReqToCallback: true }, async (req: any, username: string, password: string, done: any): Promise<void> => {
             const span: Span = Logger.otel.startSpanExpress("LoginProvider.LocalLogin", req);
-            Logger.instanse.debug("Adding new local strategy", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+            Logger.instanse.debug("Adding new local strategy", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
             try {
                 let remoteip: string = "";
                 if (!NoderedUtil.IsNullUndefinded(req)) {
@@ -506,7 +480,7 @@ export class LoginProvider {
                 if (providers.length === 0 || NoderedUtil.IsNullEmpty(providers[0]._id)) {
                     user = await Logger.DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
-                        Logger.instanse.info("No login providers, creating " + username + " as admin", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+                        Logger.instanse.info("No login providers, creating " + username + " as admin", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
                         user = new User(); user.name = username; user.username = username;
                         await Crypt.SetPassword(user, password, span);
                         const jwt: string = Crypt.rootToken();
@@ -518,24 +492,24 @@ export class LoginProvider {
                         await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
                     } else {
                         if (!(await Crypt.ValidatePassword(user, password, span))) {
-                            Logger.instanse.error("No login providers, login for " + username + " failed", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+                            Logger.instanse.error("No login providers, login for " + username + " failed", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
                             await Audit.LoginFailed(username, "weblogin", "local", remoteip, "browser", "unknown", span);
                             return done(null, false);
                         }
-                        Logger.instanse.info("No login providers, updating " + username + " as admin", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+                        Logger.instanse.info("No login providers, updating " + username + " as admin", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
                         const admins: Role = await Logger.DBHelper.FindRoleByName("admins", null, span);
                         if (admins == null) throw new Error("Failed locating admins role!")
                         admins.AddMember(user);
                         await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
 
                     }
-                    Logger.instanse.info("Clear cache", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+                    Logger.instanse.info("Clear cache", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
                     await Logger.DBHelper.clearCache("Initialized", span);
                     await Audit.LoginSuccess(user, "weblogin", "local", remoteip, "browser", "unknown", span);
                     const provider: Provider = new Provider(); provider.provider = "local"; provider.name = "Local";
-                    Logger.instanse.info("Saving local provider", span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+                    Logger.instanse.info("Saving local provider", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
                     const result = await Config.db.InsertOne(provider, "config", 0, false, Crypt.rootToken(), span);
-                    Logger.instanse.info("local provider created as " + result._id, span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+                    Logger.instanse.info("local provider created as " + result._id, span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
                     await Logger.DBHelper.CheckCache("config", result, false, false, span);
                     const tuser: User = user;
                     done(null, tuser);
@@ -551,7 +525,6 @@ export class LoginProvider {
                         (model as any).defaultrole = "Viewer";
                         (model as any).rolemappings = { "admins": "Admin", "grafana editors": "Editor", "grafana admins": "Admin" };
 
-                        // (model as any).token_endpoint_auth_method = "none";
                         (model as any).token_endpoint_auth_method = "client_secret_post";
                         (model as any).response_types = ["code", "id_token", "code id_token"];
                         (model as any).grant_types = ["implicit", "authorization_code"];
@@ -581,11 +554,10 @@ export class LoginProvider {
                 }
                 const tuser = user;
                 await Audit.LoginSuccess(tuser, "weblogin", "local", remoteip, "browser", "unknown", span);
-                // tuser.roles.splice(40, tuser.roles.length)
                 Logger.otel.endSpan(span);
                 return done(null, tuser);
             } catch (error) {
-                Logger.instanse.error(error, span, {cls: "LoginProvider", func: "CreateLocalStrategy"});
+                Logger.instanse.error(error, span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
                 Logger.otel.endSpan(span);
                 done(error.message ? error.message : error);
             }
@@ -614,18 +586,17 @@ export class LoginProvider {
                 }
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
-                    if(info && info.message) {
+                    if (info && info.message) {
                         console.log(info.message);
-                        // if(err == null) { err = new Error(info.message); }
                     }
                     if (err) {
-                        Logger.instanse.error(err, null, {cls: "LoginProvider", func: "Localauthenticate"});
+                        Logger.instanse.error(err, null, { cls: "LoginProvider", func: "Localauthenticate" });
                     }
                     if (!err && user) {
                         req.logIn(user, function (err: any) {
                             if (err) {
-                                Logger.instanse.debug("req.logIn failed", null, {cls: "LoginProvider", func: "Localauthenticate"});
-                                Logger.instanse.error(err, null, {cls: "LoginProvider", func: "Localauthenticate"});
+                                Logger.instanse.debug("req.logIn failed", null, { cls: "LoginProvider", func: "Localauthenticate" });
+                                Logger.instanse.error(err, null, { cls: "LoginProvider", func: "Localauthenticate" });
                                 return next(err);
                             }
                             if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
@@ -634,14 +605,14 @@ export class LoginProvider {
                             } else if (!NoderedUtil.IsNullEmpty(originalUrl)) {
                                 try {
                                     try {
-                                        res.cookie("originalUrl", "", { expires: new Date(0) });    
-                                    } catch (error) {                                        
-                                    }                                    
+                                        res.cookie("originalUrl", "", { expires: new Date(0) });
+                                    } catch (error) {
+                                    }
                                     LoginProvider.redirect(res, originalUrl);
-                                    Logger.instanse.debug("redirect: " + originalUrl, null, {cls: "LoginProvider", func: "Localauthenticate"});
+                                    Logger.instanse.debug("redirect: " + originalUrl, null, { cls: "LoginProvider", func: "Localauthenticate" });
                                     return;
                                 } catch (error) {
-                                    Logger.instanse.error(error, null, {cls: "LoginProvider", func: "Localauthenticate"});
+                                    Logger.instanse.error(error, null, { cls: "LoginProvider", func: "Localauthenticate" });
                                 }
                             } else {
                                 res.redirect("/");
@@ -658,17 +629,17 @@ export class LoginProvider {
                         }
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
-                            Logger.instanse.debug("redirect: " + originalUrl, null, {cls: "LoginProvider", func: "Localauthenticate"});
+                            Logger.instanse.debug("redirect: " + originalUrl, null, { cls: "LoginProvider", func: "Localauthenticate" });
                             LoginProvider.redirect(res, originalUrl);
                         } catch (error) {
-                            Logger.instanse.error(error, null, {cls: "LoginProvider", func: "Localauthenticate"});
+                            Logger.instanse.error(error, null, { cls: "LoginProvider", func: "Localauthenticate" });
                         }
                     } else {
                         try {
                             res.redirect("/");
                             return next();
                         } catch (error) {
-                            Logger.instanse.error(error, null, {cls: "LoginProvider", func: "Localauthenticate"});
+                            Logger.instanse.error(error, null, { cls: "LoginProvider", func: "Localauthenticate" });
                         }
                     }
                 })(req, res, next);
@@ -684,7 +655,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug(username, span, {cls: "LoginProvider", func: "samlverify"});
+            Logger.instanse.debug(username, span, { cls: "LoginProvider", func: "samlverify" });
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             let remoteip: string = "";
             if (!NoderedUtil.IsNullUndefinded(req)) {
@@ -719,7 +690,7 @@ export class LoginProvider {
                 if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                     (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
-                if(_user.federationids == null) _user.federationids = [];
+                if (_user.federationids == null) _user.federationids = [];
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
                 if (exists.length == 0) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
@@ -763,7 +734,7 @@ export class LoginProvider {
             Logger.otel.endSpan(span);
             done(null, tuser);
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "samlverify"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "samlverify" });
         }
         Logger.otel.endSpan(span);
     }
@@ -780,7 +751,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug(profile.id, span, {cls: "LoginProvider", func: "openidverify"});
+            Logger.instanse.debug(profile.id, span, { cls: "LoginProvider", func: "openidverify" });
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(profile.id, issuer, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 _user = await Logger.DBHelper.FindByUsernameOrFederationid(profile.username, issuer, span);
@@ -794,17 +765,15 @@ export class LoginProvider {
                     if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
-                    // if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
                     if (NoderedUtil.IsNullEmpty(_user.name)) _user.name = username
                     let extraoptions = {
                         federationids: [new FederationId(profile.id, issuer)],
                         emailvalidated: true
                     }
-                    // ,emailvalidated: true
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
                 }
             } else {
-                if(_user.federationids == null) _user.federationids = [];
+                if (_user.federationids == null) _user.federationids = [];
                 var exists = _user.federationids.filter(x => x.id == profile.id && x.issuer == issuer);
                 if (exists.length == 0 || _user.emailvalidated == false) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
@@ -829,7 +798,7 @@ export class LoginProvider {
             await Audit.LoginSuccess(tuser, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
             done(null, tuser);
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "openidverify"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "openidverify" });
         }
         Logger.otel.endSpan(span);
     }
@@ -849,7 +818,7 @@ export class LoginProvider {
             let username: string = profile.username;
             if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
             if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
-            Logger.instanse.debug(username, span, {cls: "LoginProvider", func: "googleverify"});
+            Logger.instanse.debug(username, span, { cls: "LoginProvider", func: "googleverify" });
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             if (NoderedUtil.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
@@ -868,7 +837,7 @@ export class LoginProvider {
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
                 }
             } else {
-                if(_user.federationids == null) _user.federationids = [];
+                if (_user.federationids == null) _user.federationids = [];
                 var exists = _user.federationids.filter(x => x.id == username && x.issuer == issuer);
                 if (exists.length == 0 || _user.emailvalidated == false) {
                     _user.federationids = _user.federationids.filter(x => x.issuer != issuer);
@@ -893,7 +862,7 @@ export class LoginProvider {
             await Audit.LoginSuccess(tuser, "weblogin", "google", remoteip, "unknown", "unknown", span);
             done(null, tuser);
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "googleverify"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "googleverify" });
         }
         Logger.otel.endSpan(span);
     }
@@ -932,8 +901,8 @@ export class LoginProvider {
             let from = Config.smtp_from;
 
             if (Config.NODE_ENV != "production") {
-                Logger.instanse.warn("Skip sending email to " + to, span, {cls: "LoginProvider", func: "sendEmail"});
-                Logger.instanse.info(text, span, {cls: "LoginProvider", func: "sendEmail"});
+                Logger.instanse.warn("Skip sending email to " + to, span, { cls: "LoginProvider", func: "sendEmail" });
+                Logger.instanse.info(text, span, { cls: "LoginProvider", func: "sendEmail" });
                 resolve("email not sent");
             } else {
                 transporter.sendMail({
@@ -943,10 +912,10 @@ export class LoginProvider {
                     html
                 }, function (error, info) {
                     if (error) {
-                        Logger.instanse.error(error, span, {cls: "LoginProvider", func: "sendEmail"});
+                        Logger.instanse.error(error, span, { cls: "LoginProvider", func: "sendEmail" });
                         reject(error);
                     } else {
-                        Logger.instanse.info("Email sent to " + to + " " + info.response, span, {cls: "LoginProvider", func: "sendEmail"});
+                        Logger.instanse.info("Email sent to " + to + " " + info.response, span, { cls: "LoginProvider", func: "sendEmail" });
                         var item: any = new Base();
                         item.readcount = 0;
                         item._type = type;
@@ -971,23 +940,23 @@ export class LoginProvider {
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             if (req.user) {
-                Logger.instanse.verbose("User is signed in", span, {cls: "LoginProvider", func: "dashboardauth"});
+                Logger.instanse.verbose("User is signed in", span, { cls: "LoginProvider", func: "dashboardauth" });
                 const user: User = req.user;
                 span?.setAttribute("username", user.username);
                 if (user != null) {
                     const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                     if (allowed.length > 0) {
-                        Logger.instanse.verbose("Authorized " + user.username + " for " + req.url, span, {cls: "LoginProvider", func: "dashboardauth"});
+                        Logger.instanse.verbose("Authorized " + user.username + " for " + req.url, span, { cls: "LoginProvider", func: "dashboardauth" });
                         return res.send({
                             status: "success",
                             display_status: "Success",
                             message: "Connection OK"
                         });
                     } else {
-                        Logger.instanse.warn((user.username + " is not member of 'dashboardusers' for " + req.url), span, {cls: "LoginProvider", func: "dashboardauth"});
+                        Logger.instanse.warn((user.username + " is not member of 'dashboardusers' for " + req.url), span, { cls: "LoginProvider", func: "dashboardauth" });
                     }
                 } else {
-                    Logger.instanse.error("Failed casting user", span, {cls: "LoginProvider", func: "dashboardauth"});
+                    Logger.instanse.error("Failed casting user", span, { cls: "LoginProvider", func: "dashboardauth" });
                 }
             }
             const authorization: string = req.headers.authorization;
@@ -999,19 +968,19 @@ export class LoginProvider {
                 return;
             }
 
-            Logger.instanse.verbose("Lookup user by authentication header", span, {cls: "LoginProvider", func: "dashboardauth"});
+            Logger.instanse.verbose("Lookup user by authentication header", span, { cls: "LoginProvider", func: "dashboardauth" });
             var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
             if (user != null) {
                 const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
                 if (allowed.length > 0) {
-                    Logger.instanse.debug("User is authorized to see dashboard", span, {cls: "LoginProvider", func: "dashboardauth"});
+                    Logger.instanse.debug("User is authorized to see dashboard", span, { cls: "LoginProvider", func: "dashboardauth" });
                     return res.send({
                         status: "success",
                         display_status: "Success",
                         message: "Connection OK"
                     });
                 } else {
-                    Logger.instanse.warn(user.username + " is not member of 'dashboardusers' for " + req.url, span, {cls: "LoginProvider", func: "dashboardauth"});
+                    Logger.instanse.warn(user.username + " is not member of 'dashboardusers' for " + req.url, span, { cls: "LoginProvider", func: "dashboardauth" });
                 }
             }
             res.statusCode = 401;
@@ -1035,15 +1004,15 @@ export class LoginProvider {
             res.cookie("_session", "", { expires: new Date(0) });
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                Logger.instanse.debug("Redirect user to " + originalUrl, span, {cls: "LoginProvider", func: "Signout"});
+                Logger.instanse.debug("Redirect user to " + originalUrl, span, { cls: "LoginProvider", func: "Signout" });
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
-                Logger.instanse.debug("Redirect user to /", span, {cls: "LoginProvider", func: "Signout"});
+                Logger.instanse.debug("Redirect user to /", span, { cls: "LoginProvider", func: "Signout" });
                 res.redirect("/");
             }
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "Signout"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "Signout" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1055,15 +1024,15 @@ export class LoginProvider {
             req.logout();
             const originalUrl: any = req.cookies.originalUrl;
             if (!NoderedUtil.IsNullEmpty(originalUrl)) {
-                Logger.instanse.debug("Redirect user to " + originalUrl, span, {cls: "LoginProvider", func: "PassiveSignout"});
+                Logger.instanse.debug("Redirect user to " + originalUrl, span, { cls: "LoginProvider", func: "PassiveSignout" });
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
             } else {
-                Logger.instanse.debug("Redirect user to /", span, {cls: "LoginProvider", func: "PassiveSignout"});
+                Logger.instanse.debug("Redirect user to /", span, { cls: "LoginProvider", func: "PassiveSignout" });
                 res.redirect("/Login");
             }
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "PassiveSignout"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "PassiveSignout" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1075,7 +1044,7 @@ export class LoginProvider {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             res.setHeader("Content-Type", "application/json");
             if (req.user) {
-                Logger.instanse.debug("return user " + req.user._id, span, {cls: "LoginProvider", func: "getuser"});
+                Logger.instanse.debug("return user " + req.user._id, span, { cls: "LoginProvider", func: "getuser" });
                 await Logger.DBHelper.UserRoleUpdateId(req.user._id, false, span);
                 const user: User = await Logger.DBHelper.FindById(req.user._id, span);
                 user.validated = true;
@@ -1087,7 +1056,7 @@ export class LoginProvider {
                 }
                 res.end(JSON.stringify(user));
             } else {
-                Logger.instanse.debug("return nothing, not signed in", span, {cls: "LoginProvider", func: "getuser"});
+                Logger.instanse.debug("return nothing, not signed in", span, { cls: "LoginProvider", func: "getuser" });
                 res.end(JSON.stringify({}));
             }
             res.end();
@@ -1103,15 +1072,15 @@ export class LoginProvider {
             if (req.user) {
                 const user: User = req.user;
                 span?.setAttribute("username", user.username);
-                Logger.instanse.debug("return token for user " + req.user._id + " " + user.name, span, {cls: "LoginProvider", func: "getjwt"});
+                Logger.instanse.debug("return token for user " + req.user._id + " " + user.name, span, { cls: "LoginProvider", func: "getjwt" });
                 res.end(JSON.stringify({ jwt: await Auth.User2Token(user, Config.shorttoken_expires_in, span), user: user }));
             } else {
-                Logger.instanse.verbose("return nothing, not signed in", span, {cls: "LoginProvider", func: "getjwt"});
+                Logger.instanse.verbose("return nothing, not signed in", span, { cls: "LoginProvider", func: "getjwt" });
                 res.end(JSON.stringify({ jwt: "" }));
             }
             res.end();
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getjwt"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "getjwt" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1127,19 +1096,19 @@ export class LoginProvider {
                 span?.setAttribute("username", user.username);
 
                 if (!(user.validated == true) && Config.validate_user_form != "") {
-                    Logger.instanse.error("return nothing, user is not validated yet", span, {cls: "LoginProvider", func: "getjwtlong"});
+                    Logger.instanse.error("return nothing, user is not validated yet", span, { cls: "LoginProvider", func: "getjwtlong" });
                     res.end(JSON.stringify({ jwt: "" }));
                 } else {
-                    Logger.instanse.debug("return token for user " + req.user._id + " " + user.name, span, {cls: "LoginProvider", func: "getjwtlong"});
+                    Logger.instanse.debug("return token for user " + req.user._id + " " + user.name, span, { cls: "LoginProvider", func: "getjwtlong" });
                     res.end(JSON.stringify({ jwt: await Auth.User2Token(user, Config.longtoken_expires_in, span), user: user }));
                 }
             } else {
-                Logger.instanse.error("return nothing, not signed in", span, {cls: "LoginProvider", func: "getjwtlong"});
+                Logger.instanse.error("return nothing, not signed in", span, { cls: "LoginProvider", func: "getjwtlong" });
                 res.end(JSON.stringify({ jwt: "" }));
             }
             res.end();
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getjwtlong"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "getjwtlong" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1147,7 +1116,6 @@ export class LoginProvider {
     }
     static async post_jwt(req: any, res: any, next: any): Promise<void> {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.jwt", req);
-        // logger.debug("/jwt " + !(req.user == null));
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             const rawAssertion = req.body.token;
@@ -1155,10 +1123,10 @@ export class LoginProvider {
             const tuser: User = user;
             span?.setAttribute("username", user.username);
             res.setHeader("Content-Type", "application/json");
-            Logger.instanse.debug("Recreating jwt token", span, {cls: "LoginProvider", func: "postjwt"});
+            Logger.instanse.debug("Recreating jwt token", span, { cls: "LoginProvider", func: "postjwt" });
             res.end(JSON.stringify({ jwt: await Auth.User2Token(tuser, Config.shorttoken_expires_in, span) }));
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "postjwt"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "postjwt" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1172,7 +1140,7 @@ export class LoginProvider {
         if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
             agent_domain_schema = "$slug$." + Config.domain;
         }
-        
+
         let forceddomains = [];
         var providers = await Logger.DBHelper.GetProviders(null);
         for (let i = 0; i < providers.length; i++) {
@@ -1181,8 +1149,8 @@ export class LoginProvider {
                 forceddomains = forceddomains.concat(provider.forceddomains);
             }
         }
-        const loginproviders = (await Logger.DBHelper.GetProviders(null)).map((x:any)=> (
-            {name: x.name, id: x.id, provider: x.provider, issuer: x.issuer, logo: x.logo}
+        const loginproviders = (await Logger.DBHelper.GetProviders(null)).map((x: any) => (
+            { name: x.name, id: x.id, provider: x.provider, issuer: x.issuer, logo: x.logo }
         ))
         const res2 = {
             wshost: _url,
@@ -1219,10 +1187,10 @@ export class LoginProvider {
             enable_gitserver: Config.enable_gitserver,
             loginproviders,
         }
-        if(Config.otel_trace_url != null && Config.otel_trace_url != "") {
+        if (Config.otel_trace_url != null && Config.otel_trace_url != "") {
             res2["otel_trace_url"] = Config.otel_trace_url;
         }
-        if(Config.otel_metric_url != null && Config.otel_metric_url != "") {
+        if (Config.otel_metric_url != null && Config.otel_metric_url != "") {
             res2["otel_metric_url"] = Config.otel_metric_url;
         }
         return res2;
@@ -1236,10 +1204,10 @@ export class LoginProvider {
                 span?.setAttribute("username", user.username);
             }
             const res2 = await LoginProvider.config();
-            Logger.instanse.debug("Return configuration settings", span, {cls: "LoginProvider", func: "getconfig"});
+            Logger.instanse.debug("Return configuration settings", span, { cls: "LoginProvider", func: "getconfig" });
             res.end(JSON.stringify(res2));
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getconfig"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "getconfig" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1253,14 +1221,14 @@ export class LoginProvider {
             const key = req.body.key;
             let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
             if (!NoderedUtil.IsNullUndefinded(exists)) {
-                Logger.instanse.error("Key has already been used! " + key, span, {cls: "LoginProvider", func: "AddTokenRequest"});
+                Logger.instanse.error("Key has already been used! " + key, span, { cls: "LoginProvider", func: "AddTokenRequest" });
                 return res.status(500).send({ message: "Illegal key" });
             }
             await Logger.DBHelper.AddRequestTokenID(key, {}, span);
-            Logger.instanse.debug("Added token request " + key + " from " + remoteip, span, {cls: "LoginProvider", func: "AddTokenRequest"});
+            Logger.instanse.debug("Added token request " + key + " from " + remoteip, span, { cls: "LoginProvider", func: "AddTokenRequest" });
             res.status(200).send({ message: "ok" });
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "AddTokenRequest"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "AddTokenRequest" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1275,40 +1243,40 @@ export class LoginProvider {
             let exists: TokenRequest = null;
             exists = await Logger.DBHelper.FindRequestTokenID(key, span);
             if (NoderedUtil.IsNullUndefinded(exists)) {
-                Logger.instanse.error("Unknown key " + key + " from " + remoteip, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                Logger.instanse.error("Unknown key " + key + " from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                 res.status(200).send({ message: "Illegal key" });
                 return;
             }
 
             if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
-                Logger.instanse.debug("Token " + key + " has been forfilled from " + remoteip, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                Logger.instanse.debug("Token " + key + " has been forfilled from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                 if (Config.validate_user_form != "") {
                     try {
                         var tuser = await await Auth.Token2User(exists.jwt, span);
-                        if(tuser == null) throw new Error("Access denied");
+                        if (tuser == null) throw new Error("Access denied");
                         var user = await Logger.DBHelper.FindById(tuser._id, span);
                         if (user.validated == true) {
                             await Logger.DBHelper.RemoveRequestTokenID(key, span);
-                            Logger.instanse.debug("return jwt for " + key, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                            Logger.instanse.debug("return jwt for " + key, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                             res.status(200).send(Object.assign(exists, { message: "ok" }));
                         } else {
-                            Logger.instanse.debug("User not validated yet, for key " + key + " user " + user.name + " " + user._id, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                            Logger.instanse.debug("User not validated yet, for key " + key + " user " + user.name + " " + user._id, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                             res.status(200).send({ message: "ok" });
                         }
                     } catch (error) {
-                        Logger.instanse.error(error, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                        Logger.instanse.error(error, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                     }
                 } else {
-                    Logger.instanse.debug("return jwt for " + key, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                    Logger.instanse.debug("return jwt for " + key, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                     res.status(200).send(Object.assign(exists, { message: "ok" }));
                     await Logger.DBHelper.RemoveRequestTokenID(key, span);
                 }
             } else {
-                Logger.instanse.debug("No jwt for " + key, span, {remoteip, cls: "LoginProvider", func: "GetTokenRequest"});
+                Logger.instanse.debug("No jwt for " + key, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                 res.status(200).send(Object.assign(exists, { message: "ok" }));
             }
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "GetTokenRequest"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "GetTokenRequest" });
             try {
                 res.status(500).send({ message: error.message ? error.message : error });
             } catch (error) {
@@ -1333,31 +1301,31 @@ export class LoginProvider {
                     const user: User = await Logger.DBHelper.FindById(req.user._id, span);
                     var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
                     if (!NoderedUtil.IsNullUndefinded(exists)) {
-                        Logger.instanse.debug("adding jwt for request token " + key, span, {cls: "LoginProvider", func: "getlogin"});
+                        Logger.instanse.debug("adding jwt for request token " + key, span, { cls: "LoginProvider", func: "getlogin" });
                         await Logger.DBHelper.AddRequestTokenID(key, { jwt: await Auth.User2Token(user, Config.longtoken_expires_in, span) }, span);
                         try {
-                            res.cookie("requesttoken", "", { expires: new Date(0) });    
-                        } catch (error) {                            
-                        }                        
+                            res.cookie("requesttoken", "", { expires: new Date(0) });
+                        } catch (error) {
+                        }
                     }
                 } else {
                     try {
-                        res.cookie("requesttoken", key, { maxAge: 36000, httpOnly: true });    
-                    } catch (error) {                        
-                    }                    
+                        res.cookie("requesttoken", key, { maxAge: 36000, httpOnly: true });
+                    } catch (error) {
+                    }
                 }
             }
             if (!NoderedUtil.IsNullEmpty(req.query.key)) {
                 if (req.user) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
-                    Logger.instanse.debug("User signed in, with key " + key, span, {cls: "LoginProvider", func: "getlogin"});
+                    Logger.instanse.debug("User signed in, with key " + key, span, { cls: "LoginProvider", func: "getlogin" });
                     this.redirect(res, "/");
                 } else {
                     try {
                         res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                     } catch (error) {
                     }
-                    Logger.instanse.debug("User not signed in, redirect to /login", span, {cls: "LoginProvider", func: "getlogin"});
+                    Logger.instanse.debug("User not signed in, redirect to /login", span, { cls: "LoginProvider", func: "getlogin" });
                     this.redirect(res, "/login");
                 }
             }
@@ -1378,11 +1346,11 @@ export class LoginProvider {
             const originalUrl: any = req.cookies.originalUrl;
             const validateurl: any = req.cookies.validateurl;
             if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
-                Logger.instanse.debug("Save originalUrl as " + originalUrl, span, {cls: "LoginProvider", func: "getlogin"});
+                Logger.instanse.debug("Save originalUrl as " + originalUrl, span, { cls: "LoginProvider", func: "getlogin" });
                 try {
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 } catch (error) {
-                }                
+                }
             }
             if (!NoderedUtil.IsNullEmpty(validateurl)) {
                 if (tuser != null) {
@@ -1393,7 +1361,7 @@ export class LoginProvider {
                     } else {
                         res.cookie("validateurl", "", { expires: new Date(0) });
                         res.cookie("originalUrl", "", { expires: new Date(0) });
-                        Logger.instanse.debug("redirect to validateurl /#" + validateurl, span, {cls: "LoginProvider", func: "getlogin"});
+                        Logger.instanse.debug("redirect to validateurl /#" + validateurl, span, { cls: "LoginProvider", func: "getlogin" });
                         this.redirect(res, "/#" + validateurl);
                         return;
                     }
@@ -1401,45 +1369,41 @@ export class LoginProvider {
             }
             if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl) && tuser.validated) {
                 if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
-                    if(originalUrl != "/login" && originalUrl != "/Login") {
-                        Logger.instanse.debug("user validated, redirect to " + originalUrl, span, {cls: "LoginProvider", func: "getlogin"});
+                    if (originalUrl != "/login" && originalUrl != "/Login") {
+                        Logger.instanse.debug("user validated, redirect to " + originalUrl, span, { cls: "LoginProvider", func: "getlogin" });
                         this.redirect(res, originalUrl);
                     } else {
-                        Logger.instanse.debug("user signed in, redirect to /", span, {cls: "LoginProvider", func: "getlogin"});
+                        Logger.instanse.debug("user signed in, redirect to /", span, { cls: "LoginProvider", func: "getlogin" });
                         this.redirect(res, "/");
                     }
                     return;
                 } else if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
-                    if(originalUrl != "/login" && originalUrl != "/Login") {
-                        Logger.instanse.debug("user signed in, redirect to " + originalUrl, span, {cls: "LoginProvider", func: "getlogin"});
+                    if (originalUrl != "/login" && originalUrl != "/Login") {
+                        Logger.instanse.debug("user signed in, redirect to " + originalUrl, span, { cls: "LoginProvider", func: "getlogin" });
                         this.redirect(res, originalUrl);
                     } else {
-                        Logger.instanse.debug("user signed in, redirect to /", span, {cls: "LoginProvider", func: "getlogin"});
+                        Logger.instanse.debug("user signed in, redirect to /", span, { cls: "LoginProvider", func: "getlogin" });
                         this.redirect(res, "/");
                     }
                     return;
                 }
             }
             if (tuser != null && tuser.validated) {
-                Logger.instanse.debug("redirect to /", span, {cls: "LoginProvider", func: "getlogin"});
+                Logger.instanse.debug("redirect to /", span, { cls: "LoginProvider", func: "getlogin" });
                 this.redirect(res, "/");
             } else {
-                Logger.instanse.debug("return PassiveLogin.html", span, {cls: "LoginProvider", func: "getlogin"});
+                Logger.instanse.debug("return PassiveLogin.html", span, { cls: "LoginProvider", func: "getlogin" });
                 const localfile = path.join(__dirname, 'public', "PassiveLogin.html");
                 const webappfile = path.join(WebServer.webapp_file_path, "PassiveLogin.html");
                 const webappfile2 = path.join(WebServer.webapp_file_path, "client/PassiveLogin.html");
                 const webappfile3 = path.join(WebServer.webapp_file_path, "client/ui/PassiveLogin.html");
-                if(fs.existsSync(webappfile)) {
-                    // console.log("serve webapp " + webappfile);
+                if (fs.existsSync(webappfile)) {
                     res.sendFile(webappfile);
-                } else if(fs.existsSync(webappfile2)) {
-                    // console.log("serve file " + webappfile2);
+                } else if (fs.existsSync(webappfile2)) {
                     res.sendFile(webappfile2);
-                } else if(fs.existsSync(webappfile3)) {
-                    // console.log("serve file " + webappfile3);
+                } else if (fs.existsSync(webappfile3)) {
                     res.sendFile(webappfile3);
-                } else if(fs.existsSync(localfile)) {
-                    // console.log("serve file " + localfile);
+                } else if (fs.existsSync(localfile)) {
                     res.sendFile(localfile);
                 } else {
                     console.log("file not found " + localfile);
@@ -1447,7 +1411,7 @@ export class LoginProvider {
                 }
             }
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getlogin"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "getlogin" });
             try {
                 return res.status(500).send({ message: error.message ? error.message : error });
             } catch (error) {
@@ -1459,23 +1423,19 @@ export class LoginProvider {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
         try {
             var requestedfile = req.url.split("?")[0].split("#")[0].replace("/login/", "");
-            Logger.instanse.debug("return PassiveLogin.html", span, {cls: "LoginProvider", func: "getlogin"});
+            Logger.instanse.debug("return PassiveLogin.html", span, { cls: "LoginProvider", func: "getlogin" });
             const localfile = path.join(__dirname, 'public', requestedfile);
             const webappfile = path.join(WebServer.webapp_file_path, requestedfile);
-            if(fs.existsSync(webappfile)) {
-                // console.log("serve webapp " + webappfile);
+            if (fs.existsSync(webappfile)) {
                 res.sendFile(webappfile);
-            } else if(fs.existsSync(localfile)) {
-                // console.log("serve file " + localfile);
+            } else if (fs.existsSync(localfile)) {
                 res.sendFile(localfile);
             } else {
                 const localfile = path.join(__dirname, 'public', "PassiveLogin.html");
                 const webappfile = path.join(WebServer.webapp_file_path, "PassiveLogin.html");
-                if(fs.existsSync(webappfile)) {
-                    // console.log("serve webapp " + webappfile);
+                if (fs.existsSync(webappfile)) {
                     res.sendFile(webappfile);
-                } else if(fs.existsSync(localfile)) {
-                    // console.log("serve file " + localfile);
+                } else if (fs.existsSync(localfile)) {
                     res.sendFile(localfile);
                 } else {
                     console.log("file not found " + localfile);
@@ -1483,7 +1443,7 @@ export class LoginProvider {
                 }
             }
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getlogin"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "getlogin" });
             try {
                 return res.status(500).send({ message: error.message ? error.message : error });
             } catch (error) {
@@ -1495,9 +1455,9 @@ export class LoginProvider {
         const span: Span = Logger.otel.startSpanExpress("LoginProvider.login", req);
         try {
             var basepath = WebServer.webapp_file_path;
-            if(fs.existsSync(basepath + "/index.html")) {
+            if (fs.existsSync(basepath + "/index.html")) {
                 res.sendFile(basepath + "/index.html");
-            } else if(fs.existsSync(basepath + "/index.htm")) {
+            } else if (fs.existsSync(basepath + "/index.htm")) {
                 res.sendFile(basepath + "/index.html");
             } else {
                 console.log("file not found ");
@@ -1505,7 +1465,7 @@ export class LoginProvider {
             }
 
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "getlogin"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "getlogin" });
             try {
                 return res.status(500).send({ message: error.message ? error.message : error });
             } catch (error) {
@@ -1519,7 +1479,7 @@ export class LoginProvider {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             res.setHeader("Content-Type", "application/json");
             if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
-                Logger.instanse.debug("No validate user form set, return nothing", span, {cls: "LoginProvider", func: "validateuserform"});
+                Logger.instanse.debug("No validate user form set, return nothing", span, { cls: "LoginProvider", func: "validateuserform" });
                 res.end(JSON.stringify({}));
                 res.end();
                 Logger.otel.endSpan(span);
@@ -1527,18 +1487,18 @@ export class LoginProvider {
             }
             var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, span);
             if (forms.length == 1) {
-                Logger.instanse.debug("Return form " + Config.validate_user_form, span, {cls: "LoginProvider", func: "validateuserform"});
+                Logger.instanse.debug("Return form " + Config.validate_user_form, span, { cls: "LoginProvider", func: "validateuserform" });
                 res.end(JSON.stringify(forms[0]));
                 res.end();
                 Logger.otel.endSpan(span);
                 return;
             }
-            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!", span, {cls: "LoginProvider", func: "validateuserform"});
+            Logger.instanse.error("validate_user_form " + Config.validate_user_form + " does not exists!", span, { cls: "LoginProvider", func: "validateuserform" });
             Config.validate_user_form = "";
             res.end(JSON.stringify({}));
             res.end();
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "validateuserform"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "validateuserform" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
@@ -1564,7 +1524,7 @@ export class LoginProvider {
             const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } }, "$inc": { "readcount": 1 } };
             var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
         } catch (error) {
-            Logger.instanse.error(error, null, {cls: "LoginProvider", func: "read"});
+            Logger.instanse.error(error, null, { cls: "LoginProvider", func: "read" });
         }
     }
     static async post_validateuserform(req: any, res) {
@@ -1603,14 +1563,14 @@ export class LoginProvider {
                         if (Config.validate_emails) {
                             if (Config.smtp_service == "gmail") {
                                 if (NoderedUtil.IsNullEmpty(Config.smtp_user) || NoderedUtil.IsNullEmpty(Config.smtp_pass)) {
-                                    Logger.instanse.error("Disabling email validation, missing login information fot gmail", span, {cls: "LoginProvider", func: "validateuserform"});
+                                    Logger.instanse.error("Disabling email validation, missing login information fot gmail", span, { cls: "LoginProvider", func: "validateuserform" });
                                     Config.validate_emails = false;
                                 }
                             } else if (NoderedUtil.IsNullEmpty(Config.smtp_url)) {
-                                Logger.instanse.error("Disabling email validation, missing smtp_url", span, {cls: "LoginProvider", func: "validateuserform"});
+                                Logger.instanse.error("Disabling email validation, missing smtp_url", span, { cls: "LoginProvider", func: "validateuserform" });
                                 Config.validate_emails = false;
                             } else if (NoderedUtil.IsNullEmpty(Config.smtp_from)) {
-                                Logger.instanse.error("Disabling email validation, missing smtp_from", span, {cls: "LoginProvider", func: "validateuserform"});
+                                Logger.instanse.error("Disabling email validation, missing smtp_from", span, { cls: "LoginProvider", func: "validateuserform" });
                                 Config.validate_emails = false;
                             }
                         }
@@ -1643,7 +1603,7 @@ export class LoginProvider {
                                 var exists = await Config.db.query<User>({ query: { "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, span);
                                 exists = exists.filter(x => x._id != tuser._id);
                                 if (exists.length > 0) {
-                                    Logger.instanse.error(tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")", span, {cls: "LoginProvider", func: "validateuserform"})
+                                    Logger.instanse.error(tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")", span, { cls: "LoginProvider", func: "validateuserform" })
                                     email = "";
                                     delete UpdateDoc.$set["email"];
                                     UpdateDoc.$set["formvalidated"] = false;
@@ -1661,7 +1621,7 @@ export class LoginProvider {
                                         `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`, span);
                                 }
                             } else {
-                                Logger.instanse.error(tuser.name + " email is mandatory)", span, {cls: "LoginProvider", func: "validateuserform"});
+                                Logger.instanse.error(tuser.name + " email is mandatory)", span, { cls: "LoginProvider", func: "validateuserform" });
                                 throw new Error("email is mandatory.");
                             }
                         } else {
@@ -1670,15 +1630,15 @@ export class LoginProvider {
                         }
 
 
-                        Logger.instanse.debug("Update user " + tuser.name + " information", span, {cls: "LoginProvider", func: "validateuserform"});
+                        Logger.instanse.debug("Update user " + tuser.name + " information", span, { cls: "LoginProvider", func: "validateuserform" });
                         var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                         await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                     }
                     if (!(tuser.validated == true) && Config.validate_user_form != "") {
-                        Logger.instanse.debug("User not validated, return no token for user " + tuser.name, span, {cls: "LoginProvider", func: "validateuserform"});
+                        Logger.instanse.debug("User not validated, return no token for user " + tuser.name, span, { cls: "LoginProvider", func: "validateuserform" });
                         res.end(JSON.stringify({ jwt: "" }));
                     } else {
-                        Logger.instanse.debug("Return new jwt for user " + tuser.name, span, {cls: "LoginProvider", func: "validateuserform"});
+                        Logger.instanse.debug("Return new jwt for user " + tuser.name, span, { cls: "LoginProvider", func: "validateuserform" });
                         res.end(JSON.stringify({ jwt: await Auth.User2Token(tuser, Config.longtoken_expires_in, span), user: tuser }));
                     }
                 } else if (req.body) {
@@ -1711,12 +1671,6 @@ export class LoginProvider {
                                 u.validated = true;
                                 u.emailvalidated = true;
                                 await Logger.DBHelper.Save(u, Crypt.rootToken(), span);
-
-                                // const UpdateDoc: any = { "$set": {}, "$unset": {} };
-                                // UpdateDoc.$unset["_mailcode"] = "";
-                                // UpdateDoc.$set["validated"] = true;
-                                // UpdateDoc.$set["emailvalidated"] = true;
-                                // var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                                 await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                                 res.end(JSON.stringify({ jwt: await Auth.User2Token(tuser, Config.longtoken_expires_in, span), user: tuser }));
                                 return;
@@ -1731,11 +1685,11 @@ export class LoginProvider {
 
                 }
             } else {
-                Logger.instanse.error("User no longer signed in", span, {cls: "LoginProvider", func: "validateuserform"});
+                Logger.instanse.error("User no longer signed in", span, { cls: "LoginProvider", func: "validateuserform" });
                 res.end(JSON.stringify({ jwt: "" }));
             }
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "validateuserform"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "validateuserform" });
             return res.status(500).send({ message: error.message ? error.message : error });
         }
         Logger.otel.endSpan(span);
@@ -1750,17 +1704,17 @@ export class LoginProvider {
                 const email: string = req.body.email;
                 let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
                 if (user == null) {
-                    Logger.instanse.error("Received unknown email " + email, span, {cls: "LoginProvider", func: "forgotpassword"});
+                    Logger.instanse.error("Received unknown email " + email, span, { cls: "LoginProvider", func: "forgotpassword" });
                     return res.end(JSON.stringify({ id }));
                 }
                 const code = NoderedUtil.GetUniqueIdentifier();
                 var key = ("forgotpass_" + id).toString();
                 let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
-                    Logger.instanse.debug(`Add forgotpass if ${id} with code ${code} for ${email}`, span, {cls: "LoginProvider", func: "forgotpassword"});
+                    Logger.instanse.debug(`Add forgotpass if ${id} with code ${code} for ${email}`, span, { cls: "LoginProvider", func: "forgotpassword" });
                     return { id, email, code };
                 });
                 if (item.id != id || item.email != email || item.code != code) {
-                    Logger.instanse.error("Recevied wrong mail for id " + id, span, {cls: "LoginProvider", func: "forgotpassword"});
+                    Logger.instanse.error("Recevied wrong mail for id " + id, span, { cls: "LoginProvider", func: "forgotpassword" });
                     return res.end(JSON.stringify({ id }));
                 }
                 this.sendEmail("pwreset", user._id, email, "Reset password request",
@@ -1778,9 +1732,9 @@ export class LoginProvider {
                 });
                 if (item == null || item.id != id || item.code != code) {
                     if (item == null) {
-                        Logger.instanse.error("Recevied unknown id " + id, span, {cls: "LoginProvider", func: "forgotpassword"});
+                        Logger.instanse.error("Recevied unknown id " + id, span, { cls: "LoginProvider", func: "forgotpassword" });
                     } else {
-                        Logger.instanse.error("Recevied wrong code for id " + id, span, {cls: "LoginProvider", func: "forgotpassword"});
+                        Logger.instanse.error("Recevied wrong code for id " + id, span, { cls: "LoginProvider", func: "forgotpassword" });
                     }
                     throw new Error("Recevied wrong code for id " + id);
                 }
@@ -1793,11 +1747,11 @@ export class LoginProvider {
 
                 var key = ("forgotpass_" + id).toString();
                 let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
-                    Logger.instanse.debug("Add forgotpass : " + id, span, {cls: "LoginProvider", func: "forgotpassword"});
+                    Logger.instanse.debug("Add forgotpass : " + id, span, { cls: "LoginProvider", func: "forgotpassword" });
                     return null;
                 });
                 if (item == null || item.id != id || item.code != code) {
-                    Logger.instanse.error("Recevied wrong code for id " + id, span, {cls: "LoginProvider", func: "forgotpassword"});
+                    Logger.instanse.error("Recevied wrong code for id " + id, span, { cls: "LoginProvider", func: "forgotpassword" });
                     throw new Error("Recevied wrong code for id " + id);
                 }
                 let user = await Config.db.getbyusername<User>(item.email, null, Crypt.rootToken(), true, span);
@@ -1816,7 +1770,7 @@ export class LoginProvider {
             }
             res.end(JSON.stringify({}));
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "forgotpassword"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "forgotpassword" });
             return res.status(500).send({ message: error.message ? error.message : error });
         }
         Logger.otel.endSpan(span);
@@ -1831,7 +1785,7 @@ export class LoginProvider {
             res.end(JSON.stringify(result.filter(x => x.enabled !== false)));
             res.end();
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "loginproviders"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "loginproviders" });
             Logger.otel.endSpan(span);
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
@@ -1847,7 +1801,7 @@ export class LoginProvider {
             const authHeader = req.headers.authorization;
             if (authHeader) {
                 user = await Auth.Token2User(authHeader, span);
-                if(user == null) throw new Error("Access denied");
+                if (user == null) throw new Error("Access denied");
                 jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
             }
             else if (req.user) {
@@ -1873,7 +1827,7 @@ export class LoginProvider {
             });
             downloadStream.pipe(res);
         } catch (error) {
-            Logger.instanse.error(error, span, {cls: "LoginProvider", func: "download"});
+            Logger.instanse.error(error, span, { cls: "LoginProvider", func: "download" });
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);

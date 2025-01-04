@@ -71,7 +71,6 @@ function doHouseKeeping(span: Span) {
     } else {
         // While debugging, always do all calculations
         HouseKeeping.DoHouseKeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
-        // msg2._Housekeeping(true, true, true, null).catch((error) => Logger.instanse.error("index", "doHouseKeeping", error));
     }
 }
 function initHouseKeeping(span: Span) {
@@ -125,7 +124,6 @@ async function initDatabase(parent: Span): Promise<boolean> {
                 await lic?.validate();
             }
         } catch (error) {
-            // console.log(error);
         }
         try {
             await Logger.configure(false, true);
@@ -133,8 +131,8 @@ async function initDatabase(parent: Span): Promise<boolean> {
             cerror(error);
             process.exit(404);
         }
-        const users = await Config.db.query<User>({ query: { _type: "role" }, top: 4, collectionname: "users", projection: {"name": 1}, jwt: jwt }, span);
-        if(users.length != 4) {
+        const users = await Config.db.query<User>({ query: { _type: "role" }, top: 4, collectionname: "users", projection: { "name": 1 }, jwt: jwt }, span);
+        if (users.length != 4) {
             await HouseKeeping.ensureBuiltInUsersAndRoles(span);
         }
         return true;
@@ -161,7 +159,6 @@ process.on("exit", (code) => {
 const unhandledRejections = new Map();
 process.on("unhandledRejection", (reason, promise) => {
     Logger.instanse.error(reason as any, null);
-    // ("Unhandled Rejection at: Promise", promise, "reason:", reason);
     unhandledRejections.set(promise, reason);
 });
 process.on("rejectionHandled", (promise) => {
@@ -169,15 +166,9 @@ process.on("rejectionHandled", (promise) => {
 });
 process.on("uncaughtException", (err, origin) => {
     Logger.instanse.error(err, null);
-    // (`Caught exception: ${err}\n` +
-    //     `Exception origin: ${origin}`
-    // );
 });
 function onerror(err, origin) {
     Logger.instanse.error(err, null);
-    // (`Caught exception Monitor: ${err}\n` +
-    //     `Exception origin: ${origin}`
-    // );
 }
 process.on("uncaughtExceptionMonitor", onerror);
 function onWarning(warning) {
@@ -204,7 +195,6 @@ async function handle(signal, value) {
         Config.db.shutdown();
         Logger.otel.shutdown();
         Logger.License.shutdown()
-        // Auth.shutdown();
         if (housekeeping != null) {
             try {
                 clearInterval(housekeeping);

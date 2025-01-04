@@ -25,7 +25,7 @@ export class OAuthProvider {
             for (var i = 0; i < this.instance.clients.length; i++) {
                 var cli = this.instance.clients[i];
                 var auth = ctx.oidc.session.authorizations[cli.id];
-                if(auth == null) auth = ctx.oidc.session.authorizations[cli.client_id];
+                if (auth == null) auth = ctx.oidc.session.authorizations[cli.client_id];
                 if (auth) {
                     if (cli.openflowsignout && cli.openflowsignout == true) {
                         ctx.req.logout();
@@ -89,10 +89,6 @@ export class OAuthProvider {
         ctx.body += `</div>
       </body>
       </html>`;
-        if (!NoderedUtil.IsNullEmpty(ctx.req.cookies.oidcrefere)) {
-            // ctx.res.cookie("oidcrefere", "", { expires: new Date(0) });
-            // LoginProvider.redirect(ctx.res, ctx.req.cookies.oidcrefere);
-        }
     }
     static store = new Map();
     public static generatekeys() {
@@ -144,91 +140,73 @@ export class OAuthProvider {
                 if (cli.grant_types == null) cli.grant_types = ["implicit", "authorization_code"];
             });
             var agent = instance.clients.find(x => x.client_id == "webapp");
-            if(agent == null) {
+            if (agent == null) {
                 instance.clients.push({
-                        grants: ['password', 'refresh_token', 'authorization_code'],
-                        defaultrole : "Viewer",
-                        rolemappings : { "admins": "Admin" },
-                        clientId: "webapp",client_id: "webapp", 
-                        token_endpoint_auth_method: "none",
-                        response_types: ["code", "id_token", "code id_token"],
-                        grant_types: ['implicit', 'authorization_code'],
-                        post_logout_redirect_uris: [],
-                        redirect_uris: [],
-                        openflowsignout: true
-                    }
+                    grants: ['password', 'refresh_token', 'authorization_code'],
+                    defaultrole: "Viewer",
+                    rolemappings: { "admins": "Admin" },
+                    clientId: "webapp", client_id: "webapp",
+                    token_endpoint_auth_method: "none",
+                    response_types: ["code", "id_token", "code id_token"],
+                    grant_types: ['implicit', 'authorization_code'],
+                    post_logout_redirect_uris: [],
+                    redirect_uris: [],
+                    openflowsignout: true
+                }
                 )
             }
             var agent = instance.clients.find(x => x.client_id == "agent");
-            if(agent == null) {
+            if (agent == null) {
                 instance.clients.push({
-                        grants: ["password", "refresh_token", "authorization_code"],
-                        defaultrole : "Viewer",
-                        rolemappings : { "admins": "Admin" },
-                        clientId: "agent",client_id: "agent", 
-                        token_endpoint_auth_method: "none",
-                        response_types: ["code", "id_token", "code id_token"],
-                        grant_types: ["implicit", "authorization_code"],
-                        post_logout_redirect_uris: [],
-                        redirect_uris: [],
-                        openflowsignout: true
-                    }
+                    grants: ["password", "refresh_token", "authorization_code"],
+                    defaultrole: "Viewer",
+                    rolemappings: { "admins": "Admin" },
+                    clientId: "agent", client_id: "agent",
+                    token_endpoint_auth_method: "none",
+                    response_types: ["code", "id_token", "code id_token"],
+                    grant_types: ["implicit", "authorization_code"],
+                    post_logout_redirect_uris: [],
+                    redirect_uris: [],
+                    openflowsignout: true
+                }
                 )
             }
             var agent = instance.clients.find(x => x.client_id == "openai");
-            if(agent == null) {
+            if (agent == null) {
                 // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
                 instance.clients.push({
-                        grants: ["password", "refresh_token", "authorization_code"],
-                        defaultrole : "Viewer",
-                        rolemappings : { "admins": "Admin" },
-                        clientId: "openai",client_id: "openai", 
-                        client_secret: "openai",
-                        token_endpoint_auth_method: "client_secret_post",
-                        response_types: ["code", "id_token", "code id_token"],
-                        grant_types: ["implicit", "authorization_code"],
-                        post_logout_redirect_uris: [],
-                        redirect_uris: [],
-                        openflowsignout: true
-                    }
+                    grants: ["password", "refresh_token", "authorization_code"],
+                    defaultrole: "Viewer",
+                    rolemappings: { "admins": "Admin" },
+                    clientId: "openai", client_id: "openai",
+                    client_secret: "openai",
+                    token_endpoint_auth_method: "client_secret_post",
+                    response_types: ["code", "id_token", "code id_token"],
+                    grant_types: ["implicit", "authorization_code"],
+                    post_logout_redirect_uris: [],
+                    redirect_uris: [],
+                    openflowsignout: true
+                }
                 )
             }
             var agent = instance.clients.find(x => x.client_id == "openapi");
-            if(agent == null) {
+            if (agent == null) {
                 // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
                 instance.clients.push({
-                        grants: ["password", "refresh_token", "authorization_code"],
-                        defaultrole : "Viewer",
-                        rolemappings : { "admins": "Admin" },
-                        clientId: "openapi",client_id: "openapi", 
-                        client_secret: "openapi",
-                        token_endpoint_auth_method: "client_secret_post",
-                        response_types: ["code", "id_token", "code id_token"],
-                        grant_types: ["implicit", "authorization_code"],
-                        post_logout_redirect_uris: [],
-                        redirect_uris: [],
-                        openflowsignout: true
-                    }
+                    grants: ["password", "refresh_token", "authorization_code"],
+                    defaultrole: "Viewer",
+                    rolemappings: { "admins": "Admin" },
+                    clientId: "openapi", client_id: "openapi",
+                    client_secret: "openapi",
+                    token_endpoint_auth_method: "client_secret_post",
+                    response_types: ["code", "id_token", "code id_token"],
+                    grant_types: ["implicit", "authorization_code"],
+                    post_logout_redirect_uris: [],
+                    redirect_uris: [],
+                    openflowsignout: true
+                }
                 )
             }
-            // var grafana = instance.clients.find(x => x.client_id == "grafana");
-            // if(grafana == null) {
-            //     instance.clients.push({
-            //             grants: ["password", "refresh_token", "authorization_code"],
-            //             defaultrole : "Viewer",
-            //             rolemappings : { "admins": "Admin" },
-            //             clientId: "grafana",client_id: "grafana", 
-            //             clientSecret: "tf555FrdWK7XJxYv2Nw3N1iFOliK4HHeIGct", client_secret: "tf555FrdWK7XJxYv2Nw3N1iFOliK4HHeIGct",
-            //             token_endpoint_auth_method: "client_secret_post",
-            //             response_types: ["code", "id_token", "code id_token"],
-            //             grant_types: ["implicit", "authorization_code"],
-            //             post_logout_redirect_uris: [],
-            //             redirect_uris: [],
-            //             openflowsignout: true
-            //         }
-            //     )
-            // }
-
             const provider = new Provider(Config.baseurl() + "oidc", {
                 clients: instance.clients,
                 adapter: MongoAdapter,
@@ -319,8 +297,6 @@ export class OAuthProvider {
                     }
                 }
                 instance.oidc.callback(req, res);
-                // return next();
-                // if (req.originalUrl.indexOf("/oidc") > -1) return next();
             });
 
             instance.app.use("/oidc/*", async (req, res, next) => {
@@ -474,19 +450,19 @@ export class Account {
             roles.push("guests");
         } else if (!NoderedUtil.IsNullUndefinded(user.roles) && Array.isArray(user.roles) && user.roles.length > 0) {
             if (!NoderedUtil.IsNullEmpty(user.roles[0].name)) {
-                for(let i = 0; i < DatabaseConnection.WellknownIdsArray.length; i++) {
+                for (let i = 0; i < DatabaseConnection.WellknownIdsArray.length; i++) {
                     let hasrole = user.roles.find(x => x._id == DatabaseConnection.WellknownIdsArray[i]);
                     if (hasrole) {
                         roles.push(hasrole.name);
                     }
                 }
-                if(roles.indexOf("users") == -1){
+                if (roles.indexOf("users") == -1) {
                     roles.push("users");
-                }                
+                }
                 for (let i = 0; i < user.roles.length && roles.length < Config.oidc_max_roles; i++) {
-                    if(roles.indexOf(user.roles[i].name) == -1) {
+                    if (roles.indexOf(user.roles[i].name) == -1) {
                         roles.push(user.roles[i].name);
-                    }                    
+                    }
                 }
                 user.roles = roles;
             }

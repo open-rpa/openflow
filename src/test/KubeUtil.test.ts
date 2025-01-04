@@ -1,7 +1,7 @@
 import { suite, test, timeout } from "@testdeck/mocha";
+import assert from "assert";
 import { Config } from "../Config.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
-import assert from "assert";
 import { Logger } from "../Logger.js";
 // @ts-ignore
 import { KubeUtil } from "../ee/KubeUtil.js";
@@ -19,6 +19,7 @@ import { KubeUtil } from "../ee/KubeUtil.js";
     async after() {
         await Logger.shutdown();
     }
+    @timeout(60000)
     @test async "GetStatefulSet"() {
         var sfs = await KubeUtil.instance().GetStatefulSet(Config.namespace, "findme");
         assert.strictEqual(sfs, null)

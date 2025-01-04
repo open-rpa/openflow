@@ -1,12 +1,12 @@
 // import wtf from "wtfnode";
+import { NoderedUtil, SigninMessage } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
-import { Message } from "../Messages/Message.js";
+import assert from "assert";
+import { Auth } from "../Auth.js";
 import { Config } from "../Config.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
-import assert from "assert";
 import { Logger } from "../Logger.js";
-import { Auth } from "../Auth.js";
-import { NoderedUtil, SigninMessage } from "@openiap/openflow-api";
+import { Message } from "../Messages/Message.js";
 
 @suite class auth_test {
     @timeout(10000)

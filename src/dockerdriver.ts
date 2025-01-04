@@ -1,13 +1,13 @@
 import { NoderedUtil, User } from "@openiap/openflow-api";
-import { iAgent, i_agent_driver } from "./commoninterfaces.js";
-import { Logger } from "./Logger.js";
 import { Span } from "@opentelemetry/api";
-import { Crypt } from "./Crypt.js";
-import { Config } from "./Config.js";
-import os from "os";
 import Docker from "dockerode";
+import os from "os";
 import { Audit } from "./Audit.js";
 import { Auth } from "./Auth.js";
+import { iAgent, i_agent_driver } from "./commoninterfaces.js";
+import { Config } from "./Config.js";
+import { Crypt } from "./Crypt.js";
+import { Logger } from "./Logger.js";
 export class dockerdriver implements i_agent_driver {
     public async detect(): Promise<boolean> {
         try {
@@ -27,16 +27,16 @@ export class dockerdriver implements i_agent_driver {
         } catch (error) {
         }
         var pull: boolean = false;
-        if(image == null) pull = true;
-        if(imagename.indexOf(":") == -1) {
+        if (image == null) pull = true;
+        if (imagename.indexOf(":") == -1) {
             pull = true;
-        } else if(imagename.indexOf(":latest") > -1) {
+        } else if (imagename.indexOf(":latest") > -1) {
             pull = true;
-        } else if(imagename.indexOf(":edge") > -1) {
+        } else if (imagename.indexOf(":edge") > -1) {
             pull = true;
         }
 
-        if(pull) {
+        if (pull) {
             Logger.instanse.info("Pull image " + imagename, span);
             await docker.pull(imagename)
         }
@@ -49,23 +49,23 @@ export class dockerdriver implements i_agent_driver {
         Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
 
         var agent_grpc_apihost = "api";
-        if(Config.agent_grpc_apihost != null && Config.agent_grpc_apihost != "") {
+        if (Config.agent_grpc_apihost != null && Config.agent_grpc_apihost != "") {
             agent_grpc_apihost = Config.agent_grpc_apihost;
         }
         var grpcapiurl = "grpc://" + agent_grpc_apihost + ":50051"
         var agent_ws_apihost = "api";
-        if(Config.agent_ws_apihost != null && Config.agent_ws_apihost != "") {
+        if (Config.agent_ws_apihost != null && Config.agent_ws_apihost != "") {
             agent_ws_apihost = Config.agent_ws_apihost;
         }
         var wsapiurl = "ws://" + agent_ws_apihost + ":3000/ws/v2"
         let hasbilling = false;
 
         var agentjwt = "";
-        if(NoderedUtil.IsNullEmpty(agent.runas)) {
+        if (NoderedUtil.IsNullEmpty(agent.runas)) {
             agentjwt = await Auth.User2Token(user, Config.personalnoderedtoken_expires_in, parent);
         } else {
             var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-            if(agentuser!= null){
+            if (agentuser != null) {
                 agentuser = agentuser;
                 agentjwt = await Auth.User2Token(agentuser, Config.personalnoderedtoken_expires_in, parent);
             } else {
@@ -101,11 +101,6 @@ export class dockerdriver implements i_agent_driver {
             }
             domain_schema = domain_schema.split("$nodered_id$").join("$slug$")
             const hostname = domain_schema.replace("$slug$", agent.slug);
-
-            // let tzvolume: string = null;
-            // if (!NoderedUtil.IsNullEmpty(agent.tz)) {
-            //     tzvolume = "/usr/share/zoneinfo/" + agent.tz
-            // }
             const Labels = {
                 "billed": hasbilling.toString(),
                 "agentid": agent._id
@@ -132,14 +127,14 @@ export class dockerdriver implements i_agent_driver {
                 }
             }
             let openiapagent = agent.image;
-            if(openiapagent.indexOf(":")> - 1) openiapagent = openiapagent.substring(0, openiapagent.indexOf(":"))
-            if(openiapagent.indexOf("/")> - 1) openiapagent = openiapagent.substring(openiapagent.lastIndexOf("/") + 1)
+            if (openiapagent.indexOf(":") > - 1) openiapagent = openiapagent.substring(0, openiapagent.indexOf(":"))
+            if (openiapagent.indexOf("/") > - 1) openiapagent = openiapagent.substring(openiapagent.lastIndexOf("/") + 1)
             Labels["openiapagent"] = openiapagent;
             Labels["agentid"] = agent.agentid;
-            var agentport:number = agent.port as any;
-            if(agentport == null || (agentport as any) == "") agentport = Config.port
+            var agentport: number = agent.port as any;
+            if (agentport == null || (agentport as any) == "") agentport = Config.port
 
-            if(agent.webserver) {
+            if (agent.webserver) {
                 Labels["traefik.enable"] = "true";
                 Labels["traefik.http.routers." + agent.slug + ".entrypoints"] = Config.agent_docker_entrypoints;
                 Labels["traefik.http.routers." + agent.slug + ".rule"] = "Host(`" + hostname + "`)";
@@ -149,8 +144,8 @@ export class dockerdriver implements i_agent_driver {
                 }
             }
             let oidc_config: string = Config.agent_oidc_config;
-            if((oidc_config == null || oidc_config == "") && Config.agent_oidc_issuer == "") {
-                if(Config.domain != "localhost.openiap.io") oidc_config = Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration"
+            if ((oidc_config == null || oidc_config == "") && Config.agent_oidc_issuer == "") {
+                if (Config.domain != "localhost.openiap.io") oidc_config = Config.protocol + "://" + Config.domain + "/oidc/.well-known/openid-configuration"
             }
             var HTTP_PROXY = Config.HTTP_PROXY;
             var HTTPS_PROXY = Config.HTTPS_PROXY;
@@ -158,14 +153,14 @@ export class dockerdriver implements i_agent_driver {
             var NPM_REGISTRY = Config.agent_NPM_REGISTRY;
             var NPM_TOKEN = Config.agent_NPM_TOKEN;
 
-            if(HTTP_PROXY == null) HTTP_PROXY = "";
-            if(Config.agent_HTTP_PROXY != null && Config.agent_HTTP_PROXY != "") HTTP_PROXY = Config.agent_HTTP_PROXY;
-            if(HTTPS_PROXY == null) HTTPS_PROXY = "";
-            if(Config.agent_HTTPS_PROXY != null && Config.agent_HTTPS_PROXY != "") HTTPS_PROXY = Config.agent_HTTPS_PROXY;
-            if(NO_PROXY == null) NO_PROXY = "";
-            if(Config.agent_NO_PROXY != null && Config.agent_NO_PROXY != "") NO_PROXY = Config.agent_NO_PROXY;
-            if(NPM_REGISTRY == null) NPM_REGISTRY = "";
-            if(NPM_TOKEN == null) NPM_TOKEN = "";
+            if (HTTP_PROXY == null) HTTP_PROXY = "";
+            if (Config.agent_HTTP_PROXY != null && Config.agent_HTTP_PROXY != "") HTTP_PROXY = Config.agent_HTTP_PROXY;
+            if (HTTPS_PROXY == null) HTTPS_PROXY = "";
+            if (Config.agent_HTTPS_PROXY != null && Config.agent_HTTPS_PROXY != "") HTTPS_PROXY = Config.agent_HTTPS_PROXY;
+            if (NO_PROXY == null) NO_PROXY = "";
+            if (Config.agent_NO_PROXY != null && Config.agent_NO_PROXY != "") NO_PROXY = Config.agent_NO_PROXY;
+            if (NPM_REGISTRY == null) NPM_REGISTRY = "";
+            if (NPM_TOKEN == null) NPM_TOKEN = "";
             const Env = [
                 "jwt=" + agentjwt,
                 "agentid=" + agent._id,
@@ -196,24 +191,20 @@ export class dockerdriver implements i_agent_driver {
                 "oidc_token_endpoint=" + Config.agent_oidc_token_endpoint,
             ]
             let packageid = agent.package || "";
-            if(packageid != "") {
+            if (packageid != "") {
                 Env.push("packageid=" + packageid);
             }
-            if(agent.environment != null) {
+            if (agent.environment != null) {
                 var keys = Object.keys(agent.environment);
-                for(var i = 0; i < keys.length; i++) {
+                for (var i = 0; i < keys.length; i++) {
                     var exists = Env.find(x => x.startsWith(keys[i] + "="));
-                    if(exists == null) {
+                    if (exists == null) {
                         Env.push(keys[i] + "=" + agent.environment[keys[i]]);
-                    }                    
+                    }
                 }
             }
-
-            // if (tzvolume != null) {
-            //     HostConfig.Binds = ["/etc/localtime", tzvolume]
-            // }
-            let Cmd:any = undefined;
-            if(agent.sleep == true) {
+            let Cmd: any = undefined;
+            if (agent.sleep == true) {
                 Cmd = ["/bin/sh", "-c", "while true; do echo sleep 10; sleep 10;done"]
             }
             await this._pullImage(docker, agent.image, span);
@@ -245,7 +236,7 @@ export class dockerdriver implements i_agent_driver {
                 if (item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
-                    if (item.State == "running") await container.stop({t: 0});
+                    if (item.State == "running") await container.stop({ t: 0 });
                     span?.addEvent("remove()");
                     await container.remove();
                     Audit.NoderedAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
@@ -321,16 +312,16 @@ export class dockerdriver implements i_agent_driver {
                 if (billed != "true" && diffhours > runtime) {
                     Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed agent instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
                     var agent = await Config.db.GetOne<iAgent>({ query: { slug: item.metadata.name }, collectionname: "agents", jwt: rootjwt }, parent);
-                    if(agent != null) {
+                    if (agent != null) {
                         await this.RemoveInstance(rootuser, rootjwt, agent, false, parent);
                     } else {
-                        Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name , parent, { user: item.metadata.name });
+                        Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name, parent, { user: item.metadata.name });
                     }
                 }
             }
         }
     }
-    public async GetInstancePods(user: User, jwt: string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]> {
+    public async GetInstancePods(user: User, jwt: string, agent: iAgent, getstats: boolean, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         try {
 
@@ -351,19 +342,19 @@ export class dockerdriver implements i_agent_driver {
                 if (!NoderedUtil.IsNullEmpty(openiapagent)) {
                     let addit: boolean = false;
 
-                    if(agent == null) {
+                    if (agent == null) {
                         var _slug = item.Names[0];
-                        if(_slug != null) {
-                            if(_slug.startsWith("/")) { _slug = _slug.substr(1); }
+                        if (_slug != null) {
+                            if (_slug.startsWith("/")) { _slug = _slug.substr(1); }
                             var _agent = await Config.db.GetOne<iAgent>({ query: { slug: _slug }, collectionname: "agents", jwt }, parent);
-                            if(_agent != null) { addit = true; }
+                            if (_agent != null) { addit = true; }
                         }
                     } else if ((item.Names[0] == "/" + agent.slug || item.Labels["agentid"] == agent._id) && deleted == false) {
                         addit = true;
                     }
 
-                    if(addit) {
-                        if(getstats) {
+                    if (addit) {
+                        if (getstats) {
                             span?.addEvent("getContainer(" + item.Id + ")");
                             const container = docker.getContainer(item.Id);
                             span?.addEvent("stats()");
@@ -371,15 +362,15 @@ export class dockerdriver implements i_agent_driver {
                             let cpu_usage = 0;
                             let memory = 0;
                             let memorylimit = 0;
-                            if(stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
-                            if(stats.memory_stats.stats && stats.memory_stats.stats.inactive_file) {
-                                if(memory - stats.memory_stats.stats.inactive_file > 1000) {
+                            if (stats && stats.memory_stats && stats.memory_stats.usage) memory = stats.memory_stats.usage;
+                            if (stats.memory_stats.stats && stats.memory_stats.stats.inactive_file) {
+                                if (memory - stats.memory_stats.stats.inactive_file > 1000) {
                                     // is this correct ? usage is wrong when comparing to docker stats
                                     // but docs say usage-cache, but cache does not exists ...
                                     // my last test shows usage - inactive_file was correct, but needs more tests
                                     memory = memory - stats.memory_stats.stats.inactive_file;
                                 }
-                                
+
                             }
                             if (stats && stats.cpu_stats && stats.cpu_stats.cpu_usage && stats.cpu_stats.cpu_usage.usage_in_usermode) {
                                 cpu_usage = stats.cpu_stats.cpu_usage.usage_in_usermode;
@@ -415,7 +406,7 @@ export class dockerdriver implements i_agent_driver {
                 if (item.Names[0] == "/" + podname || item.Labels["agentid"] == agent._id) {
                     span?.addEvent("getContainer(" + item.Id + ")");
                     const container = docker.getContainer(item.Id);
-                    if (item.State == "running") await container.stop({t: 0});
+                    if (item.State == "running") await container.stop({ t: 0 });
                     span?.addEvent("remove()");
                     await container.remove();
                     Audit.NoderedAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);

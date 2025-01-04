@@ -216,14 +216,10 @@ export class Message {
             } else {
                 throw new Error("Not signed in, and missing jwt");
             }
-            // this.Reply("error");
-            // this.data = "{\"message\": \"Not signed in, and missing jwt\", \"error\": \"Not signed in, and missing jwt\"}";
-            // cli?.Send(this);
-            // return false;
         } else if (!NoderedUtil.IsNullEmpty(this.jwt)) {
             try {
                 this.tuser = await Auth.Token2User(this.jwt, null);
-                if(this.tuser == null) {
+                if (this.tuser == null) {
                     // Invalid or expired token
                     return false;
                 }
@@ -234,7 +230,7 @@ export class Message {
                         var msg = SigninMessage.assign(this.data);
                         if (cli != null) {
                             if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
-                                if(msg.clientagent == "pyclient") msg.clientagent = "python"
+                                if (msg.clientagent == "pyclient") msg.clientagent = "python"
                                 cli.clientagent = msg.clientagent as any;
                                 // @ts-ignore
                                 cli.agent = msg.clientagent as any;
@@ -251,10 +247,6 @@ export class Message {
                 this.Reply("error");
                 this.data = JSON.stringify({ "error": (error.message ? error.message : error) });
                 throw error;
-                // setTimeout(() => {
-                //     cli?.Send(this);    
-                // }, 1000);                
-                return false;
             }
         }
         return true;
@@ -270,31 +262,15 @@ export class Message {
                 if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
                 let command: string = this.command;
                 try {
-                    if(Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
+                    if (Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
                         Logger.instanse.info("Create new socket rate limitter", span, Logger.parsecli(cli));
                         WebSocketServer.BaseRateLimiter = new RateLimiterMemory({
                             points: Config.socket_rate_limit_points,
                             duration: Config.socket_rate_limit_duration,
-                        });            
+                        });
                     }
-    
                     if (Config.socket_rate_limit) await WebSocketServer.BaseRateLimiter.consume(cli.id);
                 } catch (error) {
-                    // if (error.consumedPoints) {
-                    //     if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_rate_limit))
-                    //         WebSocketServer.websocket_rate_limit.add(1, { ...Logger.otel.defaultlabels, command: command });
-                    //     if ((error.consumedPoints % 10) == 1 || error.consumedPoints > 0) {
-                    //         // Logger.instanse.warn("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
-                    //     }
-                         if (error.consumedPoints >= Config.socket_rate_limit_points_disconnect) {
-                    //         Logger.instanse.warn("[" + username + "/" + cli.clientagent + "/" + cli.id + "] SOCKET_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
-                    //         cli.devnull = true;
-                    //         cli.Close(span);
-                    //         return;
-                         }
-                    //     setTimeout(() => { this.Process(cli); }, 250);
-                    // }
-                    // return;
                     var e = new Error("Rate limit exceeded consumedPoints: " + error.consumedPoints);
                     return reject(e);
                 }
@@ -339,13 +315,13 @@ export class Message {
                         process = false;
                         if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
 
-                        if(this.replyto == null || this.replyto == "") {
+                        if (this.replyto == null || this.replyto == "") {
                             this.Reply("error");
                         } else {
-                            this.command = "error";                    
+                            this.command = "error";
                         }
                         const error = new Error("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        this.data = JSON.stringify({"message": error.message});
+                        this.data = JSON.stringify({ "message": error.message });
                         delete this.jwt;
                         delete this.tuser;
                         return resolve(this);
@@ -358,18 +334,16 @@ export class Message {
                         Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, Logger.parsecli(cli));
                         process = false;
 
-                        if(this.replyto == null || this.replyto == "") {
+                        if (this.replyto == null || this.replyto == "") {
                             this.Reply("error");
                         } else {
-                            this.command = "error";                    
+                            this.command = "error";
                         }
                         const error = new Error("Discard " + command + " due to invalid or expired jwt for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
-                        this.data = JSON.stringify({"message": error.message});
+                        this.data = JSON.stringify({ "message": error.message });
                         delete this.jwt;
                         delete this.tuser;
                         return resolve(this);
-
-                        // throw new Error("Discard " + command + " due to invalid or expired jwt for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion);
                     }
                 }
                 if (process) {
@@ -632,10 +606,10 @@ export class Message {
                             break;
                         case "dropindex":
                             await this.DropIndex(span);
-                            break;                            
+                            break;
                         case "getindexes":
                             await this.GetIndexes(span);
-                            break;                        
+                            break;
                         case "deletepackage":
                             await this.DeletePackage(span);
                             break;
@@ -664,16 +638,13 @@ export class Message {
                 if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 resolve(this);
             } catch (error) {
-                // reject(error);
-                // Logger.instanse.error(error, span, Logger.parsecli(cli));
-
-                if(this.replyto == null || this.replyto == "") {
+                if (this.replyto == null || this.replyto == "") {
                     this.Reply("error");
                 } else {
-                    this.command = "error";                    
+                    this.command = "error";
                 }
-                this.data = JSON.stringify({"message": error.message});
-                if(error.message.indexOf("Not signed in, and missing jwt") > -1) {
+                this.data = JSON.stringify({ "message": error.message });
+                if (error.message.indexOf("Not signed in, and missing jwt") > -1) {
                     Logger.instanse.error(error.message, span, Logger.parsecli(cli));
                 } else {
                     Logger.instanse.error(error, span, Logger.parsecli(cli));
@@ -681,7 +652,7 @@ export class Message {
                 delete this.jwt;
                 delete this.tuser;
                 resolve(this);
-                
+
             } finally {
                 Logger.otel.endSpan(span);
             }
@@ -689,56 +660,54 @@ export class Message {
     }
     async ControlAgent(parent: Span) {
         this.Reply();
-        let msg: any = this.data 
-        if( typeof this.data == "string") {
+        let msg: any = this.data
+        if (typeof this.data == "string") {
             msg = JSON.stringify(this.data)
         }
-        msg =JSON.parse(JSON.stringify(msg));
+        msg = JSON.parse(JSON.stringify(msg));
         try {
             console.log(this.data);
             if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
             var agent = null;
-            if((msg.agentid == null || msg.agentid == "")) {
-                if(this.command != "getagentpods") throw new Error("No agentid is specified");
+            if ((msg.agentid == null || msg.agentid == "")) {
+                if (this.command != "getagentpods") throw new Error("No agentid is specified");
             } else {
-                agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.agentid }, collectionname: "agents", jwt:this.jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.agentid }, collectionname: "agents", jwt: this.jwt }, parent);
+                if (agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
-                if(agent.image == null || agent.image == "") return;
+                if (agent.image == null || agent.image == "") return;
             }
-    
-            
-            if(this.command == "startagent") {
+
+
+            if (this.command == "startagent") {
                 await Logger.agentdriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
-            } else if(this.command == "stopagent") {
+            } else if (this.command == "stopagent") {
                 await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, false, parent);
-            } else if(this.command == "getagentlog") {
+            } else if (this.command == "getagentlog") {
                 msg.result = await Logger.agentdriver.GetInstanceLog(this.tuser, this.jwt, agent, msg.podname, parent);
-            } else if(this.command == "getagentpods") {
+            } else if (this.command == "getagentpods") {
                 var getstats = false;
-                if(!NoderedUtil.IsNullEmpty(msg.stats)) getstats = msg.stats;
+                if (!NoderedUtil.IsNullEmpty(msg.stats)) getstats = msg.stats;
                 msg.results = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, msg.podname, parent);
-                // msg.results = JSON.stringify(await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, msg.podname, parent));
-                var b = true;
-            } else if(this.command == "deleteagentpod") {
+            } else if (this.command == "deleteagentpod") {
                 await Logger.agentdriver.RemoveInstancePod(this.tuser, this.jwt, agent, msg.podname, parent);
-            } else if(this.command == "deleteagent") {
+            } else if (this.command == "deleteagent") {
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.delete)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${agent.name}`);
-                }    
+                }
                 await Logger.agentdriver.RemoveInstance(this.tuser, this.jwt, agent, true, parent);
                 Config.db.DeleteOne(agent._id, "agents", false, this.jwt, parent);
-            }            
+            }
         } finally {
             this.data = JSON.stringify(msg);
         }
     }
     async CreateIndex(parent: Span) {
         this.Reply();
-        let msg: any = this.data 
-        if( typeof this.data == "string") {
+        let msg: any = this.data
+        if (typeof this.data == "string") {
             msg = JSON.stringify(this.data)
         }
         msg = JSON.parse(JSON.stringify(msg));
@@ -751,8 +720,8 @@ export class Message {
     }
     async GetIndexes(parent: Span) {
         this.Reply();
-        let msg: any = this.data 
-        if( typeof this.data == "string") {
+        let msg: any = this.data
+        if (typeof this.data == "string") {
             msg = JSON.stringify(this.data)
         }
         msg = JSON.parse(JSON.stringify(msg));
@@ -766,8 +735,8 @@ export class Message {
     }
     async DropIndex(parent: Span) {
         this.Reply();
-        let msg: any = this.data 
-        if( typeof this.data == "string") {
+        let msg: any = this.data
+        if (typeof this.data == "string") {
             msg = JSON.stringify(this.data)
         }
         msg = JSON.parse(JSON.stringify(msg));
@@ -780,21 +749,21 @@ export class Message {
     }
     async DeletePackage(parent: Span) {
         this.Reply();
-        let msg: any = this.data 
-        if( typeof this.data == "string") {
+        let msg: any = this.data
+        if (typeof this.data == "string") {
             msg = JSON.stringify(this.data)
         }
         try {
             var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt: this.jwt }, parent);
-            if(pack == null) throw new Error("Access denied or package not found");
+            if (pack == null) throw new Error("Access denied or package not found");
             if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
                 throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
             }
-            if(pack.fileid != null && pack.fileid != "") {
+            if (pack.fileid != null && pack.fileid != "") {
                 const rootjwt = Crypt.rootToken();
                 let query = { _id: pack.fileid };
                 const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
-                if(item != null) {
+                if (item != null) {
                     await Config.db.DeleteOne(pack.fileid, "files", false, this.jwt, parent);
                 }
             }
@@ -805,8 +774,8 @@ export class Message {
     }
     async IssueLicense(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        let msg: any = this.data 
-        if( typeof this.data == "string") {
+        let msg: any = this.data
+        if (typeof this.data == "string") {
             msg = JSON.stringify(this.data)
         }
         try {
@@ -821,21 +790,20 @@ export class Message {
             var data = msg.data;
             try {
                 data = JSON.parse(data);
-            } catch (error) {                    
+            } catch (error) {
             }
-            if(data == null || data == "") throw new Error("No data found");
+            if (data == null || data == "") throw new Error("No data found");
             var domain = data.domain;
             if (!this.tuser.HasRoleId(WellknownIds.admins)) {
                 delete data.months;
             }
-            var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage"}, collectionname: "config", jwt:this.jwt }, parent);
+            var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage" }, collectionname: "config", jwt: this.jwt }, parent);
             if (!this.tuser.HasRoleId(WellknownIds.admins)) {
-                if(exists == null) throw new Error("Access denied");
+                if (exists == null) throw new Error("Access denied");
             }
-            if(data.months == null || data.months == "") {
-                if(exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
+            if (data.months == null || data.months == "") {
+                if (exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
             }
-            //  throw new Error("Access denied");
             msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
         } finally {
             this.data = JSON.stringify(msg);
@@ -843,8 +811,8 @@ export class Message {
     }
     async InvokeOpenRPA(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
-        let msg: any = this.data 
-        if( typeof this.data == "string") {
+        let msg: any = this.data
+        if (typeof this.data == "string") {
             msg = JSON.stringify(this.data)
         }
         try {
@@ -852,7 +820,7 @@ export class Message {
         } finally {
             this.data = JSON.stringify(msg);
         }
-    }    
+    }
     async RegisterExchange(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         let msg: RegisterExchangeMessage;
@@ -905,7 +873,7 @@ export class Message {
         var res = await cli.RegisterExchange(tuser, msg.exchangename, msg.algorithm, msg.routingkey, addqueue, parent);
         msg.queuename = res.queuename;
         msg.exchangename = res.exchangename;
-        if(msg.queuename == null) msg.queuename = "";
+        if (msg.queuename == null) msg.queuename = "";
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
@@ -1152,7 +1120,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
                 const tuser = await Auth.Token2User(msg.jwt, span);
-                if(tuser == null) throw new Error("Access denied");
+                if (tuser == null) throw new Error("Access denied");
                 msg.user = TokenUser.From(tuser);
             }
             if (typeof sendthis === "object") {
@@ -1168,17 +1136,14 @@ export class Message {
             }
             if (NoderedUtil.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
-                if(msg.queuename != null && msg.queuename != "" && amqpwrapper.bad_queues.indexOf(msg.queuename) > -1) {
+                if (msg.queuename != null && msg.queuename != "" && amqpwrapper.bad_queues.indexOf(msg.queuename) > -1) {
                     throw new Error("bad queue: " + msg.queuename + " correlationId: " + msg.correlationId);
-                } 
+                }
                 await amqpwrapper.Instance().send(msg.exchangename, msg.queuename, sendthis, expiration, msg.correlationId, msg.routingkey, span);
             } else {
-                // if (msg.queuename === msg.replyto) {
-                //     throw new Error("Cannot send reply to self queuename: " + msg.queuename + " correlationId: " + msg.correlationId);
-                // }
-                if(msg.queuename != null && msg.queuename != "" && amqpwrapper.bad_queues.indexOf(msg.queuename) > -1) {
+                if (msg.queuename != null && msg.queuename != "" && amqpwrapper.bad_queues.indexOf(msg.queuename) > -1) {
                     throw new Error("bad queue: " + msg.queuename + " correlationId: " + msg.correlationId);
-                } 
+                }
                 const sendthis = msg.data;
                 await amqpwrapper.Instance().sendWithReplyTo(msg.exchangename, msg.queuename, msg.replyto, sendthis, expiration, msg.correlationId, msg.routingkey, span);
             }
@@ -1322,7 +1287,7 @@ export class Message {
         } finally {
             Logger.otel.endSpan(span);
         }
-        
+
     }
     private async Distinct(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Distinct", parent);
@@ -1334,7 +1299,7 @@ export class Message {
                 // @ts-ignore
                 msg = JSON.stringify(this.data);
             }
-            
+
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 await handleError(null, new Error("Access denied, not signed in"), span);
@@ -1350,7 +1315,7 @@ export class Message {
         } finally {
             Logger.otel.endSpan(span);
         }
-    }     
+    }
     private async Count(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.Count", parent);
         this.Reply();
@@ -1381,11 +1346,11 @@ export class Message {
             try {
                 // @ts-ignore
                 version = this.data.version;
-            } catch (error) {                
+            } catch (error) {
             }
             msg = GetDocumentVersionMessage.assign(this.data);
-            if(msg && msg.version) version = msg.version;
-            if(version < 0) version = undefined;
+            if (msg && msg.version) version = msg.version;
+            if (version < 0) version = undefined;
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 msg.error = "Access denied, not signed in";
@@ -1422,11 +1387,7 @@ export class Message {
         msg = WatchMessage.assign(this.data);
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-        //if (Config.supports_watch) {
-            await cli.UnWatch(msg.id, msg.jwt);
-        // } else {
-        //     msg.error = "Watch is not supported by this openflow";
-        // }
+        await cli.UnWatch(msg.id, msg.jwt);
         msg.result = null;
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -1440,11 +1401,7 @@ export class Message {
         msg.id = null;
         // @ts-ignore
         const paths = msg.aggregates || msg.paths
-        // if (Config.supports_watch) {
-            msg.id = await cli.Watch(paths, msg.collectionname, msg.jwt);
-        // } else {
-        //     msg.error = "Watch is not supported by this openflow";
-        // }
+        msg.id = await cli.Watch(paths, msg.collectionname, msg.jwt);
         msg.result = msg.id;
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -1461,7 +1418,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
-            if(typeof msg.item === "string") { msg.item = JSON.parse(msg.item); }
+            if (typeof msg.item === "string") { msg.item = JSON.parse(msg.item); }
             msg.result = await Config.db.InsertOne(msg.item, msg.collectionname, msg.w, msg.j, msg.jwt, span);
             if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
             delete msg.item;
@@ -1469,7 +1426,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } finally {
             Logger.otel.endSpan(span);
-        }        
+        }
     }
     private async InsertMany(parent: Span): Promise<void> {
         this.Reply();
@@ -1483,7 +1440,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
-            if(typeof msg.items == "string") { msg.items = JSON.parse(msg.items); }
+            if (typeof msg.items == "string") { msg.items = JSON.parse(msg.items); }
             msg.results = await Config.db.InsertMany(msg.items, msg.collectionname, msg.w, msg.j, msg.jwt, span);
             if (this.clientagent == "openrpa") Config.db.parseResults(msg.results, this.clientagent, this.clientversion);
             if (msg.skipresults) msg.results = [];
@@ -1492,7 +1449,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } finally {
             Logger.otel.endSpan(span);
-        }        
+        }
     }
     private async UpdateOne(parent: Span): Promise<void> {
         this.Reply();
@@ -1514,7 +1471,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } finally {
             Logger.otel.endSpan(span);
-        }        
+        }
     }
     private async UpdateMany(parent: Span): Promise<void> {
         this.Reply();
@@ -1535,7 +1492,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } finally {
             Logger.otel.endSpan(span);
-        }        
+        }
     }
     private async InsertOrUpdateOne(parent: Span): Promise<void> {
         this.Reply();
@@ -1551,7 +1508,7 @@ export class Message {
                 delete (msg.item as any).xml;
             }
         }
-        if(msg.item && typeof msg.item === "string") msg.item = JSON.parse(msg.item);
+        if (msg.item && typeof msg.item === "string") msg.item = JSON.parse(msg.item);
         msg = await Config.db.InsertOrUpdateOne(msg, parent);
         if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
         delete msg.item;
@@ -1572,7 +1529,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
-            if(msg.items && typeof msg.items === "string") msg.items = JSON.parse(msg.items);
+            if (msg.items && typeof msg.items === "string") msg.items = JSON.parse(msg.items);
             msg.results = await Config.db.InsertOrUpdateMany(msg.items, msg.collectionname, msg.uniqeness, msg.skipresults, msg.w, msg.j, msg.jwt, span);
             if (msg.skipresults) msg.results = [];
             delete msg.items;
@@ -1606,7 +1563,7 @@ export class Message {
                 var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
                 if (doc._type == "agent" || doc._type == "package") {
                     throw new Error("Access denied, use packages page or api to delete package");
-                }                
+                }
             }
             // @ts-ignore
             msg.affectedrows = await Config.db.DeleteOne(msg.id, msg.collectionname, msg.recursive, msg.jwt, span);
@@ -1646,7 +1603,7 @@ export class Message {
             tuser = cli.user;
         } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
             tuser = await Auth.Token2User(cli.jwt, span);
-            if(tuser == null) throw new Error("Access denied");
+            if (tuser == null) throw new Error("Access denied");
             const impostor: string = (tuser as any).impostor;
             cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
             if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
@@ -1687,7 +1644,7 @@ export class Message {
         try {
             const msg = SigninMessage.assign(this.data);
             // @ts-ignore
-            if(msg.validateonly != null) msg.validate_only = msg.validateonly;
+            if (msg.validateonly != null) msg.validate_only = msg.validateonly;
             if (cli != null) {
                 if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
                 if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
@@ -1715,35 +1672,32 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.Signin", parent);
         let msg: SigninMessage
         try {
-            // const hrstart = process.hrtime()
-            // let hrend = process.hrtime(hrstart)
             let impostor: string = "";
             const UpdateDoc: any = { "$set": {} };
             let tokentype: tokenType = "local";
-            let protocol:clientType = "websocket";
+            let protocol: clientType = "websocket";
             // @ts-ignore
-            if(cli && cli.protocol) {
+            if (cli && cli.protocol) {
                 // @ts-ignore
                 protocol = cli.protocol;
             }
             msg = SigninMessage.assign(this.data);
             // @ts-ignore
-            if(msg.validateonly != null) msg.validate_only = msg.validateonly;
+            if (msg.validateonly != null) msg.validate_only = msg.validateonly;
             this.parseSignAgent(cli, span);
 
             let originialjwt = msg.jwt;
             let tuser: User = null;
             let user: User = null;
-            if(NoderedUtil.IsNullEmpty(msg.jwt) && NoderedUtil.IsNullEmpty(msg.username) && NoderedUtil.IsNullEmpty(msg.password) && msg.validate_only == true) {
+            if (NoderedUtil.IsNullEmpty(msg.jwt) && NoderedUtil.IsNullEmpty(msg.username) && NoderedUtil.IsNullEmpty(msg.password) && msg.validate_only == true) {
                 msg.jwt = cli.jwt;
             }
             if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
-                // if (msg.validate_only) { this.command = "validatereply"; }
                 span?.addEvent("using jwt, verify token");
                 tokentype = "jwtsignin";
                 try {
                     tuser = await Auth.Token2User(msg.jwt, span);
-                    if(tuser == null) {
+                    if (tuser == null) {
                         tuser = User.assign(await Crypt.verityToken(msg.jwt, cli, true));
                         Logger.instanse.warn("[" + tuser.username + "] validated with expired token!", span);
                     }
@@ -1864,16 +1818,16 @@ export class Message {
                 }
             }
             if (msg.validate_only !== true && cli) {
-                if(NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
+                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
                     if (cli) cli.clientagent = msg.clientagent as any;
                 }
-                if(NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) {
+                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) {
                     if (cli) cli.clientversion = msg.clientversion;
-                }                
+                }
             }
             if (user === null || user === undefined || tuser === null || tuser === undefined) {
                 if (msg !== null && msg !== undefined) msg.error = "Unknown username or password";
-                await Audit.LoginFailed(tuser.username, tokentype,  protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
+                await Audit.LoginFailed(tuser.username, tokentype, protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                 throw new Error(tuser.username + " failed logging in using " + tokentype);
             } else if (user.disabled && (msg.impersonate != "-1" && msg.impersonate != "false")) {
                 if (msg !== null && msg !== undefined) msg.error = "Disabled users cannot signin";
@@ -2064,17 +2018,15 @@ export class Message {
             if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
             if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
             msg.enable_analytics = Config.enable_analytics;
-            if(msg.user != null) {
-                if(msg.user.email == null || msg.user.email == "") {
+            if (msg.user != null) {
+                if (msg.user.email == null || msg.user.email == "") {
                     msg.user.email = "";
                 }
             }
             this.data = JSON.stringify(msg);
-            // hrend = process.hrtime(hrstart)
         } finally {
             span?.addEvent("Signin complete");
             Logger.otel.endSpan(span);
-            // cli?.Send(this);
         }
     }
     private async GetInstanceName(_id: string, myid: string, myusername: string, jwt: string, parent: Span): Promise<string> {
@@ -2082,7 +2034,7 @@ export class Message {
         let name: string = "";
         if (_id !== null && _id !== undefined && _id !== "" && _id != myid) {
             const user: User = await Auth.Token2User(jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             var qs: any[] = [{ _id: _id }];
             qs.push(Config.db.getbasequery(user, [Rights.update], "users"))
             const res = await Config.db.query<User>({ query: { "$and": qs }, top: 1, collectionname: "users", jwt }, span);
@@ -2094,7 +2046,6 @@ export class Message {
             name = myusername;
         }
         if (NoderedUtil.IsNullEmpty(name)) throw new Error("Instance name cannot be empty");
-        // name = name.split("@").join("").split(".").join("");
         name = name.toLowerCase();
         name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
         span?.setAttribute("instancename", name)
@@ -2184,14 +2135,14 @@ export class Message {
         if (metadata == null) { metadata = new Base(); }
         metadata = Base.assign(metadata);
         const user: User = await Auth.Token2User(jwt, null);
-        if(user == null) throw new Error("Access denied");
+        if (user == null) throw new Error("Access denied");
         if (NoderedUtil.IsNullUndefinded(metadata._acl)) {
             metadata._acl = [];
             Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-            if(!Config.multi_tenant) {
+            if (!Config.multi_tenant) {
                 Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
             }
-            Base.addRight(metadata, user._id, user.name, [Rights.full_control]);            
+            Base.addRight(metadata, user._id, user.name, [Rights.full_control]);
         }
         metadata._createdby = user.name;
         metadata._createdbyid = user._id;
@@ -2468,14 +2419,14 @@ export class Message {
             const customer: Customer = await Config.db.getbyid(usage.customerid, "users", jwt, true, span);
             if (customer == null) throw new Error("Unknown usage or Access Denied (customer)");
             // @ts-ignore
-            if(usage.mode == "one_time") throw new Error("Cannot cancel a one time purchase");
+            if (usage.mode == "one_time") throw new Error("Cannot cancel a one time purchase");
             let user: User;
             if (!NoderedUtil.IsNullEmpty(usage.userid)) {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
             const tuser = await Auth.Token2User(jwt, span);
-            if(tuser == null) throw new Error("Access denied");
+            if (tuser == null) throw new Error("Access denied");
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error(`Access denied, adding plan (not in "${customer.name} admins")`);
             }
@@ -2566,14 +2517,14 @@ export class Message {
                 }
                 try {
                     var e = JSON.parse(msg.error);
-                    if(e.message) {
+                    if (e.message) {
                         msg.error = e.message;
                         error = new Error(msg.error)
-                    } else if(e.error && e.error.message) {
+                    } else if (e.error && e.error.message) {
                         msg.error = e.error.message;
                         error = new Error(msg.error)
                     }
-                    
+
                 } catch (error) {
 
                 }
@@ -2583,7 +2534,6 @@ export class Message {
         } finally {
             Logger.otel.endSpan(span);
         }
-        // cli?.Send(this);
     }
     async GetNextInvoice(cli: WebSocketServerClient, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("message.GetNextInvoice", parent);
@@ -2598,9 +2548,7 @@ export class Message {
             const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, true, span);
             if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
             if (NoderedUtil.IsNullEmpty(customer.stripeid) && NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                // cli?.Send(this);
                 return;
-                // throw new Error("Customer has no billing information, please update with vattype and vatnumber");
             }
             if (Config.stripe_force_vat) {
                 if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer " + customer.name + " has no billing information, please update with vattype and vatnumber");
@@ -2608,7 +2556,7 @@ export class Message {
 
 
             const user = await Auth.Token2User(msg.jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
                 throw new Error(`Access denied, getting invoice (not in "${customer.name} admins")`);
             }
@@ -2644,7 +2592,6 @@ export class Message {
                     var exits = msg.invoice.lines.data.filter(x => (x.price.id == price || x.plan.id == price) && !x.proration);
                     if (exits.length == 1) {
                         msg.subscription_items[0].id = exits[0].id;
-                        // msg.subscription_items[0].quantity += exits[0].quantity;
                     }
                 }
             }
@@ -2670,7 +2617,6 @@ export class Message {
                             }
                         } else if (item.price && item.price.startsWith("plan_")) {
                             plan = await Message.Stripe<stripe_plan>("GET", "plans", item.price, payload, customer.stripeid);
-                            // metered = (plan.recurring.usage_type == "metered");
                         }
 
                         let quantity: number = item.quantity;
@@ -2691,8 +2637,6 @@ export class Message {
 
                                 var currentquantity = exists[i].quantity;
                                 item.quantity = _quantity;
-
-                                // item.quantity += exists[i].quantity;
                             }
                         }
                         if (metered) delete item.quantity;
@@ -2736,10 +2680,10 @@ export class Message {
             try {
                 msg.invoice = await Message.Stripe<stripe_invoice>("GET", "invoices_upcoming", null, payload, customer.stripeid);
             } catch (error) {
-                if(error.message.indexOf("code 404") > -1) {
+                if (error.message.indexOf("code 404") > -1) {
                     throw new Error("No pending invoice found");
                 }
-                throw new Error("Error getting invoice: " + error.message+ "\nIf error persist contact billing support");
+                throw new Error("Error getting invoice: " + error.message + "\nIf error persist contact billing support");
             }
 
             if (msg.invoice.lines.has_more) {
@@ -2762,7 +2706,7 @@ export class Message {
             try {
                 msg.error = errormessage as any;
                 if (_error.response && _error.response.body) {
-                    if(_error.response.body.indexOf("{") == -1) {
+                    if (_error.response.body.indexOf("{") == -1) {
                         msg.error = _error.response.body;
                         msg.error.replace(/[^a-zA-Z0-9 ]/g, "")
                     }
@@ -2798,12 +2742,12 @@ export class Message {
                     msg.error = error.response.body;
                     try {
                         var e = JSON.parse(msg.error);
-                        if(e.message) {
+                        if (e.message) {
                             msg.error = e.message;
-                        } else if(e.error && e.error.message) {
+                        } else if (e.error && e.error.message) {
                             msg.error = e.error.message;
                         }
-                        
+
                     } catch (error) {
 
                     }
@@ -2831,7 +2775,7 @@ export class Message {
             }
 
             const tuser = await Auth.Token2User(jwt, span);
-            if(tuser == null) throw new Error("Access denied");
+            if (tuser == null) throw new Error("Access denied");
             if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
                 throw new Error(`Access denied, adding plan (not in ${customer.name} admins")`);
             }
@@ -2844,13 +2788,10 @@ export class Message {
             if (!NoderedUtil.IsNullEmpty(customer.vatnumber) && customer.vattype == "eu_vat" && customer.vatnumber.substring(0, 2) != customer.country) {
                 customer.country = customer.vatnumber.substring(0, 2).toUpperCase();
             }
-            // if (!NoderedUtil.IsNullEmpty(customer.country) && !NoderedUtil.IsNullEmpty(customer.vatnumber) && customer.vattype == "eu_vat" && customer.vatnumber.substring(0, 2) != customer.country) {
-            //     throw new Error("Country and VAT number does not match (eu vat numbers must be prefixed with country code)");
-            // }
             const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, true, span);
             if (resource == null) throw new Error("Unknown resource or Access Denied");
             console.log("stripeprice", stripeprice);
-            console.log("resource", resource.products.map(x=>x.stripeprice));
+            console.log("resource", resource.products.map(x => x.stripeprice));
             console.log("count", resource.products.filter(x => x.stripeprice == stripeprice).length);
             if (resource.products.filter(x => x.stripeprice == stripeprice).length != 1) throw new Error("Unknown resource product");
             const product: ResourceVariant = resource.products.filter(x => x.stripeprice == stripeprice)[0];
@@ -2945,21 +2886,21 @@ export class Message {
             // Add requested quantity, now we have our target count
             _quantity += quantity;
 
-            if(!NoderedUtil.IsNullEmpty(product.stripeproduct) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            if (!NoderedUtil.IsNullEmpty(product.stripeproduct) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 const stripe_product = await Message.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
-                if(stripe_product==null) throw new Error("Unknown product");
-                if(stripe_product.active == false) throw new Error("Product is not active");
+                if (stripe_product == null) throw new Error("Unknown product");
+                if (stripe_product.active == false) throw new Error("Product is not active");
             }
-            let stripe_price: stripe_price = {type: "payment"} as any;
+            let stripe_price: stripe_price = { type: "payment" } as any;
 
-            if(!NoderedUtil.IsNullEmpty(product.stripeprice) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            if (!NoderedUtil.IsNullEmpty(product.stripeprice) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
                 stripe_price = await Message.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
-                if(stripe_price==null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
-                if(stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
+                if (stripe_price == null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
+                if (stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
             }
 
 
-            if((stripe_price as any).type != "one_time"){
+            if ((stripe_price as any).type != "one_time") {
                 if (NoderedUtil.IsNullEmpty(usage.subid)) {
                     usage.quantity = quantity;
                 } else {
@@ -2982,18 +2923,6 @@ export class Message {
 
             if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
                 let tax_rates = [];
-                // if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
-                // customer.country = customer.country.toUpperCase();
-                // if (NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
-                //     if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                //         const tax_ids = await Message.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
-                //         if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
-                //             tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
-                //         }
-                //     }
-                // }
-                // tax_rates = undefined;
-
                 // https://stripe.com/docs/payments/checkout/taxes
                 Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
 
@@ -3018,7 +2947,7 @@ export class Message {
                         const baseurl = Config.baseurl() + "#/Customer/" + customer._id;
 
                         var mode = "subscription";
-                        if((stripe_price as any).type == "one_time") mode = "payment";
+                        if ((stripe_price as any).type == "one_time") mode = "payment";
                         const payload: any = {
                             client_reference_id: usage._id,
                             success_url: baseurl + "/refresh", cancel_url: baseurl + "/refresh",
@@ -3032,16 +2961,13 @@ export class Message {
                         }
                         if (!NoderedUtil.IsNullEmpty(customer.stripeid)) {
                             payload.customer = customer.stripeid;
-                            // payload.billing_address_collection = "auto"; "country": "auto",
                             payload.customer_update = { "address": "auto", "name": "auto" };
                         } else {
                             payload.billing_address_collection = "auto";
-                            // payload.billing_address_collection = true; "country": "auto",
-                            // payload.customer_update = { "address": "auto", "name": "auto" };
                         }
 
                         let line_item: any = { price: product.stripeprice, tax_rates };
-                        if((stripe_price as any).type == "one_time") {
+                        if ((stripe_price as any).type == "one_time") {
                             line_item.quantity = 1
                         } else if ((resource.target == "user" && product.userassign != "metered") ||
                             (resource.target == "customer" && product.customerassign != "metered")) {
@@ -3093,7 +3019,6 @@ export class Message {
                     }
                 }
             } else {
-                // (stripe_price as any).type == "one_time"
                 const payload: any = {};
                 // Update quantity if not metered
                 if ((resource.target == "user" && product.userassign != "metered") ||
@@ -3218,7 +3143,7 @@ export class Message {
             url += "&limit=" + payload.limit;
         }
         var stripe_api_secret = Config.stripe_api_secret;
-        if(stripe_api_secret == null || stripe_api_secret == "") throw new Error("Missing stripe_api_secret");
+        if (stripe_api_secret == null || stripe_api_secret == "") throw new Error("Missing stripe_api_secret");
         const auth = "Basic " + Buffer.from(stripe_api_secret + ":").toString("base64");
 
         const options = {
@@ -3269,7 +3194,7 @@ export class Message {
                 }
                 if (msg.object == "billing_portal/sessions") {
                     const tuser = await Auth.Token2User(msg.jwt, null);
-                    if(tuser == null) throw new Error("Access denied");
+                    if (tuser == null) throw new Error("Access denied");
                     let customer: Customer;
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
                     if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
@@ -3297,7 +3222,6 @@ export class Message {
             throw error
         }
     }
-    // https://dominik.sumer.dev/blog/stripe-checkout-eu-vat
     async EnsureCustomer(cli: WebSocketServerClient, parent: Span) {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.EnsureCustomer", parent);
@@ -3308,12 +3232,12 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             let user: User = await Auth.Token2User(msg.jwt, span);
-            if(user == null) throw new Error("Access denied");
+            if (user == null) throw new Error("Access denied");
             // @ts-ignore
             var ensureas = msg.ensureas;
-            if(!NoderedUtil.IsNullEmpty(ensureas)) {
+            if (!NoderedUtil.IsNullEmpty(ensureas)) {
                 var targetuser = await Config.db.getbyid(ensureas, "users", msg.jwt, true, span);
-                if(targetuser == null) {
+                if (targetuser == null) {
                     throw new Error("Access denied creating customer on behalf of " + ensureas);
                 } else if (!DatabaseConnection.hasAuthorization(user, targetuser, Rights.update)) {
                     throw new Error("Access denied creating customer on behalf of " + targetuser.name);
@@ -3364,7 +3288,6 @@ export class Message {
                 if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
                     throw new Error("You are not logged in as a customer admin, so you cannot update");
                 }
-                // msg.customer = customers[0];
                 if (customer.name != msg.customer.name || customer.email != msg.customer.email || customer.vatnumber != msg.customer.vatnumber || customer.vattype != msg.customer.vattype || customer.coupon != msg.customer.coupon) {
                     customer.email = msg.customer.email;
                     customer.name = msg.customer.name;
@@ -3404,9 +3327,9 @@ export class Message {
                 var onetime = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "mode": "one_time", "sessionid": sessionid }, top: 1, collectionname: "config", jwt: msg.jwt }, span);
                 if (onetime.length > 0) {
                     const usage = onetime[0];
-                    if((session as any).payment_status == "paid") {
-                        if(usage.quantity == null) usage.quantity = 0;
-                        usage.quantity ++;
+                    if ((session as any).payment_status == "paid") {
+                        if (usage.quantity == null) usage.quantity = 0;
+                        usage.quantity++;
                         // add fake siid, since this is a onetime purche and does not have a subscription item
                         usage.siid = NoderedUtil.GetUniqueIdentifier();
                         // @ts-ignore
@@ -3433,12 +3356,12 @@ export class Message {
                 }
                 if (NoderedUtil.IsNullUndefinded(msg.stripecustomer)) {
                     msg.customer.subscriptionid = null;
-                    if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                    if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                         Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
                         for (let usage of total_usage) {
                             // @ts-ignore
-                            if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                            if (usage.mode != "one_time") {// null = recurring. recurring or one_time
                                 await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                             }
                         }
@@ -3474,35 +3397,35 @@ export class Message {
                                 await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
                             } else {
                                 // @ts-ignore
-                                if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                if (usage.mode != "one_time") {// null = recurring. recurring or one_time
                                     // Clean up old buy attempts
                                     await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                                 }
                             }
                         }
                     } else {
-                        if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                        if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                             msg.customer.subscriptionid = null;
                             const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                             Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
                             for (let usage of total_usage) {
                                 // @ts-ignore
-                                if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                                if (usage.mode != "one_time") {// null = recurring. recurring or one_time
                                     await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                                 }
-                                
+
                             }
                         }
                     }
                 }
             } else {
-                if(!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
                     msg.customer.subscriptionid = null;
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
                     for (let usage of total_usage) {
                         // @ts-ignore
-                        if(usage.mode != "one_time") {// null = recurring. recurring or one_time
+                        if (usage.mode != "one_time") {// null = recurring. recurring or one_time
                             await Config.db.DeleteOne(usage._id, "config", false, rootjwt, span);
                         }
                     }
@@ -3613,9 +3536,8 @@ export class Message {
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
         await Logger.DBHelper.CheckCache("users", cli.user, false, false, parent);
-        // cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, parent);
-        if(cli.user != null && cli.user.impersonating != null )  {
-            cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, parent);    
+        if (cli.user != null && cli.user.impersonating != null) {
+            cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, parent);
         } else {
             cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, parent);
         }
@@ -3625,7 +3547,6 @@ export class Message {
         l.user = TokenUser.From(cli.user);
         const m: Message = new Message(); m.command = "refreshtoken";
         m.data = JSON.stringify(l);
-        // cli?.Send(m);
     }
     private async Housekeeping(parent: Span): Promise<void> {
         this.Reply();
@@ -3642,7 +3563,7 @@ export class Message {
             this.data = JSON.stringify(msg);
         } finally {
             Logger.otel.endSpan(span);
-        }        
+        }
     }
 
 
@@ -3654,10 +3575,6 @@ export class Message {
         if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
             var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
             if (customer == null) msg.customerid = null;
-        } else {
-            // do we really need to force this ? 
-            // var customers = await Config.db.query<Customer>({ query: {"_type" : "customer"}, collectionname:"users", jwt: this.jwt, top:2}, parent)
-            // if(customers.length == 1) msg.customerid = user.customerid;
         }
         user = this.tuser;
         if (DatabaseConnection.WellknownIdsArray.indexOf(user._id) != -1) throw new Error("Builtin entities cannot select a company")
@@ -3708,12 +3625,12 @@ export class Message {
         wi.priority = msg.priority;
         wi.nextrun = msg.nextrun;
         // @ts-ignore
-        if(wi.nextrun?.seconds || wi.nextrun?.nanos) {
+        if (wi.nextrun?.seconds || wi.nextrun?.nanos) {
             // @ts-ignore
             let seconds = wi.nextrun?.seconds;
             // @ts-ignore
             let nanos = wi.nextrun?.nanos;
-            if(seconds != null && nanos != null) {
+            if (seconds != null && nanos != null) {
                 const milliseconds = parseInt(seconds) * 1000 + Math.floor(nanos / 1000000);
                 const date = new Date(milliseconds);
                 wi.nextrun = date;
@@ -3737,7 +3654,7 @@ export class Message {
         wi.retries = 0;
         wi.files = [];
         wi.lastrun = null;
-        
+
         if (!wi.nextrun) {
             wi.nextrun = new Date(new Date().toISOString());
             wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.initialdelay);
@@ -3751,7 +3668,7 @@ export class Message {
                 let _id = file._id;
                 try {
                     if (NoderedUtil.IsNullUndefinded(file.file)) {
-                        if(!NoderedUtil.IsNullEmpty(file.filename) && !NoderedUtil.IsNullEmpty(_id) ) {
+                        if (!NoderedUtil.IsNullEmpty(file.filename) && !NoderedUtil.IsNullEmpty(_id)) {
                             wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: _id });
                         }
                         continue;
@@ -3810,7 +3727,6 @@ export class Message {
         const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
         if (seconds > 5 && nextrun_seconds >= 0) {
             Config.db.queuemonitoringlastrun = new Date();
-            // Config.db.queuemonitoring()
         }
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -3863,7 +3779,7 @@ export class Message {
         }
         for (var i = 0; i < wi.files.length; i++) {
             var _f = wi.files[i];
-            var file:string = (await this._GetFile(_f._id, false)).toString("base64");
+            var file: string = (await this._GetFile(_f._id, false)).toString("base64");
             const metadata = new Base();
             (metadata as any).wi = wi._id;
             (metadata as any).wiq = _wiq.name;
@@ -3903,7 +3819,6 @@ export class Message {
 
         var additems = [];
 
-        // isRelevant = (msg.items.length > 0);
         for (let i = 0; i < msg.items.length; i++) {
             let item = msg.items[i];
             let wi: Workitem = new Workitem(); wi._type = "workitem";
@@ -3922,12 +3837,12 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
             wi.nextrun = item.nextrun;
             // @ts-ignore
-            if(wi.nextrun?.seconds || wi.nextrun?.nanos) {
+            if (wi.nextrun?.seconds || wi.nextrun?.nanos) {
                 // @ts-ignore
                 let seconds = wi.nextrun?.seconds;
                 // @ts-ignore
                 let nanos = wi.nextrun?.nanos;
-                if(seconds != null && nanos != null) {
+                if (seconds != null && nanos != null) {
                     const milliseconds = parseInt(seconds) * 1000 + Math.floor(nanos / 1000000);
                     const date = new Date(milliseconds);
                     wi.nextrun = date;
@@ -4013,7 +3928,6 @@ export class Message {
                 }
             }
             delete item.files;
-            // wi = await Config.db.InsertOne(wi, "workitems", 1, true, jwt, parent);
             additems.push(wi);
         }
         var items = await Config.db.InsertMany(additems, "workitems", 1, true, jwt, parent);
@@ -4025,7 +3939,6 @@ export class Message {
         const seconds = Math.round((end - Config.db.queuemonitoringlastrun.getTime()) / 1000);
         if (seconds > 5 && isRelevant) {
             Config.db.queuemonitoringlastrun = new Date();
-            // Config.db.queuemonitoring()
         }
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -4091,15 +4004,11 @@ export class Message {
         var oldstate = wi.state;
         if (!NoderedUtil.IsNullEmpty(msg.state)) {
             msg.state = msg.state.toLowerCase() as any;
-            // if (["failed", "successful", "abandoned", "retry", "processing"].indexOf(msg.state) == -1) {
-            //     throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, abandoned, processing or retry");
-            // }
             if (msg.state == "new" && wi.state == "new") {
             } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
                 throw new Error("Illegal state " + msg.state + " on Workitem, must be failed, successful, processing or retry");
             }
             if (msg.errortype == "business" && msg.state == "retry" && msg.ignoremaxretries != true) msg.state = "failed";
-            // if (msg.errortype == "business" && msg.ignoremaxretries == false) msg.state = "failed";
             if (msg.state == "retry") {
                 if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
                 if ((wi.retries + 1) < wiq.maxretries || msg.ignoremaxretries) {
@@ -4112,14 +4021,14 @@ export class Message {
                     wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
                     if (!NoderedUtil.IsNullEmpty(msg.nextrun)) {
                         // @ts-ignore
-                        if(msg.nextrun.seconds && msg.nextrun.nanos) {
+                        if (msg.nextrun.seconds && msg.nextrun.nanos) {
                             // @ts-ignore
                             const milliseconds = parseInt(msg.nextrun.seconds) * 1000 + Math.floor(msg.nextrun.nanos / 1000000);
                             const date = new Date(milliseconds);
                             wi.nextrun = date;
                         } else {
                             wi.nextrun = new Date(msg.nextrun);
-                        }                        
+                        }
                     }
                 } else {
                     wi.state = "failed";
@@ -4136,11 +4045,11 @@ export class Message {
                 var file = msg.files[i];
                 let deleteit = false;
                 let _id = null;
-                if((file as any)._id != null) {
+                if ((file as any)._id != null) {
                     _id = JSON.parse(JSON.stringify((file as any)._id));
-                }                
+                }
                 if (NoderedUtil.IsNullUndefinded(file.file) || file.file.length == 0) {
-                    if(_id == null || _id == "") {
+                    if (_id == null || _id == "") {
                         deleteit = true;
                     } else {
                         wi.files = wi.files.filter(x => x.name != file.filename);
@@ -4149,7 +4058,7 @@ export class Message {
                 } else {
                     deleteit = true;
                 }
-                if(deleteit) {
+                if (deleteit) {
                     var exists = wi.files.filter(x => x.name == file.filename);
                     if (exists.length > 0) {
                         try {
@@ -4224,7 +4133,6 @@ export class Message {
                 const nextrun_seconds = Math.round((end - wi.nextrun.getTime()) / 1000);
                 if (seconds > 5 && nextrun_seconds >= 0) {
                     Config.db.queuemonitoringlastrun = new Date();
-                    // Config.db.queuemonitoring()
                 }
             } catch (error) {
                 console.log("Trick queuemonitoringlastrun error " + error.message)
@@ -4248,9 +4156,9 @@ export class Message {
                 await this.DuplicateWorkitem(wi, failed_wiq, failed_wiqid, this.jwt, parent);
             }
         }
-        if(msg.result != null) {
-            if(msg.result.nextrun == null) delete msg.result.nextrun;
-            if(msg.result.lastrun == null) delete msg.result.lastrun;
+        if (msg.result != null) {
+            if (msg.result.nextrun == null) delete msg.result.nextrun;
+            if (msg.result.lastrun == null) delete msg.result.lastrun;
         }
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -4327,9 +4235,9 @@ export class Message {
             }
         } while (workitems.length > 0 && msg.result == null);
         delete msg.jwt;
-        if(msg.result != null) {
-            if(msg.result.nextrun == null) delete msg.result.nextrun;
-            if(msg.result.lastrun == null) delete msg.result.lastrun;
+        if (msg.result != null) {
+            if (msg.result.nextrun == null) delete msg.result.nextrun;
+            if (msg.result.lastrun == null) delete msg.result.lastrun;
         }
         this.data = JSON.stringify(msg);
     }
@@ -4356,11 +4264,11 @@ export class Message {
             throw new Error("Unknown work item or access denied");
         }
 
-        var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt:rootjwt }, parent);
+        var files = await Config.db.query({ query: { "wi": wi._id }, collectionname: "fs.files", jwt: rootjwt }, parent);
         for (var i = 0; i < files.length; i++) {
             await Config.db.DeleteOne(files[i]._id, "fs.files", false, rootjwt, parent);
         }
-        var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt:rootjwt }, parent);
+        var files = await Config.db.query({ query: { "metadata.wi": wi._id }, collectionname: "fs.files", jwt: rootjwt }, parent);
         for (var i = 0; i < files.length; i++) {
             await Config.db.DeleteOne(files[i]._id, "fs.files", false, rootjwt, parent);
         }
@@ -4381,12 +4289,12 @@ export class Message {
 
         var skiprole = msg.skiprole;
         // @ts-ignore
-        if(this.data.skiprole != null) {
+        if (this.data.skiprole != null) {
             // @ts-ignore
             skiprole = this.data.skiprole;
         }
         // @ts-ignore
-        if(this.data.workitemqueue != null) msg = this.data.workitemqueue;
+        if (this.data.workitemqueue != null) msg = this.data.workitemqueue;
         if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
         if (NoderedUtil.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
         if (NoderedUtil.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
@@ -4404,7 +4312,6 @@ export class Message {
             const wiqusers: Role = await Logger.DBHelper.EnsureRole(msg.name + " users", null, parent);
             Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
             Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
-            // Base.removeRight(wiqusers, user._id, [Rights.delete]);
             wiqusers.AddMember(user as any);
             wiqusers.AddMember(workitem_queue_admins);
             await Logger.DBHelper.Save(wiqusers, rootjwt, parent);
@@ -4421,11 +4328,11 @@ export class Message {
         wiq.projectid = msg.projectid;
         wiq.amqpqueue = msg.amqpqueue;
         wiq.maxretries = msg.maxretries;
-        if(msg._acl != null) {
+        if (msg._acl != null) {
             // @ts-ignore
             wiq._acl = JSON.parse(JSON.stringify(msg._acl));
-        }        
-        if(wiq.maxretries < 1) wiq.maxretries = 3;
+        }
+        if (wiq.maxretries < 1) wiq.maxretries = 3;
         wiq.retrydelay = msg.retrydelay;
         wiq.initialdelay = msg.initialdelay;
         wiq.failed_wiq = msg.failed_wiq;
@@ -4469,7 +4376,7 @@ export class Message {
         const jwt = this.jwt;
         msg = UpdateWorkitemQueueMessage.assign(this.data);
         // @ts-ignore
-        if(this.data.workitemqueue != null) {
+        if (this.data.workitemqueue != null) {
             // @ts-ignore
             msg = this.data.workitemqueue;
             // @ts-ignore
@@ -4491,7 +4398,7 @@ export class Message {
         user = this.tuser;
 
         if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
-        if(wiq.name != msg.name) {
+        if (wiq.name != msg.name) {
             let exists = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
             if (exists.length > 0) throw new Error("Work item queue with name " + msg.name + " already exists");
             wiq.name = msg.name;
@@ -4657,7 +4564,6 @@ export class Message {
                 var query: any = { userid: msg.id }
                 if (!NoderedUtil.IsNullEmpty(host)) query.host = host;
                 if (!NoderedUtil.IsNullEmpty(_type)) query._type = _type;
-                // var subscription = await Config.db.GetOne<User>({ query, collectionname: "webpushsubscriptions", jwt: rootjwt }, parent);
                 var subscriptions = await Config.db.query<User>({ query, collectionname: "webpushsubscriptions", jwt: rootjwt }, parent);
                 if (subscriptions == null || subscriptions.length == 0) break;
                 const payload = JSON.stringify(data);
@@ -4671,18 +4577,18 @@ export class Message {
             case "startagent":
                 if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                if (agent == null) throw new Error("Access denied");
 
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
-                if(agent.image == null || agent.image == "") break;
+                if (agent.image == null || agent.image == "") break;
                 await Logger.agentdriver.EnsureInstance(this.tuser, this.jwt, agent, parent);
                 break;
             case "stopagent":
                 if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                if (agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
@@ -4691,7 +4597,7 @@ export class Message {
             case "deleteagentpod":
                 if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                if (agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
@@ -4700,7 +4606,7 @@ export class Message {
             case "getagentlog":
                 if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                if (agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.invoke)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${agent.name}`);
                 }
@@ -4709,18 +4615,18 @@ export class Message {
             case "getagentpods":
                 if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent: iAgent = null;
-                if(!NoderedUtil.IsNullEmpty(msg.id)) {
+                if (!NoderedUtil.IsNullEmpty(msg.id)) {
                     var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                    if(agent == null) throw new Error("Access denied");
+                    if (agent == null) throw new Error("Access denied");
                 }
                 var getstats = false;
-                if(!NoderedUtil.IsNullEmpty(msg.name)) getstats = true;                
+                if (!NoderedUtil.IsNullEmpty(msg.name)) getstats = true;
                 msg.result = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, getstats, parent);
                 break;
             case "deleteagent":
                 if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
-                if(agent == null) throw new Error("Access denied");
+                if (agent == null) throw new Error("Access denied");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, agent, Rights.delete)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${agent.name}`);
                 }
@@ -4730,51 +4636,51 @@ export class Message {
             case "registeragent":
                 // @ts-ignore
                 var data = msg.data
-                if(data == null || data == "") throw new Error("No data found");
+                if (data == null || data == "") throw new Error("No data found");
                 try {
                     data = JSON.parse(data);
                 } catch (error) {
-                    
+
                 }
-                var agent:iAgent = data as any;
-                if(msg.id != null && msg.id != "") agent._id =  msg.id;
-                if(agent.slug == null || agent.slug == "") agent.slug = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                var agent: iAgent = data as any;
+                if (msg.id != null && msg.id != "") agent._id = msg.id;
+                if (agent.slug == null || agent.slug == "") agent.slug = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
                 agent._type = "agent";
                 agent.lastseen = new Date(new Date().toISOString());
-                if(agent._id == null || agent._id == "") {
+                if (agent._id == null || agent._id == "") {
                     var _agent = await Config.db.GetOne<iAgent>({ query: { hostname: agent.hostname, username: agent.username }, collectionname: "agents", jwt }, parent);
-                    if(_agent != null) {
+                    if (_agent != null) {
                         agent._id = _agent._id;
                         agent.name = _agent.name;
                     }
                 }
-                if(agent._id != null && agent._id != "") {
+                if (agent._id != null && agent._id != "") {
                     var _agent = await Config.db.GetOne<iAgent>({ query: { _id: agent._id }, collectionname: "agents", jwt }, parent);
-                    if(_agent == null) {
-                        if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
+                    if (_agent == null) {
+                        if (agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
 
                         _agent = await Config.db.GetOne<iAgent>({ query: { hostname: agent.hostname, username: agent.username }, collectionname: "agents", jwt }, parent);
-                        if(_agent == null) {
+                        if (_agent == null) {
                             _agent = await Config.db.InsertOne<iAgent>(agent, "agents", 1, true, jwt, parent);
                         }
                     }
                     _agent.lastseen = new Date(new Date().toISOString());
-                    if(agent.hostname != null && agent.hostname != "") _agent.hostname = agent.hostname;
-                    if(agent.os != null && agent.os != "") _agent.os = agent.os;
-                    if(agent.arch != null && agent.arch != "") _agent.arch = agent.arch;
-                    if(agent.username != null && agent.username != "") _agent.username = agent.username;
-                    if(agent.version != null && agent.version != "") _agent.version = agent.version;
-                    if(!NoderedUtil.IsNullEmpty(agent.chrome)) _agent.chrome = agent.chrome;
-                    if(!NoderedUtil.IsNullEmpty(agent.chromium)) _agent.chromium = agent.chromium;
-                    if(!NoderedUtil.IsNullEmpty(agent.docker)) _agent.docker = agent.docker;
-                    if(!NoderedUtil.IsNullEmpty(agent.assistant)) _agent.assistant = agent.assistant;
-                    if(!NoderedUtil.IsNullEmpty(agent.daemon)) _agent.daemon = agent.daemon;
-                    if(!NoderedUtil.IsNullEmpty(agent.languages) && Array.isArray(agent.languages)) _agent.languages = agent.languages;
+                    if (agent.hostname != null && agent.hostname != "") _agent.hostname = agent.hostname;
+                    if (agent.os != null && agent.os != "") _agent.os = agent.os;
+                    if (agent.arch != null && agent.arch != "") _agent.arch = agent.arch;
+                    if (agent.username != null && agent.username != "") _agent.username = agent.username;
+                    if (agent.version != null && agent.version != "") _agent.version = agent.version;
+                    if (!NoderedUtil.IsNullEmpty(agent.chrome)) _agent.chrome = agent.chrome;
+                    if (!NoderedUtil.IsNullEmpty(agent.chromium)) _agent.chromium = agent.chromium;
+                    if (!NoderedUtil.IsNullEmpty(agent.docker)) _agent.docker = agent.docker;
+                    if (!NoderedUtil.IsNullEmpty(agent.assistant)) _agent.assistant = agent.assistant;
+                    if (!NoderedUtil.IsNullEmpty(agent.daemon)) _agent.daemon = agent.daemon;
+                    if (!NoderedUtil.IsNullEmpty(agent.languages) && Array.isArray(agent.languages)) _agent.languages = agent.languages;
 
                     var agentuser = this.tuser;
                     if (_agent.runas != null && _agent.runas != "" && this.tuser._id != _agent.runas) {
                         agentuser = await Config.db.GetOne<any>({ query: { _id: _agent.runas }, collectionname: "users", jwt }, parent);
-                        if(agentuser == null) throw new Error(`[${this.tuser.name}] Access denied to runas user ${_agent.runas}`);
+                        if (agentuser == null) throw new Error(`[${this.tuser.name}] Access denied to runas user ${_agent.runas}`);
                     }
                     if (agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
                         if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
@@ -4784,25 +4690,17 @@ export class Message {
                     // @ts-ignore
                     delete _agent.jwt;
 
-                    if(_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
+                    if (_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
                     _agent.runas = agentuser._id
                     _agent.runasname = agentuser.name
-
-                    // if(this.clientagent == "assistant") {
-                    //     _agent.assistant = true;
-                    // }
-                    // if(this.clientagent == "nodeagent") {
-                    //     _agent.daemon = true;
-                    // }
-
                     agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);
                 } else {
-                    if(agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
+                    if (agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
 
                     var agentuser = this.tuser;
                     if (agent.runas != null && agent.runas != "" && this.tuser._id != agent.runas) {
                         agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
-                        if(agentuser == null) throw new Error(`[${this.tuser.name}] Access denied to runas user ${agent.runas}`);
+                        if (agentuser == null) throw new Error(`[${this.tuser.name}] Access denied to runas user ${agent.runas}`);
                     }
                     if (agentuser != null && agentuser._id != null && this.tuser._id != agentuser._id) {
                         if (!DatabaseConnection.hasAuthorization(this.tuser, agentuser as any, Rights.invoke)) {
@@ -4825,15 +4723,15 @@ export class Message {
                 break;
             case "deletepackage":
                 var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt }, parent);
-                if(pack == null) throw new Error("Access denied or package not found");
+                if (pack == null) throw new Error("Access denied or package not found");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
                 }
-                if(pack.fileid != null && pack.fileid != "") {
+                if (pack.fileid != null && pack.fileid != "") {
                     const rootjwt = Crypt.rootToken();
                     let query = { _id: pack.fileid };
                     const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
-                    if(item != null) {
+                    if (item != null) {
                         await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
                     }
                 }
@@ -4862,19 +4760,19 @@ export class Message {
                 var data = msg.data;
                 try {
                     data = JSON.parse(data);
-                } catch (error) {                    
+                } catch (error) {
                 }
-                if(data == null || data == "") throw new Error("No data found");
+                if (data == null || data == "") throw new Error("No data found");
                 var domain = data.domain;
                 if (!this.tuser.HasRoleId(WellknownIds.admins)) {
                     delete data.months;
                 }
-                var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage"}, collectionname: "config", jwt }, parent);
+                var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
                 if (!this.tuser.HasRoleId(WellknownIds.admins)) {
-                    if(exists == null) throw new Error("Access denied");
+                    if (exists == null) throw new Error("Access denied");
                 }
-                if(data.months == null || data.months == "") {
-                    if(exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
+                if (data.months == null || data.months == "") {
+                    if (exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
                 }
                 //  throw new Error("Access denied");
                 msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
@@ -4883,64 +4781,62 @@ export class Message {
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 var repo = await GitProxy.GetRepo(data.repo);
-                if(repo == null) throw new Error("Repo not found");
+                if (repo == null) throw new Error("Repo not found");
                 var branches = await repo.getRefs();
                 var branchref = "";
-                for(var i = 0; i < branches.length; i++) {
-                    if(branches[i].ref == data.branch || branches[i].ref == "refs/heads/" + data.branch || branches[i].ref == "refs/tags/" + data.branch) {
+                for (var i = 0; i < branches.length; i++) {
+                    if (branches[i].ref == data.branch || branches[i].ref == "refs/heads/" + data.branch || branches[i].ref == "refs/tags/" + data.branch) {
                         branchref = branches[i].ref;
                     }
                 }
-                if(branchref == "") branchref = await repo.getHeadRef();
-                // var arr = await repo.repocollection.find({ repo: repo.repoName, ref: branchref, _type: "hash" }).toArray()
+                if (branchref == "") branchref = await repo.getHeadRef();
                 var arr = await repo.repocollection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray() // for now, lets just check HEAD
                 if (arr != null && arr.length > 0) {
-                  const main = arr[0];
-                  if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.update)) {
-                    Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
-                    branchref = ""
-                    throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
-                  }
+                    const main = arr[0];
+                    if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.update)) {
+                        Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
+                        branchref = ""
+                        throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
+                    }
                 } else {
                     branchref = ""
                 }
-                if(branchref == "" || branchref == null) throw new Error("Branch not found");
+                if (branchref == "" || branchref == null) throw new Error("Branch not found");
                 msg.result = await GitProxy.snapshot(repo, this.tuser, branchref, this.jwt, parent);
                 break;
             case "snapshotrestore":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 var repo = await GitProxy.GetRepo(data.repo);
-                if(repo == null) throw new Error("Repo not found");
+                if (repo == null) throw new Error("Repo not found");
                 let tree = "";
-                if(data.tree != null && data.tree != "") {
+                if (data.tree != null && data.tree != "") {
                     tree = data.tree;
                 }
-                if(data.commit != null && data.commit != "") {
+                if (data.commit != null && data.commit != "") {
                     tree = data.commit;
                 }
-                if(tree == "") {
+                if (tree == "") {
                     var branches = await repo.getRefs();
                     var branchref = "";
-                    for(var i = 0; i < branches.length; i++) {
-                        if(branches[i].ref == data.branch || branches[i].ref == "refs/heads/" + data.branch || branches[i].ref == "refs/tags/" + data.branch) {
+                    for (var i = 0; i < branches.length; i++) {
+                        if (branches[i].ref == data.branch || branches[i].ref == "refs/heads/" + data.branch || branches[i].ref == "refs/tags/" + data.branch) {
                             branchref = branches[i].ref;
                         }
                     }
-                    if(branchref == "") branchref = await repo.getHeadRef();
-                    // var arr = await repo.repocollection.find({ repo: repo.repoName, ref: branchref, _type: "hash" }).toArray()
+                    if (branchref == "") branchref = await repo.getHeadRef();
                     var arr = await repo.repocollection.find({ repo: repo.repoName, ref: "HEAD", _type: "hash" }).toArray() // for now, lets just check HEAD
                     if (arr != null && arr.length > 0) {
-                      const main = arr[0];
-                      if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.read)) {
-                        Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
-                        branchref = ""
-                        throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
-                      }
+                        const main = arr[0];
+                        if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.read)) {
+                            Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
+                            branchref = ""
+                            throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
+                        }
                     } else {
                         branchref = ""
                     }
-                    if(branchref == "" || branchref == null) throw new Error("Branch not found");
+                    if (branchref == "" || branchref == null) throw new Error("Branch not found");
                     const b = branches.find(x => x.ref == branchref);
                     tree = b.sha;
                 }

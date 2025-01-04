@@ -1,12 +1,11 @@
-import { suite, test, timeout } from "@testdeck/mocha";
-import { Config } from "../Config.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
-import assert from "assert";
-import { Logger } from "../Logger.js";
 import { NoderedUtil, User } from "@openiap/openflow-api";
+import { suite, test, timeout } from "@testdeck/mocha";
+import assert from "assert";
+import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
+import { DatabaseConnection } from "../DatabaseConnection.js";
+import { Logger } from "../Logger.js";
 import { amqpwrapper } from "../amqpwrapper.js";
-
 @suite class amqp_test {
     private rootToken: string;
     private testUser: User;
@@ -23,7 +22,7 @@ import { amqpwrapper } from "../amqpwrapper.js";
         try {
             this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
         } catch (error) {
-            console.error("Error finding testuser: " + error);            
+            console.error("Error finding testuser: " + error);
         }
         this.amqp = new amqpwrapper(Config.amqp_url);
         amqpwrapper.SetInstance(this.amqp);
@@ -35,10 +34,6 @@ import { amqpwrapper } from "../amqpwrapper.js";
         this.amqp?.shutdown();
         await Logger.shutdown();
     }
-    // @test async "connecterror"() {
-    //     // var amqp = new amqpwrapper("bogus://url");
-    //     // await assert.rejects( await amqp.connect(null));
-    // }
     @timeout(5000)
     @test async "queuetest"() {
         const queuename = "demotestqueue";
@@ -48,8 +43,7 @@ import { amqpwrapper } from "../amqpwrapper.js";
                     msg = "hi";
                 } else {
                     msg = "unknown message";
-                }                
-                // console.log("send reply to " + options.replyTo + " / " + options.routingKey);
+                }
                 await this.amqp.send(options.exchangename, options.replyTo, msg, 1500, options.correlationId, options.routingKey, null, 1);
             }
             ack();
@@ -77,9 +71,9 @@ import { amqpwrapper } from "../amqpwrapper.js";
         var q = await this.amqp.AddQueueConsumer(this.testUser, this.testUser._id, null, this.rootToken, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                 if (msg.indexOf("hi mom, i miss you") > -1) {
-                    msg = JSON.stringify({"test": "hi"});
+                    msg = JSON.stringify({ "test": "hi" });
                 } else {
-                    msg = JSON.stringify({"test": "unknown message"});
+                    msg = JSON.stringify({ "test": "unknown message" });
                 }
                 await this.amqp.send(options.exchangename, options.replyTo, msg, 1500, options.correlationId, options.routingKey, null, 1);
             }
@@ -87,11 +81,11 @@ import { amqpwrapper } from "../amqpwrapper.js";
         }, null);
         assert.ok(!NoderedUtil.IsNullUndefinded(q));
         assert.ok(!NoderedUtil.IsNullEmpty(q.queuename));
-        var reply = await this.amqp.sendWithReply(null, this.testUser._id, {"test": "hi mom, i miss you"}, 300, null, null, null);
-        assert.notStrictEqual (reply.indexOf("hi"), -1);
+        var reply = await this.amqp.sendWithReply(null, this.testUser._id, { "test": "hi mom, i miss you" }, 300, null, null, null);
+        assert.notStrictEqual(reply.indexOf("hi"), -1);
         await this.amqp.RemoveQueueConsumer(this.testUser, q, null);
-        reply = await this.amqp.sendWithReply("", "bogusName", {"test": "hi mom, i miss you"}, 300, null, null, null);
-        assert.notStrictEqual (reply.indexOf("timeout"), -1);
+        reply = await this.amqp.sendWithReply("", "bogusName", { "test": "hi mom, i miss you" }, 300, null, null, null);
+        assert.notStrictEqual(reply.indexOf("timeout"), -1);
 
         // why does this die ? after sending to bogusName
         // reply = await this.amqp.sendWithReply(null, this.testUser._id, "hi mom, i miss you", 300, null, null);
@@ -104,9 +98,9 @@ import { amqpwrapper } from "../amqpwrapper.js";
         var q = await this.amqp.AddExchangeConsumer(this.testUser, exchangename, "direct", "", null, this.rootToken, true, async (msg, options, ack) => {
             if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
                 if (msg.indexOf("hi mom, i miss you") > -1) {
-                    msg = JSON.stringify({"test": "hi"});
+                    msg = JSON.stringify({ "test": "hi" });
                 } else {
-                    msg = JSON.stringify({"test": "unknown message"});
+                    msg = JSON.stringify({ "test": "unknown message" });
                 }
                 await this.amqp.send("", options.replyTo, msg, 1500, options.correlationId, "", null, 1);
             }
@@ -114,12 +108,12 @@ import { amqpwrapper } from "../amqpwrapper.js";
         }, null);
         // Give rabbitmq a little room
         await new Promise(resolve => { setTimeout(resolve, 1000) })
-        var reply = await this.amqp.sendWithReply(exchangename, "", {"test": "hi mom, i miss you"}, 300, null, null, null);
-        assert.notStrictEqual (reply.indexOf("hi"), -1);
-        var reply = await this.amqp.sendWithReply(exchangename, "", {"test": "hi dad, i miss you"}, 300, null, null, null);
-        assert.notStrictEqual (reply.indexOf("unknown message"), -1);
-        var reply = await this.amqp.sendWithReply(exchangename, "", {"test": "hi mom, i miss you"}, 300, null, null, null);
-        assert.notStrictEqual (reply.indexOf("hi"), -1);
+        var reply = await this.amqp.sendWithReply(exchangename, "", { "test": "hi mom, i miss you" }, 300, null, null, null);
+        assert.notStrictEqual(reply.indexOf("hi"), -1);
+        var reply = await this.amqp.sendWithReply(exchangename, "", { "test": "hi dad, i miss you" }, 300, null, null, null);
+        assert.notStrictEqual(reply.indexOf("unknown message"), -1);
+        var reply = await this.amqp.sendWithReply(exchangename, "", { "test": "hi mom, i miss you" }, 300, null, null, null);
+        assert.notStrictEqual(reply.indexOf("hi"), -1);
         await this.amqp.RemoveQueueConsumer(this.testUser, q.queue, null);
         await assert.rejects(this.amqp.RemoveQueueConsumer(this.testUser, null, null));
     }

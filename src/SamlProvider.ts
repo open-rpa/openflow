@@ -65,9 +65,9 @@ export class SamlProvider {
         const cert: string = Buffer.from(Config.signing_crt, "base64").toString("ascii");
         const key: string = Buffer.from(Config.singing_key, "base64").toString("ascii");
 
-        if(cert != null && cert != "") {
+        if (cert != null && cert != "") {
             let saml_issuer: string = Config.saml_issuer;
-            if(saml_issuer == null || saml_issuer == "") saml_issuer = "uri:" + Config.domain;
+            if (saml_issuer == null || saml_issuer == "") saml_issuer = "uri:" + Config.domain;
             const samlpoptions: any = {
                 issuer: saml_issuer,
                 cert: cert,
@@ -79,7 +79,7 @@ export class SamlProvider {
                         }
                         return callback(null, wreply);
                     })();
-    
+
                 },
                 getUserFromRequest: (req: any) => {
                     const span: Span = Logger.otel.startSpanExpress("SAML.getUserFromRequest", req);
@@ -87,7 +87,7 @@ export class SamlProvider {
                         const tuser: User = req.user;
                         const remoteip = SamlProvider.remoteip(req);
                         span?.setAttribute("remoteip", remoteip);
-                        Audit.LoginSuccess(tuser,  "tokenissued", "saml", remoteip, "unknown", "unknown", span).catch((e) => {
+                        Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "unknown", "unknown", span).catch((e) => {
                             Logger.instanse.error(e, span);
                         });
                     } catch (error) {
@@ -100,17 +100,16 @@ export class SamlProvider {
                 profileMapper: SamlProvider.profileMapper,
                 lifetimeInSeconds: (3600 * 24)
             };
-    
+
             app.get("/issue/", (req: any, res: any, next: any): void => {
                 if (req.query.SAMLRequest !== undefined && req.query.SAMLRequest !== null) {
                     if ((req.user === undefined || req.user === null)) {
                         try {
-                            // tslint:disable-next-line: max-line-length
                             samlp.parseRequest(req, samlpoptions, async (_err: any, samlRequestDom: any): Promise<void> => {
                                 try {
-                                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });    
-                                } catch (error) {                                    
-                                }                                
+                                    res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
+                                } catch (error) {
+                                }
                                 res.redirect("/");
                             });
                         } catch (error) {
@@ -127,7 +126,7 @@ export class SamlProvider {
                     res.end();
                 }
             });
-    
+
             try {
                 app.get("/issue/", samlp.auth(samlpoptions));
                 app.get("/issue/FederationMetadata/2007-06/FederationMetadata.xml", samlp.metadata({
@@ -142,7 +141,6 @@ export class SamlProvider {
                 req.logout();
                 let html = "<html><head></head><body>";
                 html += "<h1>Du er nu logget ud</h1><br>";
-                // html += `<br/><p><a href="/">Til login</ifarame></p>`;
                 html += "</body></html>";
                 res.send(html);
             });
@@ -150,7 +148,6 @@ export class SamlProvider {
                 req.logout();
                 let html = "<html><head></head><body>";
                 html += "<h1>Du er nu logget ud</h1><br>";
-                // html += `<br/><p><a href="/">Til login</ifarame></p>`;
                 html += "</body></html>";
                 res.send(html);
             });
@@ -194,9 +191,9 @@ export class SamlProvider {
             }
         });
         app.post("/logout", (req: any, res: any, next: any): void => {
-            if(cert != null && cert != "") {
+            if (cert != null && cert != "") {
                 let saml_issuer: string = Config.saml_issuer;
-                if(saml_issuer == null || saml_issuer == "") saml_issuer = "uri:" + Config.domain;
+                if (saml_issuer == null || saml_issuer == "") saml_issuer = "uri:" + Config.domain;
                 samlp.logout({
                     issuer: saml_issuer,
                     protocolBinding: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",

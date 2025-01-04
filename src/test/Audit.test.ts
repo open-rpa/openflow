@@ -1,11 +1,11 @@
 // import wtf from "wtfnode";
+import { User } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
+import { Audit } from "../Audit.js";
 import { Config } from "../Config.js";
+import { Crypt } from "../Crypt.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import { Logger } from "../Logger.js";
-import { TokenUser, User } from "@openiap/openflow-api";
-import { Audit } from "../Audit.js";
-import { Crypt } from "../Crypt.js";
 
 @suite class audit_test {
     private rootToken: string;

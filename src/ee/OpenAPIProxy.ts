@@ -11,32 +11,31 @@ import { WebServer } from "../WebServer.js";
 import { amqpwrapper } from "../amqpwrapper.js";
 let schema2 = {}
 try {
-  var dir = fs.readdirSync(".");
-  if(fs.existsSync("src/public/swagger.json") == true) {
+  if (fs.existsSync("src/public/swagger.json") == true) {
     const json = fs.readFileSync("src/public/swagger.json", "utf8");
     schema2 = JSON.parse(json);
-  } else if(fs.existsSync("../public/swagger.json") == true) {
+  } else if (fs.existsSync("../public/swagger.json") == true) {
     const json = fs.readFileSync("../public/swagger.json", "utf8");
     schema2 = JSON.parse(json);
-  } else if(fs.existsSync("./public/swagger.json") == true) {
+  } else if (fs.existsSync("./public/swagger.json") == true) {
     const json = fs.readFileSync("./public/swagger.json", "utf8");
     schema2 = JSON.parse(json);
-  } else if(fs.existsSync("src/public.template/swagger.json") == true) {
+  } else if (fs.existsSync("src/public.template/swagger.json") == true) {
     const json = fs.readFileSync("src/public.template/swagger.json", "utf8");
     schema2 = JSON.parse(json);
-  } else if(fs.existsSync("../public.template/swagger.json") == true) {
+  } else if (fs.existsSync("../public.template/swagger.json") == true) {
     const json = fs.readFileSync("../public.template/swagger.json", "utf8");
     schema2 = JSON.parse(json);
-  } else if(fs.existsSync("./public.template/swagger.json") == true) {
+  } else if (fs.existsSync("./public.template/swagger.json") == true) {
     const json = fs.readFileSync("./public.template/swagger.json", "utf8");
     schema2 = JSON.parse(json);
   } else {
     Logger.instanse.warn("swagger.json not found", null, { cls: "OpenAPIProxy" });
     console.warn("swagger.json not found");
- 
+
   }
 } catch (error) {
-  Logger.instanse.error(error, null, { cls: "OpenAPIProxy" });  
+  Logger.instanse.error(error, null, { cls: "OpenAPIProxy" });
 }
 
 import { NextFunction } from "express";
@@ -93,7 +92,7 @@ export class OpenAPIProxy {
     }, null);
 
     app.all("/api/v1/*", async (req, res, next) => {
-      if(Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
+      if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       const urlPath = req.path;
       const method = req.method.toUpperCase();
       const remoteip = WebServer.remoteip(req as any);
@@ -103,7 +102,7 @@ export class OpenAPIProxy {
 
     RegisterRoutes(app);
 
-    
+
     app.use(function errorHandler(
       err: unknown,
       req: any,
@@ -125,7 +124,7 @@ export class OpenAPIProxy {
           error: message, message, stack
         });
       }
-    
+
       next();
     });
 
@@ -136,7 +135,7 @@ export class OpenAPIProxy {
     collections = collections.filter(x => !x.name.endsWith("_hist"));
 
     app.all("/rest/v1/*", async (req, res, next) => {
-      if(Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
+      if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       const urlPath = req.path;
       const method = req.method.toUpperCase();
       Logger.instanse.debug("[" + method + "] " + urlPath, null, { cls: "OpenAPIProxy" });
@@ -159,7 +158,7 @@ export class OpenAPIProxy {
             data: body.payload
           }
           var robotuser = null;
-          if(body.robotid != null && body.robotid != "") {
+          if (body.robotid != null && body.robotid != "") {
             robotuser = await Config.db.getbyid(body.robotid, "users", jwt, true, null)
             if (robotuser == null) {
               robotuser = await Config.db.GetOne({
@@ -172,7 +171,7 @@ export class OpenAPIProxy {
             }
           }
           var workflow = null;
-          if(body.robotid != null && body.robotid != "") {
+          if (body.robotid != null && body.robotid != "") {
             workflow = await Config.db.getbyid(body.workflowid, "openrpa", jwt, true, null)
             if (workflow == null) {
               workflow = await Config.db.GetOne({
@@ -223,7 +222,6 @@ export class OpenAPIProxy {
         try {
           var jwt = await OpenAPIProxy.GetToken(req);
           const tuser = await Auth.Token2User(jwt, null);
-          // if(tuser == null) { res.status(401).json({ error: "Access denied" }); return; }
           let result = await WebServer.ProcessMessage(req, tuser, jwt);
           res.json(result.data);
         } catch (error) {
@@ -242,11 +240,10 @@ export class OpenAPIProxy {
       url = url.substring(0, url.length - 1)
     }
     Logger.instanse.debug("Updating servers to " + url, null, { cls: "OpenAPIProxy" });
-    // schema["servers"] = [{ url }]
     schema2["servers"] = [{ url }]
     // @ts-ignore
-    let components:any = schema2?.components;
-    if(components?.securitySchemes?.oidc?.openIdConnectUrl != null) {
+    let components: any = schema2?.components;
+    if (components?.securitySchemes?.oidc?.openIdConnectUrl != null) {
       components.securitySchemes.oidc.openIdConnectUrl = Config.baseurl() + "oidc/.well-known/openid-configuration";
     }
     var options = {
@@ -254,33 +251,30 @@ export class OpenAPIProxy {
     };
 
     app.use("/docs", swaggerUi.serve, async (_req: any, res: any) => {
-      if(Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
+      if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       Logger.instanse.debug("Serving /docs", null, { cls: "OpenAPIProxy" });
       return res.send(
         swaggerUi.generateHTML(schema2)
       );
     });
     app.get("/openapi.json", (req, res) => {
-      if(Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
+      if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       // #swagger.ignore = true
       Logger.instanse.debug("[GET] /openapi.json", null, { cls: "OpenAPIProxy" });
-      // res.json(schema);
       res.json(schema2);
     });
     app.get("/swagger_output.json", (req, res) => {
-      if(Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
+      if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       // #swagger.ignore = true
       Logger.instanse.debug("[GET] /swagger_output.json", null, { cls: "OpenAPIProxy" });
-      // res.json(schema);
       res.json(schema2);
     });
 
-  } // constructor
+  }
   static async GetToken(req) {
     let authorization = "";
     let jwt = "";
     if (req.headers["authorization"]) {
-      // authorization = req.headers["authorization"].replace("Bearer ", "");
       authorization = req.headers["authorization"];
     }
     if (authorization != null && authorization != "") {
@@ -294,6 +288,6 @@ export class OpenAPIProxy {
       throw new Error("Authorization header is required");
     }
     return jwt;
-  } // GetToken
+  }
 
-} // class
+}

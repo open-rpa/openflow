@@ -45,7 +45,7 @@ export class HouseKeeping {
       Logger.otel.endSpan(span);
       if (Config.auto_hourly_housekeeping == true) {
         logMemoryUsage("Housekeeping end", span);
-      }      
+      }
     }
   }
   private static async runInstanceCleanup(skipAgentCleanup: boolean, rootuser: User, span: Span) {
@@ -501,57 +501,56 @@ export class HouseKeeping {
           Logger.instanse.error(error, span, { cls: "Housekeeping" });
         }
         let usage = 0;
-          let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
-          for await (const c of cursor) {
-            try {
-              // sometimes the item is "weird", re-serializing it, cleans it, so it works again ... mongodb bug ???
-              let item = JSON.parse(JSON.stringify(c));
-              item = Config.db.ensureResource(item, "dbusage");
-              item = await Config.db.CleanACL(item, tuser, "dbusage", span);
-              Base.addRight(item, item.userid, item.name, [Rights.read]);
-              for (let i = item._acl.length - 1; i >= 0; i--) {
-                {
-                  const ace = item._acl[i];
-                  if (typeof ace.rights === "string") {
-                    const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
-                    (ace.rights as any) = b;
-                  }
+        let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
+        for await (const c of cursor) {
+          try {
+            // sometimes the item is "weird", re-serializing it, cleans it, so it works again ... mongodb bug ???
+            let item = JSON.parse(JSON.stringify(c));
+            item = Config.db.ensureResource(item, "dbusage");
+            item = await Config.db.CleanACL(item, tuser, "dbusage", span);
+            Base.addRight(item, item.userid, item.name, [Rights.read]);
+            for (let i = item._acl.length - 1; i >= 0; i--) {
+              {
+                const ace = item._acl[i];
+                if (typeof ace.rights === "string") {
+                  const b = new Binary(Buffer.from(ace.rights, "base64"), 0);
+                  (ace.rights as any) = b;
                 }
               }
-              delete item._id;
-              if (usemetadata) {
-                item.metadata = item.metadata || {};
-                item.metadata.collection = item.collection;
-                item.metadata.username = item.name;
-                delete item.collection;
-                delete item.name;
-              } else {
-                item.username = item.name;
-                item._type = "metered";
-                delete item.name;
-              }
-              usage += item.size;
-              DatabaseConnection.traversejsonencode(item);
-              item.timestamp = new Date(timestamp.toISOString());
-              bulkInsert.insert(item);
-            } catch (error) {
-              Logger.instanse.error(error, span, { cls: "Housekeeping" });
             }
-
-          }
-          totalusage += usage;
-
-          try {
-            // @ts-ignore
-            var insertCount = bulkInsert.length;
-            if(insertCount > 0) {
-              await bulkInsert.execute();
-              // if (items.length > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] add " + items.length + " items with a usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
+            delete item._id;
+            if (usemetadata) {
+              item.metadata = item.metadata || {};
+              item.metadata.collection = item.collection;
+              item.metadata.username = item.name;
+              delete item.collection;
+              delete item.name;
+            } else {
+              item.username = item.name;
+              item._type = "metered";
+              delete item.name;
             }
-            if (usage > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
+            usage += item.size;
+            DatabaseConnection.traversejsonencode(item);
+            item.timestamp = new Date(timestamp.toISOString());
+            bulkInsert.insert(item);
           } catch (error) {
             Logger.instanse.error(error, span, { cls: "Housekeeping" });
           }
+
+        }
+        totalusage += usage;
+
+        try {
+          // @ts-ignore
+          var insertCount = bulkInsert.length;
+          if (insertCount > 0) {
+            await bulkInsert.execute();
+          }
+          if (usage > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
+        } catch (error) {
+          Logger.instanse.error(error, span, { cls: "Housekeeping" });
+        }
       }
       Logger.instanse.debug("Add stats from " + collections.length + " collections with a total usage of " + formatBytes(totalusage), span, { cls: "Housekeeping" });
       logMemoryUsage("caclulateSizeAndUsage", span);
@@ -853,19 +852,6 @@ export class HouseKeeping {
     Base.addRight(guest, "65cb30c40ff51e174095573c", "guest", [Rights.read]);
     await Logger.DBHelper.Save(guest, jwt, span);
 
-    // const robot_agent_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot agent users", WellknownIds.robot_agent_users, span);
-    // Base.addRight(robot_agent_users, WellknownIds.admins, "admins", [Rights.full_control]);
-    // Base.removeRight(robot_agent_users, WellknownIds.admins, [Rights.delete]);
-    // Base.addRight(robot_agent_users, WellknownIds.root, "root", [Rights.full_control]);
-    // if (Config.multi_tenant) {
-    //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_agent_users.name + " from self", span);
-    //     Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
-    // } else if (Config.update_acl_based_on_groups) {
-    //     Base.removeRight(robot_agent_users, robot_agent_users._id, [Rights.full_control]);
-    //     Base.addRight(robot_agent_users, robot_agent_users._id, "robot agent users", [Rights.read]);
-    // }
-    // await Logger.DBHelper.Save(robot_agent_users, jwt, span);
-
     Base.addRight(admins, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(admins, WellknownIds.admins, [Rights.delete]);
     await Logger.DBHelper.Save(admins, jwt, span);
@@ -874,82 +860,62 @@ export class HouseKeeping {
     Base.removeRight(users, WellknownIds.admins, [Rights.delete]);
     users.AddMember(root);
     if (Config.multi_tenant) {
-        Base.removeRight(users, users._id, [Rights.full_control]);
+      Base.removeRight(users, users._id, [Rights.full_control]);
     } else {
-        Base.removeRight(users, users._id, [Rights.full_control]);
-        Base.addRight(users, users._id, "users", [Rights.read]);
+      Base.removeRight(users, users._id, [Rights.full_control]);
+      Base.addRight(users, users._id, "users", [Rights.read]);
     }
     await Logger.DBHelper.Save(users, jwt, span);
 
     var config: Base = await Config.db.GetOne({ query: { "_type": "config" }, collectionname: "config", jwt }, span);
     if (config == null) {
-        config = new Base();
-        config._type = "config";
-        config.name = "Config override";
+      config = new Base();
+      config._type = "config";
+      config.name = "Config override";
     }
 
     if (Config.dbConfig.compare("1.4.25") == -1) {
-        // Fix queue and exchange names from before 1.4.25 where names would be saved without converting to lowercase
-        var cursor = await Config.db.db.collection("mq").find({ "$or": [{ "_type": "exchange" }, { "_type": "queue" }] });
-        for await (const u of cursor) {
-            if (u.name != u.name.toLowerCase()) {
-                await Config.db.db.collection("mq").updateOne({ "_id": u._id }, { "$set": { "name": u.name.toLowerCase() } });
-            }
+      // Fix queue and exchange names from before 1.4.25 where names would be saved without converting to lowercase
+      var cursor = await Config.db.db.collection("mq").find({ "$or": [{ "_type": "exchange" }, { "_type": "queue" }] });
+      for await (const u of cursor) {
+        if (u.name != u.name.toLowerCase()) {
+          await Config.db.db.collection("mq").updateOne({ "_id": u._id }, { "$set": { "name": u.name.toLowerCase() } });
         }
-        cursor.close();
+      }
+      cursor.close();
     }
 
 
     if (Config.dbConfig.needsupdate) {
-        await Config.dbConfig.Save(jwt, span);
+      await Config.dbConfig.Save(jwt, span);
     }
 
     if (Config.multi_tenant) {
-        try {
-            const resellers: Role = await Logger.DBHelper.EnsureRole("resellers", WellknownIds.resellers, span);
-            // @ts-ignore
-            resellers.hidemembers = true;
-            Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
-            Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
-            Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
-            resellers.AddMember(admins);
-            await Logger.DBHelper.Save(resellers, jwt, span);
+      try {
+        const resellers: Role = await Logger.DBHelper.EnsureRole("resellers", WellknownIds.resellers, span);
+        // @ts-ignore
+        resellers.hidemembers = true;
+        Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
+        Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
+        Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
+        resellers.AddMember(admins);
+        await Logger.DBHelper.Save(resellers, jwt, span);
 
-            const customer_admins: Role = await Logger.DBHelper.EnsureRole("customer admins", WellknownIds.customer_admins, span);
-            // @ts-ignore
-            customer_admins.hidemembers = true;
-            Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-            Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
-            Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
-            await Logger.DBHelper.Save(customer_admins, jwt, span);
-        } catch (error) {
-            Logger.instanse.error(error, span);
-        }
+        const customer_admins: Role = await Logger.DBHelper.EnsureRole("customer admins", WellknownIds.customer_admins, span);
+        // @ts-ignore
+        customer_admins.hidemembers = true;
+        Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
+        Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
+        Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
+        await Logger.DBHelper.Save(customer_admins, jwt, span);
+      } catch (error) {
+        Logger.instanse.error(error, span);
+      }
     }
 
-
-    // const robot_admins: Role = await Logger.DBHelper.EnsureRole(jwt, "robot admins", WellknownIds.robot_admins, span);
-    // robot_admins.AddMember(admins);
-    // Base.addRight(robot_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-    // Base.removeRight(robot_admins, WellknownIds.admins, [Rights.delete]);
-    // await Logger.DBHelper.Save(robot_admins, jwt, span);
-    // const robot_users: Role = await Logger.DBHelper.EnsureRole(jwt, "robot users", WellknownIds.robot_users, span);
-    // robot_users.AddMember(admins);
-    // robot_users.AddMember(users);
-    // Base.addRight(robot_users, WellknownIds.admins, "admins", [Rights.full_control]);
-    // Base.removeRight(robot_users, WellknownIds.admins, [Rights.delete]);
-    // if (Config.multi_tenant) {
-    //     Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + robot_users.name + " from self", span);
-    //     Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-    // } else if (Config.update_acl_based_on_groups) {
-    //     Base.removeRight(robot_users, robot_users._id, [Rights.full_control]);
-    //     Base.addRight(robot_users, robot_users._id, "robot users", [Rights.read, Rights.invoke, Rights.update]);
-    // }
-    // await Logger.DBHelper.Save(robot_users, jwt, span);
-
     if (!admins.IsMember(root._id)) {
-        admins.AddMember(root);
-        await Logger.DBHelper.Save(admins, jwt, span);
+      admins.AddMember(root);
+      await Logger.DBHelper.Save(admins, jwt, span);
     }
 
     const filestore_admins: Role = await Logger.DBHelper.EnsureRole("filestore admins", WellknownIds.filestore_admins, span);
@@ -957,23 +923,23 @@ export class HouseKeeping {
     Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
     if (Config.multi_tenant) {
-        Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self", span);
-        Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
+      Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self", span);
+      Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(filestore_admins, jwt, span);
     const filestore_users: Role = await Logger.DBHelper.EnsureRole("filestore users", WellknownIds.filestore_users, span);
     filestore_users.AddMember(admins);
     if (!Config.multi_tenant) {
-        filestore_users.AddMember(users);
+      filestore_users.AddMember(users);
     }
     Base.addRight(filestore_users, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(filestore_users, WellknownIds.admins, [Rights.delete]);
     if (Config.multi_tenant) {
-        Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self", span);
-        Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
+      Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self", span);
+      Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
     } else if (Config.update_acl_based_on_groups) {
-        Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
-        Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
+      Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
+      Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
     }
     await Logger.DBHelper.Save(filestore_users, jwt, span);
 
@@ -984,7 +950,7 @@ export class HouseKeeping {
     Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
     if (Config.multi_tenant) {
-        Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.full_control]);
+      Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(workitem_queue_admins, jwt, span);
 
@@ -992,7 +958,7 @@ export class HouseKeeping {
     Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
     Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
     if (Config.multi_tenant) {
-        Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.full_control]);
+      Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
   }
@@ -1030,18 +996,7 @@ export const initMemoryUsage = () => {
   arrayBuffers = memoryUsage.arrayBuffers;
 }
 export const logMemoryUsage = (label, span) => {
-  // if (global.gc) {
-  //   global.gc();
-  // } else {
-  //   console.warn("No GC hook! Start your program with `node --expose-gc file.js`.");
-  // }
   const memoryUsage = process.memoryUsage();
-  // Logger.instanse.debug(`Memory usage after ${label}:`, span, { cls: "Housekeeping" });
-  // Logger.instanse.debug(`RSS: ${formatBytes(memoryUsage.rss)}`, span, { cls: "Housekeeping" });
-  // Logger.instanse.debug(`Heap Total: ${formatBytes(memoryUsage.heapTotal)}`, span, { cls: "Housekeeping" });
-  // Logger.instanse.debug(`Heap Used: ${formatBytes(memoryUsage.heapUsed)}`, span, { cls: "Housekeeping" });
-  // Logger.instanse.debug(`External: ${formatBytes(memoryUsage.external)}`, span, { cls: "Housekeeping" });
-  // Logger.instanse.debug(`Array Buffers: ${formatBytes(memoryUsage.arrayBuffers)}`, span, { cls: "Housekeeping" });
   Logger.instanse.debug(`Memory usage after ${label}:`, span, { cls: "Housekeeping" });
   Logger.instanse.debug(`RSS: ${formatBytes(memoryUsage.rss - rss)} now ${formatBytes(memoryUsage.rss)}`, span, { cls: "Housekeeping" });
   Logger.instanse.debug(`Heap Total: ${formatBytes(memoryUsage.heapTotal - heapTotal)} now ${formatBytes(memoryUsage.heapTotal)}`, span, { cls: "Housekeeping" });
@@ -1053,5 +1008,4 @@ export const logMemoryUsage = (label, span) => {
   heapUsed = memoryUsage.heapUsed;
   external = memoryUsage.external;
   arrayBuffers = memoryUsage.arrayBuffers;
-  // fs.writeFileSync("memoryusage.txt", `Memory usage after ${label}:\nRSS: ${formatBytes(memoryUsage.rss)}\nHeap Total: ${formatBytes(memoryUsage.heapTotal)}\nHeap Used: ${formatBytes(memoryUsage.heapUsed)}\nExternal: ${formatBytes(memoryUsage.external)}\nArray Buffers: ${formatBytes(memoryUsage.arrayBuffers)}\n`, { flag: "a" });
 };

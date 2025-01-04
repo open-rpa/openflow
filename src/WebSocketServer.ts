@@ -14,7 +14,6 @@ import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { amqpwrapper } from "./amqpwrapper.js";
 
 export class WebSocketServer {
-    // private static _socketserver: WebSocket.Server;
     public static _clients: WebSocketServerClient[];
     public static _remoteclients: WebSocketServerClient[];
     public static p_all: Observable;
@@ -28,7 +27,6 @@ export class WebSocketServer {
     public static mongodb_watch_count: Observable;
     public static BaseRateLimiter: any;
     public static ErrorRateLimiter: any;
-    //public static total_connections_count: number = 0;
     public static total_connections_count: any = {};
     static configure(server: http.Server, parent: Span): void {
         const span: Span = Logger.otel.startSubSpan("WebSocketServer.configure", parent);
@@ -65,7 +63,7 @@ export class WebSocketServer {
             if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
                     description: "Total number of online websocket clients"
-                }) // "agent", "version"
+                })
                 let p_all = {};
                 WebSocketServer.p_all?.addCallback(res => {
                     let keys = Object.keys(p_all);
@@ -92,14 +90,12 @@ export class WebSocketServer {
                     keys.forEach(key => {
                         if (p_all[key] > 0) {
                             res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
-                        } else {
-                            // res.observe(null, { ...Logger.otel.defaultlabels, agent: key })
                         }
                     });
                 });
                 WebSocketServer.websocket_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_queue", {
                     description: "Total number of registered queues"
-                }) // "clientid"
+                })
                 WebSocketServer.websocket_queue_count?.addCallback(res => {
                     if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
@@ -109,19 +105,19 @@ export class WebSocketServer {
                 });
                 WebSocketServer.websocket_queue_message_count = Logger.otel.meter.createCounter("openflow_websocket_queue_message", {
                     description: "Total number of queues messages"
-                }) // "queuename"
+                })
                 WebSocketServer.websocket_rate_limit = Logger.otel.meter.createCounter("openflow_websocket_rate_limit", {
                     description: "Total number of rate limited messages"
-                }) // "command"
+                })
                 WebSocketServer.websocket_errors = Logger.otel.meter.createCounter("openflow_websocket_errors", {
                     description: "Total number of websocket errors"
-                }) // 
+                })
                 WebSocketServer.websocket_messages = Logger.otel.meter.createHistogram("openflow_websocket_messages_duration_seconds", {
                     description: "Duration for handling websocket requests", valueType: 1, unit: "s"
-                }); // "command"
+                });
                 WebSocketServer.message_queue_count = Logger.otel.meter.createObservableUpDownCounter("openflow_message_queue", {
                     description: "Total number messages waiting on reply from client"
-                }) // "clientid"
+                })
                 WebSocketServer.message_queue_count?.addCallback(res => {
                     if (!Config.otel_measure_queued_messages) return;
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
@@ -136,7 +132,7 @@ export class WebSocketServer {
                 });
                 WebSocketServer.mongodb_watch_count = Logger.otel.meter.createObservableUpDownCounter("mongodb_watch", {
                     description: "Total number af steams  watching for changes"
-                }) // "agent", "clientid"
+                })
                 WebSocketServer.mongodb_watch_count?.addCallback(res => {
                     if (!Config.otel_measure__mongodb_watch) return;
                     if (NoderedUtil.IsNullUndefinded(WebSocketServer.mongodb_watch_count)) return;
@@ -150,7 +146,7 @@ export class WebSocketServer {
                 });
                 WebSocketServer.websocket_connections_count = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_connections_count", {
                     description: "Total number of connection requests"
-                }); // "command"
+                });
                 WebSocketServer.websocket_connections_count?.addCallback(res => {
                     const keys = Object.keys(this.total_connections_count);
                     keys.forEach(key => {
@@ -172,13 +168,12 @@ export class WebSocketServer {
         var result = [];
         if (Config.enable_openflow_amqp && WebSocketServer._remoteclients != null && WebSocketServer._remoteclients.length > 0) {
             for (var x = 0; x < WebSocketServer._remoteclients.length; x++) {
-                // var cli = WebSocketServer._remoteclients[x];
                 var cli = Object.assign({}, WebSocketServer._remoteclients[x]);
                 // @ts-ignore
                 if (!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
                 if (!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                if (cli.user?._acl != null) { // 
+                if (cli.user?._acl != null) {
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
@@ -195,7 +190,7 @@ export class WebSocketServer {
                 if (!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
                 if (!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
-                if (cli.user != null) { // cli.user?._acl
+                if (cli.user != null) {
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
@@ -251,9 +246,6 @@ export class WebSocketServer {
                 amqpwrapper.Instance().send("openflow", "", { "command": "notifywebsocketclients", clients }, 20000, null, "", parent, 1);
             } else {
             }
-            // Logger.instanse.info("Insert " + clients.length + " clients", parent);
-            // const jwt = Crypt.rootToken();
-            // await Config.db.InsertOrUpdateMany(clients, "websocketclients", "id", true, 1, false, jwt, parent)
         } catch (error) {
             Logger.instanse.error(error, parent);
         }
@@ -396,7 +388,7 @@ export class WebSocketServer {
                 let ot_end: any = Logger.otel.startTimer();
                 var bulkresult = await Config.db.db.collection("users").bulkWrite(bulkUpdates);
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_updatemany, { collection: "users" });
-                Logger.instanse.debug("updating " + bulkUpdates.length  + " online users took " + ms + "ms", span, { cls: "DatabaseConnection", func: "pingClients", collection: "users", ms });
+                Logger.instanse.debug("updating " + bulkUpdates.length + " online users took " + ms + "ms", span, { cls: "DatabaseConnection", func: "pingClients", collection: "users", ms });
             }
         } catch (error) {
             Logger.instanse.error(error, span);
