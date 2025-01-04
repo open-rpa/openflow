@@ -590,6 +590,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.DropCollection", parent);
         let user: User = null;
         try {
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             user = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
@@ -714,6 +715,9 @@ export class DatabaseConnection extends events.EventEmitter {
     async CleanACL<T extends Base>(item: T, user: TokenUser | User, collectionname: string, parent: Span, skipNameLookup: boolean = false): Promise<T> {
         const span: Span = Logger.otel.startSubSpan("db.CleanACL", parent);
         try {
+            if (item == null) throw new Error("item is mandatory");
+            if (user == null) throw new Error("user is mandatory");
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             if (item._acl.length > Config.max_ace_count) {
                 // remove excesive acls
                 const newacl = item._acl.slice(0, Config.max_ace_count);
@@ -999,6 +1003,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let _query: Object = {};
         await this.connect(span);
         let mysort: Object = {};
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         if (orderby) {
             span?.addEvent("parse orderby");
             if (typeof orderby === "string" || orderby instanceof String) {
@@ -1188,6 +1193,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let { query, collectionname, jwt, queryas } = Object.assign({
         }, options);
         let _query: Object = {};
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         await this.connect(span);
         if (query !== null && query !== undefined) {
             span?.addEvent("parse query");
@@ -1272,6 +1278,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let { query, collectionname, field, jwt, queryas } = Object.assign({
         }, options);
         let _query: Object = {};
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         await this.connect(span);
         if (query !== null && query !== undefined) {
             span?.addEvent("parse query");
@@ -1353,6 +1360,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let { collectionname, id, jwt, decrypt } = Object.assign({
             decrypt: true
         }, options);
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         let result: T = await this.getbyid<T>(id, collectionname, jwt, true, span);
         if (result) return result;
 
@@ -1371,7 +1379,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let { collectionname, id, version, jwt, decrypt } = Object.assign({
             decrypt: true
         }, options);
-
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         let result: T = await this.getbyid<T>(id, collectionname, jwt, false, span);
         if (NoderedUtil.IsNullUndefinded(result)) {
             const subbasehist = await this.query<any>({ query: { id: id, item: { $exists: true, $ne: null } }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", decrypt: false, jwt }, span);
@@ -1415,6 +1423,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (NoderedUtil.IsNullUndefinded(options.decrypt)) options.decrypt = true;
         if (NoderedUtil.IsNullUndefinded(options.query)) options.query = {};
         const { query, collectionname, orderby, jwt, decrypt } = options;
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         const arr: T[] = await this.query<T>({ query, collectionname, orderby, jwt, decrypt }, span);
         if (arr === null || arr.length === 0) { return null; }
         return arr[0];
@@ -1428,6 +1437,7 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     async getbyid<T extends Base>(id: string, collectionname: string, jwt: string, decrypt: boolean, span: Span): Promise<T> {
         if (id === null || id === undefined || id === "") { throw new Error("Id cannot be null"); }
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         const query = { _id: id };
         return this.GetOne({ query, collectionname, jwt, decrypt }, span)
     }
@@ -1460,6 +1470,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @returns Promise
      */
     async aggregate<T extends Base>(aggregates: object[], collectionname: string, jwt: string, hint: Object | string, queryas: string, explain: boolean, parent: Span): Promise<T[]> {
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         const span: Span = Logger.otel.startSubSpan("db.Aggregate", parent);
         await this.connect(span);
         let json: any = aggregates;
@@ -1586,6 +1597,7 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     async watch<T extends Base>(aggregates: object[], collectionname: string, jwt: string): Promise<ChangeStream> {
         await this.connect();
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
 
         let json: any = aggregates;
         if (typeof json !== "string" && !(json instanceof String)) {
@@ -1639,6 +1651,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let customer: Customer = null;
         try {
             if (item === null || item === undefined) { throw new Error("Cannot create null item"); }
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
             span?.addEvent("verityToken");
@@ -2103,6 +2116,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.InsertMany", parent);
         let result: T[] = [];
         try {
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             if (NoderedUtil.IsNullUndefinded(items) || items.length == 0) { throw new Error("Cannot create null item"); }
             if (NoderedUtil.IsNullEmpty(jwt)) {
                 throw new Error("jwt is null");
@@ -2416,32 +2430,31 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {string} jwt JWT of user who is doing the update, ensuring rights
      * @returns Promise<T>
      */
-    async _UpdateOne<T extends Base>(query: any, item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
+    async UpdateOne<T extends Base>(item: T, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<T> {
         let q = new UpdateOneMessage();
-        q.query = query; q.item = item; q.collectionname = collectionname; q.w = w; q.j = j; q.jwt = jwt;
+        q.query = null; q.item = item; q.collectionname = collectionname; q.w = w; q.j = j; q.jwt = jwt;
         if (q.w < 1) q.w = 1; // set minimu, to avoid "More than one item was updated !!!"
-        q = await this.UpdateOne(q, parent);
+        if (q.collectionname == null || q.collectionname == "") throw new Error("collectionname is mandatory");
+        q = await this._UpdateOne(q, parent);
         if (!NoderedUtil.IsNullUndefinded(q.opresult)) {
             if (q.opresult.modifiedCount === 0) {
                 throw new Error("item not found!");
             } else if (q.opresult.modifiedCount !== 1) {
                 throw new Error("More than one item was updated !!!");
             }
-            if (!NoderedUtil.IsNullUndefinded(q.item) && NoderedUtil.IsNullUndefinded(query)) {
-                return q.item as any;
-            }
-            return q.opresult;
+            return q.item as any;
         } else {
             throw new Error("UpdateOne failed!!!");
         }
     }
-    async UpdateOne<T extends Base>(q: UpdateOneMessage, parent: Span): Promise<UpdateOneMessage> {
+    async _UpdateOne<T extends Base>(q: UpdateOneMessage, parent: Span): Promise<UpdateOneMessage> {
         const span: Span = Logger.otel.startSubSpan("db.UpdateOne", parent);
         let customer: Customer = null;
         try {
             if (q.collectionname == "audit") {
                 throw new Error("Access denied");
             }
+            if (q.collectionname == null || q.collectionname == "") throw new Error("collectionname is mandatory");
             let itemReplace: boolean = true;
             if (q === null || q === undefined) { throw new Error("UpdateOneMessage cannot be null"); }
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
@@ -2534,7 +2547,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (f != null) {
                             // is f.metadata._acl different from q.item._acl ?
                             f.metadata._acl = q.item._acl;
-                            await this._UpdateOne(null, f, "fs.files", 1, false, q.jwt, span);
+                            await this.UpdateOne(f, "fs.files", 1, false, q.jwt, span);
                             if (original != null) {
                                 // @ts-ignore
                                 var oldfileid = original.fileid;
@@ -3019,6 +3032,11 @@ export class DatabaseConnection extends events.EventEmitter {
             Logger.otel.endSpan(span);
         }
     }
+    async UpdateDocument(query: any, doc: any, collectionname: string, w: number, j: boolean, jwt: string, parent: Span): Promise<opresult> {
+        const q: UpdateOneMessage = { query: query, item: doc, collectionname: collectionname, w: w, j: j, jwt: jwt, error: null, result: null, opresult: null };
+        const result: UpdateOneMessage = await this._UpdateDocument(q, parent);
+        return result.opresult;
+    }
     /**
     * Update multiple documents in database based on update document
     * @param {any} query MongoDB Query
@@ -3029,12 +3047,13 @@ export class DatabaseConnection extends events.EventEmitter {
     * @param  {string} jwt JWT of user who is doing the update, ensuring rights
     * @returns Promise<T>
     */
-    async UpdateDocument<T extends Base>(q: UpdateManyMessage, parent: Span): Promise<UpdateManyMessage> {
+    async _UpdateDocument<T extends Base>(q: UpdateManyMessage, parent: Span): Promise<UpdateManyMessage> {
         const span: Span = Logger.otel.startSubSpan("db.UpdateMany", parent);
         try {
             if (q === null || q === undefined) { throw new Error("UpdateManyMessage cannot be null"); }
             // @ts-ignore
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
+            if (q.collectionname == null || q.collectionname == "") throw new Error("collectionname is mandatory");
             await this.connect();
             const user: User = await Auth.Token2User(q.jwt, span);
             if (user == null) throw new Error("Access denied");
@@ -3166,6 +3185,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
         let user: TokenUser | User = (q as any).user;
         try {
+            if (q.collectionname == null || q.collectionname == "") throw new Error("collectionname is mandatory");
             user = (q as any).user;
             if (NoderedUtil.IsNullUndefinded(user)) {
                 user = await Auth.Token2User(q.jwt, span);
@@ -3220,7 +3240,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 Logger.instanse.debug("update entity " + uq.item._id + " " + uq.item.name, span, { collection: q.collectionname, user: user.username });
-                const uqres = await this.UpdateOne(uq, span);
+                const uqres = await this._UpdateOne(uq, span);
                 q.opresult = uqres.opresult;
                 q.result = uqres.result;
                 if (NoderedUtil.IsNullUndefinded(uqres.result) && !NoderedUtil.IsNullUndefinded(uqres.item)) {
@@ -3251,6 +3271,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (NoderedUtil.IsNullEmpty(jwt)) {
                 throw new Error("jwt is null");
             }
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             await this.connect(span);
             const user = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
@@ -3302,7 +3323,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         um.item._id = original._id;
                         (um as any).user = user;
                         (um as any).original = original;
-                        Promises.push(this.UpdateOne(um, span));
+                        Promises.push(this._UpdateOne(um, span));
                     } else {
                         insert.push(item);
                     }
@@ -3332,7 +3353,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         um.collectionname = collectionname;
                         um.jwt = jwt; um.j = j; um.w = w; um.item = update[i];
                         (um as any).user = user;
-                        Promises.push(this.UpdateOne(um, span));
+                        Promises.push(this._UpdateOne(um, span));
                     }
                     const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
                     errors = errors.concat(tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error)))
@@ -3379,7 +3400,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (id === null || id === undefined || id === "") { throw new Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteOne", parent);
         try {
-
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             await this.connect();
             const user: User = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
@@ -3587,6 +3608,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw new Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
+            if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             await this.connect();
             const user: User = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
@@ -3890,6 +3912,9 @@ export class DatabaseConnection extends events.EventEmitter {
     public getbasequery(user: TokenUser | User, bits: number[], collectionname: string): Object {
         let field = "_acl";
         var bypassquery: any = {}
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
+        if (user == null) throw new Error("user is mandatory");
+        if (bits == null || bits.length == 0) throw new Error("bits is mandatory");
         if (DatabaseConnection.usemetadata(collectionname)) {
             field = DatabaseConnection.metadataname(collectionname) + "._acl";
         }
@@ -3937,6 +3962,7 @@ export class DatabaseConnection extends events.EventEmitter {
     private async getbasequeryuserid(calluser: TokenUser | User, userid: string, bits: number[], collectionname: string, parent: Span): Promise<Object> {
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
         if (NoderedUtil.IsNullUndefinded(user)) return null;
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         if (user._type == "user" || user._type == "role") {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             return this.getbasequery(user, bits, collectionname);
@@ -3957,9 +3983,11 @@ export class DatabaseConnection extends events.EventEmitter {
      * @param  {T} item Object to validate
      * @returns T Validated object
      */
-    ensureResource<T extends Base>(item: T, collection: string): T {
-        if (!DatabaseConnection.istimeseries(collection)) {
-            if (!item.hasOwnProperty("_type") || item._type === null || item._type === undefined) {
+    ensureResource<T extends Base>(item: T, collectionname: string): T {
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
+        if (item == null) throw new Error("item is mandatory");
+        if (!DatabaseConnection.istimeseries(collectionname)) {
+            if (!item.hasOwnProperty("_type") || item._type == null || item._type == "") {
                 item._type = "unknown";
             }
             item._type = item._type.toLowerCase();
@@ -3971,7 +3999,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.force_add_admins && item._id != WellknownIds.root) {
             Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
         }
-        if (DatabaseConnection.collections_with_text_index.indexOf(collection) > -1) {
+        if (DatabaseConnection.collections_with_text_index.indexOf(collectionname) > -1) {
             var _searchnames = [];
             var _searchname = "";
             for (var i = 0; i < Config.text_index_name_fields.length; i++) {
@@ -4010,14 +4038,17 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         return item;
     }
-    async CheckEntityRestriction(user: TokenUser | User, collection: string, item: Base, parent: Span): Promise<boolean> {
+    async CheckEntityRestriction(user: TokenUser | User, collectionname: string, item: Base, parent: Span): Promise<boolean> {
         if (!Config.enable_entity_restriction) return true;
+        if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
+        if (item == null) throw new Error("item is mandatory");
+        if (user == null) throw new Error("user is mandatory");
         var EntityRestrictions = await Logger.DBHelper.GetEntityRestrictions(parent);
         const defaultAllow: boolean = false;
         let result: boolean = false;
-        const authorized = EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collection || x.collection == ""));
-        const matches = authorized.filter(x => x.IsMatch(item) && (x.collection == collection || x.collection == ""));
-        const copyperm = matches.filter(x => x.copyperm && (x.collection == collection || x.collection == ""));
+        const authorized = EntityRestrictions.filter(x => x.IsAuthorized(user) && (x.collection == collectionname || x.collection == ""));
+        const matches = authorized.filter(x => x.IsMatch(item) && (x.collection == collectionname || x.collection == ""));
+        const copyperm = matches.filter(x => x.copyperm && (x.collection == collectionname || x.collection == ""));
         if (!defaultAllow && matches.length == 0) return false; // no hits, if not allowed return false
         if (matches.length > 0) result = true;
 
@@ -4042,6 +4073,9 @@ export class DatabaseConnection extends events.EventEmitter {
      */
     static hasAuthorization(user: TokenUser | User, item: Base, action: number): boolean {
         if (Config.api_bypass_perm_check) { return true; }
+        if (user == null) throw new Error("user is mandatory");
+        if (item == null) throw new Error("item is mandatory");
+        if (action == null) throw new Error("action is mandatory");
         if (user._id === WellknownIds.root) { return true; }
         if (action === Rights.update && item._id === WellknownIds.admins && item.name.toLowerCase() !== "admins") {
             return false;
@@ -4126,7 +4160,7 @@ export class DatabaseConnection extends events.EventEmitter {
     public static traversejsonencode(o) {
         const reISO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
         const reMsAjax = /^\/Date\((d|-|.*)\)[\/|\\]$/;
-
+        if(o == null) return;
         const keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
@@ -4173,6 +4207,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
     }
     public static traversejsondecode(o) {
+        if(o == null) return;
         const keys = Object.keys(o);
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
@@ -4739,16 +4774,16 @@ export class DatabaseConnection extends events.EventEmitter {
             return { collection: collectionname };
         }
     }
-    public async GetResource(resourcename:string, parent: Span): Promise<Resource> {
+    public async GetResource(resourcename: string, parent: Span): Promise<Resource> {
         let _resources: Resource[] = await Logger.DBHelper.GetResources(parent);
         _resources = _resources.filter(x => x.name == resourcename);
-        if(_resources.length == 0) return null;
+        if (_resources.length == 0) return null;
         return _resources[0]
     }
-    public async GetProductResourceCustomerUsage(resourcename:string, stripeprice: string,  customerid: string, parent: Span): Promise<ResourceUsage> {
+    public async GetProductResourceCustomerUsage(resourcename: string, stripeprice: string, customerid: string, parent: Span): Promise<ResourceUsage> {
         let assigned: ResourceUsage[] = await Logger.DBHelper.GetResourceUsageByCustomerID(customerid, parent);
         assigned = assigned.filter(x => x.resource == resourcename && x.product.stripeprice == stripeprice);
-        if(assigned.length == 0) return null; // No found
+        if (assigned.length == 0) return null; // No found
         if (assigned[0].siid == null || assigned[0].siid == "") return null;  // Not completed payment
         if (assigned[0].quantity == 0) return null; // No longer assigned
         return assigned[0]
@@ -4762,3 +4797,12 @@ export declare type DistinctOptions = {
     collectionname: string;
     queryas?: string;
 };
+export declare type opresult = {
+    ok: number;
+    n: number;
+    nModified: number;
+    modifiedCount: number;
+    matchedCount: number;
+    insertedCount: number;
+    upsertedCount: number;
+}

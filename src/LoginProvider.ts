@@ -1522,7 +1522,7 @@ export class LoginProvider {
             }
             const agent = req.headers["user-agent"];
             const UpdateDoc: any = { "$set": { "_modified": dt, "read": true }, "$push": { "opened": { dt, ip, domain, agent } }, "$inc": { "readcount": 1 } };
-            var res2 = await Config.db._UpdateOne({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
+            var res2 = await Config.db.UpdateDocument({ id }, UpdateDoc, "mailhist", 1, true, Crypt.rootToken(), null);
         } catch (error) {
             Logger.instanse.error(error, null, { cls: "LoginProvider", func: "read" });
         }
@@ -1631,7 +1631,7 @@ export class LoginProvider {
 
 
                         Logger.instanse.debug("Update user " + tuser.name + " information", span, { cls: "LoginProvider", func: "validateuserform" });
-                        var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                        var res2 = await Config.db.UpdateDocument({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                         await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                     }
                     if (!(tuser.validated == true) && Config.validate_user_form != "") {
@@ -1655,7 +1655,7 @@ export class LoginProvider {
 
                             const UpdateDoc: any = { "$set": {} };
                             UpdateDoc.$set["_mailcode"] = (u as any)._mailcode;
-                            var res2 = await Config.db._UpdateOne({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
+                            var res2 = await Config.db.UpdateDocument({ "_id": tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), span);
                             await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                             res.end(JSON.stringify({ jwt: "" }));
                         } else {

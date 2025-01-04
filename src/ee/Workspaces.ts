@@ -228,7 +228,7 @@ export class Workspaces {
         member.token = Crypt.GetUniqueIdentifier(32);
         member.expires = new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
         if (member._id != null && member._id != "") {
-            const result = await Config.db._UpdateOne(null, member, "users", 1, true, rootjwt, parent);
+            const result = await Config.db.UpdateOne(member, "users", 1, true, rootjwt, parent);
             return result;
         }
         const result = await Config.db.InsertOne(member, "users", 1, true, rootjwt, parent);
@@ -248,7 +248,7 @@ export class Workspaces {
         if (member.seen == false) {
             member.seen = true;
             member.seenon = new Date();
-            await Config.db._UpdateOne(null, member, "users", 1, true, rootjwt, parent);
+            await Config.db.UpdateOne(member, "users", 1, true, rootjwt, parent);
         }
         return member;
     }
@@ -292,7 +292,7 @@ export class Workspaces {
         member.acceptedby = user._id;
         member.acceptedbyname = user.name;
         member.acceptedon = new Date();
-        const result = await Config.db._UpdateOne(null, member, "users", 1, true, rootjwt, parent);
+        const result = await Config.db.UpdateOne(member, "users", 1, true, rootjwt, parent);
         return result;
     }
     public static async DeclineInvite(user: User, jwt: string, token: string, parent: Span): Promise<Member> {
@@ -329,7 +329,7 @@ export class Workspaces {
         member.rejectedby = user._id;
         member.rejectedbyname = user.name;
         member.rejectedon = new Date();
-        const result = await Config.db._UpdateOne(null, member, "users", 1, true, rootjwt, parent);
+        const result = await Config.db.UpdateOne(member, "users", 1, true, rootjwt, parent);
         return result;
     }
     public static async RemoveMember(user: User, jwt: string, id: string, parent: Span): Promise<void> {
@@ -419,7 +419,7 @@ export class Workspaces {
         }
         existing.status = member.status;
         existing.role = member.role;
-        const result = await Config.db._UpdateOne(null, existing, "users", 1, true, rootjwt, parent);
+        const result = await Config.db.UpdateOne(existing, "users", 1, true, rootjwt, parent);
         return result;
     }
 }

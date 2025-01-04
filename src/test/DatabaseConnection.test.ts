@@ -135,11 +135,11 @@ import { Crypt } from "../Crypt.js";
 
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         item.name = "item version 1";
-        item = await Config.db._UpdateOne(null, item, "entities", 1, true, this.userToken, null);
+        item = await Config.db.UpdateOne(item, "entities", 1, true, this.userToken, null);
         assert.strictEqual(item.name, "item version 1");
         assert.strictEqual(item._version, 1);
         item.name = "item version 2";
-        item = await Config.db._UpdateOne(null, item, "entities", 1, true, this.userToken, null);
+        item = await Config.db.UpdateOne(item, "entities", 1, true, this.userToken, null);
         assert.strictEqual(item.name, "item version 2");
         assert.strictEqual(item._version, 2);
         let testitem = await Config.db.GetDocumentVersion({ collectionname: "entities", id: item._id, version: 1, jwt: this.userToken }, null);
@@ -220,7 +220,7 @@ import { Crypt } from "../Crypt.js";
         assert.strictEqual(item._version, 0);
 
         let updateDoc = { "$set": { "name": "test item updated" } };
-        await Config.db._UpdateOne({ "_id": item._id }, updateDoc as any, "entities", 1, true, this.userToken, null);
+        await Config.db.UpdateDocument({ "_id": item._id }, updateDoc as any, "entities", 1, true, this.userToken, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
         item = await Config.db.getbyid(item._id, "entities", this.userToken, true, null);
 

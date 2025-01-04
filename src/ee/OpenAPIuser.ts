@@ -605,13 +605,7 @@ export class EntitiesController extends Controller {
   ): Promise<any> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
     var item = { ...requestBody } as any;
-    let msg = new UpdateOneMessage();
-    msg.collectionname = collectionname;
-    msg.item = item as any;
-    msg.j = false;
-    msg.w = 1;
-    msg.jwt = jwt;
-    let result = await Config.db.UpdateOne<any>(msg, null);
+    let result = await Config.db.UpdateOne(item, collectionname, 1, true, jwt, null);
     return result.item;
   }
   @Delete("{collectionname}/{id}")

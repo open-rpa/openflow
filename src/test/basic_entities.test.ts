@@ -12,7 +12,7 @@ import { Logger } from "../Logger.js";
         Config.workitem_queue_monitoring_enabled = false;
         Config.disablelogging();
         await Logger.configure(true, false);
-        if (!this.socket) this.socket = new WebSocketClient(null, "wss://demo.openiap.io", true);
+        if (!this.socket) this.socket = new WebSocketClient(null, "ws://localhost:" + Config.port, true);
         this.socket.agent = "test-cli";
         try {
             await this.socket.Connect();

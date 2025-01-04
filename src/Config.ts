@@ -46,7 +46,7 @@ export class dbConfig extends Base {
             this._id = result._id;
         }
         if (!NoderedUtil.IsNullEmpty(this._id)) {
-            await Config.db._UpdateOne(null, this, "config", 1, true, jwt, parent);
+            await Config.db.UpdateOne(this, "config", 1, true, jwt, parent);
         }
     }
     public compare(version: string): number {

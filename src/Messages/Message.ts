@@ -1460,7 +1460,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            var tempres = await Config.db.UpdateOne(msg, span);
+            var tempres = await Config.db._UpdateOne(msg, span);
             msg = tempres;
             delete msg.item;
             if (this.clientagent == "openrpa") Config.db.parseResult(msg.result, this.clientagent, this.clientversion);
@@ -1482,7 +1482,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
             if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            msg = await Config.db.UpdateDocument(msg, span);
+            msg = await Config.db._UpdateDocument(msg, span);
             if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
             delete msg.item;
             if (msg != null) {
@@ -1906,7 +1906,7 @@ export class Message {
                     try {
                         await Logger.DBHelper.Save(user, originialjwt, span);
                         if (Config.persist_user_impersonation) {
-                            await Config.db._UpdateOne({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
+                            await Config.db.UpdateDocument({ _id: tuserimpostor._id }, { "$set": { "impersonating": user._id } } as any, "users", 1, false, originialjwt, span);
                         }
                     } catch (error) {
                         const impostors = await Config.db.query<User>({ query: { _id: msg.impersonate }, top: 1, collectionname: "users", jwt: Crypt.rootToken() }, span);
@@ -1974,7 +1974,7 @@ export class Message {
                     // ping will handle this, if no new information needs to be added
                     span?.addEvent("Update user using update document");
                     var newdoc = { ...UpdateDoc, ...Logger.DBHelper.UpdateHeartbeat(cli) }
-                    await Config.db._UpdateOne({ "_id": user._id }, newdoc, "users", 1, false, Crypt.rootToken(), span)
+                    await Config.db.UpdateDocument({ "_id": user._id }, newdoc, "users", 1, false, Crypt.rootToken(), span)
                 }
                 span?.addEvent("memoryCache.delete users" + user._id);
                 await Logger.DBHelper.CheckCache("users", user, false, false, span);
@@ -2487,7 +2487,7 @@ export class Message {
 
             usage.quantity -= quantity;
             if (usage.quantity > 0) {
-                await Config.db._UpdateOne(null, usage, "config", 1, false, Crypt.rootToken(), span);
+                await Config.db.UpdateOne(usage, "config", 1, false, Crypt.rootToken(), span);
             } else {
                 await Config.db.DeleteOne(usage._id, "config", false, Crypt.rootToken(), span);
             }
@@ -2937,7 +2937,7 @@ export class Message {
                         const res = await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
                         usage._id = res._id;
                     } else {
-                        await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                        await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                     }
                     if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
                         const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
@@ -2992,8 +2992,8 @@ export class Message {
                             // @ts-ignore
                             usage.sessionid = checkout.id;
 
-                            await Config.db._UpdateOne(null, customer, "users", 3, true, rootjwt, span);
-                            await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                            await Config.db.UpdateOne(customer, "users", 3, true, rootjwt, span);
+                            await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                         } else {
                             // Create fake subscription id
                             usage.siid = NoderedUtil.GetUniqueIdentifier();
@@ -3029,7 +3029,7 @@ export class Message {
                     }
                 }
 
-                await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                 if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
                     const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
                         product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
@@ -3334,7 +3334,7 @@ export class Message {
                         usage.siid = NoderedUtil.GetUniqueIdentifier();
                         // @ts-ignore
                         delete usage.sessionid;
-                        await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                        await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                     }
                 }
                 // @ts-ignore
@@ -3394,7 +3394,7 @@ export class Message {
                             if (items.length > 0) {
                                 usage.siid = items[0].id;
                                 usage.subid = sub.id;
-                                await Config.db._UpdateOne(null, usage, "config", 1, false, rootjwt, span);
+                                await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                             } else {
                                 // @ts-ignore
                                 if (usage.mode != "one_time") {// null = recurring. recurring or one_time
@@ -3435,7 +3435,7 @@ export class Message {
             if (NoderedUtil.IsNullEmpty(msg.customer._id)) {
                 msg.customer = await Config.db.InsertOne(msg.customer, "users", 3, true, rootjwt, span);
             } else {
-                msg.customer = await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
+                msg.customer = await Config.db.UpdateOne(msg.customer, "users", 3, true, rootjwt, span);
             }
             if (user.customerid != msg.customer._id) {
                 const UpdateDoc: any = { "$set": {} };
@@ -3445,12 +3445,12 @@ export class Message {
                 }
                 user.selectedcustomerid = msg.customer._id;
                 UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
-                await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
+                await Config.db.UpdateDocument({ "_id": user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             } else if (cli.user.selectedcustomerid != msg.customer._id) {
                 cli.user.selectedcustomerid = msg.customer._id;
                 const UpdateDoc: any = { "$set": {} };
                 UpdateDoc.$set["selectedcustomerid"] = msg.customer._id;
-                await Config.db._UpdateOne({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
+                await Config.db.UpdateDocument({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
 
             const global_customer_admins: Role = await Logger.DBHelper.EnsureRole("customer admins", WellknownIds.customer_admins, span);
@@ -3491,7 +3491,7 @@ export class Message {
             }
             Base.addRight(msg.customer, customerusers._id, customerusers.name, [Rights.read]);
             Base.addRight(msg.customer, customeradmins._id, customeradmins.name, [Rights.read]);
-            await Config.db._UpdateOne(null, msg.customer, "users", 3, true, rootjwt, span);
+            await Config.db.UpdateOne(msg.customer, "users", 3, true, rootjwt, span);
 
             if (msg.customer._id == cli.user.customerid) {
                 cli.user.selectedcustomerid = msg.customer._id;
@@ -3581,7 +3581,7 @@ export class Message {
 
         const UpdateDoc: any = { "$set": {} };
         UpdateDoc.$set["selectedcustomerid"] = msg.customerid;
-        await Config.db._UpdateOne({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
+        await Config.db.UpdateDocument({ "_id": user._id }, UpdateDoc, "users", 1, false, Crypt.rootToken(), parent);
         user.selectedcustomerid = msg.customerid;
         delete msg.jwt;
         this.data = JSON.stringify(msg);
@@ -4138,7 +4138,7 @@ export class Message {
                 console.log("Trick queuemonitoringlastrun error " + error.message)
             }
         }
-        wi = await Config.db._UpdateOne(null, wi, "workitems", 1, true, rootjwt, parent);
+        wi = await Config.db.UpdateOne(wi, "workitems", 1, true, rootjwt, parent);
         msg.result = wi;
         if (oldstate != wi.state && (wi.state == "successful" || wi.state == "failed")) {
             var success_wiq = wi.success_wiq || wiq.success_wiq;
@@ -4213,7 +4213,7 @@ export class Message {
 
                 var result: any = null;
                 try {
-                    result = await Config.db._UpdateOne({
+                    result = await Config.db.UpdateDocument({
                         "_id": workitems[0]._id,
                         "state": workitems[0].state,
                         "userid": workitems[0].userid,
@@ -4426,7 +4426,7 @@ export class Message {
         }
         msg = JSON.parse(JSON.stringify(msg));
 
-        msg.result = await Config.db._UpdateOne(null, wiq as any, "mq", 1, true, jwt, parent);
+        msg.result = await Config.db.UpdateOne(wiq as any, "mq", 1, true, jwt, parent);
 
         if (msg.purge) {
             await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
@@ -4693,7 +4693,7 @@ export class Message {
                     if (_agent.name == null || _agent.name == "") _agent.name = _agent.hostname + " / " + _agent.username;
                     _agent.runas = agentuser._id
                     _agent.runasname = agentuser.name
-                    agent = await Config.db._UpdateOne(null, _agent, "agents", 1, true, jwt, parent);
+                    agent = await Config.db.UpdateOne(_agent, "agents", 1, true, jwt, parent);
                 } else {
                     if (agent.name == null || agent.name == "") agent.name = agent.hostname + " / " + agent.username;
 

@@ -132,7 +132,7 @@ export class HouseKeeping {
       msg.collectionname = "openrpa_instances";
       msg.query = { "state": { "$in": ["idle", "running"] } };
       msg.item = { "$set": { "state": "completed" }, "$unset": { "xml": "" } } as any;
-      let result = await Config.db.UpdateDocument(msg, span);
+      let result = await Config.db._UpdateDocument(msg, span);
       if (result?.opresult?.nModified > 0) {
         Logger.instanse.verbose("Updated " + result.opresult.nModified + " openrpa instances", span, { cls: "Housekeeping" });
       } else if (result?.opresult?.modifiedCount > 0) {

@@ -146,6 +146,9 @@ export class WebServer {
                 }
                 next();
             });
+            process.env.web_domain = Config.domain;
+            process.env.web_client_id = "agent";
+            process.env.web_protocol = Config.protocol;
             if (fs.existsSync(path.join(__dirname, "./public"))) {
                 WebServer.webapp_file_path = path.join(__dirname, "./public");
             } else if (fs.existsSync(path.join(__dirname, "../public"))) {
