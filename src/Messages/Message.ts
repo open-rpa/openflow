@@ -4848,6 +4848,11 @@ export class Message {
                 var data = JSON.parse(msg.data);
                 msg.result = await Workspaces.EnsureWorkspace(this.tuser, this.jwt, data, parent);
                 break;
+            case "deleteworkspace":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Workspaces.DeleteWorkspace(this.tuser, this.jwt, msg.id, parent);
+                break;
             case "inviteuser":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
