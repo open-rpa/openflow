@@ -3974,6 +3974,16 @@ export class DatabaseConnection extends events.EventEmitter {
                 user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
             }
             return this.getbasequery(user, bits, collectionname);
+        } else if (user._type == "workspace") {
+            user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
+            user.roles.push(new Rolemember(user.name + " users", (user as any).users))
+            user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
+            if (user._id == calluser.customerid) user.roles.push(new Rolemember(calluser.name, calluser._id));
+
+            if (!NoderedUtil.IsNullEmpty((user as any as Customer).userid)) {
+                user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
+            }
+            return this.getbasequery(user, bits, collectionname);
         }
     }
     /**
