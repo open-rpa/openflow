@@ -290,20 +290,20 @@ export class WebSocketServer {
                             }
                         }
                     } else {
-                        const now = new Date();
-                        const seconds = (now.getTime() - cli.created.getTime()) / 1000;
-                        if (seconds >= Config.client_signin_timeout) {
-                            if (cli.user != null) {
-                                span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
-                                Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
-                            } else {
-                                if(cli.remoteip != "::1" && cli.remoteip != "127.0.0.1") {
-                                    span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
-                                    Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
-                                }
-                            }
-                            cli.Close(span);
-                        }
+                        // const now = new Date();
+                        // const seconds = (now.getTime() - cli.created.getTime()) / 1000;
+                        // if (seconds >= Config.client_signin_timeout) {
+                        //     if (cli.user != null) {
+                        //         span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
+                        //         Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
+                        //     } else {
+                        //         if(cli.remoteip != "::1" && cli.remoteip != "127.0.0.1") {
+                        //             span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
+                        //             Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
+                        //         }
+                        //     }
+                        //     cli.Close(span);
+                        // }
                     }
                 } catch (error) {
                     Logger.instanse.error(error, span);
