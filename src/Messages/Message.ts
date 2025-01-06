@@ -4849,8 +4849,6 @@ export class Message {
                 msg.result = await Workspaces.EnsureWorkspace(this.tuser, this.jwt, data, parent);
                 break;
             case "deleteworkspace":
-                // @ts-ignore
-                var data = JSON.parse(msg.data);
                 msg.result = await Workspaces.DeleteWorkspace(this.tuser, this.jwt, msg.id, parent);
                 break;
             case "inviteuser":
@@ -4879,8 +4877,6 @@ export class Message {
                 msg.result = await Workspaces.UpdateMember(this.tuser, this.jwt, data, parent);
                 break;
             case "removemember":
-                // @ts-ignore
-                var data = JSON.parse(msg.data);
                 msg.result = await Workspaces.RemoveMember(this.tuser, this.jwt, msg.id, parent);
                 break;
             default:
