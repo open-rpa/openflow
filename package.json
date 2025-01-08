@@ -39,7 +39,7 @@
   "dependencies": {
     "@kubernetes/client-node": "0.21.0",
     "@node-saml/passport-saml": "4.0.1",
-    "@openiap/cloud-git-mongodb": "1.0.38",
+    "@openiap/cloud-git-mongodb": "^1.0.39",
     "@openiap/nodeapi": "0.0.38",
     "@openiap/openflow-api": "2.1.12",
     "@opentelemetry/exporter-metrics-otlp-grpc": "0.43.0",
