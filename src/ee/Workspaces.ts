@@ -1,58 +1,9 @@
 import { Base, Rights } from "@openiap/nodeapi";
-import { Customer, Role, User } from "@openiap/openflow-api";
+import { Member, Customer, Workspace, Role, User, ResourceUsage } from "../commoninterfaces.js";
 import { Span } from "@opentelemetry/api";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
-
-export class Member extends Base {
-    constructor() {
-        super();
-        this._type = "member";
-        this.seen = false;
-        this.status = "pending";
-        this.role = "member";
-    }
-    public email: string;
-    public userid: string;
-    public workspaceid: string;
-    public workspacename: string;
-    public status: "pending" | "accepted" | "rejected";
-    public role: "member" | "admin";
-    public invitedby: string;
-    public invitedbyname: string;
-    public invitedon: Date;
-    public token: string;
-    public expires: Date;
-    public seen: boolean;
-    public seenon: Date;
-    public acceptedby: string;
-    public acceptedbyname: string;
-    public acceptedon: Date;
-    public rejectedby: string;
-    public rejectedbyname: string;
-    public rejectedon: Date;
-
-}
-export class Billing extends Base {
-    constructor() {
-        super();
-        this._type = "billing";
-    }
-    public billing: string;
-    public admins: string;
-    public stripeid: string;
-}
-export class Workspace extends Base {
-    constructor() {
-        super();
-        this._type = "workspace";
-    }
-    public billingid: string;
-    public admins: string;
-    public users: string;
-    public price: string;
-}
 export class Workspaces {
     public static async EnsureWorkspace(tuser: User, jwt: string, workspace: Workspace, parent: Span): Promise<Workspace> {
         if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
@@ -103,6 +54,22 @@ export class Workspaces {
         Base.addRight(workspace, workspaceusers._id, workspaceusers.name, [Rights.read]);
         workspace.admins = workspaceadmins._id;
         workspace.users = workspaceusers._id;
+        if(workspace.resourceusageid == null || workspace.resourceusageid == "") {
+            if(workspace.productname == null || workspace.productname == "") {
+                workspace.productname = "Free tier";
+            }
+        } else {
+            if(workspace.productname == null || workspace.productname == "") {
+                const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace.resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
+                if(resourceusage != null) {
+                    workspace.productname = resourceusage.product.name;
+                } else {
+                    workspace.resourceusageid = "";
+                    workspace.productname = "Free tier";
+                    // throw new Error("Resource usage not found");
+                }
+            }
+        }
         const result = await Config.db.InsertOrUpdateOne(workspace, "users", "_id", 1, true, rootjwt, parent);
 
         let member = await Config.db.GetOne<Member>({ collectionname: "users", query: { userid: tuser._id, workspaceid: result._id, "_type": "member" } }, parent);

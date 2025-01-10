@@ -152,17 +152,23 @@ export interface iAgent extends iBase {
 constructor();
 }
 
-export declare class FederationId {
-    constructor(id: string, issuer: string);
+export class FederationId {
+    constructor(id: string, issuer: string) {
+        this.id = id;
+        this.issuer = issuer;
+    }
     id: string;
     issuer: string;
 }
-export declare class Rolemember {
-    constructor(name: string, _id: string);
+export class Rolemember {
+    constructor(name: string, _id: string) {
+        this.name = name;
+        this._id = _id;
+    }
     name: string;
     _id: string;
 }
-export declare class TokenUser {
+export class TokenUser {
     _type: string;
     _id: string;
     name: string;
@@ -178,14 +184,44 @@ export declare class TokenUser {
     customerid: string;
     selectedcustomerid: string;
     dblocked: boolean;
-    static From(user: User | TokenUser): TokenUser;
-    static assign<T>(o: T): T;
-    HasRoleName(name: string): boolean;
-    HasRoleId(id: string): boolean;
+    static assign<T>(o: any): T {
+        const res = Object.assign(new User(), o);
+        return res;
+    }
+    static From(user: User | TokenUser): TokenUser {
+        const res = new TokenUser();
+        res._type = user._type;
+        res._id = user._id;
+        res.name = user.name;
+        res.username = user.username;
+        res.roles = user.roles;
+        res.role = user.role;
+        res.email = user.email;
+        // @ts-ignore
+        res.impostor = user.impersonating;
+        res.disabled = user.disabled;
+        res.validated = user.validated;
+        res.emailvalidated = user.emailvalidated;
+        res.formvalidated = user.formvalidated;
+        res.customerid = user.customerid;
+        res.selectedcustomerid = user.selectedcustomerid;
+        res.dblocked = user.dblocked;
+        return res;
+    }
+    HasRoleName(name: string): boolean {
+        const hits: Rolemember[] = this.roles.filter(member => member.name === name);
+        return (hits.length === 1);
+    }
+    HasRoleId(id: string): boolean {
+        const hits: Rolemember[] = this.roles.filter(member => member._id === id);
+        return (hits.length === 1);
+    }
 }
-declare class User extends Base {
-    constructor();
-    static assign<T>(o: any): T;
+export class User extends Base {
+    constructor() {
+        super();
+        this._type = "user";
+    }
     noderedname: string;
     lastseen: Date;
     _heartbeat: Date;
@@ -219,6 +255,197 @@ declare class User extends Base {
     formvalidated: boolean;
     dbusage: number;
     dblocked: boolean;
-    HasRoleName(name: string): boolean;
-    HasRoleId(id: string): boolean;
+    static assign<T>(o: any): T {
+        const res = Object.assign(new User(), o);
+        return res;
+    }
+    HasRoleName(name: string): boolean {
+        const hits: Rolemember[] = this.roles.filter(member => member.name === name);
+        return (hits.length === 1);
+    }
+    HasRoleId(id: string): boolean {
+        const hits: Rolemember[] = this.roles.filter(member => member._id === id);
+        return (hits.length === 1);
+    }
+}
+export class Role extends Base {
+    constructor() {
+        super();
+        this._type = "role";
+    }
+    customerid: string;
+    members: Rolemember[];
+    static assign<T>(o: any): T {
+        const res = Object.assign(new Role(), o);
+        return res;
+    }
+    IsMember(_id: string): boolean {
+        const hits: Rolemember[] = this.members.filter(member => member._id === _id);
+        return (hits.length === 1);
+    }
+    AddMember(item: Base): void {
+        if (!this.IsMember(item._id)) {
+            this.members.push(new Rolemember(item.name, item._id));
+        }
+    }
+    RemoveMember(_id: string): void {
+        this.members.forEach((member, idx) => {
+            if (member._id === _id) {
+                this.members.splice(idx, 1);
+            }
+        });
+    }
+}
+export class Member extends Base {
+    constructor() {
+        super();
+        this._type = "member";
+    }
+    public email: string;
+    public userid: string;
+    public workspaceid: string;
+    public workspacename: string;
+    public status: "pending" | "accepted" | "rejected";
+    public role: "member" | "admin";
+    public invitedby: string;
+    public invitedbyname: string;
+    public invitedon: Date;
+    public token: string;
+    public expires: Date;
+    public seen: boolean;
+    public seenon: Date;
+    public acceptedby: string;
+    public acceptedbyname: string;
+    public acceptedon: Date;
+    public rejectedby: string;
+    public rejectedbyname: string;
+    public rejectedon: Date;
+}
+export class Workspace extends Base {
+    public billingid: string;
+    public admins: string;
+    public users: string;
+    public resourceusageid: string;
+    public productname: string;
+}
+export  class Customer extends Base {
+    constructor() {
+        super();
+        this._type = "customer";
+    }
+    stripeid: string;
+    userid: string;
+    country: string;
+    email: string;
+    address: string;
+    vattype: string;
+    vatnumber: string;
+    taxrate: string;
+    tax: number;
+    coupon: string;
+    hascard: boolean;
+    memory: string;
+    openflowuserplan: string;
+    supportplan: string;
+    supporthourplan: string;
+    subscriptionid: string;
+    admins: string;
+    users: string;
+    customattr1: string;
+    customattr2: string;
+    customattr3: string;
+    customattr4: string;
+    customattr5: string;
+    domains: string[];
+    dbusage: number;
+    dblocked: boolean;
+    billingid: string; // TODO: allow this ?
+}
+export class Billing extends Base {
+    constructor() {
+        super();
+        this._type = "customer";
+    }
+    public email: string;
+    public billing: string;
+    public admins: string;
+    public stripeid: string;
+    public workspaceplan: string;
+    // userid: string;
+    // email: string;
+    // address: string;
+    // vattype: string;
+    // vatnumber: string;
+    // taxrate: string;
+    // tax: number;
+    // coupon: string;
+    // hascard: boolean;
+    // memory: string;
+    // openflowuserplan: string;
+    // supportplan: string;
+    // supporthourplan: string;
+}
+export declare enum ResourceVariantType {
+    single = "singlevariant",
+    multiple = "multiplevariants"
+}
+export declare enum ResourceAssignedType {
+    single = "single",
+    multiple = "multiple",
+    metered = "metered",
+}
+export declare enum ResourceTargetType {
+    customer = "customer",
+    workspace = "workspace",
+    user = "user",
+    member = "member",
+}
+export class Resource extends Base {
+    constructor() {
+        super();
+        this._type = "resource";
+    }
+    target: ResourceTargetType;
+    customerassign: ResourceVariantType;
+    workspaceassign: ResourceVariantType;
+    userassign: ResourceVariantType;
+    memberassign: ResourceVariantType;
+    defaultmetadata: any;
+    products: Product[];
+    allowdirectassign: boolean;
+    order: number;
+}
+export class Product {
+    name: string;
+    stripeproduct: string;
+    stripeprice: string;
+    customerassign: ResourceAssignedType;
+    workspaceassign: ResourceAssignedType;
+    userassign: ResourceAssignedType;
+    memberassign: ResourceAssignedType;
+    added_stripeprice: string;
+    added_resourceid: string;
+    added_quantity_multiplier: number;
+    metadata: any;
+    allowdirectassign: boolean;
+    order: number;
+}
+export class ResourceUsage extends Base {
+    constructor() {
+        super();
+        this._type = "resourceusage";
+    }
+    product: Product;
+    resourceid: string;
+    resource: string;
+    userid: string;
+    memberid: string;
+    customerid: string;
+    workspaceid: string;
+    quantity: number;
+    /** "subscription" */
+    subid: string;
+    "subscription": any;
+    /** "subscription_item" */
+    siid: string;
 }

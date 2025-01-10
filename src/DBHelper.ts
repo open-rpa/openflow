@@ -12,8 +12,8 @@ import { LoginProvider, Provider } from "./LoginProvider.js";
 import { TokenRequest } from "./TokenRequest.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { amqpwrapper } from "./amqpwrapper.js";
-import { iAgent } from "./commoninterfaces.js";
-import { Resource, ResourceUsage } from "./ee/Resources.js";
+import { Resource, ResourceUsage, iAgent } from "./commoninterfaces.js";
+
 
 export class DBHelper {
 
@@ -838,11 +838,11 @@ export class DBHelper {
         const jwt = Crypt.rootToken();
         const span: Span = Logger.otel.startSubSpan("dbhelper.EnsureUniqueRole", parent);
         let role: Role = await this.FindRoleById(id, jwt, span);
-        if (role != null) {
-            if (role.name != name) {
-                role.name = name;
-                await this.Save(role, jwt, span);
-            }
+        if (role != null && id == role._id) {
+            // if (role.name != name) {
+            //     role.name = name;
+            //     await this.Save(role, jwt, span);
+            // }
             return role;
         }
         try {

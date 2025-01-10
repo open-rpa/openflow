@@ -25,6 +25,8 @@ import { SocketMessage } from "../SocketMessage.js";
 import { WebSocketServer } from "../WebSocketServer.js";
 import { WebSocketServerClient } from "../WebSocketServerClient.js";
 import { Workspaces } from "../ee/Workspaces.js";
+import { Resources } from "../ee/Resources.js";
+import { Billings } from "../ee/Billings.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -4879,6 +4881,22 @@ export class Message {
             case "removemember":
                 msg.result = await Workspaces.RemoveMember(this.tuser, this.jwt, msg.id, parent);
                 break;
+            case "ensurebilling":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Billings.EnsureBilling(this.tuser, this.jwt, data, parent);
+                break;
+            case "createresourceusage":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Resources.CreateResourceUsage(this.tuser, this.jwt, 
+                    data.target, data.billingid, data.workspaceid, data.resourceid, data.productname, parent);
+                break;
+            case "removeresourceusage":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Resources.RemoveResourceUsage(this.tuser, this.jwt, data.target, data.resourceusageid, parent);
+                break;                
             default:
                 msg.error = "Unknown custom command";
         }
