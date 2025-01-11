@@ -9,7 +9,7 @@ import v8 from "v8";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { Audit } from "./Audit.js";
 import { Auth } from "./Auth.js";
-import { iAgent } from "./commoninterfaces.js";
+import { iAgent, Workspace } from "./commoninterfaces.js";
 import { Config, dbConfig } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Resources } from "./ee/Resources.js";
@@ -3966,23 +3966,45 @@ export class DatabaseConnection extends events.EventEmitter {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
             return this.getbasequery(user, bits, collectionname);
         } else if (user._type == "customer") {
-            user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
-            user.roles.push(new Rolemember(user.name + " users", (user as any).users))
-            user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
-            if (user._id == calluser.customerid) user.roles.push(new Rolemember(calluser.name, calluser._id));
-
-            if (!NoderedUtil.IsNullEmpty((user as any as Customer).userid)) {
-                user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
+            let customer = user as any as Customer;
+            if(user.roles == null) user.roles = [];
+            user.roles.push(new Rolemember(user.name + " users", customer.users))
+            user.roles.push(new Rolemember(user.name + " admins", customer.admins))
+            let users = await Logger.DBHelper.FindRoleById(customer.users, Crypt.rootToken(), parent);
+            let admins = await Logger.DBHelper.FindRoleById(customer.admins, Crypt.rootToken(), parent);
+            for (let i = 0; i < users.members.length; i++) {
+                const exists = user.roles.filter(x => x._id == users.members[i]._id);
+                if (exists.length == 0) {
+                    user.roles.push(new Rolemember(users.members[i].name, users.members[i]._id))
+                }
+            }
+            for (let i = 0; i < admins.members.length; i++) {
+                const exists = user.roles.filter(x => x._id == admins.members[i]._id);
+                if (exists.length == 0) {
+                    user.roles.push(new Rolemember(admins.members[i].name, admins.members[i]._id))
+                }
             }
             return this.getbasequery(user, bits, collectionname);
-        } else if (user._type == "workspace") {
-            user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
-            user.roles.push(new Rolemember(user.name + " users", (user as any).users))
-            user.roles.push(new Rolemember(user.name + " admins", (user as any).admins))
-            if (user._id == calluser.customerid) user.roles.push(new Rolemember(calluser.name, calluser._id));
 
-            if (!NoderedUtil.IsNullEmpty((user as any as Customer).userid)) {
-                user.roles.push(new Rolemember((user as any as Customer).userid, (user as any as Customer).userid))
+        } else if (user._type == "workspace") {
+            let workspace = user as any as Workspace;
+            if(user.roles == null) user.roles = [];
+            user.roles.push(new Rolemember(user.name + " users", workspace.users))
+            user.roles.push(new Rolemember(user.name + " admins", workspace.admins))
+            let users = await Logger.DBHelper.FindRoleById(workspace.users, Crypt.rootToken(), parent);
+            let admins = await Logger.DBHelper.FindRoleById(workspace.admins, Crypt.rootToken(), parent);
+            for (let i = 0; i < users.members.length; i++) {
+                const exists = user.roles.filter(x => x._id == users.members[i]._id);
+                if (exists.length == 0) {
+                    user.roles.push(new Rolemember(users.members[i].name, users.members[i]._id))
+                }
+            }
+            for (let i = 0; i < admins.members.length; i++) {
+                const exists = user.roles.filter(x => x._id == admins.members[i]._id);
+                if (exists.length == 0) {
+                    user.roles.push(new Rolemember(admins.members[i].name, admins.members[i]._id))
+                }
+
             }
             return this.getbasequery(user, bits, collectionname);
         }
