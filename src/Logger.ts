@@ -1,4 +1,3 @@
-import { NoderedUtil } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import crypto from "crypto";
 import fs from "fs";
@@ -6,11 +5,12 @@ import os from "os";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { amqpwrapper } from "./amqpwrapper.js";
-import { i_agent_driver, i_license_file, i_otel } from "./commoninterfaces.js";
+import { i_agent_driver, i_license_file, i_otel, iBase, TokenUser, User } from "./commoninterfaces.js";
 import { Config } from "./Config.js";
 import { DBHelper } from "./DBHelper.js";
 import { dockerdriver } from "./dockerdriver.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { Util } from "./Util.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -48,8 +48,15 @@ export class Logger {
     public static usecolors: boolean = true;
     private static _hostname: string = "";
 
+    public static enricherror(user: TokenUser | User, target: iBase, error: string) {
+        if (user == null && target == null) return error;
+        if (target == null) return "[" + user.name + "] " + error;
+        if (user == null) return error + " (" + target.name + ")";
+        return "[" + user.name + "] " + error + " (" + target.name + ")";
+    }
+
     public static parsecli(cli: WebSocketServerClient) {
-        if (NoderedUtil.IsNullUndefinded(cli)) return {};
+        if (Util.IsNullUndefinded(cli)) return {};
         return { user: cli.username, agent: cli.clientagent, version: cli.clientversion, cid: cli.id, ip: cli.remoteip }
     }
     public prefix(lvl: level, cls: string, func: string, message: string | unknown, collection: string, user: string, ms: number): string {
@@ -63,7 +70,7 @@ export class Logger {
         let Green = Console.Reset + Console.Bright + Console.FgGreen;
         let dt = new Date();
         if (cls == "cli" || cls == "cli-lic" || cls == "cliutil") cls = "";
-        if (NoderedUtil.IsNullEmpty(cls)) cls = "";
+        if (Util.IsNullEmpty(cls)) cls = "";
         if (typeof cls !== "string") { try { cls = (cls as object).toString(); } catch { cls = "unknown"; } }
         let prefix = "";
         let color = Cyan;
@@ -75,9 +82,9 @@ export class Logger {
             let dts: string = dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds() + "." + dt.getMilliseconds();
             if (Logger.usecolors) {
                 prefix = (dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "]");
-                if (!NoderedUtil.IsNullEmpty(collection)) prefix += ("[" + collection + "]");
-                if (!NoderedUtil.IsNullEmpty(user)) prefix += ("[" + user + "]");
-                if (!NoderedUtil.IsNullEmpty(ms)) prefix += ("[" + ms + "ms]");
+                if (!Util.IsNullEmpty(collection)) prefix += ("[" + collection + "]");
+                if (!Util.IsNullEmpty(user)) prefix += ("[" + user + "]");
+                if (!Util.IsNullEmpty(ms)) prefix += ("[" + ms + "ms]");
                 prefix += (" ");
                 let spaces = 0;
                 if (prefix.length < 60) spaces = 60 - prefix.length;
@@ -86,9 +93,9 @@ export class Logger {
                 if (spaces > 0) prefix += "".padEnd(spaces, " ");
             } else {
                 prefix = dts.padEnd(13, " ") + "[" + cls.padEnd(21) + "][" + func + "]";
-                if (!NoderedUtil.IsNullEmpty(collection)) prefix += ("[" + collection + "]");
-                if (!NoderedUtil.IsNullEmpty(user)) prefix += ("[" + user + "]");
-                if (!NoderedUtil.IsNullEmpty(ms)) prefix += ("[" + ms + "ms]");
+                if (!Util.IsNullEmpty(collection)) prefix += ("[" + collection + "]");
+                if (!Util.IsNullEmpty(user)) prefix += ("[" + user + "]");
+                if (!Util.IsNullEmpty(ms)) prefix += ("[" + ms + "ms]");
                 prefix += (" ");
                 prefix = prefix.padEnd(60, " ");
             }
@@ -106,7 +113,7 @@ export class Logger {
             }
 
             const { cls, func, message, lvl } = obj;
-            if (!NoderedUtil.IsNullEmpty(func) && span != null && span.isRecording()) {
+            if (!Util.IsNullEmpty(func) && span != null && span.isRecording()) {
                 var stringifyError = function (err, filter, space) {
                     var plainObject = {};
                     Object.getOwnPropertyNames(err).forEach(function (key) {
@@ -160,7 +167,7 @@ export class Logger {
                 return JSON.stringify(plainObject, filter, space);
             };
             if (Config.log_to_exchange && !Config.unittesting) {
-                if (NoderedUtil.IsNullEmpty(Logger._hostname)) Logger._hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
+                if (Util.IsNullEmpty(Logger._hostname)) Logger._hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
                 if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
                     if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
                     amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", span, 1);
@@ -415,7 +422,7 @@ export class Logger {
     public static isKubernetes(): boolean {
         if (Logger._isKubernetes != null) return Logger._isKubernetes;
         if (!Logger.isDocker()) { Logger._isKubernetes = false; return false; }
-        if (NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) { Logger._isKubernetes = false; return false; }
+        if (Util.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"])) { Logger._isKubernetes = false; return false; }
         Logger._isKubernetes = true;
         return true;
     }
@@ -499,7 +506,7 @@ export class Logger {
         if (this.agentdriver == null) {
             this.agentdriver = null; // with npm -omit=optional we need to install npm i openid-client
 
-            if (NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"])) {
+            if (Util.IsNullEmpty(process.env["USE_KUBERNETES"])) {
                 try {
                     this.agentdriver = new dockerdriver();
                     if (!(await this.agentdriver.detect())) {
@@ -509,7 +516,7 @@ export class Logger {
                     this.agentdriver = null;
                 }
             }
-            if (this.agentdriver == null && (!NoderedUtil.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !NoderedUtil.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
+            if (this.agentdriver == null && (!Util.IsNullEmpty(process.env["KUBERNETES_SERVICE_HOST"]) || !Util.IsNullEmpty(process.env["USE_KUBERNETES"]))) {
                 try {
                     // @ts-ignore
                     let _driver: any = await import("./ee/kubedriver.js");
@@ -534,7 +541,7 @@ export class Logger {
     static instanse: Logger = null;
     private static _ofid = null;
     static ofid() {
-        if (!NoderedUtil.IsNullEmpty(Logger._ofid)) return Logger._ofid;
+        if (!Util.IsNullEmpty(Logger._ofid)) return Logger._ofid;
         const openflow_uniqueid = Config.openflow_uniqueid || crypto.createHash("md5").update(Config.domain).digest("hex");
         Config.openflow_uniqueid = openflow_uniqueid;
         Logger._ofid = openflow_uniqueid;

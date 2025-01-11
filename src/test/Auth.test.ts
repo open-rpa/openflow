@@ -1,26 +1,18 @@
-// import wtf from "wtfnode";
-import { NoderedUtil, SigninMessage } from "@openiap/openflow-api";
+import { SigninMessage } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
 import assert from "assert";
 import { Auth } from "../Auth.js";
-import { Config } from "../Config.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
-import { Logger } from "../Logger.js";
 import { Message } from "../Messages/Message.js";
+import { Util } from "../Util.js";
+import { testConfig } from "./testConfig.js";
 
 @suite class auth_test {
     @timeout(10000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
-        await Config.db.connect(null);
-        await Config.Load(null);
+        await testConfig.configure();
     }
     async after() {
-        await Logger.shutdown();
-        // wtf.dump()
+        await testConfig.cleanup();
     }
     @test async "ValidateByPassword"() {
         await assert.rejects(async () => {
@@ -43,7 +35,7 @@ import { Message } from "../Messages/Message.js";
         msg.data = JSON.stringify(q);
         await msg.Signin(null, null);
         q = JSON.parse(msg.data);
-        assert.strictEqual(NoderedUtil.IsNullEmpty(q.user), false, "Sigin returned no data")
+        assert.strictEqual(Util.IsNullEmpty(q.user), false, "Sigin returned no data")
         assert.strictEqual(q.user.username, "testuser", "Sigin did not return testuser user object")
 
     }

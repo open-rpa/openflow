@@ -1,4 +1,3 @@
-import { NoderedUtil, Rolemember, TokenUser, User, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -6,14 +5,16 @@ import jsonwebtoken from "jsonwebtoken";
 import { Config } from "./Config.js";
 import { Logger } from "./Logger.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { Util, Wellknown } from "./Util.js";
+import { Rolemember, TokenUser, User } from "./commoninterfaces.js";
 export class Crypt {
     static encryption_key: string = null; // must be 256 bytes (32 characters))
     static iv_length: number = 16; // for AES, this is always 16
     static bcrypt_salt_rounds: number = 12;
     static rootUser(): User {
         const result: User = new User();
-        result._type = "user"; result.name = "root"; result.username = "root"; result._id = WellknownIds.root;
-        result.roles = []; result.roles.push(new Rolemember("admins", WellknownIds.admins));
+        result._type = "user"; result.name = Wellknown.root.name; result.username = Wellknown.root.name; result._id = Wellknown.root._id;
+        result.roles = []; result.roles.push(new Rolemember(Wellknown.admins.name, Wellknown.admins._id));
         return result;
     }
     static async guestUser(): Promise<User> {
@@ -21,7 +22,7 @@ export class Crypt {
         result.validated = true;
         result.formvalidated = true;
         result.emailvalidated = true;
-        result._type = "user"; result.name = "guest"; result.username = "guest"; result._id = "65cb30c40ff51e174095573c";
+        result._type = "user"; result.name = Wellknown.guest.name; result.username = Wellknown.guest.name; result._id = Wellknown.guest._id;
         result.roles = [];
         Logger.instanse.verbose(`Decorating guest user with roles`, null);
         result = await Logger.DBHelper.DecorateWithRoles(result, null);
@@ -33,8 +34,8 @@ export class Crypt {
     public static async SetPassword(user: User, password: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Crypt.SetPassword", parent);
         try {
-            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
-            if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
+            if (Util.IsNullUndefinded(user)) throw new Error("user is mandatody")
+            if (Util.IsNullEmpty(password)) throw new Error("password is mandatody")
             user.passwordhash = await Crypt.hash(password);
             if (!(this.ValidatePassword(user, password, span))) { throw new Error("Failed validating password after hasing"); }
         } finally {
@@ -47,9 +48,9 @@ export class Crypt {
     public static async ValidatePassword(user: User, password: string, parent: Span): Promise<boolean> {
         const span: Span = Logger.otel.startSubSpan("Crypt.ValidatePassword", parent);
         try {
-            if (NoderedUtil.IsNullUndefinded(user)) throw new Error("user is mandatody")
+            if (Util.IsNullUndefinded(user)) throw new Error("user is mandatody")
             if (Config.enable_guest && user.username == "guest") return true;
-            if (NoderedUtil.IsNullEmpty(password)) throw new Error("password is mandatody")
+            if (Util.IsNullEmpty(password)) throw new Error("password is mandatody")
             return await Crypt.compare(password, user.passwordhash, span);
         } finally {
             Logger.otel.endSpan(span);
@@ -57,7 +58,7 @@ export class Crypt {
     }
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+        if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         let cipher: crypto.CipherGCM = crypto.createCipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key), iv);
         let encrypted: Buffer = cipher.update((text as any));
         encrypted = Buffer.concat([encrypted, cipher.final()]);
@@ -71,7 +72,7 @@ export class Crypt {
         let authTag: Buffer = null;
         if (textParts.length > 0) authTag = Buffer.from(textParts.shift(), "hex");
         let decrypted: Buffer;
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+        if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         if (authTag != null) {
             let decipher: crypto.DecipherGCM = crypto.createDecipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key), iv);
             decipher.setAuthTag(authTag);
@@ -100,8 +101,8 @@ export class Crypt {
         const span: Span = Logger.otel.startSubSpan("Crypt.compare", parent);
         return new Promise<boolean>((resolve, reject) => {
             try {
-                if (NoderedUtil.IsNullEmpty(password)) { return reject("Password cannot be empty"); }
-                if (NoderedUtil.IsNullEmpty(passwordhash)) { return reject("Passwordhash cannot be empty"); }
+                if (Util.IsNullEmpty(password)) { return reject("Password cannot be empty"); }
+                if (Util.IsNullEmpty(passwordhash)) { return reject("Passwordhash cannot be empty"); }
                 bcrypt.compare(password, passwordhash, (error, res) => {
                     if (error) { Logger.otel.endSpan(span); return reject(error); }
                     Logger.otel.endSpan(span);
@@ -114,11 +115,11 @@ export class Crypt {
         });
     }
     static createSlimToken(id: string, impostor: string, expiresIn: string): string {
-        if (NoderedUtil.IsNullEmpty(id)) throw new Error("id is mandatory");
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+        if (Util.IsNullEmpty(id)) throw new Error("id is mandatory");
+        if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         const key = Crypt.encryption_key;
-        if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
-        if (NoderedUtil.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
+        if (Util.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
+        if (Util.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
         const user = { _id: id, impostor: impostor }
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
@@ -135,42 +136,42 @@ export class Crypt {
         user.selectedcustomerid = item.selectedcustomerid;
         user.dblocked = item.dblocked;
 
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+        if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         const key = Crypt.encryption_key;
-        if (NoderedUtil.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
-        if (NoderedUtil.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
+        if (Util.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
+        if (Util.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
     static async verityToken(token: string, cli?: WebSocketServerClient, ignoreExpiration: boolean = false): Promise<TokenUser> {
         try {
-            if (NoderedUtil.IsNullEmpty(token)) {
+            if (Util.IsNullEmpty(token)) {
                 throw new Error("jwt must be provided");
             }
-            if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+            if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
             if (Config.allow_signin_with_expired_jwt == false) ignoreExpiration = false;
             const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: ignoreExpiration });
             let impostor: string = null;
-            if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
-                if (!NoderedUtil.IsNullEmpty(o.data.impostor)) {
+            if (!Util.IsNullUndefinded(o) && !Util.IsNullUndefinded(o.data) && !Util.IsNullEmpty(o.data._id)) {
+                if (!Util.IsNullEmpty(o.data.impostor)) {
                     impostor = o.data.impostor;
                 }
             }
-            if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id) && o.data._id != WellknownIds.root) {
+            if (!Util.IsNullUndefinded(o) && !Util.IsNullUndefinded(o.data) && !Util.IsNullEmpty(o.data._id) && o.data._id != Wellknown.root._id) {
                 var id = o.data._id;
                 o.data = await Logger.DBHelper.FindById(o.data._id, null);
-                if (NoderedUtil.IsNullUndefinded(o) || NoderedUtil.IsNullUndefinded(o.data)) {
+                if (Util.IsNullUndefinded(o) || Util.IsNullUndefinded(o.data)) {
                     throw new Error("Token signature valid, but unable to find user with id " + id);
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(impostor)) o.data.impostor = impostor;
+            if (!Util.IsNullEmpty(impostor)) o.data.impostor = impostor;
             return TokenUser.assign(o.data);
         } catch (error) {
             var e = error;
             try {
-                if (!NoderedUtil.IsNullEmpty(token)) {
+                if (!Util.IsNullEmpty(token)) {
                     const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: true });
-                    if (!NoderedUtil.IsNullUndefinded(o) && !NoderedUtil.IsNullUndefinded(o.data) && !NoderedUtil.IsNullEmpty(o.data._id)) {
+                    if (!Util.IsNullUndefinded(o) && !Util.IsNullUndefinded(o.data) && !Util.IsNullEmpty(o.data._id)) {
                         // fake login, so we can track who was trying to login with an expired token
                         if (cli != null && cli.user == null) {
                             cli.user = TokenUser.assign(o.data);
@@ -185,7 +186,7 @@ export class Crypt {
         }
     }
     static decryptToken(token: string): any {
-        if (NoderedUtil.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+        if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         return jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: Config.allow_signin_with_expired_jwt });
     }
 }

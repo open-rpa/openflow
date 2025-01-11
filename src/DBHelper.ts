@@ -1,4 +1,3 @@
-import { Base, NoderedUtil, Rights, Role, Rolemember, TokenUser, User, WellknownIds, WorkitemQueue } from "@openiap/openflow-api";
 import { Observable, Span } from "@opentelemetry/api";
 import { caching } from "cache-manager";
 import { redisStore } from "cache-manager-ioredis-yet";
@@ -12,14 +11,15 @@ import { LoginProvider, Provider } from "./LoginProvider.js";
 import { TokenRequest } from "./TokenRequest.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { amqpwrapper } from "./amqpwrapper.js";
-import { Resource, ResourceUsage, iAgent } from "./commoninterfaces.js";
+import { Base, Rights, Resource, ResourceUsage, Role, Rolemember, TokenUser, User, iAgent, WorkitemQueue } from "./commoninterfaces.js";
+import { Util, Wellknown } from "./Util.js";
 
 
 export class DBHelper {
 
     public memoryCache: any;
     public async init() {
-        if (!NoderedUtil.IsNullUndefinded(this.memoryCache)) return;
+        if (!Util.IsNullUndefinded(this.memoryCache)) return;
 
         const ttl = (Config.cache_store_ttl_seconds) * 1000;
         const max = Config.cache_store_max;
@@ -70,7 +70,7 @@ export class DBHelper {
     }
     public item_cache: Observable = null;
     public ensureotel() {
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter) && NoderedUtil.IsNullUndefinded(this.item_cache)) {
+        if (!Util.IsNullUndefinded(Logger.otel) && !Util.IsNullUndefinded(Logger.otel.meter) && Util.IsNullUndefinded(this.item_cache)) {
             this.item_cache = Logger.otel.meter.createObservableGauge("openflow_item_cache_count", {
                 description: "Total number of cached items"
             });
@@ -105,7 +105,7 @@ export class DBHelper {
     }
     public async CheckCache(collectionname: string, item: Base, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
         await this.init();
-        if (watch && collectionname == "users" && item._id == WellknownIds.root) return;
+        if (watch && collectionname == "users" && item._id == Wellknown.root._id) return;
         if (collectionname == "config" && item._type == "resource") {
             this.ResourceUpdate(item, watch, frombroadcast, span);
         }
@@ -146,11 +146,11 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) return null;
+            if (Util.IsNullEmpty(_id)) return null;
             var key = ("users_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindByIdWrap(_id, span) });
             this.ensureotel();
-            if (NoderedUtil.IsNullUndefinded(item)) {
+            if (Util.IsNullUndefinded(item)) {
                 Logger.instanse.debug("No user matches " + _id, span);
                 return null;
             }
@@ -255,7 +255,7 @@ export class DBHelper {
             let items = await this.memoryCache.wrap("entityrestrictions", () => { return this.GetEntityRestrictionsWrap(span) });
             let allowadmins = new EntityRestriction();
             allowadmins.copyperm = false; allowadmins.collection = ""; allowadmins.paths = ["$."];
-            Base.addRight(allowadmins, WellknownIds.admins, "admins", [Rights.create]);
+            Base.addRight(allowadmins, Wellknown.admins._id, Wellknown.admins.name, [Rights.create]);
             items.push(allowadmins);
             for (let i = 0; i < items.length; i++) {
                 items[i] = EntityRestriction.assign(items[i]);
@@ -272,7 +272,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindRequestTokenID", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(key)) return null;
+            if (Util.IsNullEmpty(key)) return null;
             return await this.memoryCache.get("requesttoken" + key);
         } finally {
             Logger.otel.endSpan(span);
@@ -307,18 +307,18 @@ export class DBHelper {
         return Auth.ValidateByPassword(login, password, span);
     }
     public async FindByAuthorization(authorization: string, jwt: string, span: Span): Promise<User> {
-        if (!NoderedUtil.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
+        if (!Util.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
             (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
             const token = authorization.split(" ")[1].toString();
             let item: User = await this.memoryCache.wrap(token, () => { return this.FindByAuthorizationWrap(token, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         }
         const b64auth = (authorization || "").split(" ")[1].toString() || ""
         const [login, password] = Buffer.from(b64auth, "base64").toString().split(":")
-        if (!NoderedUtil.IsNullEmpty(login) && !NoderedUtil.IsNullEmpty(password)) {
+        if (!Util.IsNullEmpty(login) && !Util.IsNullEmpty(password)) {
             let item: User = await this.memoryCache.wrap(b64auth, () => { return this.FindByAuthorizationWrap2(login, password, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         }
     }
@@ -340,10 +340,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) return null;
+            if (Util.IsNullEmpty(_id)) return null;
             var key = ("agent_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindAgentBySlugOrIdWrap(_id, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return item;
         } finally {
             Logger.otel.endSpan(span);
@@ -358,10 +358,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) return null;
+            if (Util.IsNullEmpty(_id)) return null;
             var key = ("mq_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindQueueByIdWrap(_id, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } finally {
             Logger.otel.endSpan(span);
@@ -384,10 +384,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(name)) return null;
+            if (Util.IsNullEmpty(name)) return null;
             var key = ("queuename_" + name).toString();
             let item = await this.memoryCache.wrap(key, () => { return this.FindQueueByNameWrap(name, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } finally {
             Logger.otel.endSpan(span);
@@ -402,10 +402,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) return null;
+            if (Util.IsNullEmpty(_id)) return null;
             var key = ("mq_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindExchangeByIdWrap(_id, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } finally {
             Logger.otel.endSpan(span);
@@ -420,10 +420,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(name)) return null;
+            if (Util.IsNullEmpty(name)) return null;
             var key = ("exchangename_" + name).toString();
             let item = await this.memoryCache.wrap(key, () => { return this.FindExchangeByNameWrap(name, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } finally {
             Logger.otel.endSpan(span);
@@ -438,10 +438,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindById", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(_id)) return null;
+            if (Util.IsNullEmpty(_id)) return null;
             var key = ("users_" + _id).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindRoleByIdWrap(_id, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             const result = Role.assign(item);
             return result as any;
         } finally {
@@ -457,10 +457,10 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(username)) return null;
+            if (Util.IsNullEmpty(username)) return null;
             var key = ("username_" + username).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindByUsernameWrap(username, jwt, span); });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } finally {
             Logger.otel.endSpan(span);
@@ -479,10 +479,10 @@ export class DBHelper {
         }
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(domain)) return null;
+            if (Util.IsNullEmpty(domain)) return null;
             var key = ("disposable_" + domain).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.GetDisposableDomainWrap(domain, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return item;
         } finally {
             Logger.otel.endSpan(span);
@@ -497,15 +497,57 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindByUsername", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(username)) return null;
+            if (Util.IsNullEmpty(username)) return null;
             var key = ("federation_" + username).toString().toLowerCase();
             let item = await this.memoryCache.wrap(key, () => { return this.FindByUsernameOrFederationidWrap(username, issuer, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             return this.DecorateWithRoles(User.assign(item), span);
         } finally {
             Logger.otel.endSpan(span);
         }
 
+    }
+    DecorateWithRolesWrap_new(user, span: Span) {
+        const pipe: any = [
+            // 1) Start with roles only
+            {
+              $match: { _type: "role" }
+            },
+            // 2) Recursively find all "descendant" roles by following `members._id` -> `_id`
+            {
+              $graphLookup: {
+                from: "users",
+                startWith: "$_id",               // Begin traversal from the current role's _id
+                connectFromField: "members._id", // Field name containing child references
+                connectToField: "_id",           // The _id field in the "users" collection
+                as: "descendants",
+                restrictSearchWithMatch: {
+                  _type: "role" // Only recurse into documents where _type = "role"
+                },
+                depthField: "depth" // (Optional) to see how deep the nesting goes
+              }
+            },
+            // 3) Filter only those roles (the original role OR one of its descendants) that have the user
+            //    in their members list. i.e. The role or any nested role's "members" contains userId.
+            {
+              $match: {
+                $or: [
+                  { "members._id": user._id }, // Direct membership
+                  { "descendants.members._id": user._id } // Nested membership
+                ]
+              }
+            },
+            // 4) (Optional) project only the fields you want
+            {
+              $project: {
+                name: 1,
+                members: 1,
+                // or anything else
+                descendants: 1
+              }
+            }
+          ]
+          return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, null, false, span);
     }
     DecorateWithRolesWrap(user, span: Span) {
         Logger.instanse.debug("Add userroles to cache : " + user._id + " " + user.name, span);
@@ -572,13 +614,13 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
         try {
-            if (NoderedUtil.IsNullUndefinded(user)) return null;
+            if (Util.IsNullUndefinded(user)) return null;
             if (!Config.decorate_roles_fetching_all_roles) {
                 if (!user.roles) user.roles = [];
                 var key = ("userroles_" + user._id).toString().toLowerCase();
                 const results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap(user, span) });
-                var key = ("userroles_" + WellknownIds.users).toString().toLowerCase();
-                const users_results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap({ "_id": WellknownIds.users, "name": "users" }, span) });
+                var key = ("userroles_" + Wellknown.users._id).toString().toLowerCase();
+                const users_results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap({ "_id": Wellknown.users._id, "name": Wellknown.users.name }, span) });
 
                 if (results.length > 0) {
                     user.roles = [];
@@ -613,15 +655,15 @@ export class DBHelper {
                         });
                     }
                 }
-                let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
+                let hasusers = user.roles.filter(x => x._id == Wellknown.users._id);
                 if (hasusers.length == 0 && user.username != "guest") {
-                    user.roles.push(new Rolemember("users", WellknownIds.users));
-                    Logger.instanse.verbose("also adding user to users " + WellknownIds.users, span);
+                    user.roles.push(new Rolemember(Wellknown.users.name, Wellknown.users._id));
+                    Logger.instanse.verbose("also adding user to users " + Wellknown.users._id, span);
                 }
                 return user;
             }
             let cached_roles = await this.memoryCache.wrap("allroles", () => { return this.DecorateWithRolesAllRolesWrap(span) });
-            if (cached_roles.length === 0 && user.username !== "root") {
+            if (cached_roles.length === 0 && user.username !== Wellknown.root.name) {
                 throw new Error("System has no roles !!!!!!");
             }
             user.roles = [];
@@ -632,9 +674,9 @@ export class DBHelper {
                     user.roles.push(new Rolemember(role.name, role._id));
                 }
             }
-            let hasusers = user.roles.filter(x => x._id == WellknownIds.users);
-            if (hasusers.length == 0 && user.username != "guest") {
-                user.roles.push(new Rolemember("users", WellknownIds.users));
+            let hasusers = user.roles.filter(x => x._id == Wellknown.users._id);
+            if (hasusers.length == 0 && user.username != Wellknown.guest.name) {
+                user.roles.push(new Rolemember(Wellknown.users.name, Wellknown.users._id));
             }
             let updated: boolean = false;
             do {
@@ -670,7 +712,7 @@ export class DBHelper {
         try {
             var key = ("rolename_" + name).toString();
             let item = await this.memoryCache.wrap(key, async () => { return this.FindRoleByNameWrap(name, jwt, span) });
-            if (NoderedUtil.IsNullUndefinded(item)) return null;
+            if (Util.IsNullUndefinded(item)) return null;
             const result = Role.assign(item);
             return result as any;
         } finally {
@@ -678,7 +720,7 @@ export class DBHelper {
         }
     }
     public async UserRoleUpdateId(id: string, watch: boolean, span: Span) {
-        if (!NoderedUtil.IsNullEmpty(id)) return;
+        if (!Util.IsNullEmpty(id)) return;
         var u = new Base(); u._id = id;
         return this.UserRoleUpdate(u, watch, span);
     }
@@ -701,15 +743,15 @@ export class DBHelper {
         return true;
     }
     private async UserRoleUpdate(userrole: Base | TokenUser, watch: boolean, span: Span) {
-        if (NoderedUtil.IsNullUndefinded(userrole)) return;
+        if (Util.IsNullUndefinded(userrole)) return;
         if (!this._doClear(watch, span)) return;
         if (userrole._type == "user") {
             Logger.instanse.debug("Remove user from cache : " + userrole._id, span);
             let u: User = userrole as any;
-            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("users_" + u._id).toString(), watch, false, span);
-            if (!NoderedUtil.IsNullEmpty(u.username)) await this.DeleteKey(("username_" + u.username).toString(), watch, false, span);
-            if (!NoderedUtil.IsNullEmpty(u.email)) await this.DeleteKey(("username_" + u.email).toString(), watch, false, span);
-            if (!NoderedUtil.IsNullEmpty(u._id)) await this.DeleteKey(("userroles_" + u._id).toString(), watch, false, span);
+            if (!Util.IsNullEmpty(u._id)) await this.DeleteKey(("users_" + u._id).toString(), watch, false, span);
+            if (!Util.IsNullEmpty(u.username)) await this.DeleteKey(("username_" + u.username).toString(), watch, false, span);
+            if (!Util.IsNullEmpty(u.email)) await this.DeleteKey(("username_" + u.email).toString(), watch, false, span);
+            if (!Util.IsNullEmpty(u._id)) await this.DeleteKey(("userroles_" + u._id).toString(), watch, false, span);
             if (u.federationids != null && Array.isArray(u.federationids)) {
                 for (var i = 0; i < u.federationids.length; i++) {
                     var fed = u.federationids[i];
@@ -725,9 +767,9 @@ export class DBHelper {
             await this.DeleteKey("allroles", watch, false, span);
         } else if (userrole._type == "role") {
             let r: Role = userrole as any;
-            if (!NoderedUtil.IsNullEmpty(r._id)) await this.DeleteKey(("users_" + r._id).toString(), watch, false, span);
-            if (!NoderedUtil.IsNullEmpty(r.name)) await this.DeleteKey(("rolename_" + r.name).toString(), watch, false, span);
-            if (userrole._id != WellknownIds.users) {
+            if (!Util.IsNullEmpty(r._id)) await this.DeleteKey(("users_" + r._id).toString(), watch, false, span);
+            if (!Util.IsNullEmpty(r.name)) await this.DeleteKey(("rolename_" + r.name).toString(), watch, false, span);
+            if (userrole._id != Wellknown.users._id) {
                 if (r.members != null && Array.isArray(r.members)) {
                     for (var i = 0; i < r.members.length; i++) {
                         var member = r.members[i];
@@ -737,32 +779,32 @@ export class DBHelper {
             }
             await this.DeleteKey("allroles", watch, false, span);
         } else if (userrole._type == "customer") {
-            if (!NoderedUtil.IsNullEmpty(userrole._id)) await this.DeleteKey(("users_" + userrole._id).toString(), watch, false, span);
+            if (!Util.IsNullEmpty(userrole._id)) await this.DeleteKey(("users_" + userrole._id).toString(), watch, false, span);
         }
 
     }
     private async AgentUpdate(_id: string, slug: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear queue cache : " + slug + " " + _id, span);
-        if (!NoderedUtil.IsNullEmpty(slug)) {
+        if (!Util.IsNullEmpty(slug)) {
             await this.DeleteKey(("agent_" + slug).toString(), watch, false, span);
             await this.DeleteKey(("agent_" + slug + "agent").toString(), watch, false, span);
         }
-        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("agent_" + _id).toString(), watch, false, span);
+        if (!Util.IsNullEmpty(_id)) await this.DeleteKey(("agent_" + _id).toString(), watch, false, span);
     }
     private async QueueUpdate(_id: string, name: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear queue cache : " + name + " " + _id, span);
-        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("queuename_" + name).toString(), watch, false, span);
-        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
+        if (!Util.IsNullEmpty(name)) await this.DeleteKey(("queuename_" + name).toString(), watch, false, span);
+        if (!Util.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
     }
     private async ExchangeUpdate(_id: string, name: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear exchange cache : " + name + " " + _id, span);
-        if (!NoderedUtil.IsNullEmpty(name)) await this.DeleteKey(("exchangename_" + name).toString(), watch, false, span);
-        if (!NoderedUtil.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
+        if (!Util.IsNullEmpty(name)) await this.DeleteKey(("exchangename_" + name).toString(), watch, false, span);
+        if (!Util.IsNullEmpty(_id)) await this.DeleteKey(("mq_" + _id).toString(), watch, false, span);
     }
     public async WorkitemQueueUpdate(wiqid: string, watch: boolean, span: Span) {
         Logger.instanse.debug("Clear workitem queue cache : " + wiqid, span);
         await this.DeleteKey("pushablequeues", watch, false, span);
-        if (!NoderedUtil.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
+        if (!Util.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
     public GetPushableQueuesWrap(span: Span) {
         Logger.instanse.debug("Add pushable queues", span);
@@ -814,8 +856,8 @@ export class DBHelper {
                 Logger.instanse.verbose(`EnsureRole FindRoleById ${name}`, span);
                 role = await this.FindRoleById(id, null, span);
             }
-            if (role !== null && (role._id === id || NoderedUtil.IsNullEmpty(id))) { return role; }
-            if (role !== null && !NoderedUtil.IsNullEmpty(role._id)) {
+            if (role !== null && (role._id === id || Util.IsNullEmpty(id))) { return role; }
+            if (role !== null && !Util.IsNullEmpty(role._id)) {
                 Logger.instanse.warn(`Deleting ${name} with ${role._id} not matcing expected id ${id}`, span);
                 await Config.db.DeleteOne(role._id, "users", false, jwt, span);
             }
@@ -823,7 +865,7 @@ export class DBHelper {
             Logger.instanse.verbose(`Adding new role ${name}`, span);
             role = await Config.db.InsertOne(role, "users", 0, false, jwt, span);
             role = Role.assign(role);
-            if (Config.force_add_admins) Base.addRight(role, WellknownIds.admins, "admins", [Rights.full_control]);
+            if (Config.force_add_admins) Base.addRight(role, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
             Base.addRight(role, role._id, role.name, [Rights.full_control]);
             if (Config.force_add_admins) Base.removeRight(role, role._id, [Rights.delete]);
             Logger.instanse.verbose(`Updating ACL for new role ${name}`, span);
@@ -880,7 +922,7 @@ export class DBHelper {
                 await Config.db.DeleteOne(user._id, "users", false, jwt, span);
             }
             user = new User();
-            if (!NoderedUtil.IsNullUndefinded(extraoptions)) user = Object.assign(user, extraoptions);
+            if (!Util.IsNullUndefinded(extraoptions)) user = Object.assign(user, extraoptions);
             user._id = id; user.name = name; user.username = username;
             if (password !== null && password !== undefined && password !== "") {
                 span?.addEvent("SetPassword");
@@ -934,7 +976,7 @@ export class DBHelper {
         }
     }
     public UpdateHeartbeat(cli: WebSocketServerClient): any {
-        if (NoderedUtil.IsNullUndefinded(cli) || NoderedUtil.IsNullUndefinded(cli.user)) return null;
+        if (Util.IsNullUndefinded(cli) || Util.IsNullUndefinded(cli.user)) return null;
         const dt = new Date(new Date().toISOString());
         const updatedoc = { _heartbeat: dt, lastseen: dt, clientagent: cli.clientagent, clientversion: cli.clientversion, remoteip: cli.remoteip };
         cli.user._heartbeat = dt;
@@ -967,7 +1009,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetIPBlockList", parent);
         try {
             let items = await this.memoryCache.wrap("ipblock", () => { return this.GetIPBlockListWrap(span) });
-            if (NoderedUtil.IsNullUndefinded(items)) items = [];
+            if (Util.IsNullUndefinded(items)) items = [];
             return items;
         } finally {
             Logger.otel.endSpan(span);
@@ -985,7 +1027,7 @@ export class DBHelper {
         const span: Span = Logger.otel.startSubSpan("dbhelper.GetCollections", parent);
         try {
             let items = await this.memoryCache.wrap("collections", () => { return this.GetCollectionsWrap(span) });
-            if (NoderedUtil.IsNullUndefinded(items)) items = [];
+            if (Util.IsNullUndefinded(items)) items = [];
             return items;
         } finally {
             Logger.otel.endSpan(span);
@@ -998,7 +1040,7 @@ export class DBHelper {
         await this.init();
         const span: Span = Logger.otel.startSubSpan("dbhelper.FindJWT", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(key)) return null;
+            if (Util.IsNullEmpty(key)) return null;
             return await this.memoryCache.get("jwt_" + key);
         } finally {
             Logger.otel.endSpan(span);

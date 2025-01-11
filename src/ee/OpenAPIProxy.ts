@@ -1,4 +1,3 @@
-import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import express from "express";
 import fs from "fs";
@@ -42,10 +41,12 @@ import { NextFunction } from "express";
 import { ValidateError } from "tsoa";
 import { Auth } from "../Auth.js";
 import { RegisterRoutes } from "./build/routes.js";
+import { Util } from "../Util.js";
+import { User } from "../commoninterfaces.js";
 export class OpenAPIProxy {
   public static amqp_promises = [];
   public static createPromise = () => {
-    const correlationId = NoderedUtil.GetUniqueIdentifier();
+    const correlationId = Util.GetUniqueIdentifier();
     var promise = new Promise((resolve, reject) => {
       const promise = {
         correlationId: correlationId,
@@ -206,7 +207,7 @@ export class OpenAPIProxy {
             }
 
           } else {
-            const correlationId = NoderedUtil.GetUniqueIdentifier();
+            const correlationId = Util.GetUniqueIdentifier();
             Logger.instanse.debug("Send message to openrpa with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
             await amqpwrapper.Instance().send("", body.userid, rpacommand, 5000, correlationId, "", null);
           }

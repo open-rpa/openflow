@@ -1,4 +1,3 @@
-import { FederationId, TokenUser, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import os from "os";
 import { Config } from "./Config.js";
@@ -6,6 +5,8 @@ import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
 import { LoginProvider } from "./LoginProvider.js";
 import { OAuthProvider } from "./OAuthProvider.js";
+import { Wellknown } from "./Util.js";
+import { FederationId, TokenUser, User } from "./commoninterfaces.js";
 export class Auth {
     public static async ValidateByPassword(username: string, password: string, parent: Span): Promise<User> {
         const span: Span = Logger.otel.startSubSpan("Auth.ValidateByPassword", parent);
@@ -81,13 +82,13 @@ export class Auth {
             }
         }
         // if root, pass through to avoid circular calls
-        if (tuser != null && tuser._id == "59f1f6e6f0a22200126638d8") {
+        if (tuser != null && tuser._id == Wellknown.root._id) {
             // Assign to ensure overload functions are available
             user = User.assign(Crypt.rootUser());
             return user;
         }
         // if guest, pass through to avoid circular calls
-        if (tuser != null && tuser._id == "65cb30c40ff51e174095573c") {
+        if (tuser != null && tuser._id == Wellknown.guest._id) {
             if (Config.enable_guest == true) {
                 // Assign to ensure overload functions are available
                 user = User.assign(await Crypt.guestUser());
@@ -197,21 +198,21 @@ export class Auth {
             throw new Error("User " + tuser._id + " not found");
         }
         await Logger.DBHelper.AddJWT(jwt, user, parent);
-        if (user._id == "65cb30c40ff51e174095573c" && Config.enable_guest == false) {
+        if (user._id == Wellknown.guest._id && Config.enable_guest == false) {
             throw new Error("Guest user is not enabled");
         }
         user = await Auth.RefreshUser(user, impostor, parent);
         return user;
     }
     public static async Id2Token(id: string, impostor: string, expiresIn: string, parent: Span) {
-        if (id == "65cb30c40ff51e174095573c" && Config.enable_guest == false) {
+        if (id == Wellknown.guest._id && Config.enable_guest == false) {
             throw new Error("Guest user is not enabled");
         }
         const jwt = await Crypt.createSlimToken(id, impostor, expiresIn)
         return jwt;
     }
     public static async User2Token(item: User | TokenUser, expiresIn: string, parent: Span) {
-        if (item._id == "65cb30c40ff51e174095573c" && Config.enable_guest == false) {
+        if (item._id == Wellknown.guest._id && Config.enable_guest == false) {
             throw new Error("Guest user is not enabled");
         }
         if (item instanceof TokenUser) {

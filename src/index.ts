@@ -9,7 +9,6 @@ function cerror(error) {
     console.error(dts, error.message ? error.message : error);
 }
 clog("Starting @openiap/core");
-import { Base, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import crypto from "crypto";
 import http from "http";
@@ -23,6 +22,7 @@ import { QueueClient } from "./QueueClient.js";
 import { WebServer } from "./WebServer.js";
 import { WebSocketServer } from "./WebSocketServer.js";
 import { amqpwrapper } from "./amqpwrapper.js";
+import { Base, User } from "./commoninterfaces.js";
 clog("Done loading imports");
 let amqp: amqpwrapper = null;
 async function initamqp(parent: Span) {

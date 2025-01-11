@@ -1,9 +1,9 @@
-import { NoderedUtil } from "@openiap/openflow-api";
 import got from "got";
 import url from "url";
 import { AssertQueue } from "./amqpwrapper.js";
 import { Config } from "./Config.js";
 import { Logger, promiseRetry } from "./Logger.js";
+import { Util } from "./Util.js";
 
 export class rabbitmq {
     static parseurl(amqp_url): url.UrlWithParsedQuery {
@@ -96,7 +96,7 @@ export class rabbitmq {
             password: (q as any).password
         };
         let _url = "http://" + q.host + ":" + q.port + "/api/queues";
-        if (!NoderedUtil.IsNullEmpty(vhost)) _url += "/" + encodeURIComponent(vhost);
+        if (!Util.IsNullEmpty(vhost)) _url += "/" + encodeURIComponent(vhost);
         const response = await got.get(_url, options);
         const payload = JSON.parse(response.body);
         return payload;

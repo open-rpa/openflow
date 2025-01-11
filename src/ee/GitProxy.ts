@@ -1,4 +1,3 @@
-import { Rights, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import express from "express";
 import mimetype from "mimetype";
@@ -10,6 +9,8 @@ import { Crypt } from "../Crypt.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import { Logger } from "../Logger.js";
 import { WebServer } from "../WebServer.js";
+import { Wellknown } from "../Util.js";
+import { Rights, User } from "../commoninterfaces.js";
 const converter = new showdown.Converter();
 const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
 let batchSize = 100;
@@ -67,8 +68,8 @@ export class GitProxy {
               return res.status(401).send("Access denied to create " + repo.repoName + " for guest")
             }
             if (ownername == (req.user as any).username) {
-            } else if (ownername == "" && reponame == (req.user as any).username && reponame != "guest") {
-            } else if (req.user != null && req.user.HasRoleName != null && req.user.HasRoleName("admins")) {
+            } else if (ownername == "" && reponame == (req.user as any).username && reponame != Wellknown.guest.name) {
+            } else if (req.user != null && req.user.HasRoleName != null && req.user.HasRoleName(Wellknown.admins.name)) {
             } else {
               res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
               Logger.instanse.error("Access denied to create " + repo.repoName + " for " + (req.user as any).name, null, { cls: "GitProxy" });
@@ -314,8 +315,8 @@ export class GitProxy {
                 return res.status(500).send("Access denied to create for guest")
               }
               if (ownername == (req.user as any).username) {
-              } else if (ownername == "" && reponame == (req.user as any).username && reponame != "guest") {
-              } else if (req.user != null && (req.user as any).HasRoleName != null && (req.user as any).HasRoleName("admins")) {
+              } else if (ownername == "" && reponame == (req.user as any).username && reponame != Wellknown.guest.name) {
+              } else if (req.user != null && (req.user as any).HasRoleName != null && (req.user as any).HasRoleName(Wellknown.admins.name)) {
               } else {
                 res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
                 Logger.instanse.error("Access denied to create " + req.body.reponame + " for " + (req.user as any).name, null, { cls: "GitProxy" });
@@ -351,7 +352,7 @@ export class GitProxy {
           }
           html += "</ul>"
           html += "<form action=/git method=post>";
-          if ((req.user as any) != null && (req.user as any).HasRoleName != null && (req.user as any).HasRoleName("admins")) {
+          if ((req.user as any) != null && (req.user as any).HasRoleName != null && (req.user as any).HasRoleName(Wellknown.admins.name)) {
             html += "Create new:<br /><input type=text name=reponame placeholder=reponame>";
           } else {
             html += `Create new:<br /><input type=text name=reponame value='${(req.user as any).username.replace("@", "_")}/reponame'>`;

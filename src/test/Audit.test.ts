@@ -1,37 +1,24 @@
-// import wtf from "wtfnode";
-import { User } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
 import { Audit } from "../Audit.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
-import { Logger } from "../Logger.js";
+import { testConfig } from "./testConfig.js";
 
 @suite class audit_test {
-    private rootToken: string;
-    private testUser: User;
     @timeout(10000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, false);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
-        await Config.db.connect(null);
-        await Config.Load(null);
-        this.rootToken = Crypt.rootToken();
-        this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
+        await testConfig.configure();
     }
     async after() {
-        await Logger.shutdown();
-        // wtf.dump()
+        await testConfig.cleanup();
     }
     @test async "reload"() {
-        await Audit.LoginSuccess(this.testUser, "local", "local", "127.0.0.1", "test", Config.version, null);
+        await Audit.LoginSuccess(testConfig.testUser, "local", "local", "127.0.0.1", "test", Config.version, null);
         await Audit.LoginFailed("testuser", "local", "local", "127.0.0.1", "test", Config.version, null);
-        await Audit.ImpersonateSuccess(this.testUser, Crypt.rootUser(), "test", Config.version, null);
-        await Audit.ImpersonateFailed(this.testUser, Crypt.rootUser(), "test", Config.version, null);
-        await Audit.NoderedAction(this.testUser, true, "testuser", "createdeployment", "openiap/nodered", "testuser", null);
-        await Audit.NoderedAction(this.testUser, true, "testuser", "deletedeployment", "openiap/nodered:latest", "testuser", null);
+        await Audit.ImpersonateSuccess(testConfig.testUser, Crypt.rootUser(), "test", Config.version, null);
+        await Audit.ImpersonateFailed(testConfig.testUser, Crypt.rootUser(), "test", Config.version, null);
+        await Audit.NoderedAction(testConfig.testUser, true, "testuser", "createdeployment", "openiap/nodered", "testuser", null);
+        await Audit.NoderedAction(testConfig.testUser, true, "testuser", "deletedeployment", "openiap/nodered:latest", "testuser", null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
     }
 }

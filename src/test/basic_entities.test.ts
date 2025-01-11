@@ -1,24 +1,21 @@
-// import wtf from "wtfnode";
 import { NoderedUtil, WebSocketClient } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
 import assert from "assert";
 import { Config } from "../Config.js";
-import { Logger } from "../Logger.js";
+import { testConfig } from "./testConfig.js";
 
 @suite class basic_entities {
     private socket: WebSocketClient = null;
     @timeout(2000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, false);
+        await testConfig.configure();
         if (!this.socket) this.socket = new WebSocketClient(null, "ws://localhost:" + Config.port, true);
         this.socket.agent = "test-cli";
         try {
             await this.socket.Connect();
             await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser" });
         } catch (error) {
-            if (error == null) error = new Error("Failed connecting to pc.openiap.io")
+            if (error == null) error = new Error("Failed connecting to ws://localhost:" + Config.port)
             throw error;
         }
     }
@@ -26,8 +23,7 @@ import { Logger } from "../Logger.js";
     async after() {
         await this.socket.close(1000, "Close by user");
         this.socket.events.removeAllListeners()
-        await Logger.shutdown();
-        // wtf.dump()
+        await testConfig.cleanup();
     }
     @timeout(500000)
     @test async "validate collectioname"() {

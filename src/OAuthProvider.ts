@@ -1,4 +1,3 @@
-import { Base, InsertOrUpdateOneMessage, NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import express from "express";
 import jose from "jose";
@@ -10,6 +9,8 @@ import { Crypt } from "./Crypt.js";
 import { DatabaseConnection } from "./DatabaseConnection.js";
 import { Logger } from "./Logger.js";
 import { MongoAdapter } from "./MongoAdapter.js";
+import { Util, Wellknown } from "./Util.js";
+import { Base, User } from "./commoninterfaces.js";
 export class OAuthProvider {
     private app: express.Express;
     public static instance: OAuthProvider = null;
@@ -72,7 +73,7 @@ export class OAuthProvider {
         // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
         //   the End-User
         var oidcrefere = "";
-        if (!NoderedUtil.IsNullEmpty(ctx.req.cookies.oidcrefere)) {
+        if (!Util.IsNullEmpty(ctx.req.cookies.oidcrefere)) {
             oidcrefere = ctx.req.cookies.oidcrefere;
         }
         ctx.body = `<!DOCTYPE html>
@@ -83,7 +84,7 @@ export class OAuthProvider {
       <body onload="logout()">
       <div>
         <h1>You have successfully signed out from ${ctx.hostname}</h1>`;
-        if (!NoderedUtil.IsNullEmpty(oidcrefere)) {
+        if (!Util.IsNullEmpty(oidcrefere)) {
             ctx.body += `<a href="${ctx.req.cookies.oidcrefere}">Return to ${ctx.req.cookies.oidcrefere}</a> ?`;
         }
         ctx.body += `</div>
@@ -128,14 +129,14 @@ export class OAuthProvider {
                 cli.client_secret = cli.clientSecret;
                 cli.redirect_uris = cli.redirectUris;
                 // token_endpoint_auth_method can only be none, client_secret_post, client_secret_basic, private_key_jwt or tls_client_auth
-                if (NoderedUtil.IsNullEmpty(cli.token_endpoint_auth_method)) cli.token_endpoint_auth_method = "none";
-                if (NoderedUtil.IsNullEmpty(cli.clientSecret)) {
+                if (Util.IsNullEmpty(cli.token_endpoint_auth_method)) cli.token_endpoint_auth_method = "none";
+                if (Util.IsNullEmpty(cli.clientSecret)) {
                     cli.token_endpoint_auth_method = "none";
                     delete cli.client_secret;
                 }
                 // response_types can only contain "code id_token", "code", "id_token", or "none" 
                 // id_token token
-                if (NoderedUtil.IsNullEmpty(cli.response_types)) cli.response_types = ["code", "id_token", "code id_token"];
+                if (Util.IsNullEmpty(cli.response_types)) cli.response_types = ["code", "id_token", "code id_token"];
                 // https://github.com/panva/node-oidc-provider/blob/64edda69a84e556531f45ac814788c8c92ab6212/test/claim_types/claim_types.test.js
                 if (cli.grant_types == null) cli.grant_types = ["implicit", "authorization_code"];
             });
@@ -290,7 +291,7 @@ export class OAuthProvider {
                     return;
                 }
                 if (req.originalUrl.startsWith("/oidc/session/end")) {
-                    if (!NoderedUtil.IsNullEmpty(req.headers.referer)) {
+                    if (!Util.IsNullEmpty(req.headers.referer)) {
                         if (req.headers.referer.indexOf("oidc/session") == -1) {
                             res.cookie("oidcrefere", req.headers.referer, { maxAge: 900000, httpOnly: true });
                         }
@@ -346,7 +347,7 @@ export class OAuthProvider {
                         let _user: User = req.user as any;
                         let tuser: User = _user;
 
-                        if (!NoderedUtil.IsNullEmpty(_user.impersonating)) {
+                        if (!Util.IsNullEmpty(_user.impersonating)) {
                             const tempjwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, span);
                             const items = await Config.db.query({ query: { _id: _user.impersonating }, top: 1, collectionname: "users", jwt: tempjwt }, span);
                             if (items.length == 1) {
@@ -435,7 +436,7 @@ export class Account {
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
         // node-bb username hack
-        if (NoderedUtil.IsNullEmpty(user.email)) user.email = user.username;
+        if (Util.IsNullEmpty(user.email)) user.email = user.username;
         if (user.name == user.email && user.email.indexOf("@") > -1) {
             user.name = user.email.substr(0, user.email.indexOf("@") - 1);
         }
@@ -446,18 +447,18 @@ export class Account {
             user.name = "user " + user.email;
         }
         let roles = [];
-        if (user._id == "65cb30c40ff51e174095573c") {
+        if (user._id == Wellknown.guest._id) {
             roles.push("guests");
-        } else if (!NoderedUtil.IsNullUndefinded(user.roles) && Array.isArray(user.roles) && user.roles.length > 0) {
-            if (!NoderedUtil.IsNullEmpty(user.roles[0].name)) {
+        } else if (!Util.IsNullUndefinded(user.roles) && Array.isArray(user.roles) && user.roles.length > 0) {
+            if (!Util.IsNullEmpty(user.roles[0].name)) {
                 for (let i = 0; i < DatabaseConnection.WellknownIdsArray.length; i++) {
                     let hasrole = user.roles.find(x => x._id == DatabaseConnection.WellknownIdsArray[i]);
                     if (hasrole) {
                         roles.push(hasrole.name);
                     }
                 }
-                if (roles.indexOf("users") == -1) {
-                    roles.push("users");
+                if (roles.indexOf(Wellknown.users.name) == -1) {
+                    roles.push(Wellknown.users.name);
                 }
                 for (let i = 0; i < user.roles.length && roles.length < Config.oidc_max_roles; i++) {
                     if (roles.indexOf(user.roles[i].name) == -1) {
@@ -467,7 +468,7 @@ export class Account {
                 user.roles = roles;
             }
         } else {
-            user.roles = ["users"] as any;
+            user.roles = [Wellknown.users.name] as any;
         }
     }
     claims() {

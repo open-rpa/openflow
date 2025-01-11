@@ -1,13 +1,12 @@
-import fs from "fs";
-import pako from "pako";
-// import wtf from "wtfnode";
 import { AddWorkitem, MessageWorkitemFile, NoderedUtil, WebSocketClient, Workitem } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
 import assert from "assert";
-import { Config } from "../Config.js";
-import { Logger } from "../Logger.js";
+import fs from "fs";
+import pako from "pako";
 import path from "path";
 import { fileURLToPath } from "url";
+import { Config } from "../Config.js";
+import { testConfig } from "./testConfig.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -15,9 +14,7 @@ const __dirname = path.dirname(__filename);
     private socket: WebSocketClient = null;
     @timeout(2000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, false);
+        await testConfig.configure();
         if (!this.socket) this.socket = new WebSocketClient(null, "ws://localhost:" + Config.port, true);
         this.socket.agent = "test-cli";
         await this.socket.Connect();
@@ -27,8 +24,7 @@ const __dirname = path.dirname(__filename);
     async after() {
         await this.socket.close(1000, "Close by user");
         this.socket.events.removeAllListeners()
-        await Logger.shutdown();
-        // wtf.dump()
+        await testConfig.cleanup();
     }
     @timeout(10000)
     @test

@@ -1,4 +1,3 @@
-import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import amqplib from "amqplib";
 import events from "events";
@@ -8,6 +7,8 @@ import { HouseKeeping } from "./HouseKeeping.js";
 import { Logger } from "./Logger.js";
 import { WebSocketServer } from "./WebSocketServer.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
+import { Util } from "./Util.js";
+import { User } from "./commoninterfaces.js";
 type QueueOnMessage = (msg: string, options: QueueMessageOptions, ack: any, done: any) => void;
 interface IHashTable<T> {
     [key: string]: T;
@@ -93,7 +94,7 @@ export class amqpwrapper extends events.EventEmitter {
     constructor(connectionstring: string) {
         super();
         this.connectionstring = connectionstring;
-        if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx)) {
+        if (!Util.IsNullEmpty(Config.amqp_dlx)) {
             this.AssertQueueOptions.arguments = {};
             this.AssertQueueOptions.arguments["x-dead-letter-exchange"] = Config.amqp_dlx;
         }
@@ -103,7 +104,7 @@ export class amqpwrapper extends events.EventEmitter {
     public queuemessagecounter: object = {};
     public incqueuemessagecounter(queuename: string): number {
         let result: number = 0;
-        if (!NoderedUtil.IsNullUndefinded(this.queuemessagecounter[queuename])) result = this.queuemessagecounter[queuename];
+        if (!Util.IsNullUndefinded(this.queuemessagecounter[queuename])) result = this.queuemessagecounter[queuename];
         result++;
         this.queuemessagecounter[queuename] = result;
         return result;
@@ -212,9 +213,9 @@ export class amqpwrapper extends events.EventEmitter {
         ack();
         try {
             if (this.replyqueue) {
-                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
+                if (!Util.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
                     WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: this.replyqueue.queue });
-                if (!NoderedUtil.IsNullUndefinded(this.activecalls[options.correlationId])) {
+                if (!Util.IsNullUndefinded(this.activecalls[options.correlationId])) {
                     this.activecalls[options.correlationId].resolve(msg);
                     delete this.activecalls[options.correlationId];
                 }
@@ -253,7 +254,7 @@ export class amqpwrapper extends events.EventEmitter {
                     amqpwrapper.bad_queues.push(routingKey);
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(replyTo)) {
+            if (!Util.IsNullEmpty(replyTo)) {
                 if (typeof msg === "string" || msg instanceof String) {
                     msg = "timeout"
                 } else {
@@ -287,7 +288,7 @@ export class amqpwrapper extends events.EventEmitter {
     async RemoveQueueConsumer(user: User, queue: amqpqueue, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.RemoveQueueConsumer", parent);
         try {
-            if (NoderedUtil.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
+            if (Util.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
                 Logger.instanse.debug("[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag, span);
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
@@ -316,13 +317,13 @@ export class amqpwrapper extends events.EventEmitter {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddQueueConsumer", parent);
         try {
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Queue Consumer, not connected to rabbitmq");
-            let queue: string = (NoderedUtil.IsNullEmpty(queuename) ? "" : queuename);
+            let queue: string = (Util.IsNullEmpty(queuename) ? "" : queuename);
             const q: amqpqueue = new amqpqueue();
             q.callback = callback;
             q.QueueOptions = Object.assign({}, (QueueOptions != null ? QueueOptions : this.AssertQueueOptions));
-            if (NoderedUtil.IsNullEmpty(queue)) queue = "";
+            if (Util.IsNullEmpty(queue)) queue = "";
             if (queue.startsWith("amq.")) queue = "";
-            if (NoderedUtil.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
+            if (Util.IsNullEmpty(queue)) q.QueueOptions.autoDelete = true;
             q.ok = await this.channel.assertQueue(queue, q.QueueOptions);
             if (q && q.ok) {
                 this.queues.push(q);
@@ -402,7 +403,7 @@ export class amqpwrapper extends events.EventEmitter {
     async AddExchangeConsumer(user: User, exchange: string, algorithm: exchangealgorithm, routingkey: string, ExchangeOptions: any, jwt: string, addqueue: boolean, callback: QueueOnMessage, parent: Span): Promise<amqpexchange> {
         const span: Span = Logger.otel.startSubSpan("amqpwrapper.AddExchangeConsumer", parent);
         try {
-            if (NoderedUtil.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");
+            if (Util.IsNullEmpty(exchange)) throw new Error("exchange name cannot be empty");
             if (this.channel == null || this.conn == null) throw new Error("Cannot Add new Exchange Consumer, not connected to rabbitmq");
             const q: amqpexchange = new amqpexchange();
             q.ExchangeOptions = Object.assign({}, (ExchangeOptions != null ? ExchangeOptions : this.AssertExchangeOptions));
@@ -411,7 +412,7 @@ export class amqpwrapper extends events.EventEmitter {
             const _ok = await this.channel.assertExchange(q.exchange, q.algorithm, q.ExchangeOptions);
             if (addqueue) {
                 let AssertQueueOptions = null;
-                if (!NoderedUtil.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
+                if (!Util.IsNullEmpty(Config.amqp_dlx) && exchange == Config.amqp_dlx) {
                     AssertQueueOptions = Object.create(this.AssertQueueOptions);
                     delete AssertQueueOptions.arguments;
                 }
@@ -471,7 +472,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, span: Span): Promise<string> {
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
+        if (Util.IsNullEmpty(correlationId)) correlationId = Util.GetUniqueIdentifier();
         var promise = new Deferred<string>();
         this.activecalls[correlationId] = promise;
         if (this.replyqueue) {
@@ -490,7 +491,7 @@ export class amqpwrapper extends events.EventEmitter {
                 data = JSON.parse(data);
             }
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
-            if (!NoderedUtil.IsNullEmpty(traceId)) {
+            if (!Util.IsNullEmpty(traceId)) {
                 data.traceId = traceId;
                 data.spanId = spanId;
             }
@@ -507,19 +508,19 @@ export class amqpwrapper extends events.EventEmitter {
         Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId, span);
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
-        if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
+        if (Util.IsNullEmpty(correlationId)) correlationId = Util.GetUniqueIdentifier();
+        if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
         options.mandatory = true;
         options.priority = priority;
-        if (NoderedUtil.IsNullEmpty(exchange)) {
+        if (Util.IsNullEmpty(exchange)) {
             this.channel.publish("", queue, Buffer.from(data), options);
             await this.channel.waitForConfirms();
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
+            if (!Util.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
                 WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: queue });
         } else {
-            if (NoderedUtil.IsNullEmpty(routingkey)) routingkey = "";
+            if (Util.IsNullEmpty(routingkey)) routingkey = "";
             await this.PreRegisterExchange(exchange, span)
             this.channel.publish(exchange, routingkey, Buffer.from(data), options);
         }
@@ -535,7 +536,7 @@ export class amqpwrapper extends events.EventEmitter {
                 data = JSON.parse(data);
             }
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
-            if (!NoderedUtil.IsNullEmpty(traceId)) {
+            if (!Util.IsNullEmpty(traceId)) {
                 data.traceId = traceId;
                 data.spanId = spanId;
             }
@@ -548,19 +549,19 @@ export class amqpwrapper extends events.EventEmitter {
             Logger.instanse.error("send to queue: " + queue + " exchange: " + exchange + " PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000", span);
             throw new Error("PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000")
         }
-        if (NoderedUtil.IsNullEmpty(correlationId)) correlationId = NoderedUtil.GetUniqueIdentifier();
+        if (Util.IsNullEmpty(correlationId)) correlationId = Util.GetUniqueIdentifier();
         if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange, span);
         const options: any = { mandatory: true };
-        if (!NoderedUtil.IsNullEmpty(correlationId)) options.correlationId = correlationId;
+        if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
         options.expiration = expiration.toString();
         options.mandatory = true;
         options.priority = priority;
-        if (NoderedUtil.IsNullEmpty(exchange)) {
+        if (Util.IsNullEmpty(exchange)) {
             this.channel.publish("", queue, Buffer.from(data), options);
             await this.channel.waitForConfirms();
 
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
+            if (!Util.IsNullUndefinded(WebSocketServer.websocket_queue_message_count))
                 WebSocketServer.websocket_queue_message_count.add(1, { ...Logger.otel.defaultlabels, queuename: queue });
         } else {
             await this.PreRegisterExchange(exchange, span)
@@ -568,7 +569,7 @@ export class amqpwrapper extends events.EventEmitter {
         }
     }
     async Adddlx(span: Span) {
-        if (NoderedUtil.IsNullEmpty(Config.amqp_dlx)) return;
+        if (Util.IsNullEmpty(Config.amqp_dlx)) return;
         await this.AddExchangeConsumer(Crypt.rootUser(), Config.amqp_dlx, "fanout", "", null, null, true, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
             ack();
             if (typeof msg === "string" || msg instanceof String) {
@@ -637,7 +638,7 @@ export class amqpwrapper extends events.EventEmitter {
                         Logger.instanse.debug("[" + options.exchangename + "] Received command " + msg.command, span);
                         switch (msg.command) {
                             case "clearcache":
-                                if (NoderedUtil.IsNullEmpty(msg.key)) {
+                                if (Util.IsNullEmpty(msg.key)) {
                                     Logger.DBHelper.clearCache("amqp broadcast", span);
                                 } else {
                                     Logger.DBHelper.DeleteKey(msg.key, false, true, span);

@@ -1,18 +1,15 @@
-// import wtf from "wtfnode";
-import * as crypto from "crypto";
-import { AddWorkitem, ApiConfig, NoderedUtil, WebSocketClient, Workitem } from "@openiap/openflow-api";
+import { NoderedUtil, WebSocketClient } from "@openiap/openflow-api";
 import { suite, test, timeout } from "@testdeck/mocha";
+import * as crypto from "crypto";
 import { Config } from "../Config.js";
-import { Logger } from "../Logger.js";
+import { testConfig } from "./testConfig.js";
 
 @suite class loadtest {
     public clients: WebSocketClient[] = [];
 
     @timeout(10000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, false);
+        await testConfig.configure();
     }
     @timeout(5000)
     async after() {
@@ -20,8 +17,7 @@ import { Logger } from "../Logger.js";
             await this.clients[i].close(1000, "Close by user");
             this.clients[i].events.removeAllListeners()
         }
-        await Logger.shutdown();
-        // wtf.dump()
+        await testConfig.cleanup();
     }
     sleep(ms) {
         return new Promise(resolve => {
@@ -43,7 +39,8 @@ import { Logger } from "../Logger.js";
             // ApiConfig.log_trafic_verbose = true;
             // ApiConfig.log_trafic_silly = true;
             // ApiConfig.log_information = true;
-            var websocket = new WebSocketClient(logger, "wss://pc.openiap.io", true);
+
+            var websocket = new WebSocketClient(logger, "ws://localhost:" + Config.port, true);
             let randomNum = crypto.randomInt(1, 5)
             websocket.agent = "openrpa";
             if (randomNum == 1) websocket.agent = "nodered";
@@ -70,11 +67,11 @@ import { Logger } from "../Logger.js";
             }, 1000 * randomNum)
         } catch (error) {
             var e = error;
-            if(error == null) {
-                console.error("unknown error, is pc.openiap.io running ?");
+            if (error == null) {
+                console.error("unknown error, is ws://localhost:" + Config.port + " running ?");
             } else {
                 console.error("unknown error", error);
-            }            
+            }
         }
     }
 

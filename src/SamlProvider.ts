@@ -1,10 +1,11 @@
-import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import express from "express";
 import samlp from "samlp";
 import { Audit } from "./Audit.js";
 import { Config } from "./Config.js";
 import { Logger } from "./Logger.js";
+import { Util } from "./Util.js";
+import { User } from "./commoninterfaces.js";
 
 export class SamlProvider {
     public static profileMapper(pu: any): any {
@@ -159,21 +160,21 @@ export class SamlProvider {
             const providerid: any = req.cookies.provider;
             req.logout();
 
-            if (!NoderedUtil.IsNullEmpty(providerid)) {
+            if (!Util.IsNullEmpty(providerid)) {
                 var providers = await Logger.DBHelper.GetProviders(null);
                 const p = providers.filter(x => x.id == providerid);
                 if (p.length > 0) {
                     const provider = p[0];
-                    if (!NoderedUtil.IsNullEmpty(provider.saml_signout_url)) {
+                    if (!Util.IsNullEmpty(provider.saml_signout_url)) {
                         let html = "<html><head></head><body>";
                         html += "<h1>Logud</h1><br>";
-                        if (!NoderedUtil.IsNullEmpty(referer)) {
+                        if (!Util.IsNullEmpty(referer)) {
                             html += `<br/><p><a href="${encodeURI(referer)}">Til login</a></p>`;
                         } else {
                             html += `<br/><p><a href="/">Til login</a></p>`;
                         }
                         html += `<iframe src="${encodeURI(provider.saml_signout_url)}"></iframe>`;
-                        if (!NoderedUtil.IsNullEmpty(referer)) {
+                        if (!Util.IsNullEmpty(referer)) {
                             html += `<br/><p><a href="${encodeURI(referer)}">Til login</a></p>`;
                         } else {
                             html += `<br/><p><a href="/">Til login</a></p>`;
@@ -184,7 +185,7 @@ export class SamlProvider {
                     }
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(referer)) {
+            if (!Util.IsNullEmpty(referer)) {
                 res.redirect(referer);
             } else {
                 res.redirect("/");

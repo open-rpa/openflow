@@ -1,4 +1,3 @@
-import { Base, NoderedUtil, Rights, TokenUser, User, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import crypto from "crypto";
 import express from "express";
@@ -9,6 +8,8 @@ import { Auth } from "../Auth.js";
 import { Config } from "../Config.js";
 import { Logger } from "../Logger.js";
 import { LoginProvider } from "../LoginProvider.js";
+import { Util, Wellknown } from "../Util.js";
+import { Base, Rights, TokenUser, User } from "../commoninterfaces.js";
 
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 
@@ -65,9 +66,9 @@ export class FormioEP {
                                 fileInfo.metadata[keys[i]] = query[keys[i]];
                             }
                             Base.addRight(fileInfo.metadata, user._id, user.name, [Rights.full_control]);
-                            Base.addRight(fileInfo.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+                            Base.addRight(fileInfo.metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
                             if (!Config.multi_tenant) {
-                                Base.addRight(fileInfo.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                                Base.addRight(fileInfo.metadata, Wellknown.filestore_users._id, Wellknown.filestore_users.name, [Rights.read]);
                             }
                             // Fix acl
                             fileInfo.metadata._acl.forEach((a, index) => {
@@ -108,7 +109,7 @@ export class FormioEP {
                     const _query = req.query;
                     let uniquename: string = _query.uniquename;
                     let query: any = {};
-                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                    if (!Util.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
                         if (uniquename.indexOf("/") > -1) uniquename = uniquename.substr(0, uniquename.indexOf("/"));
                         query = { "metadata.uniquename": uniquename };
@@ -155,11 +156,11 @@ export class FormioEP {
                     let uniquename: string = _query.uniquename;
                     let _id: string = _query.id || _query._id;
                     let query: any = {};
-                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                    if (!Util.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
                         if (uniquename.indexOf("/") > -1) uniquename = uniquename.substr(0, uniquename.indexOf("/"));
                         query = { "metadata.uniquename": uniquename };
-                    } else if (!NoderedUtil.IsNullEmpty(_id)) {
+                    } else if (!Util.IsNullEmpty(_id)) {
                         query = { _id };
                     } else {
                         return res.status(404).send({ message: "nothing unique. Not found." });
@@ -167,7 +168,7 @@ export class FormioEP {
 
                     const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
                     if (arr.length == 0) {
-                        if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        if (!Util.IsNullEmpty(uniquename)) {
                             return res.status(404).send({ message: "uniquename " + uniquename + " Not found." });
                         }
                         return res.status(404).send({ message: "id " + _id + " Not found." });
@@ -253,7 +254,7 @@ export class FormioEP {
                             var results = await Config.db.query<Base>({ query: { _type: "resource" }, collectionname: "forms", jwt }, span);
                             results.forEach(result => {
                                 // @ts-ignore
-                                if (NoderedUtil.IsNullEmpty(result.title)) result.title = result.name;
+                                if (Util.IsNullEmpty(result.title)) result.title = result.name;
                             });
                             return res.send(results);
 
@@ -291,7 +292,7 @@ export class FormioEP {
                     if (user == null) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
-                    if (NoderedUtil.IsNullEmpty(resourceid)) {
+                    if (Util.IsNullEmpty(resourceid)) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
 
@@ -299,7 +300,7 @@ export class FormioEP {
                     // /form/1?limit=100&skip=0
                     const resource: any = await Config.db.getbyid<Base>(resourceid, "forms", jwt, true, null);
                     // @ts-ignore
-                    if (NoderedUtil.IsNullEmpty(resource.label)) resource.label = resource.name;
+                    if (Util.IsNullEmpty(resource.label)) resource.label = resource.name;
 
 
 
@@ -346,12 +347,12 @@ export class FormioEP {
                     if (user == null) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
-                    if (NoderedUtil.IsNullEmpty(resourceid)) {
+                    if (Util.IsNullEmpty(resourceid)) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
 
                     let resource: any = await Config.db.getbyid(resourceid, "forms", jwt, true, span);
-                    if (NoderedUtil.IsNullUndefinded(resource)) {
+                    if (Util.IsNullUndefinded(resource)) {
                         return res.status(404).send({ message: "Route " + resourceid + " Not found." });
                     }
 
@@ -374,10 +375,10 @@ export class FormioEP {
                         Logger.instanse.debug("searching using " + logfields.join(", ") + " fields", span);
                     }
 
-                    if (!NoderedUtil.IsNullEmpty(query)) {
+                    if (!Util.IsNullEmpty(query)) {
                         resource.aggregates.unshift({ "$match": { name: { $regex: ".*" + query + ".*", $options: "si" } } });
                     }
-                    if (!NoderedUtil.IsNullEmpty(sort)) {
+                    if (!Util.IsNullEmpty(sort)) {
                         var sorts = sort.split(",");
                         var orderby = {};
                         sorts.forEach(s => {
@@ -386,10 +387,10 @@ export class FormioEP {
                         resource.aggregates.push({ "$sort": orderby });
                         Logger.instanse.debug("sort using " + sorts.join(", ") + " fields", span);
                     }
-                    if (!NoderedUtil.IsNullEmpty(skip) && !isNaN(skip) && skip > 0) {
+                    if (!Util.IsNullEmpty(skip) && !isNaN(skip) && skip > 0) {
                         resource.aggregates.push({ "$skip": +skip });
                     }
-                    if (!NoderedUtil.IsNullEmpty(limit) && !isNaN(limit) && limit > 0) {
+                    if (!Util.IsNullEmpty(limit) && !isNaN(limit) && limit > 0) {
                         resource.aggregates.push({ "$limit": +limit });
                     }
                     var dbresults = await Config.db.aggregate<Base>(resource.aggregates, resource.collection, jwt, null, null, false, span);

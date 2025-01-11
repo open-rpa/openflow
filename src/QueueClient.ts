@@ -1,10 +1,10 @@
-import { NoderedUtil } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { amqpqueue, amqpwrapper, QueueMessageOptions } from "./amqpwrapper.js";
 import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
 import { Message } from "./Messages/Message.js";
+import { Util } from "./Util.js";
 export class QueueClient {
     static async configure(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("QueueClient.configure", parent);
@@ -38,7 +38,7 @@ export class QueueClient {
             }
             try {
                 msg.priority = options.priority;
-                if (!NoderedUtil.IsNullEmpty(options.replyTo)) {
+                if (!Util.IsNullEmpty(options.replyTo)) {
 
                     span = Logger.otel.startSpan("OpenFlow Queue Process Message", msg.traceId, msg.spanId);
                     Logger.instanse.debug("Process command: " + msg.command + " id: " + msg.id + " correlationId: " + options.correlationId, span);
@@ -65,7 +65,7 @@ export class QueueClient {
         this.queue = await amqpwrapper.Instance().AddQueueConsumer(Crypt.rootUser(), "", AssertQueueOptions, null, async (data: any, options: QueueMessageOptions, ack: any, done: any) => {
             const msg: Message = Message.fromjson(data);
             try {
-                if (NoderedUtil.IsNullEmpty(options.replyTo)) {
+                if (Util.IsNullEmpty(options.replyTo)) {
                     ack();
                     const exists = this.messages.filter(x => x.correlationId == options.correlationId);
                     if (exists.length > 0) {
@@ -91,13 +91,13 @@ export class QueueClient {
                 var d = Object.assign({}, msg);
                 delete d.tuser;
                 var json = JSON.stringify(d)
-                msg.correlationId = NoderedUtil.GetUniqueIdentifier();
+                msg.correlationId = Util.GetUniqueIdentifier();
                 this.messages.push(msg);
                 Logger.instanse.debug("Submit command: " + msg.command + " id: " + msg.id + " correlationId: " + msg.correlationId, span);
                 msg.cb = (result) => {
                     if (result.replyto != msg.id) {
                         Logger.instanse.warn("Received response failed for command: " + msg.command + " id: " + result.id + " replyto: " + result.replyto + " but expected reply to be " + msg.id + " correlationId: " + result.correlationId, span)
-                        result.id = NoderedUtil.GetUniqueIdentifier();
+                        result.id = Util.GetUniqueIdentifier();
                         result.replyto = msg.id;
                     }
                     result.correlationId = msg.correlationId;
@@ -107,7 +107,7 @@ export class QueueClient {
                 Logger.instanse.silly("Submit request for command: " + msg.command + " queuename: " + this.queuename + " replyto: " + this.queue.queue + " correlationId: " + msg.correlationId, null)
                 await amqpwrapper.Instance().sendWithReplyTo("", this.queuename, this.queue.queue, json, Config.openflow_amqp_expiration, msg.correlationId, "", span, priority);
             } catch (error) {
-                if (NoderedUtil.IsNullUndefinded(this.queue)) {
+                if (Util.IsNullUndefinded(this.queue)) {
                     Logger.instanse.warn("SendForProcessing queue is null, shutdown amqp connection", span);
                     process.exit(406);
                 } else {

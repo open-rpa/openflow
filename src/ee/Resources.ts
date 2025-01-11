@@ -1,10 +1,10 @@
 import { Span } from "@opentelemetry/api";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
-import { Base } from "@openiap/openflow-api";
 import { Logger } from "../Logger.js";
-import { Rights, WellknownIds } from "@openiap/nodeapi";
-import { Member, Workspace, User, Customer, Billing, Resource, ResourceUsage, ResourceTargetType, ResourceVariantType, Product } from '../commoninterfaces.js';
+import { Rights } from "@openiap/nodeapi";
+import { Member, Workspace, User, Customer, Billing, Resource, ResourceUsage, ResourceTargetType, ResourceVariantType, Product, Base } from '../commoninterfaces.js';
+import { Wellknown } from "../Util.js";
 
 export class Resources {
     public static async CreateResource(name: string,
@@ -32,8 +32,8 @@ export class Resources {
             model.allowdirectassign = allowdirectassign;
             model.order = order;
             model._acl = [];
-            Base.addRight(model, WellknownIds.admins, "admins", [Rights.full_control]);
-            Base.addRight(model, WellknownIds.users, "users", [Rights.read]);
+            Base.addRight(model, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+            Base.addRight(model, Wellknown.users._id, Wellknown.users.name, [Rights.read]);
             return Config.db.InsertOrUpdateOne(model, "config", "_type,name", 1, true, jwt, parent);
     }
     public static async CreateResourceUsage(tuser: User, jwt: string, 
@@ -44,22 +44,22 @@ export class Resources {
         productname: string,
         parent: Span): Promise<{ result: ResourceUsage[], link: string}> {
         if(target == null) throw new Error("Target is required");
-        if(billingid == null || billingid == "") throw new Error("Billing is required");
+        if(billingid == null || billingid == "") throw new Error(Logger.enricherror(tuser, target, "Billing is required"));
         let billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: billingid, _type: "customer" }, jwt }, parent);
-        if(billing == null) throw new Error("Billing not found");
-        if(resourceid == null || resourceid == "") throw new Error("Resource is required");
+        if(billing == null) throw new Error(Logger.enricherror(tuser, billing, "Billing not found"));
+        if(resourceid == null || resourceid == "") throw new Error(Logger.enricherror(tuser, target, "Resourceid is required"));
         let resource = await Config.db.GetOne<Resource>({ collectionname: "config", query: { _id: resourceid, _type: "resource" }, jwt }, parent);
-        if(resource == null) throw new Error("Resource not found");
-        if(productname == null || productname == "") throw new Error("Product is required");
+        if(resource == null) throw new Error(Logger.enricherror(tuser, target, "Resource not found or access denied"));
+        if(productname == null || productname == "") throw new Error(Logger.enricherror(tuser, target, "Product is required"));
         let product = resource.products.find(x => x.name == productname);
-        if(product == null) throw new Error("Product is required");
-        if(product.stripeprice == null || product.stripeprice == "") throw new Error("Product stripeprice is required");
+        if(product == null) throw new Error(Logger.enricherror(tuser, target, "Product is required"));
+        if(product.stripeprice == null || product.stripeprice == "") throw new Error(Logger.enricherror(tuser, target, "Product stripeprice is required"));
         let result:ResourceUsage[] = [];
         const rootjwt = Crypt.rootToken();
         let model:ResourceUsage;
         if(target._type == "user") {
             let resources = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { userid: target._id, "customerid": billingid, "product.stripeprice": product.stripeprice, _type: "resourceusage" }, jwt }, parent);
-            if(resources.length > 1) throw new Error("User has more than one version of this resource assigned");
+            if(resources.length > 1) throw new Error(Logger.enricherror(tuser, target, "User has more than one version of this resource assigned"));
             if(resources.length == 0) {
                 model = new ResourceUsage();
                 model._type = "resourceusage";
@@ -75,7 +75,7 @@ export class Resources {
             model.name = resource.name + "/" + product.name + " for " + target.name;
             if(workspaceid != null && workspaceid != "") {
                 let workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt }, parent);
-                if(workspace == null) throw new Error("Workspace not found");
+                if(workspace == null) throw new Error(Logger.enricherror(tuser, target, "Workspace not found or access denied"));
                 model.workspaceid = workspace._id;
                 Base.addRight(model, workspace.admins, workspace.name + " admins", [Rights.read]);
             }
@@ -86,7 +86,7 @@ export class Resources {
         }
         if(target._type == "member") {
             let resources = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { memberid: target._id, "customerid": billingid, "product.stripeprice": product.stripeprice, _type: "resourceusage" }, jwt }, parent);
-            if(resources.length > 1) throw new Error("Member has more than one version of this resource assigned");
+            if(resources.length > 1) throw new Error(Logger.enricherror(tuser, target, "Member has more than one version of this resource assigned"));
             if(resources.length == 0) {
                 model = new ResourceUsage();
                 model._type = "resourceusage";
@@ -102,7 +102,7 @@ export class Resources {
             model.name = resource.name + "/" + product.name + " for " + target.name;
             if(workspaceid != null && workspaceid != "") {
                 let workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt }, parent);
-                if(workspace == null) throw new Error("Workspace not found");
+                if(workspace == null) throw new Error(Logger.enricherror(tuser, target, "Workspace not found or access denied"));
                 model.workspaceid = workspace._id;
                 Base.addRight(model, workspace.admins, workspace.name + " admins", [Rights.read]);
             }
@@ -113,7 +113,7 @@ export class Resources {
         }
         if(target._type == "customer") {
             let resources = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid: target._id, "product.stripeprice": product.stripeprice, _type: "resourceusage" }, jwt }, parent);
-            if(resources.length > 1) throw new Error("Customer has more than one version of this resource assigned");
+            if(resources.length > 1) throw new Error(Logger.enricherror(tuser, target, "Customer has more than one version of this resource assigned"));
             if(resources.length == 0) {
                 model = new ResourceUsage();
                 model._type = "resourceusage";
@@ -129,7 +129,7 @@ export class Resources {
             model.name = resource.name + "/" + product.name + " for " + target.name;
             if(workspaceid != null && workspaceid != "") {
                 let workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt }, parent);
-                if(workspace == null) throw new Error("Workspace not found");
+                if(workspace == null) throw new Error(Logger.enricherror(tuser, target, "Workspace not found or access denied"));
                 model.workspaceid = workspace._id;
                 Base.addRight(model, workspace.admins, workspace.name + " admins", [Rights.read]);
             }
@@ -140,7 +140,7 @@ export class Resources {
         }
         if(target._type == "workspace") {
             let resources = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { workspaceid: target._id, "product.stripeprice": product.stripeprice, _type: "resourceusage" }, jwt }, parent);
-            if(resources.length > 1) throw new Error("Workspace has more than one version of this resource assigned");
+            if(resources.length > 1) throw new Error(Logger.enricherror(tuser, target, "Workspace has more than one version of this resource assigned"));
             if(resources.length == 0) {
                 model = new ResourceUsage();
                 model._type = "resourceusage";
@@ -170,14 +170,13 @@ export class Resources {
     public static async RemoveResourceUsage(tuser: User, jwt: string, 
         target: User | Customer | Member | Workspace, 
         resourceusageid: string, parent: Span): Promise<ResourceUsage> {
-        if(resourceusageid == null || resourceusageid == "") throw new Error("ResourceUsage is required");
+        if(resourceusageid == null || resourceusageid == "") throw new Error("ResourceUsageid is required");
         if(target == null) throw new Error("Target is required");
         const rootjwt = Crypt.rootToken();
         let resourceusage = await Config.db.GetOne<ResourceUsage>({ collectionname: "config", query: { _id: resourceusageid, _type: "resourceusage" }, jwt }, parent);
-        if(resourceusage == null) throw new Error("ResourceUsage not found");
-        if(resourceusage.quantity == 0) throw new Error("ResourceUsage is already removed");
-        resourceusage.quantity -= 1;
-        if(resourceusage.quantity == 0) {
+        if(resourceusage == null) throw new Error(Logger.enricherror(tuser, null, "ResourceUsage not found or access denied"));
+        if(resourceusage.quantity > 0) resourceusage.quantity -= 1;        
+        if(resourceusage.quantity < 1) {
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
         } else {
             resourceusage = await Config.db.UpdateOne(resourceusage, "config", 1, true, rootjwt, parent);

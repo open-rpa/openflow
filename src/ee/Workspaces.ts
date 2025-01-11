@@ -4,12 +4,13 @@ import { Span } from "@opentelemetry/api";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
+import { Wellknown } from "../Util.js";
 export class Workspaces {
     public static async EnsureWorkspace(tuser: User, jwt: string, workspace: Workspace, parent: Span): Promise<Workspace> {
         if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
         if (!Logger.License.validlicense) await Logger.License.validate();
         if (tuser == null) throw new Error("User is mandatory");
-        if (tuser._id == "65cb30c40ff51e174095573c") throw new Error("Guest is not allowed to create workspaces");
+        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create workspaces");
         if (workspace == null) throw new Error("Workspace is mandatory");
         if (workspace.name == null || workspace.name == "") throw new Error("Name is mandatory");
         if (tuser == null) throw new Error("User is mandatory");
@@ -20,14 +21,14 @@ export class Workspaces {
         workspace._type = "workspace";
         if (workspace._id != null && workspace._id != "") {
             const _workspace = await Config.db.GetOne<Workspace>({ query: { _id: workspace._id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
-            if (_workspace == null) throw new Error("Workspace not found");
+            if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
         }
 
         workspaceadmins = await Logger.DBHelper.EnsureUniqueRole(workspace.name + " admins", workspace.admins, parent);
         workspaceusers = await Logger.DBHelper.EnsureUniqueRole(workspace.name + " users", workspace.users, parent);
         if (workspace._id != null && workspace._id != "") {
-            if (!tuser.HasRoleName("admins")) {
-                if (!workspaceadmins.IsMember(tuser._id)) throw new Error("User is not a member of the workspace admins");
+            if (!tuser.HasRoleName(Wellknown.admins.name)) {
+                if (!workspaceadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace admins"));
             }
         } else {
             Base.addRight(workspaceadmins, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
@@ -105,17 +106,20 @@ export class Workspaces {
         if (!Logger.License.validlicense) await Logger.License.validate();
         if (id == null || id == "") throw new Error("ID is mandatory");
         if (tuser == null) throw new Error("User is mandatory");
-        if (tuser._id == "65cb30c40ff51e174095573c") throw new Error("Guest is not allowed to delete workspaces");
+        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete workspaces");
         if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
         const rootjwt = Crypt.rootToken();
         const _workspace = await Config.db.GetOne<Workspace>({ query: { _id: id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
-        if (_workspace == null) throw new Error("Workspace not found");
-        if (!tuser.HasRoleName("admins")) {
+        if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+        if (!tuser.HasRoleName(Wellknown.admins.name)) {
             let _workspaceadmins = await Config.db.GetOne<Role>({ query: { _id: _workspace.admins, "_type": "role" }, collectionname: "users", jwt }, parent);
             if (_workspaceadmins != null) {
                 _workspaceadmins = Role.assign(_workspaceadmins);
-                if (!_workspaceadmins.IsMember(tuser._id)) throw new Error("User is not a member of the workspace admins");
+                if (!_workspaceadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, _workspace, "User is not a member of the workspace admins"));
             }
+        }
+        if(_workspace.resourceusageid != null && _workspace.resourceusageid != "") {
+            throw new Error(Logger.enricherror(tuser, _workspace, "You cannot delete a workspace with a resource usage"));
         }
         await Config.db.DeleteOne(id, "users", false, rootjwt, parent);
         await Config.db.DeleteOne(_workspace.admins, "users", false, rootjwt, parent);
@@ -130,16 +134,16 @@ export class Workspaces {
         email = email.toLowerCase();
         if (role != "member" && role != "admin") throw new Error("Invalid role");
         if (tuser == null) throw new Error("Invitee user is mandatory");
-        if (tuser._id == "65cb30c40ff51e174095573c") throw new Error("Guest is not allowed to invite users");
+        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to invite users");
         if (jwt == null || jwt == "") throw new Error("Invitee JWT is mandatory");
         const workspace = await Config.db.GetOne<Customer>({ query: { _id: workspaceid, _type: "workspace" }, collectionname: "users", jwt }, parent);
-        if (workspace == null) throw new Error("Workspace not found");
+        if (workspace == null) throw new Error(Logger.enricherror(tuser, workspace, "Workspace not found or access denied"));
         const _workspaceadmins = await Config.db.GetOne<Role>({ query: { _id: workspace.admins, "_type": "role" }, collectionname: "users", jwt }, parent);
-        if (_workspaceadmins == null) throw new Error("workspace admins not found");
+        if (_workspaceadmins == null) throw new Error(Logger.enricherror(tuser, workspace, "workspace admins not found"));
         const _workspaceusers = await Config.db.GetOne<Role>({ query: { _id: workspace.users, "_type": "role" }, collectionname: "users", jwt }, parent);
-        if (_workspaceusers == null) throw new Error("workspace users not found");
+        if (_workspaceusers == null) throw new Error(Logger.enricherror(tuser, workspace, "workspace users not found"));
         const workspaceusers: Role = Role.assign(_workspaceusers);
-        if (!workspaceusers.IsMember(tuser._id)) throw new Error("User is not a member of the workspace");
+        if (!workspaceusers.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace"));
 
         const rootjwt = Crypt.rootToken();
         const byid = { $or: [{ "email": email }, { "username": email }, { "federationids.id": email, "federationids.issuer": email }, { "federationids": email }] };
@@ -155,16 +159,16 @@ export class Workspaces {
             member.email = email;
             member.name = "Invite for " + email + " to " + workspace.name;
         } else {
-            if (member.status == "accepted") throw new Error("User is already a member of the workspace");
+            if (member.status == "accepted") throw new Error(Logger.enricherror(tuser, workspace, member.email + " is already a member of the workspace"));
             if (member.status == "rejected") {
-                throw new Error("User has rejected the invite");
+                throw new Error(Logger.enricherror(tuser, workspace, member.email + " has rejected the invite"));
             }
             if (member.expires < new Date()) {
                 member.expires = new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
                 member.token = Crypt.GetUniqueIdentifier(32);
             } else {
                 if (member.role == role) {
-                    throw new Error("User has allready been Invited, please wait for the user to accept or reject the invite");
+                    throw new Error(Logger.enricherror(tuser, workspace, member.email + " has allready been Invited, please wait for the user to accept or reject the invite"));
                 }
             }
         }
@@ -209,9 +213,9 @@ export class Workspaces {
         if (token == null || token == "") throw new Error("Token is mandatory");
         const rootjwt = Crypt.rootToken();
         const member = await Config.db.GetOne<Member>({ query: { token, "_type": "member" }, collectionname: "users", jwt: rootjwt }, parent);
-        if (member == null) throw new Error("Invite not found");
-        if (member.expires < new Date()) throw new Error("Invite expired");
-        if (member.userid != "" && member.userid != user._id) throw new Error("Invite is for another user");
+        if (member == null) throw new Error(Logger.enricherror(user, null, "Invite not found or access denied"));
+        if (member.expires < new Date()) throw new Error(Logger.enricherror(user, null, "Invite expired"));
+        if (member.userid != "" && member.userid != user._id) throw new Error(Logger.enricherror(user, null, "Invite is for another user"));
         if (member.seen == false) {
             member.seen = true;
             member.seenon = new Date();
@@ -227,11 +231,11 @@ export class Workspaces {
         if (token == null || token == "") throw new Error("Token is mandatory");
         const rootjwt = Crypt.rootToken();
         const member = await Config.db.GetOne<Member>({ query: { token, "_type": "member" }, collectionname: "users", jwt: rootjwt }, parent);
-        if (member == null) throw new Error("Invite not found");
-        if (member.expires < new Date()) throw new Error("Invite expired");
-        if (member.status == "accepted") throw new Error("Invite is already accepted");
-        if (member.userid != "" && member.userid != user._id) throw new Error("Invite is for another user");
-        if (user._id == "65cb30c40ff51e174095573c" && member.userid != "65cb30c40ff51e174095573c") throw new Error("Guest is not allowed to accept invites");
+        if (member == null) throw new Error(Logger.enricherror(user, null, "Invite not found or access denied"));
+        if (member.status == "accepted") throw new Error(Logger.enricherror(user, null, "Invite is already accepted"));
+        if (member.expires < new Date()) throw new Error(Logger.enricherror(user, null, "Invite expired"));
+        if (member.userid != "" && member.userid != user._id) throw new Error(Logger.enricherror(user, null, "Invite is for another user"));
+        if (user._id == Wellknown.guest._id && member.userid != Wellknown.guest._id) throw new Error(Logger.enricherror(user, null, "Guest is not allowed to accept invites"));
         member.userid = user._id;
         Base.addRight(member, user._id, user.name, [Rights.read]);
         const workspace = await Config.db.GetOne<Workspace>({ query: { _id: member.workspaceid, "_type": "workspace" }, collectionname: "users", jwt: rootjwt }, parent);
@@ -270,11 +274,11 @@ export class Workspaces {
         if (token == null || token == "") throw new Error("Token is mandatory");
         const rootjwt = Crypt.rootToken();
         const member = await Config.db.GetOne<Member>({ query: { token, "_type": "member" }, collectionname: "users", jwt: rootjwt }, parent);
-        if (member == null) throw new Error("Invite not found");
-        if (member.expires < new Date()) throw new Error("Invite expired");
-        if (member.status != "pending") throw new Error("Invite is not pending (" + member.status + ")");
-        if (member.userid != "" && member.userid != user._id) throw new Error("Invite is for another user");
-        if (user._id == "65cb30c40ff51e174095573c" && member.userid != "65cb30c40ff51e174095573c") throw new Error("Guest is not allowed to decline invites");
+        if (member == null) throw new Error(Logger.enricherror(user, null, "Invite not found or access denied"));
+        if (member.status != "pending") throw new Error(Logger.enricherror(user, null, "Invite is not pending (" + member.status + ")"));
+        if (member.expires < new Date()) throw new Error(Logger.enricherror(user, null, "Invite expired"));
+        if (member.userid != "" && member.userid != user._id) throw new Error(Logger.enricherror(user, null, "Invite is for another user"));
+        if (user._id == Wellknown.guest._id && member.userid != Wellknown.guest._id) throw new Error(Logger.enricherror(user, null, "Guest is not allowed to decline invites"));
         member.userid = user._id;
         Base.addRight(member, user._id, user.name, [Rights.read]);
 
@@ -304,27 +308,27 @@ export class Workspaces {
         if (!Logger.License.validlicense) await Logger.License.validate();
         if (id == null || id == "") throw new Error("ID is mandatory");
         if (user == null) throw new Error("User is mandatory");
-        if (user._id == "65cb30c40ff51e174095573c") throw new Error("Guest is not allowed to remove members");
+        if (user._id == Wellknown.guest._id) throw new Error(Logger.enricherror(user, null, "Guest is not allowed to remove members"));
         if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
         const rootjwt = Crypt.rootToken();
         const member = await Config.db.GetOne<Member>({ query: { _id: id, "_type": "member" }, collectionname: "users", jwt }, parent);
-        if (member == null) throw new Error("Member not found");
+        if (member == null) throw new Error(Logger.enricherror(user, null, "Member not found or access denied"));
 
         const workspace = await Config.db.GetOne<Workspace>({ query: { _id: member.workspaceid, "_type": "workspace" }, collectionname: "users", jwt: rootjwt }, parent);
-        if (workspace == null) throw new Error("Workspace not found");
+        if (workspace == null) throw new Error(Logger.enricherror(user, null, "Workspace not found or access denied"));
         let workspaceusers = await Config.db.GetOne<Role>({ query: { _id: workspace.users, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
         workspaceusers = Role.assign(workspaceusers);
         let workspaceadmins = await Config.db.GetOne<Role>({ query: { _id: workspace.admins, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
         workspaceadmins = Role.assign(workspaceadmins);
-        if (!user.HasRoleName("admins")) {
+        if (!user.HasRoleName(Wellknown.admins.name)) {
             if (!workspaceadmins.IsMember(user._id) && member.userid != user._id) {
-                throw new Error("User is not a member of the workspace admins");
+                throw new Error(Logger.enricherror(user, null, "User is not a member of the workspace admins"));
             }
         }
         if (member.role == "admin") {
             let membercount = await Config.db.count({ query: { workspaceid: member.workspaceid, "_type": "member", "role": "admin", "status": "accepted" }, collectionname: "users", jwt: rootjwt }, parent);
             if (membercount == 1) {
-                throw new Error("You cannot remove the last admin member of a workspace, remove the workspace instead");
+                throw new Error(Logger.enricherror(user, null, "You cannot remove the last admin member of a workspace, remove the workspace instead"));
             }
         }
         if (workspaceusers.IsMember(member.userid)) {
@@ -343,29 +347,29 @@ export class Workspaces {
         const id = member._id;
         if (id == null || id == "") throw new Error("ID is mandatory");
         if (user == null) throw new Error("User is mandatory");
-        if (user._id == "65cb30c40ff51e174095573c") throw new Error("Guest is not allowed to update members");
+        if (user._id == Wellknown.guest._id) throw new Error(Logger.enricherror(user, null, "Guest is not allowed to update members"));
         if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
         const rootjwt = Crypt.rootToken();
         const existing = await Config.db.GetOne<Member>({ query: { _id: member._id, "_type": "member" }, collectionname: "users", jwt: rootjwt }, parent);
-        if (existing == null) throw new Error("Member not found");
-        if (member.status != "accepted" && member.status != "pending" && member.status != "rejected") throw new Error("Invalid status");
-        if (member.role != "admin" && member.role != "member") throw new Error("Invalid role");
+        if (existing == null) throw new Error(Logger.enricherror(user, null, "Member not found or access denied"));
+        if (member.status != "accepted" && member.status != "pending" && member.status != "rejected") throw new Error(Logger.enricherror(user, null, "Invalid status"));
+        if (member.role != "admin" && member.role != "member") throw new Error(Logger.enricherror(user, null, "Invalid role"));
 
         const workspace = await Config.db.GetOne<Workspace>({ query: { _id: member.workspaceid, "_type": "workspace" }, collectionname: "users", jwt: rootjwt }, parent);
-        if (workspace == null) throw new Error("Workspace not found");
+        if (workspace == null) throw new Error(Logger.enricherror(user, null, "Workspace not found or access denied"));
         let workspaceusers = await Config.db.GetOne<Role>({ query: { _id: workspace.users, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
         workspaceusers = Role.assign(workspaceusers);
         let workspaceadmins = await Config.db.GetOne<Role>({ query: { _id: workspace.admins, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
         workspaceadmins = Role.assign(workspaceadmins);
-        if (!user.HasRoleName("admins")) {
+        if (!user.HasRoleName(Wellknown.admins.name)) {
             if (!workspaceadmins.IsMember(user._id)) {
-                throw new Error("Access denied, you are not a member of the workspace admins");
+                throw new Error(Logger.enricherror(user, null, "Access denied, you are not a member of the workspace admins"));
             }
         }
         if (member.role == "member") {
             let membercount = await Config.db.count({ query: { workspaceid: member.workspaceid, "_type": "member", "role": "admin", "status": "accepted" }, collectionname: "users", jwt: rootjwt }, parent);
             if (membercount == 1) {
-                throw new Error("You cannot demote the last admin member of a workspace, remove the workspace instead");
+                throw new Error(Logger.enricherror(user, null, "You cannot demote the last admin member of a workspace, remove the workspace instead"));
             }
         }
         let memberuser = await Config.db.GetOne<User>({ query: { _id: member.userid, "_type": "user" }, collectionname: "users", jwt: rootjwt }, parent);

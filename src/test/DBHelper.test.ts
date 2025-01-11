@@ -1,45 +1,35 @@
 import { suite, test, timeout } from "@testdeck/mocha";
-import { Config } from "../Config.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from "../Logger.js";
-import { FederationId, NoderedUtil, TokenUser, User, WellknownIds } from "@openiap/openflow-api";
+import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
+import { Logger } from "../Logger.js";
+import { Util, Wellknown } from "../Util.js";
+import { FederationId, TokenUser, User } from "../commoninterfaces.js";
+import { testConfig } from "./testConfig.js";
 
 @suite class dbhelper_test {
-    private rootToken: string;
-    private testUser: User;
-    private userToken: string;
     @timeout(10000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
-        await Config.db.connect(null);
-        await Config.Load(null);
-        this.rootToken = Crypt.rootToken();
-        this.testUser = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null)
-        this.userToken = Crypt.createSlimToken(this.testUser._id, null, Config.shorttoken_expires_in);
+        await testConfig.configure();
     }
     async after() {
-        await Logger.shutdown();
+        await testConfig.cleanup();
     }
     @test async "FindByUsername"() {
-        var user = await Logger.DBHelper.FindByUsername("testuser", this.rootToken, null);
+        var user = await Logger.DBHelper.FindByUsername("testuser", Crypt.rootToken(), null);
         assert.notStrictEqual(user, null, "Failed locating test user as root")
-        user = await Logger.DBHelper.FindByUsername("testuser", this.userToken, null);
+        user = await Logger.DBHelper.FindByUsername("testuser", testConfig.userToken, null);
         assert.notStrictEqual(user, null, "Failed locating test user as self")
-        user = await Logger.DBHelper.FindByUsername(null, this.rootToken, null);
+        user = await Logger.DBHelper.FindByUsername(null, Crypt.rootToken(), null);
         assert.strictEqual(user, null, "Returned user with null as username")
-        // await assert.rejects(DBHelper.FindByUsername(null, this.rootToken, null));
+        // await assert.rejects(DBHelper.FindByUsername(null, Crypt.rootToken(), null));
     }
     @test async "FindById"() {
-        var user = await Logger.DBHelper.FindById(this.testUser._id, null);
+        var user = await Logger.DBHelper.FindById(testConfig.testUser._id, null);
         assert.notStrictEqual(user, null, "Failed locating test user as root")
     }
     @test async "FindByUsernameOrFederationid"() {
-        var user = await Logger.DBHelper.FindByUsernameOrFederationid(this.testUser.username, null, null);
+        var user = await Logger.DBHelper.FindByUsernameOrFederationid(testConfig.testUser.username, null, null);
         assert.notStrictEqual(user, null, "Failed locating user by username")
         user = await Logger.DBHelper.FindByUsernameOrFederationid("test@federation.id", "google", null);
         assert.notStrictEqual(user, null, "Failed locating user by federation id")
@@ -48,7 +38,7 @@ import { Crypt } from "../Crypt.js";
         // await assert.rejects(DBHelper.FindByUsernameOrFederationid(null, null));
     }
     @test async "DecorateWithRoles"() {
-        var tuser = TokenUser.From(this.testUser);
+        var tuser = TokenUser.From(testConfig.testUser);
         tuser.roles = [];
         tuser = await Logger.DBHelper.DecorateWithRoles(tuser, null);
         assert.notStrictEqual(tuser.roles.length, 0, "No roles added to user")
@@ -61,17 +51,17 @@ import { Crypt } from "../Crypt.js";
         // await assert.rejects(DBHelper.DecorateWithRoles(null, null));
     }
     @test async "FindRoleByName"() {
-        var role = await Logger.DBHelper.FindRoleByName(this.testUser.username, null, null);
+        var role = await Logger.DBHelper.FindRoleByName(testConfig.testUser.username, null, null);
         assert.strictEqual(role, null, "returned something with illegal name")
-        role = await Logger.DBHelper.FindRoleByName("users", null, null);
+        role = await Logger.DBHelper.FindRoleByName(Wellknown.users.name, null, null);
         assert.notStrictEqual(role, null, "Failed locating role users")
     }
     @test async "FindRoleByNameOrId"() {
-        var role = await Logger.DBHelper.FindRoleByName(this.testUser.username, null, null);
+        var role = await Logger.DBHelper.FindRoleByName(testConfig.testUser.username, null, null);
         assert.strictEqual(role, null, "returned something with illegal name")
-        role = await Logger.DBHelper.FindRoleByName("users", null, null);
+        role = await Logger.DBHelper.FindRoleByName(Wellknown.users.name, null, null);
         assert.notStrictEqual(role, null, "Failed locating role users")
-        role = await Logger.DBHelper.FindRoleById(WellknownIds.users, null, null);
+        role = await Logger.DBHelper.FindRoleById(Wellknown.users._id, null, null);
         assert.notStrictEqual(role, null, "Failed locating role users")
         role = await Logger.DBHelper.FindRoleByName(null, null, null);
         assert.strictEqual(role, null, "Returned role with null as username")
@@ -83,17 +73,17 @@ import { Crypt } from "../Crypt.js";
     }
     @timeout(5000)
     @test async "EnsureUser"() {
-        var name = "dummytestuser" + NoderedUtil.GetUniqueIdentifier();
+        var name = "dummytestuser" + Util.GetUniqueIdentifier();
         let extraoptions = {
             federationids: [new FederationId("test@federation.id", "google")],
             emailvalidated: true,
             formvalidated: true,
             validated: true
         }
-        var dummyuser: User = await Logger.DBHelper.EnsureUser(this.rootToken, name, name, null, "RandomPassword", extraoptions, null);
+        var dummyuser: User = await Logger.DBHelper.EnsureUser(Crypt.rootToken(), name, name, null, "RandomPassword", extraoptions, null);
         var result = await Crypt.ValidatePassword(dummyuser, "RandomPassword", null);
 
-        await Logger.DBHelper.EnsureNoderedRoles(dummyuser, this.rootToken, true, null);
+        await Logger.DBHelper.EnsureNoderedRoles(dummyuser, Crypt.rootToken(), true, null);
 
         dummyuser = await Logger.DBHelper.DecorateWithRoles(dummyuser, null);
         assert.ok(dummyuser.roles.filter(x => x.name.endsWith("noderedadmins")), "EnsureNoderedRoles did not make dummy user member of noderedadmins");
@@ -101,14 +91,14 @@ import { Crypt } from "../Crypt.js";
 
 
         assert.ok(result, "Failed validating with the correct password");
-        await Config.db.DeleteOne(dummyuser._id, "users", false, this.rootToken, null);
+        await Config.db.DeleteOne(dummyuser._id, Wellknown.users.name, false, Crypt.rootToken(), null);
 
-        await assert.rejects(Logger.DBHelper.EnsureUser(this.rootToken, null, null, null, null, null, null));
+        await assert.rejects(Logger.DBHelper.EnsureUser(Crypt.rootToken(), null, null, null, null, null, null));
     }
     @test async "EnsureRole"() {
-        var name = "dummytestrole" + NoderedUtil.GetUniqueIdentifier();
+        var name = "dummytestrole" + Util.GetUniqueIdentifier();
         var dummyrole = await Logger.DBHelper.EnsureRole(name, null, null);
-        await Config.db.DeleteOne(dummyrole._id, "users", false, this.rootToken, null);
+        await Config.db.DeleteOne(dummyrole._id, Wellknown.users.name, false, Crypt.rootToken(), null);
     }
 }
 // clear && ./node_modules/.bin/_mocha "src/test/**/DBHelper.test.ts"

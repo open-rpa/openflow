@@ -1,4 +1,3 @@
-import { Base, NoderedUtil, Rights, TokenUser, User, WellknownIds } from "@openiap/openflow-api";
 import { Counter, Histogram, Observable, Span } from "@opentelemetry/api";
 import http from "http";
 import os from "os";
@@ -12,6 +11,8 @@ import { Logger } from "./Logger.js";
 import { WebServer } from "./WebServer.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { amqpwrapper } from "./amqpwrapper.js";
+import { Util, Wellknown } from "./Util.js";
+import { Base, Rights, TokenUser, User } from "./commoninterfaces.js";
 
 export class WebSocketServer {
     public static _clients: WebSocketServerClient[];
@@ -60,7 +61,7 @@ export class WebSocketServer {
                     Logger.instanse.error(error, null);
                 });
             }
-            if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
+            if (!Util.IsNullUndefinded(Logger.otel) && !Util.IsNullUndefinded(Logger.otel.meter)) {
                 WebSocketServer.p_all = Logger.otel.meter.createObservableUpDownCounter("openflow_websocket_online_clients", {
                     description: "Total number of online websocket clients"
                 })
@@ -73,12 +74,12 @@ export class WebSocketServer {
                     for (let i = 0; i < WebSocketServer._clients.length; i++) {
                         try {
                             const cli = WebSocketServer._clients[i];
-                            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
-                                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
-                                    if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
+                            if (!Util.IsNullUndefinded(WebSocketServer.p_all)) {
+                                if (!Util.IsNullEmpty(cli.clientagent)) {
+                                    if (Util.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
                                     p_all[cli.clientagent] += 1;
                                 } else {
-                                    if (NoderedUtil.IsNullUndefinded(p_all["unknown"])) p_all["unknown"] = 0;
+                                    if (Util.IsNullUndefinded(p_all["unknown"])) p_all["unknown"] = 0;
                                     p_all["unknown"] += 1;
                                 }
                             }
@@ -135,7 +136,7 @@ export class WebSocketServer {
                 })
                 WebSocketServer.mongodb_watch_count?.addCallback(res => {
                     if (!Config.otel_measure__mongodb_watch) return;
-                    if (NoderedUtil.IsNullUndefinded(WebSocketServer.mongodb_watch_count)) return;
+                    if (Util.IsNullUndefinded(WebSocketServer.mongodb_watch_count)) return;
                     const result: any = {};
                     let total: number = 0;
                     for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
@@ -170,16 +171,16 @@ export class WebSocketServer {
             for (var x = 0; x < WebSocketServer._remoteclients.length; x++) {
                 var cli = Object.assign({}, WebSocketServer._remoteclients[x]);
                 // @ts-ignore
-                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                if (!Util.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
-                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                if (!Util.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
                 if (cli.user?._acl != null) {
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
                         result.push(cli);
                     }
-                } else if (user.HasRoleId(WellknownIds.admins)) {
+                } else if (user.HasRoleId(Wellknown.admins._id)) {
                     result.push(cli);
                 }
             }
@@ -187,16 +188,16 @@ export class WebSocketServer {
             for (var x = 0; x < WebSocketServer._clients.length; x++) {
                 var cli = Object.assign({}, WebSocketServer._clients[x]);
                 // @ts-ignore
-                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
+                if (!Util.IsNullEmpty(cli.clientagent)) cli.agent = cli.clientagent
                 // @ts-ignore
-                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
+                if (!Util.IsNullEmpty(cli.clientversion)) cli.version = cli.clientversion
                 if (cli.user != null) {
                     // @ts-ignore
                     cli.name = cli.user.name;
                     if (DatabaseConnection.hasAuthorization(user, cli.user, Rights.read)) {
                         result.push(cli);
                     }
-                } else if (user.HasRoleId(WellknownIds.admins)) {
+                } else if (user.HasRoleId(Wellknown.admins._id)) {
                     result.push(cli);
                 }
             }
@@ -235,9 +236,9 @@ export class WebSocketServer {
                 c.user = cli.user;
                 c.username = cli.username;
                 c.watches = cli.watches;
-                if (NoderedUtil.IsNullEmpty(c.username)) c.username = "";
-                if (NoderedUtil.IsNullEmpty(c.clientagent)) c.clientagent = "";
-                if (NoderedUtil.IsNullEmpty(c.id)) c.id = "";
+                if (Util.IsNullEmpty(c.username)) c.username = "";
+                if (Util.IsNullEmpty(c.clientagent)) c.clientagent = "";
+                if (Util.IsNullEmpty(c.id)) c.id = "";
                 c.name = (c.username + "/" + c.clientagent + "/" + c.id).trim();
                 clients.push(c);
             }
@@ -270,7 +271,7 @@ export class WebSocketServer {
             for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                 const cli: WebSocketServerClient = WebSocketServer._clients[i];
                 try {
-                    if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
+                    if (!Util.IsNullEmpty(cli.jwt)) {
                         try {
                             const payload = Crypt.decryptToken(cli.jwt);
                             const clockTimestamp = Math.floor(Date.now() / 1000);
@@ -358,9 +359,9 @@ export class WebSocketServer {
                 try {
                     const cli = WebSocketServer._clients[i];
                     if (cli.user != null) {
-                        if (!NoderedUtil.IsNullEmpty(cli.clientagent)) {
-                            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.p_all)) {
-                                if (NoderedUtil.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
+                        if (!Util.IsNullEmpty(cli.clientagent)) {
+                            if (!Util.IsNullUndefinded(WebSocketServer.p_all)) {
+                                if (Util.IsNullUndefinded(p_all[cli.clientagent])) p_all[cli.clientagent] = 0;
                                 p_all[cli.clientagent] += 1;
                             }
                         }

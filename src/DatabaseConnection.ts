@@ -1,4 +1,4 @@
-import { Ace, Base, CountOptions, Customer, InsertOrUpdateOneMessage, NoderedUtil, QueryOptions, Rights, Role, Rolemember, TokenUser, UpdateManyMessage, UpdateOneMessage, User, WellknownIds, Workitem } from "@openiap/openflow-api";
+import { CountOptions, InsertOrUpdateOneMessage, QueryOptions, UpdateManyMessage, UpdateOneMessage, Workitem } from "@openiap/openflow-api";
 import { Histogram, ObservableUpDownCounter, Span } from "@opentelemetry/api";
 import events from "events";
 import _jsondiffpatch from "jsondiffpatch";
@@ -9,7 +9,7 @@ import v8 from "v8";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { Audit } from "./Audit.js";
 import { Auth } from "./Auth.js";
-import { iAgent, Workspace } from "./commoninterfaces.js";
+import { Base, Customer, iAgent, Rights, Role, Rolemember, TokenUser, User, Workspace } from "./commoninterfaces.js";
 import { Config, dbConfig } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Resources } from "./ee/Resources.js";
@@ -20,6 +20,8 @@ import { OAuthProvider } from "./OAuthProvider.js";
 import { WebServer } from "./WebServer.js";
 import { WebSocketServer } from "./WebSocketServer.js";
 import { clsstream } from "./WebSocketServerClient.js";
+import { Util, Wellknown } from "./Util.js";
+import { Ace } from "@openiap/nodeapi";
 
 function getObjectSize(obj) {
     const objectSerialized = v8.serialize(obj);
@@ -87,7 +89,7 @@ export class DatabaseConnection extends events.EventEmitter {
         this.mongodburl = mongodburl;
         this.setMaxListeners(1500);
 
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
+        if (!Util.IsNullUndefinded(Logger.otel) && !Util.IsNullUndefinded(Logger.otel.meter)) {
             DatabaseConnection.mongodb_query = Logger.otel.meter.createHistogram("openflow_mongodb_query_seconds", {
                 description: "Duration for mongodb queries", valueType: 1, unit: "s"
             });
@@ -145,7 +147,7 @@ export class DatabaseConnection extends events.EventEmitter {
     public isConnected: boolean = false;
     async shutdown() {
         try {
-            if (!NoderedUtil.IsNullUndefinded(this.queuemonitoringhandle)) {
+            if (!Util.IsNullUndefinded(this.queuemonitoringhandle)) {
                 clearTimeout(this.queuemonitoringhandle);
             }
             if (this.cli) {
@@ -248,13 +250,13 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (count < 1) continue;
                 var payload = null;
                 let queueids = [];
-                if (!NoderedUtil.IsNullEmpty(wiq.robotqueue) && !NoderedUtil.IsNullEmpty(wiq.workflowid)) {
+                if (!Util.IsNullEmpty(wiq.robotqueue) && !Util.IsNullEmpty(wiq.workflowid)) {
                     if (wiq.robotqueue.toLowerCase() != "(empty)" && wiq.workflowid.toLowerCase() != "(empty)") {
                         let queueid = wiq.robotqueue.toLowerCase();
                         queueids.push(queueid);
                     }
                 }
-                if (!NoderedUtil.IsNullEmpty(wiq.amqpqueue)) {
+                if (!Util.IsNullEmpty(wiq.amqpqueue)) {
                     let queueid = wiq.amqpqueue.toLowerCase();
                     if (queueids.indexOf(queueid) == -1) {
                         queueids.push(queueid);
@@ -263,7 +265,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (queueids.length == 0) { continue; }
                 for (var _cid = 0; _cid < WebSocketServer._clients.length; _cid++) {
                     const client = WebSocketServer._clients[_cid];
-                    if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+                    if (Util.IsNullUndefinded(client.user)) continue;
 
                     var sendit = false;
                     for (var q = 0; client._queues.length > q; q++) {
@@ -337,25 +339,25 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             var item = next.fullDocument;
             var _type = "";
-            if (collectionname == "config" && NoderedUtil.IsNullUndefinded(item)) {
+            if (collectionname == "config" && Util.IsNullUndefinded(item)) {
                 item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, span);
             }
             if (Config.cache_store_type != "redis" && Config.cache_store_type != "mongodb") {
                 if (next.operationType == "delete" && collectionname == "users") {
                     item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, span);
-                    if (!NoderedUtil.IsNullUndefinded(item)) {
+                    if (!Util.IsNullUndefinded(item)) {
                         await Logger.DBHelper.CheckCache(collectionname, item, true, false, span);
                     }
                 }
             }
 
-            if (!NoderedUtil.IsNullUndefinded(item)) {
+            if (!Util.IsNullUndefinded(item)) {
                 if (Config.log_all_watches == true) {
                     Logger.instanse.debug(collectionname + " watch " + next?.fullDocument?._type + " " + next?.operationType + " " + next?.fullDocument?.name, span, { cls: "DatabaseConnection", func: "onchange", collection: collectionname });
                 }
             }
 
-            if (!NoderedUtil.IsNullUndefinded(item)) {
+            if (!Util.IsNullUndefinded(item)) {
                 _type = item._type;
                 await Logger.DBHelper.CheckCache(collectionname, item, true, false, span);
                 if (collectionname == "mq") {
@@ -393,7 +395,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (collectionname == "config" && _type == "ipblock") {
                     discardspan = false;
-                    if (!NoderedUtil.IsNullUndefinded(item.ips) && item.ips.length > 0) {
+                    if (!Util.IsNullUndefinded(item.ips) && item.ips.length > 0) {
                         for (let i = 0; i < WebSocketServer._clients.length; i++) {
                             let _cli = WebSocketServer._clients[i];
                             if ((await WebServer.isIPBlocked(_cli.remoteip)) == true) {
@@ -418,7 +420,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (WebSocketServer._clients)
                 for (let i = 0; i < WebSocketServer._clients.length; i++) {
                     let client = WebSocketServer._clients[i];
-                    if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+                    if (Util.IsNullUndefinded(client.user)) continue;
                     let ids = Object.keys(client.watches);
                     for (let y = 0; y < ids.length; y++) {
                         var stream = client.watches[ids[y]];
@@ -430,8 +432,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             if (!doContinue) return;
 
-            if (NoderedUtil.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
-            if (NoderedUtil.IsNullEmpty(item)) {
+            if (Util.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
+            if (Util.IsNullEmpty(item)) {
                 Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname, span, { collection: collectionname });
                 return;
             } else {
@@ -440,7 +442,7 @@ export class DatabaseConnection extends events.EventEmitter {
             try {
                 for (var i = 0; i < WebSocketServer._clients.length; i++) {
                     var client = WebSocketServer._clients[i];
-                    if (NoderedUtil.IsNullUndefinded(client.user)) continue;
+                    if (Util.IsNullUndefinded(client.user)) continue;
                     const tuser: TokenUser = TokenUser.From(client.user);
                     try {
                         if (DatabaseConnection.hasAuthorization(tuser, item, Rights.read)) {
@@ -450,14 +452,14 @@ export class DatabaseConnection extends events.EventEmitter {
                                     let notify: boolean = false;
                                     var stream = client.watches[ids[y]];
                                     if (stream.collectionname != collectionname) {
-                                    } else if (NoderedUtil.IsNullUndefinded(stream.aggregates)) {
+                                    } else if (Util.IsNullUndefinded(stream.aggregates)) {
                                         notify = true;
                                     } else if (stream.aggregates.length == 0) {
                                         notify = true;
                                     } else if (typeof stream.aggregates[0] === "object") {
                                         // This is fucking ugly, but need something to be backward compatible with older version of OpenRPA and Nodered Nodes
                                         var match = stream.aggregates[0]["$match"];
-                                        if (NoderedUtil.IsNullUndefinded(match)) { continue; }
+                                        if (Util.IsNullUndefinded(match)) { continue; }
                                         var keys = Object.keys(match);
                                         var ismatch = true;
                                         keys.forEach(key => {
@@ -477,7 +479,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                         if (Array.isArray(paths)) {
                                             for (let p = 0; p < paths.length; p++) {
                                                 let path = paths[p];
-                                                if (!NoderedUtil.IsNullEmpty(path)) {
+                                                if (!Util.IsNullEmpty(path)) {
                                                     try {
                                                         const result = JSONPath({ path, json: { a: item } });
                                                         if (result && result.length > 0) notify = true;
@@ -487,7 +489,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                                 }
                                             }
                                         } else {
-                                            if (!NoderedUtil.IsNullEmpty(paths)) {
+                                            if (!Util.IsNullEmpty(paths)) {
                                                 try {
                                                     let path = paths;
                                                     const result = JSONPath({ path, json: { a: item } });
@@ -499,6 +501,8 @@ export class DatabaseConnection extends events.EventEmitter {
                                         }
                                         // Watch all
                                         if (stream.aggregates.length == 0) {
+                                            notify = true;
+                                        } else if (stream.aggregates.length == 1 && stream.aggregates[0] == "") {
                                             notify = true;
                                         }
                                     }
@@ -581,7 +585,7 @@ export class DatabaseConnection extends events.EventEmitter {
         result.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
         const user = await Auth.Token2User(jwt, null);
         if (user == null) throw new Error("Access denied");
-        if (user._id == "65cb30c40ff51e174095573c") {
+        if (user._id == Wellknown.guest._id) {
             result = result.filter(x => x.name != "audit");
         }
         return result;
@@ -596,7 +600,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
+            if (!user.HasRoleName(Wellknown.admins.name) && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
             if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
             Audit.AuditCollectionAction(user, "drop", collectionname, true, span);
@@ -626,7 +630,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            if (!user.HasRoleName("admins") && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
+            if (!user.HasRoleName(Wellknown.admins.name) && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
             if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, creating reserved collection " + collectionname);
             delete options.jwt;
             delete options.priority;
@@ -657,60 +661,51 @@ export class DatabaseConnection extends events.EventEmitter {
         }
     }
     public static WellknownIdsArray: string[] = [
-        WellknownIds.root,
-        WellknownIds.admins,
-        WellknownIds.users,
-        WellknownIds.robots,
-        WellknownIds.nodered_users,
-        WellknownIds.nodered_admins,
-        WellknownIds.nodered_api_users,
-        WellknownIds.filestore_users,
-        WellknownIds.filestore_admins,
-        WellknownIds.robot_users,
-        WellknownIds.robot_admins,
-        WellknownIds.personal_nodered_users,
-        WellknownIds.robot_agent_users,
-        WellknownIds.customer_admins,
-        WellknownIds.resellers,
-        "65cb30c40ff51e174095573c", // guest,
-        "625440c4231309af5f2052cd", // workitem queue admins
-        "62544134231309e2cd2052ce", // workitem queue users
+        Wellknown.root._id,
+        Wellknown.admins._id,
+        Wellknown.users._id,
+        Wellknown.robots._id,
+        Wellknown.nodered_users._id,
+        Wellknown.nodered_admins._id,
+        Wellknown.nodered_api_users._id,
+        Wellknown.filestore_users._id,
+        Wellknown.filestore_admins._id,
+        Wellknown.robot_users._id,
+        Wellknown.robot_admins._id,
+        Wellknown.personal_nodered_users._id,
+        Wellknown.robot_agent_users._id,
+        Wellknown.customer_admins._id,
+        Wellknown.resellers._id,
+        Wellknown.guest._id,
+        Wellknown.workitem_queue_admins._id,
+        Wellknown.workitem_queue_users._id,
     ]
     public static WellknownNamesArray: string[] = [
-        "root",
-        "admins",
-        "users",
+        Wellknown.root.name,
+        Wellknown.admins.name,
+        Wellknown.users.name,
+        Wellknown.robots.name,
+        Wellknown.nodered_users.name,
+        Wellknown.nodered_admins.name,
+        Wellknown.nodered_api_users.name,
+        Wellknown.filestore_users.name,
+        Wellknown.filestore_admins.name,
+        Wellknown.robot_users.name,
+        Wellknown.robot_admins.name,
+        Wellknown.personal_nodered_users.name,
+        Wellknown.robot_agent_users.name,
+        Wellknown.customer_admins.name,
+        Wellknown.resellers.name,
+        Wellknown.guest.name,
+        Wellknown.workitem_queue_admins.name,
+        Wellknown.workitem_queue_users.name,
+        "reseller",
         "user",
         "admin",
         "nodered",
         "administrator",
         "workflow",
-        "robots",
         "robot",
-        "nodered_users",
-        "nodered_admins",
-        "nodered_api_users",
-        "filestore_users",
-        "filestore_admins",
-        "robot_users",
-        "robot_admins",
-        "personal_nodered_users",
-        "robot_agent_users",
-        "customer_admins",
-
-        "nodered users",
-        "nodered admins",
-        "nodered api_users",
-        "filestore users",
-        "filestore admins",
-        "robot users",
-        "robot admins",
-        "personal nodered users",
-        "robot agent users",
-        "customer admins",
-        "workitem queue admins",
-        "workitem queue users",
-        "reseller", "resellers"
     ]
 
     async CleanACL<T extends Base>(item: T, user: TokenUser | User, collectionname: string, parent: Span, skipNameLookup: boolean = false): Promise<T> {
@@ -777,7 +772,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (ace.deny == false) delete ace.deny;
                     if (!skipNameLookup) {
                         let _user = await Logger.DBHelper.FindById(ace._id, span);
-                        if (NoderedUtil.IsNullUndefinded(_user)) {
+                        if (Util.IsNullUndefinded(_user)) {
                             item._acl.splice(i, 1);
                         } else {
                             ace.name = _user.name;
@@ -801,7 +796,7 @@ export class DatabaseConnection extends events.EventEmitter {
     async Cleanmembers<T extends Role>(item: T, original: T, force: boolean, span: Span): Promise<T> {
         const removed: Rolemember[] = [];
         if (force == false && DatabaseConnection.WellknownIdsArray.indexOf(item._id) >= 0) return item;
-        if (NoderedUtil.IsNullUndefinded(item.members)) item.members = [];
+        if (Util.IsNullUndefinded(item.members)) item.members = [];
         if (original != null && Config.update_acl_based_on_groups === true) {
             for (let i = original.members.length - 1; i >= 0; i--) {
                 const ace = original.members[i];
@@ -829,10 +824,10 @@ export class DatabaseConnection extends events.EventEmitter {
                 removed.push(ace);
             }
         }
-        const multi_tenant_skip: string[] = [WellknownIds.users, WellknownIds.filestore_users,
-        WellknownIds.nodered_api_users, WellknownIds.nodered_users, WellknownIds.personal_nodered_users,
-        WellknownIds.robot_users, WellknownIds.robots, WellknownIds.customer_admins, WellknownIds.resellers];
-        if (item._id === WellknownIds.users && Config.multi_tenant) {
+        const multi_tenant_skip: string[] = [Wellknown.users._id, Wellknown.filestore_users._id,
+            Wellknown.nodered_api_users._id, Wellknown.nodered_users._id, Wellknown.personal_nodered_users._id,
+            Wellknown.robot_users._id, Wellknown.robots._id, Wellknown.customer_admins._id, Wellknown.resellers._id];
+        if (item._id === Wellknown.users._id && Config.multi_tenant) {
             doadd = false;
         }
         if (doadd) {
@@ -872,7 +867,7 @@ export class DatabaseConnection extends events.EventEmitter {
                                 }
                             } else if (arr[0]._type === "role") {
                                 let r: Role = Role.assign(arr[0]);
-                                if (r._id !== WellknownIds.admins && r._id !== WellknownIds.users && !Base.hasRight(r, item._id, Rights.read)) {
+                                if (r._id !== Wellknown.admins._id && r._id !== Wellknown.users._id && !Base.hasRight(r, item._id, Rights.read)) {
                                     Logger.instanse.silly("Assigning " + item.name + " read permission to " + r.name, span);
                                     Base.addRight(r, item._id, item.name, [Rights.read], false);
                                     r = this.ensureResource(r, "users");
@@ -893,14 +888,14 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.update_acl_based_on_groups) {
             for (let i = removed.length - 1; i >= 0; i--) {
                 const ace = removed[i];
-                if (NoderedUtil.IsNullUndefinded(ace)) continue;
+                if (Util.IsNullUndefinded(ace)) continue;
                 const ot_end = Logger.otel.startTimer();
                 const cursor = this.db.collection("users").find({ _id: ace._id }).project({ name: 1, _acl: 1, _type: 1 }).limit(1);
                 const arr = await cursor.toArray();
                 cursor.close();
                 let ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_query, DatabaseConnection.otel_label("users", Crypt.rootUser(), "query"));
                 if (Config.log_database_queries && ms >= Config.log_database_queries_ms) Logger.instanse.debug("Query: " + JSON.stringify({ _id: ace._id }), span, { ms: ms, count: arr.length, collection: "users" });
-                if (arr.length === 1 && item._id != WellknownIds.admins && item._id != WellknownIds.root) {
+                if (arr.length === 1 && item._id != Wellknown.admins._id && item._id != Wellknown.root._id) {
                     if (Config.multi_tenant && multi_tenant_skip.indexOf(item._id) > -1 && !((item as any).hidemembers == true)) {
                         // when multi tenant don't allow members of common user groups to see each other
                         Logger.instanse.verbose("Running in multi tenant mode, skip removing permissions for " + item.name, span);
@@ -911,7 +906,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(u, item._id, false);
-                            if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
+                            if (Util.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
                                 Base.removeRight(u, item._id, [Rights.full_control]);
                                 u = this.ensureResource(u, "users");
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + u.name, span);
@@ -930,7 +925,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
                             // was read the only right ? then remove it
                             const right = Base.getRight(r, item._id, false);
-                            if (NoderedUtil.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
+                            if (Util.IsNullUndefinded(right) || (!Ace.isBitSet(right, 3) && !Ace.isBitSet(right, 4) && !Ace.isBitSet(right, 5))) {
                                 Base.removeRight(r, item._id, [Rights.full_control]);
                                 r = this.ensureResource(r, "users");
                                 Logger.instanse.debug("Removing " + item.name + " read permissions from " + r.name, span);
@@ -1019,7 +1014,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     span?.setAttribute("failedorderby", orderby as string);
                     Logger.instanse.error(error, span, { collection: collectionname });
                 }
-                if (NoderedUtil.IsNullUndefinded(neworderby)) mysort[(orderby as string)] = 1;
+                if (Util.IsNullUndefinded(neworderby)) mysort[(orderby as string)] = 1;
             } else {
                 mysort = orderby;
             }
@@ -1040,7 +1035,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     span?.setAttribute("failedhint", hint as string);
                     Logger.instanse.error(error, span, { collectionname });
                 }
-                if (NoderedUtil.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
+                if (Util.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
             } else {
                 myhint = hint;
             }
@@ -1075,7 +1070,7 @@ export class DatabaseConnection extends events.EventEmitter {
             });
             if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
         }
-        if (NoderedUtil.IsNullUndefinded(query)) {
+        if (Util.IsNullUndefinded(query)) {
             throw new Error("Query is mandatory");
         }
         const keys: string[] = Object.keys(query);
@@ -1097,7 +1092,7 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.addEvent("verityToken");
         const user: User = await Auth.Token2User(jwt, span);
         if (user == null) throw new Error("Access denied");
-        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user._id == Wellknown.guest._id && collectionname == "audit") {
             return [];
         }
 
@@ -1105,8 +1100,8 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (DatabaseConnection.usemetadata(collectionname)) {
             let impersonationquery;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
@@ -1114,8 +1109,8 @@ export class DatabaseConnection extends events.EventEmitter {
             projection = null;
         } else {
             let impersonationquery: any;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
@@ -1218,7 +1213,7 @@ export class DatabaseConnection extends events.EventEmitter {
             });
             if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
         }
-        if (NoderedUtil.IsNullUndefinded(query)) {
+        if (Util.IsNullUndefinded(query)) {
             throw new Error("Query is mandatory");
         }
         const keys: string[] = Object.keys(query);
@@ -1238,7 +1233,7 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.addEvent("verityToken");
         const user: User = await Auth.Token2User(jwt, span);
         if (user == null) throw new Error("Access denied");
-        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user._id == Wellknown.guest._id && collectionname == "audit") {
             return 0;
         }
 
@@ -1246,16 +1241,16 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (DatabaseConnection.usemetadata(collectionname)) {
             let impersonationquery;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
             }
         } else {
             let impersonationquery: any;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
@@ -1303,7 +1298,7 @@ export class DatabaseConnection extends events.EventEmitter {
             });
             if (Config.otel_trace_include_query) span?.setAttribute("query", JSON.stringify(query));
         }
-        if (NoderedUtil.IsNullUndefinded(query)) {
+        if (Util.IsNullUndefinded(query)) {
             throw new Error("Query is mandatory");
         }
         const keys: string[] = Object.keys(query);
@@ -1320,7 +1315,7 @@ export class DatabaseConnection extends events.EventEmitter {
         span?.addEvent("verityToken");
         const user: User = await Auth.Token2User(jwt, span);
         if (user == null) throw new Error("Access denied");
-        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user._id == Wellknown.guest._id && collectionname == "audit") {
             return [];
         }
 
@@ -1328,16 +1323,16 @@ export class DatabaseConnection extends events.EventEmitter {
         if (collectionname === "files") { collectionname = "fs.files"; }
         if (DatabaseConnection.usemetadata(collectionname)) {
             let impersonationquery;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
             }
         } else {
             let impersonationquery: any;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 _query = { $and: [query, this.getbasequery(user, [Rights.read], collectionname)] };
@@ -1382,7 +1377,7 @@ export class DatabaseConnection extends events.EventEmitter {
         }, options);
         if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         let result: T = await this.getbyid<T>(id, collectionname, jwt, false, span);
-        if (NoderedUtil.IsNullUndefinded(result)) {
+        if (Util.IsNullUndefinded(result)) {
             const subbasehist = await this.query<any>({ query: { id: id, item: { $exists: true, $ne: null } }, top: 1, orderby: { _version: -1 }, collectionname: collectionname + "_hist", decrypt: false, jwt }, span);
             if (subbasehist.length === 0) return null;
             result = subbasehist[0];
@@ -1409,7 +1404,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
         }
-        if (decrypt && !NoderedUtil.IsNullUndefinded(result)) result = this.decryptentity(result);
+        if (decrypt && !Util.IsNullUndefinded(result)) result = this.decryptentity(result);
         return result;
     }
     /**
@@ -1420,9 +1415,9 @@ export class DatabaseConnection extends events.EventEmitter {
     * @returns Promise<T>
     */
     async GetOne<T extends Base>(options: { query?: object, collectionname: string, orderby?: object, jwt?: string, decrypt?: boolean }, span: Span): Promise<T> {
-        if (NoderedUtil.IsNullUndefinded(options.jwt)) options.jwt = Crypt.rootToken();
-        if (NoderedUtil.IsNullUndefinded(options.decrypt)) options.decrypt = true;
-        if (NoderedUtil.IsNullUndefinded(options.query)) options.query = {};
+        if (Util.IsNullUndefinded(options.jwt)) options.jwt = Crypt.rootToken();
+        if (Util.IsNullUndefinded(options.decrypt)) options.decrypt = true;
+        if (Util.IsNullUndefinded(options.query)) options.query = {};
         const { query, collectionname, orderby, jwt, decrypt } = options;
         if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         const arr: T[] = await this.query<T>({ query, collectionname, orderby, jwt, decrypt }, span);
@@ -1455,7 +1450,7 @@ export class DatabaseConnection extends events.EventEmitter {
         const byuser = { username: username };
         const byid = { $or: [{ "federationids.id": username, "federationids.issuer": issuer }, { "federationids": username }] };
         let query: any = { $or: [byuser, byid, byemail] };
-        if (NoderedUtil.IsNullEmpty(issuer)) {
+        if (Util.IsNullEmpty(issuer)) {
             query = { $or: [byuser, byemail] };
         }
         query._type = "user";
@@ -1496,7 +1491,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 } catch (error) {
                     Logger.instanse.error(error, span, { collection: collectionname });
                 }
-                if (NoderedUtil.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
+                if (Util.IsNullUndefinded(newhint)) myhint[(hint as string)] = 1;
             } else {
                 myhint = hint;
             }
@@ -1513,7 +1508,7 @@ export class DatabaseConnection extends events.EventEmitter {
         });
         const user: User = await Auth.Token2User(jwt, span);
         if (user == null) throw new Error("Access denied");
-        if (user._id == "65cb30c40ff51e174095573c" && collectionname == "audit") {
+        if (user._id == Wellknown.guest._id && collectionname == "audit") {
             return [];
         }
         if (Config.otel_trace_include_query) span?.setAttribute("aggregates", JSON.stringify(aggregates));
@@ -1525,16 +1520,16 @@ export class DatabaseConnection extends events.EventEmitter {
 
         if (DatabaseConnection.usemetadata(collectionname)) {
             let impersonationquery;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span);
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 base = { $and: [this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 base = this.getbasequery(user, [Rights.read], collectionname);
             }
         } else {
             let impersonationquery: any;
-            if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
-            if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+            if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.read], collectionname, span)
+            if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                 base = { $and: [this.getbasequery(user, [Rights.read], collectionname), impersonationquery] };
             } else {
                 base = this.getbasequery(user, [Rights.read], collectionname);
@@ -1610,7 +1605,7 @@ export class DatabaseConnection extends events.EventEmitter {
             });
         }
 
-        if (!NoderedUtil.IsNullEmpty(json)) {
+        if (!Util.IsNullEmpty(json)) {
             aggregates = JSON.parse(json, (key, value) => {
                 if (typeof value === "string" && value.match(isoDatePattern)) {
                     return new Date(value); // isostring, so cast to js date
@@ -1630,7 +1625,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Array.isArray(aggregates)) {
             aggregates.unshift({ $match: base });
         } else {
-            if (NoderedUtil.IsNullUndefinded(aggregates)) {
+            if (Util.IsNullUndefinded(aggregates)) {
                 aggregates = [{ $match: base }];
             } else {
                 aggregates = [{ $match: base }, aggregates];
@@ -1653,17 +1648,17 @@ export class DatabaseConnection extends events.EventEmitter {
         try {
             if (item === null || item === undefined) { throw new Error("Cannot create null item"); }
             if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
-            if (NoderedUtil.IsNullEmpty(jwt)) throw new Error("jwt is null");
+            if (Util.IsNullEmpty(jwt)) throw new Error("jwt is null");
             await this.connect(span);
             span?.addEvent("verityToken");
             const user: User = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
+            if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.addEvent("traversejsonencode");
             DatabaseConnection.traversejsonencode(item);
             let name = item.name;
-            if (NoderedUtil.IsNullEmpty(name)) name = item._name;
-            if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
+            if (Util.IsNullEmpty(name)) name = item._name;
+            if (Util.IsNullEmpty(name)) name = "Unknown";
             if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
                 item._version = 0;
                 item._createdby = user.name;
@@ -1680,7 +1675,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 span?.addEvent("ensureResource");
                 item = this.ensureResource(item, collectionname);
-                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                if (user._id != Wellknown.root._id && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
                     throw new Error("Create " + item._type + " access denied");
                 }
                 if (!DatabaseConnection.hasAuthorization(user, item, Rights.full_control)) {
@@ -1688,7 +1683,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     item = this.ensureResource(item, collectionname);
                 }
             } else if (DatabaseConnection.istimeseries(collectionname) && !DatabaseConnection.usemetadata(collectionname)) {
-                if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                if (Util.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                     item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                 }
                 if (collectionname == "audit") {
@@ -1698,7 +1693,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 span?.addEvent("ensureResource");
                 // @ts-ignore
                 item = this.ensureResource(item, collectionname);
-                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                if (user._id != Wellknown.root._id && !await this.CheckEntityRestriction(user, collectionname, item, span)) {
                     // @ts-ignore
                     throw new Error("Create " + item._type + " access denied");
                 }
@@ -1707,11 +1702,11 @@ export class DatabaseConnection extends events.EventEmitter {
                     item = this.ensureResource(item, collectionname);
                 }
             } else {
-                if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                if (Util.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                     item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                 }
                 let metadata = DatabaseConnection.metadataname(collectionname);
-                if (NoderedUtil.IsNullUndefinded(item[metadata])) item[metadata] = {};
+                if (Util.IsNullUndefinded(item[metadata])) item[metadata] = {};
                 span?.addEvent("ensureResource");
                 item[metadata] = this.ensureResource(item[metadata], collectionname);
                 if (item.hasOwnProperty("name")) {
@@ -1738,7 +1733,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     delete item.username;
                 }
                 if (item._id == "") delete item._id;
-                if (user._id != WellknownIds.root && !await this.CheckEntityRestriction(user, collectionname, item[metadata], span)) {
+                if (user._id != Wellknown.root._id && !await this.CheckEntityRestriction(user, collectionname, item[metadata], span)) {
                     // @ts-ignore
                     throw new Error("Create " + item[metadata]._type + " access denied");
                 }
@@ -1769,28 +1764,28 @@ export class DatabaseConnection extends events.EventEmitter {
             // @ts-ignore
             if (collectionname == "workitems" && item._type == "workitem") await Logger.DBHelper.WorkitemQueueUpdate(item.wiqid, false, span);
             // @ts-ignore
-            if (collectionname == "workitems" && NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
+            if (collectionname == "workitems" && Util.IsNullEmpty(item.state)) item.state = "new";
             if (collectionname == "workitems" && item._type == "workitem") {
                 wi.state = "new";
-                if (NoderedUtil.IsNullEmpty(wi.wiq) && NoderedUtil.IsNullEmpty(wi.wiqid)) {
+                if (Util.IsNullEmpty(wi.wiq) && Util.IsNullEmpty(wi.wiqid)) {
                     throw new Error("Workitemqueue (wiq or wiqid) is required");
                 }
-                if (NoderedUtil.IsNullEmpty(wi.wiq)) {
+                if (Util.IsNullEmpty(wi.wiq)) {
                     var wiq = await this.GetOne({ collectionname: "mq", query: { _id: wi.wiqid, _type: "workitemqueue" }, jwt }, span);
-                    if (NoderedUtil.IsNullEmpty(wiq)) {
+                    if (Util.IsNullEmpty(wiq)) {
                         throw new Error("Workitemqueue " + wi.wiqid + " not found");
                     }
                     wi.wiq = wiq.name;
                     wi._acl = wiq._acl;
                 } else {
                     var wiq = await this.GetOne({ collectionname: "mq", query: { name: wi.wiq, _type: "workitemqueue" }, jwt }, span);
-                    if (NoderedUtil.IsNullEmpty(wiq)) {
+                    if (Util.IsNullEmpty(wiq)) {
                         throw new Error("Workitemqueue " + wi.wiq + " not found");
                     }
                     wi.wiqid = wiq._id;
                     wi._acl = wiq._acl;
                 }
-                if (NoderedUtil.IsNullEmpty(wi.nextrun)) {
+                if (Util.IsNullEmpty(wi.nextrun)) {
                     wi.nextrun = new Date(new Date().toISOString());
                 }
             }
@@ -1799,17 +1794,17 @@ export class DatabaseConnection extends events.EventEmitter {
                 var runas = item.runas;
                 // @ts-ignore
                 var runasname = item.runasname;
-                if (!NoderedUtil.IsNullEmpty(runas) && runas != user._id) {
-                    if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                if (!Util.IsNullEmpty(runas) && runas != user._id) {
+                    if (!user.HasRoleName(Wellknown.customer_admins.name) && !user.HasRoleName(Wellknown.admins.name)) {
                         throw new Error("Access denied");
                     }
                 }
-                if (!NoderedUtil.IsNullEmpty(runas)) {
+                if (!Util.IsNullEmpty(runas)) {
                     let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
                     runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
 
                     if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
-                        if (NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                        if (Util.IsNullEmpty(runasuser.customerid)) {
                             Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                         } else {
                             customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
@@ -1832,49 +1827,49 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (item._type == "agent") {
                     // @ts-ignore
-                    if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
-                        if (!user.HasRoleName("admins")) {
+                    if (item.autostart == true && Util.IsNullEmpty(item.stripeprice)) {
+                        if (!user.HasRoleName(Wellknown.admins.name)) {
                             throw new Error("Access denied");
                         }
                     }
-                    if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
-                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                    if (Util.IsNullEmpty((item as any).customerid)) {
+                        if (!Util.IsNullEmpty(user.selectedcustomerid)) {
                             customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
                             if (customer != null) {
                                 (item as any).customerid = user.selectedcustomerid;
                             }
                         }
-                        if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
+                        if (Util.IsNullEmpty((item as any).customerid)) {
                             (item as any).customerid = user.customerid;
                         }
                     }
                     var agent: iAgent = (item as any);
-                    if (NoderedUtil.IsNullEmpty(agent.slug)) {
+                    if (Util.IsNullEmpty(agent.slug)) {
                         throw new Error("Slug is required for agents");
                     }
                     agent.slug = agent.slug.toLowerCase();
-                    if (NoderedUtil.IsNullEmpty(agent.runas)) {
+                    if (Util.IsNullEmpty(agent.runas)) {
                         agent.runas = user._id
                     }
                 }
             }
             if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
                 let user2: User = item as any;
-                if (item._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
+                if (item._type === "user" && !Util.IsNullEmpty(user2.username)) {
                     user2.username = user2.username.toLowerCase();
                 }
-                if (item._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
+                if (item._type === "user" && Util.IsNullEmpty(user2.username)) {
                     throw new Error("Username is mandatory for users")
                 }
 
-                if (NoderedUtil.IsNullEmpty(user2.customerid)) {
-                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                if (Util.IsNullEmpty(user2.customerid)) {
+                    if (!Util.IsNullEmpty(user.selectedcustomerid)) {
                         customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
                         if (customer != null) {
                             user2.customerid = user.selectedcustomerid;
                         }
                     }
-                    if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                    if (Util.IsNullEmpty(user2.customerid) && !Util.IsNullEmpty(user.customerid)) {
                         user2.customerid = user.customerid;
                     }
                 }
@@ -1882,10 +1877,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     delete user2.customerid;
                 }
 
-                if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                if (!Util.IsNullEmpty(user2.customerid)) {
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span)
                     if (user2._type == "user") {
-                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                        if (!user.HasRoleName(Wellknown.customer_admins.name) && !user.HasRoleName(Wellknown.admins.name)) {
                             if (customer != null) {
                                 var isadmin = user.roles.filter(x => x._id == customer.admins);
                                 if (isadmin.length == 0) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
@@ -1896,16 +1891,16 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
 
                     if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
-                } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
-                    if (NoderedUtil.IsNullEmpty(user2.selectedcustomerid)) {
-                        if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                        if (NoderedUtil.IsNullEmpty(user2.customerid) && !NoderedUtil.IsNullEmpty(user.customerid)) user2.customerid = user.customerid;
+                } else if (user.HasRoleName(Wellknown.customer_admins.name) && !Util.IsNullEmpty(user.customerid)) {
+                    if (Util.IsNullEmpty(user2.selectedcustomerid)) {
+                        if (!Util.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                        if (Util.IsNullEmpty(user2.customerid) && !Util.IsNullEmpty(user.customerid)) user2.customerid = user.customerid;
                     }
-                    if (NoderedUtil.IsNullEmpty(user2.customerid)) throw new Error("Access denied, no customerid on you, and no customer selected");
+                    if (Util.IsNullEmpty(user2.customerid)) throw new Error("Access denied, no customerid on you, and no customer selected");
                     customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span);
-                } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
-                    if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
-                    if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                } else if (Config.multi_tenant && !user.HasRoleName(Wellknown.admins.name)) {
+                    if (!Util.IsNullEmpty(user.selectedcustomerid)) user2.customerid = user.selectedcustomerid;
+                    if (!Util.IsNullEmpty(user2.customerid)) {
                         customer = await this.getbyid<Customer>(user2.customerid, "users", jwt, true, span);
                     }
                     // User needs access to create roles for workflow node and more ... What to do ?
@@ -1974,7 +1969,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 let metadata = DatabaseConnection.metadataname(collectionname);
                 item[metadata] = await this.CleanACL(item[metadata], user, collectionname, span);
             }
-            if (collectionname === "users" && item._type === "user" && !NoderedUtil.IsNullEmpty(item._id)) {
+            if (collectionname === "users" && item._type === "user" && !Util.IsNullEmpty(item._id)) {
                 Base.addRight(item, item._id, item.name, [Rights.full_control]);
                 Base.removeRight(item, item._id, [Rights.delete]);
                 span?.addEvent("ensureResource");
@@ -1986,11 +1981,11 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (collectionname === "users" && item._type === "user") {
                 const u: TokenUser = (item as any);
-                if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
-                if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
-                if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
-                if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
-                if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
+                if (Util.IsNullEmpty(u.validated)) u.validated = false;
+                if (Util.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                if (Util.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
+                if (Util.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
+                if (Util.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindByUsername");
                 await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
@@ -1998,7 +1993,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (collectionname === "users" && item._type === "role") {
                 const r: Role = (item as any);
-                if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
+                if (Util.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                 span?.addEvent("FindRoleByName");
                 await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
@@ -2008,7 +2003,7 @@ export class DatabaseConnection extends events.EventEmitter {
             span?.setAttribute("username", user.username);
             let options: InsertOneOptions = { writeConcern: { w, j } };
             (options as any).WriteConcern = { w, j };
-            if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
+            if (Util.IsNullEmpty(this.replicat)) options = null;
 
             span?.addEvent("do insert");
             const ot_end = Logger.otel.startTimer();
@@ -2026,20 +2021,20 @@ export class DatabaseConnection extends events.EventEmitter {
                 let user2: User = User.assign(item as any);
                 if (Config.validate_emails && user2.emailvalidated || !Config.validate_emails) {
                     let domain: string = user2.username;
-                    if (!NoderedUtil.IsNullEmpty(user2.email)) domain = user2.email;
+                    if (!Util.IsNullEmpty(user2.email)) domain = user2.email;
                     if (domain.indexOf("@") > -1) {
                         var userupdate: any = { "$set": {}, "$push": {} };
                         domain = domain.substring(domain.indexOf("@") + 1).toLowerCase();
                         var customers = await this.query<Customer>({ query: { _type: "customer", domains: { $in: [domain] } }, collectionname: "users", jwt: jwt }, span);
                         var doupdate: boolean = false;
                         for (var i = 0; i < customers.length; i++) {
-                            if (NoderedUtil.IsNullEmpty(user2.customerid)) {
+                            if (Util.IsNullEmpty(user2.customerid)) {
                                 user2.customerid = customers[i]._id;
                                 userupdate["$set"]["customerid"] = user2.customerid;
                                 doupdate = true;
                             }
                             // @ts-ignore
-                            if (NoderedUtil.IsNullEmpty(user2.company)) {
+                            if (Util.IsNullEmpty(user2.company)) {
                                 // @ts-ignore
                                 user2.company = customers[i].name;
                                 userupdate["$set"]["company"] = customers[i].name;
@@ -2076,14 +2071,14 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
 
-                if (!NoderedUtil.IsNullUndefinded(customer) && !NoderedUtil.IsNullEmpty(customer.users)) {
+                if (!Util.IsNullUndefinded(customer) && !Util.IsNullEmpty(customer.users)) {
                     await this.db.collection("users").updateOne(
                         { _id: customer.users },
                         { "$push": { members: new Rolemember(item.name, item._id) } }
                     );
                     await Logger.DBHelper.UserRoleUpdateId(customer.users, false, span);
                 }
-                await Logger.DBHelper.UserRoleUpdateId(WellknownIds.users, false, span);
+                await Logger.DBHelper.UserRoleUpdateId(Wellknown.users._id, false, span);
             }
             if (collectionname === "users" && item._type === "role") {
                 Base.addRight(item, item._id, item.name, [Rights.read]);
@@ -2094,7 +2089,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
             if (collectionname === "config" && item._type === "oauthclient") {
-                if (user.HasRoleName("admins")) {
+                if (user.HasRoleName(Wellknown.admins.name)) {
                     setTimeout(() => OAuthProvider.LoadClients(span), 1000);
                 }
             }
@@ -2118,14 +2113,14 @@ export class DatabaseConnection extends events.EventEmitter {
         let result: T[] = [];
         try {
             if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
-            if (NoderedUtil.IsNullUndefinded(items) || items.length == 0) { throw new Error("Cannot create null item"); }
-            if (NoderedUtil.IsNullEmpty(jwt)) {
+            if (Util.IsNullUndefinded(items) || items.length == 0) { throw new Error("Cannot create null item"); }
+            if (Util.IsNullEmpty(jwt)) {
                 throw new Error("jwt is null");
             }
             await this.connect(span);
             const user = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
+            if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             let bulkInsert = this.db.collection(collectionname).initializeUnorderedBulkOp();
@@ -2145,8 +2140,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     continue;
                 }
                 let name = item.name;
-                if (NoderedUtil.IsNullEmpty(name)) name = item._name;
-                if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
+                if (Util.IsNullEmpty(name)) name = item._name;
+                if (Util.IsNullEmpty(name)) name = "Unknown";
                 if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
                     item._version = 0;
                     item._createdby = user.name;
@@ -2160,7 +2155,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     item = this.ensureResource(item, collectionname);
                 } else if (DatabaseConnection.istimeseries(collectionname)) {
-                    if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                    if (Util.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                         item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                     }
                     if (DatabaseConnection.usemetadata(collectionname)) {
@@ -2170,11 +2165,11 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                 } else { // fs.files ?
-                    if (NoderedUtil.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
+                    if (Util.IsNullEmpty(item[DatabaseConnection.timefield(collectionname)])) {
                         item[DatabaseConnection.timefield(collectionname)] = new Date(new Date().toISOString());
                     }
                     let metadata = DatabaseConnection.metadataname(collectionname);
-                    if (NoderedUtil.IsNullUndefinded(item[metadata])) item[metadata] = {};
+                    if (Util.IsNullUndefinded(item[metadata])) item[metadata] = {};
                     span?.addEvent("ensureResource");
                     item[metadata] = this.ensureResource(item[metadata], collectionname);
                     item[metadata]._version = 0;
@@ -2192,8 +2187,8 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (collectionname === "agents") {
                     // @ts-ignore
-                    if (!NoderedUtil.IsNullEmpty(item.runas) && item.runas != user._id) {
-                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                    if (!Util.IsNullEmpty(item.runas) && item.runas != user._id) {
+                        if (!user.HasRoleName(Wellknown.customer_admins.name) && !user.HasRoleName(Wellknown.admins.name)) {
                             throw new Error("Access denied");
                         }
                     }
@@ -2210,11 +2205,11 @@ export class DatabaseConnection extends events.EventEmitter {
                         var runas = item.runas;
                         // @ts-ignore
                         var runasname = item.runasname;
-                        if (!NoderedUtil.IsNullEmpty(runas)) {
+                        if (!Util.IsNullEmpty(runas)) {
                             let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
                             runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
                             if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
-                                if (NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                                if (Util.IsNullEmpty(runasuser.customerid)) {
                                     Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                                 } else {
                                     customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
@@ -2230,31 +2225,31 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
 
                         // @ts-ignore
-                        if (item.autostart == true && NoderedUtil.IsNullEmpty(item.stripeprice)) {
-                            if (!user.HasRoleName("admins")) {
+                        if (item.autostart == true && Util.IsNullEmpty(item.stripeprice)) {
+                            if (!user.HasRoleName(Wellknown.admins.name)) {
                                 throw new Error("Access denied");
                             }
                         }
                         // @ts-ignore
-                        if (NoderedUtil.IsNullEmpty(item.slug)) {
+                        if (Util.IsNullEmpty(item.slug)) {
                             throw new Error("Slug is required for agents");
                         }
                         // @ts-ignore
                         item.slug = item.slug.toLowerCase();
-                        if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
-                            if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                        if (Util.IsNullEmpty((item as any).customerid)) {
+                            if (!Util.IsNullEmpty(user.selectedcustomerid)) {
                                 var customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
                                 if (customer != null) {
                                     (item as any).customerid = user.selectedcustomerid;
                                 }
                             }
-                            if (NoderedUtil.IsNullEmpty((item as any).customerid)) {
+                            if (Util.IsNullEmpty((item as any).customerid)) {
                                 (item as any).customerid = user.customerid;
                             }
                         }
 
                         var agent: iAgent = (item as any);
-                        if (NoderedUtil.IsNullEmpty(agent.runas)) {
+                        if (Util.IsNullEmpty(agent.runas)) {
                             agent.runas = user._id
                         }
                     }
@@ -2266,13 +2261,13 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (collectionname === "users" && item._type === "role") {
                     const r: Role = (item as any);
-                    if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
+                    if (Util.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindRoleByName");
                     const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                     if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                 }
 
-                if (collectionname == "mq" && !NoderedUtil.IsNullEmpty(item.name)) {
+                if (collectionname == "mq" && !Util.IsNullEmpty(item.name)) {
                     if (item._type == "exchange") item.name = item.name.toLowerCase();
                     if (item._type == "queue") item.name = item.name.toLowerCase();
                     if (item._type == "workitemqueue") { hadWorkitemQueue = true; wiqids.push(item._id); }
@@ -2282,21 +2277,21 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (collectionname == "workitems" && item._type == "workitem") {
                     // @ts-ignore
-                    if (NoderedUtil.IsNullEmpty(item.state)) item.state = "new";
+                    if (Util.IsNullEmpty(item.state)) item.state = "new";
                     hadWorkitemQueue = true;
                     // @ts-ignore
                     if (item.hasOwnProperty("wiqid")) wiqids.push(item.wiqid);
                     // @ts-ignore
-                    if (NoderedUtil.IsNullEmpty(item.nextrun)) item.nextrun = new Date(new Date().toISOString());
+                    if (Util.IsNullEmpty(item.nextrun)) item.nextrun = new Date(new Date().toISOString());
                 }
                 // @ts-ignore
                 if (collectionname == "workitems" && item._type == "workitem") item.state = "new";
 
-                if (collectionname === "users" && !NoderedUtil.IsNullEmpty(item._type) && !NoderedUtil.IsNullEmpty(item.name)) {
-                    if (item._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
+                if (collectionname === "users" && !Util.IsNullEmpty(item._type) && !Util.IsNullEmpty(item.name)) {
+                    if (item._type === "user" && !Util.IsNullEmpty(user2.username)) {
                         user2.username = user2.username.toLowerCase();
                     }
-                    if (item._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
+                    if (item._type === "user" && Util.IsNullEmpty(user2.username)) {
                         throw new Error("Username is mandatory for users")
                     }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
@@ -2344,18 +2339,18 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (collectionname === "users" && item._type === "user") {
                     const u: TokenUser = (item as any);
-                    if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
-                    if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
-                    if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
-                    if (NoderedUtil.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
-                    if (NoderedUtil.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
+                    if (Util.IsNullEmpty(u.validated)) u.validated = false;
+                    if (Util.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                    if (Util.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
+                    if (Util.IsNullEmpty(u.username)) { throw new Error("Username is mandatory"); }
+                    if (Util.IsNullEmpty(u.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindByUsername");
                     const exists = await Logger.DBHelper.FindByUsername(u.username, null, span);
                     if (exists != null) { throw new Error("Access denied, user '" + u.username + "' already exists"); }
                 }
                 if (collectionname === "users" && item._type === "role") {
                     const r: Role = (item as any);
-                    if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
+                    if (Util.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                     span?.addEvent("FindRoleByName");
                     const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                     if (exists2 != null) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
@@ -2384,7 +2379,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     Base.addRight(item, item._id, item.name, [Rights.read, Rights.update, Rights.invoke]);
                     span?.addEvent("CleanACL");
                     item = await this.CleanACL(item, user, collectionname, span);
-                    await Logger.DBHelper.UserRoleUpdateId(WellknownIds.users, false, span);
+                    await Logger.DBHelper.UserRoleUpdateId(Wellknown.users._id, false, span);
 
                     const user2: TokenUser = item as any;
                     await Logger.DBHelper.EnsureNoderedRoles(user2, Crypt.rootToken(), false, span);
@@ -2397,7 +2392,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     Logger.otel.endTimer(ot_end_inner2, DatabaseConnection.mongodb_replace, DatabaseConnection.otel_label(collectionname, user, "replace"));
                 }
                 if (collectionname === "config" && item._type === "oauthclient") {
-                    if (user.HasRoleName("admins")) {
+                    if (user.HasRoleName(Wellknown.admins.name)) {
                         setTimeout(() => OAuthProvider.LoadClients(span), 1000);
                     }
                 }
@@ -2437,7 +2432,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (q.w < 1) q.w = 1; // set minimu, to avoid "More than one item was updated !!!"
         if (q.collectionname == null || q.collectionname == "") throw new Error("collectionname is mandatory");
         q = await this._UpdateOne(q, parent);
-        if (!NoderedUtil.IsNullUndefinded(q.opresult)) {
+        if (!Util.IsNullUndefinded(q.opresult)) {
             if (q.opresult.modifiedCount === 0) {
                 throw new Error("item not found!");
             } else if (q.opresult.modifiedCount !== 1) {
@@ -2463,7 +2458,7 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect(span);
             const user: User = await Auth.Token2User(q.jwt, span);
             if (user == null) throw new Error("Access denied");
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
+            if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             if (q.query === null || q.query === undefined) {
                 if (!DatabaseConnection.usemetadata(q.collectionname)) {
                     if (!DatabaseConnection.hasAuthorization(user, q.item, Rights.update)) {
@@ -2486,9 +2481,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     throw new Error("Cannot update item without _id");
                 }
                 let name = q.item.name;
-                if (NoderedUtil.IsNullEmpty(name)) name = (q.item as any)._name;
-                if (NoderedUtil.IsNullEmpty(name)) name = "Unknown";
-                if (NoderedUtil.IsNullUndefinded((q as any).original)) {
+                if (Util.IsNullEmpty(name)) name = (q.item as any)._name;
+                if (Util.IsNullEmpty(name)) name = "Unknown";
+                if (Util.IsNullUndefinded((q as any).original)) {
                     original = await this.getbyid<T>(q.item._id, q.collectionname, q.jwt, false, span);
                     if (original == null) {
                         throw new Error("item " + q.item._id + " not found in " + q.collectionname + " or Access Denied");
@@ -2506,7 +2501,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     throw new Error("Access denied, no authorization to UpdateOne " + q.item._type + " " + name + " to database");
                 }
                 if (q.collectionname === "config" && q.item._type === "config") {
-                    if (!user.HasRoleId(WellknownIds.admins)) throw new Error("Access denied, no authorization to update config");
+                    if (!user.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied, no authorization to update config");
                     dbConfig.cleanAndApply(q.item as any, span);
                 }
 
@@ -2519,15 +2514,15 @@ export class DatabaseConnection extends events.EventEmitter {
                     var runasname = q.item.runasname;
                     // @ts-ignore
                     if (original.runas != runas && runas != user._id) {
-                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                        if (!user.HasRoleName(Wellknown.customer_admins.name) && !user.HasRoleName(Wellknown.admins.name)) {
                             throw new Error("Access denied");
                         }
                     }
-                    if (!NoderedUtil.IsNullEmpty(runas)) {
+                    if (!Util.IsNullEmpty(runas)) {
                         let runasuser = await this.getbyid<User>(runas, "users", q.jwt, true, span);
                         runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
                         if (!DatabaseConnection.hasAuthorization(runasuser as any, q.item, Rights.update)) {
-                            if (NoderedUtil.IsNullEmpty(runasuser.customerid)) {
+                            if (Util.IsNullEmpty(runasuser.customerid)) {
                                 Base.addRight(q.item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
                             } else {
                                 customer = await this.getbyid<Customer>(runasuser.customerid, "users", q.jwt, true, span);
@@ -2564,33 +2559,33 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (q.item._type == "agent") {
                         // @ts-ignore
-                        if (original.autostart != q.item.autostart && q.item.autostart == true && NoderedUtil.IsNullEmpty(q.item.stripeprice)) {
-                            if (!user.HasRoleName("admins")) {
+                        if (original.autostart != q.item.autostart && q.item.autostart == true && Util.IsNullEmpty(q.item.stripeprice)) {
+                            if (!user.HasRoleName(Wellknown.admins.name)) {
                                 throw new Error("Access denied");
                             }
                         }
-                        if (NoderedUtil.IsNullEmpty((q.item as any).customerid)) {
-                            if (!NoderedUtil.IsNullEmpty(user.selectedcustomerid)) {
+                        if (Util.IsNullEmpty((q.item as any).customerid)) {
+                            if (!Util.IsNullEmpty(user.selectedcustomerid)) {
                                 var _customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", q.jwt, true, span)
                                 if (_customer != null) {
                                     (q.item as any).customerid = user.selectedcustomerid;
                                 }
                             }
-                            if (NoderedUtil.IsNullEmpty((q.item as any).customerid)) {
+                            if (Util.IsNullEmpty((q.item as any).customerid)) {
                                 (q.item as any).customerid = user.customerid;
                             }
                         }
 
                         var agent: iAgent = (q.item as any);
-                        if (NoderedUtil.IsNullEmpty(agent.runas)) {
+                        if (Util.IsNullEmpty(agent.runas)) {
                             agent.runas = user._id
                         }
-                        if (NoderedUtil.IsNullEmpty(agent.slug)) {
+                        if (Util.IsNullEmpty(agent.slug)) {
                             throw new Error("Agent slug cannot be empty");
                         }
                         agent.slug = agent.slug.toLowerCase();
                         // @ts-ignore
-                        if (!user.HasRoleName("admins") && agent.slug != original.slug) {
+                        if (!user.HasRoleName(Wellknown.admins.name) && agent.slug != original.slug) {
                             throw new Error("Access denied, changing slug");
                         }
                     }
@@ -2601,10 +2596,10 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (DatabaseConnection.WellknownIdsArray.indexOf(q.item._id) > -1) {
                         delete user2.customerid;
                     }
-                    if (user2._type === "user" && !NoderedUtil.IsNullEmpty(user2.username)) {
+                    if (user2._type === "user" && !Util.IsNullEmpty(user2.username)) {
                         user2.username = user2.username.toLowerCase();
                     }
-                    if (user2._type === "user" && NoderedUtil.IsNullEmpty(user2.username)) {
+                    if (user2._type === "user" && Util.IsNullEmpty(user2.username)) {
                         throw new Error("Username is mandatory for users")
                     }
                     if (user2._type === "user" && user._id == user2._id && user2.disabled) {
@@ -2612,24 +2607,24 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (q.collectionname === "users" && q.item._type === "role") {
                         const r: Role = (q.item as any);
-                        if (NoderedUtil.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
+                        if (Util.IsNullEmpty(r.name)) { throw new Error("Name is mandatory"); }
                         span?.addEvent("FindByUsername");
                         const exists2 = await Logger.DBHelper.FindRoleByName(r.name, null, span);
                         if (exists2 != null && exists2._id != q.item._id) { throw new Error("Access denied, role '" + r.name + "' already exists"); }
                     }
 
-                    if (!NoderedUtil.IsNullEmpty(user2.customerid)) {
+                    if (!Util.IsNullEmpty(user2.customerid)) {
                         // User can update, just not created ?
-                        // if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
+                        // if (!user.HasRoleName(Wellknown.customer_admins.name) && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (not admin) to customer with id " + user2.customerid);
                         customer = await this.getbyid<Customer>(user2.customerid, "users", q.jwt, true, span)
                         if (customer == null) throw new Error("Access denied to customer with id " + user2.customerid + " when updating " + user2._id);
-                    } else if (user.HasRoleName("customer admins") && !NoderedUtil.IsNullEmpty(user.customerid)) {
+                    } else if (user.HasRoleName(Wellknown.customer_admins.name) && !Util.IsNullEmpty(user.customerid)) {
                         customer = null;
-                    } else if (Config.multi_tenant && !user.HasRoleName("admins")) {
+                    } else if (Config.multi_tenant && !user.HasRoleName(Wellknown.admins.name)) {
                     }
-                    if (customer != null && !NoderedUtil.IsNullEmpty(customer.admins)) {
+                    if (customer != null && !Util.IsNullEmpty(customer.admins)) {
                         const custadmins = await this.getbyid<Role>(customer.admins, "users", q.jwt, true, span);
-                        if (!NoderedUtil.IsNullEmpty(custadmins)) {
+                        if (!Util.IsNullEmpty(custadmins)) {
                             Base.addRight(q.item, custadmins._id, custadmins.name, [Rights.full_control]);
                             if (q.item._id == customer.admins || q.item._id == customer.users) {
                                 Base.removeRight(q.item, custadmins._id, [Rights.delete]);
@@ -2654,12 +2649,12 @@ export class DatabaseConnection extends events.EventEmitter {
                     for (let i: number = 0; i < keys.length; i++) {
                         let key: string = keys[i];
                         if (key == "username" && q.collectionname == "users" && q.item._type == "user") {
-                            if (!user.HasRoleName("admins")) {
+                            if (!user.HasRoleName(Wellknown.admins.name)) {
                                 q.item[key] = original[key];
                             }
                         }
                         if ((key == "dbusage" || key == "dblocked") && q.collectionname == "users") {
-                            if (!user.HasRoleName("admins")) {
+                            if (!user.HasRoleName(Wellknown.admins.name)) {
                                 q.item[key] = original[key];
                             }
                         }
@@ -2688,7 +2683,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                     q.item = this.ensureResource(q.item, q.collectionname);
-                    if (user._id != WellknownIds.root && original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
+                    if (user._id != Wellknown.root._id && original._type != q.item._type && !await this.CheckEntityRestriction(user, q.collectionname, q.item, span)) {
                         throw new Error("Create " + q.item._type + " access denied");
                     }
                     // force cleaning members, to clean up mess with auto added members
@@ -2697,15 +2692,15 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
 
                     const hasUser: Ace = q.item._acl.find(e => e._id === user._id);
-                    if (NoderedUtil.IsNullUndefinded(hasUser) && q.item._acl.length === 0) {
+                    if (Util.IsNullUndefinded(hasUser) && q.item._acl.length === 0) {
                         Base.addRight(q.item, user._id, user.name, [Rights.full_control]);
                         q.item = this.ensureResource(q.item, q.collectionname);
                     }
                     if (q.collectionname === "users" && q.item._type === "user") {
                         let u: User = q.item as User;
-                        if (NoderedUtil.IsNullEmpty(u.validated)) u.validated = false;
-                        if (NoderedUtil.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
-                        if (NoderedUtil.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
+                        if (Util.IsNullEmpty(u.validated)) u.validated = false;
+                        if (Util.IsNullEmpty(u.formvalidated)) u.formvalidated = false;
+                        if (Util.IsNullEmpty(u.emailvalidated)) u.emailvalidated = false;
                     }
 
                     DatabaseConnection.traversejsonencode(q.item);
@@ -2716,7 +2711,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     if (!DatabaseConnection.hasAuthorization(user, q.item[metadata], Rights.update)) {
                         throw new Error("Access denied, no authorization to UpdateOne file " + (q.item as any).filename + " to database");
                     }
-                    if (!user.HasRoleId(WellknownIds.admins)) {
+                    if (!user.HasRoleId(Wellknown.admins._id)) {
                         if (!DatabaseConnection.hasAuthorization(user, original[metadata], Rights.update)) {
                             throw new Error("Access denied, no authorization to UpdateOne file " + (original as any).filename + " to database");
                         }
@@ -2809,7 +2804,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 itemReplace = false;
                 if (q.item["$set"] !== null && q.item["$set"] !== undefined) {
                     if (q.collectionname === "agents" && q.item["$set"].hasOwnProperty("runas")) {
-                        if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                        if (!user.HasRoleName(Wellknown.customer_admins.name) && !user.HasRoleName(Wellknown.admins.name)) {
                             throw new Error("Access denied");
                         }
                     }
@@ -2828,7 +2823,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 delete (q.item as any).newpassword;
             }
             if (q.collectionname === "config" && q.item._type === "oauthclient") {
-                if (user.HasRoleName("admins")) {
+                if (user.HasRoleName(Wellknown.admins.name)) {
                     setTimeout(() => OAuthProvider.LoadClients(span), 1000);
                 }
             }
@@ -2860,11 +2855,11 @@ export class DatabaseConnection extends events.EventEmitter {
 
             let options: UpdateOptions = { writeConcern: { w: q.w, j: q.j }, upsert: false };
             (options as any).WriteConcern = { w: q.w, j: q.j };
-            if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
+            if (Util.IsNullEmpty(this.replicat)) options = null;
 
             q.opresult = null;
             if (itemReplace) {
-                if (q.item._id != WellknownIds.users) {
+                if (q.item._id != Wellknown.users._id) {
                     if (!DatabaseConnection.usemetadata(q.collectionname)) {
                         q.item = await this.CleanACL(q.item, user, q.collectionname, span);
                     } else {
@@ -2876,7 +2871,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     q.item = await this.Cleanmembers(q.item as any, original, false, span);
                 }
                 if (q.collectionname === "mq") {
-                    if (!NoderedUtil.IsNullEmpty(q.item.name)) {
+                    if (!Util.IsNullEmpty(q.item.name)) {
                         if (q.item._type == "exchange") q.item.name = q.item.name.toLowerCase();
                         if (q.item._type == "queue") q.item.name = q.item.name.toLowerCase();
                         if (q.item._type === "exchange") {
@@ -2958,20 +2953,20 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (Config.validate_emails && user2.emailvalidated || !Config.validate_emails) {
                     let domain: string = user2.username;
-                    if (!NoderedUtil.IsNullEmpty(user2.email)) domain = user2.email;
+                    if (!Util.IsNullEmpty(user2.email)) domain = user2.email;
                     if (domain.indexOf("@") > -1) {
                         var userupdate: any = { "$set": {}, "$push": {} };
                         domain = domain.substring(domain.indexOf("@") + 1).toLowerCase();
                         var customers = await this.query<Customer>({ query: { _type: "customer", domains: { $in: [domain] } }, collectionname: "users", jwt: q.jwt }, span);
                         var doupdate: boolean = false;
                         for (var i = 0; i < customers.length; i++) {
-                            if (NoderedUtil.IsNullEmpty(user2.customerid)) {
+                            if (Util.IsNullEmpty(user2.customerid)) {
                                 user2.customerid = customers[i]._id;
                                 userupdate["$set"]["customerid"] = user2.customerid;
                                 doupdate = true;
                             }
                             // @ts-ignore
-                            if (NoderedUtil.IsNullEmpty(user2.company)) {
+                            if (Util.IsNullEmpty(user2.company)) {
                                 // @ts-ignore
                                 user2.company = customers[i].name;
                                 userupdate["$set"]["company"] = customers[i].name;
@@ -3010,7 +3005,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
 
 
-                if (customer != null && !NoderedUtil.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != WellknownIds.root) {
+                if (customer != null && !Util.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != Wellknown.root._id) {
                     // TODO: Check user has permission to this customer
                     let custusers: Role = await this.getbyid<Role>(customer.users, "users", q.jwt, true, span);
                     if (custusers != null) {
@@ -3058,7 +3053,7 @@ export class DatabaseConnection extends events.EventEmitter {
             await this.connect();
             const user: User = await Auth.Token2User(q.jwt, span);
             if (user == null) throw new Error("Access denied");
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
+            if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
                 (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
@@ -3093,8 +3088,8 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             let _query: Object = {};
-            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
-                if (!user.HasRoleId(WellknownIds.admins)) throw new Error("Access denied, no authorization to UpdateMany");
+            if (!Util.IsNullEmpty(Config.stripe_api_secret) && q.collectionname === "users") {
+                if (!user.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied, no authorization to UpdateMany");
             }
             if (q.collectionname === "files") { q.collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(q.collectionname)) {
@@ -3109,9 +3104,11 @@ export class DatabaseConnection extends events.EventEmitter {
             (q.item["$set"])._modifiedby = user.name;
             (q.item["$set"])._modifiedbyid = user._id;
             (q.item["$set"])._modified = new Date(new Date().toISOString());
+            if ((q.item["$inc"]) === undefined) { (q.item["$inc"]) = {} };
+            (q.item["$inc"])._version = 1;
 
             if (q.collectionname === "agents" && q.item["$set"].hasOwnProperty("runas")) {
-                if (!user.HasRoleName("customer admins") && !user.HasRoleName("admins")) {
+                if (!user.HasRoleName(Wellknown.customer_admins.name) && !user.HasRoleName(Wellknown.admins.name)) {
                     throw new Error("Access denied");
                 }
             }
@@ -3133,7 +3130,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if ((q.w as any) !== "majority") q.w = parseInt((q.w as any));
             let options: UpdateOptions = { writeConcern: { w: q.w, j: q.j } };
             (options as any).WriteConcern = { w: q.w, j: q.j };
-            if (NoderedUtil.IsNullEmpty(this.replicat)) options = null;
+            if (Util.IsNullEmpty(this.replicat)) options = null;
             q.opresult = await this.db.collection(q.collectionname).updateMany(_query, q.item, options);
             if (q.opresult) Logger.instanse.debug("updated " + q.opresult.modifiedCount + " items", span, { collection: q.collectionname, user: user.username, count: q.opresult.modifiedCount });
             return q;
@@ -3179,13 +3176,13 @@ export class DatabaseConnection extends events.EventEmitter {
     * @returns Promise<T>
     */
     async _InsertOrUpdateOne<T extends Base>(q: InsertOrUpdateOneMessage, parent: Span): Promise<InsertOrUpdateOneMessage> {
-        if (NoderedUtil.IsNullUndefinded(q)) return;
+        if (Util.IsNullUndefinded(q)) return;
         const span: Span = Logger.otel.startSubSpan("db.InsertOrUpdateOne", parent);
         let user: TokenUser | User = (q as any).user;
         try {
             if (q.collectionname == null || q.collectionname == "") throw new Error("collectionname is mandatory");
             user = (q as any).user;
-            if (NoderedUtil.IsNullUndefinded(user)) {
+            if (Util.IsNullUndefinded(user)) {
                 user = await Auth.Token2User(q.jwt, span);
                 if (user == null) throw new Error("Access denied");
             } else {
@@ -3209,7 +3206,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
 
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
+            if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             let exists: Base[] = [];
             if (query != null) {
                 exists = await this.query({ query, top: 2, collectionname: q.collectionname, jwt: q.jwt }, span);
@@ -3234,14 +3231,14 @@ export class DatabaseConnection extends events.EventEmitter {
                 for (let i = 0; i < keys.length; i++) {
                     let key = keys[i];
                     if (key.startsWith("_")) {
-                        if (NoderedUtil.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
+                        if (Util.IsNullUndefinded(uq.item[key])) uq.item[key] = exists[0][key];
                     }
                 }
                 Logger.instanse.debug("update entity " + uq.item._id + " " + uq.item.name, span, { collection: q.collectionname, user: user.username });
                 const uqres = await this._UpdateOne(uq, span);
                 q.opresult = uqres.opresult;
                 q.result = uqres.result;
-                if (NoderedUtil.IsNullUndefinded(uqres.result) && !NoderedUtil.IsNullUndefinded(uqres.item)) {
+                if (Util.IsNullUndefinded(uqres.result) && !Util.IsNullUndefinded(uqres.item)) {
                     q.result = uqres.item;
                 }
             } else {
@@ -3265,15 +3262,15 @@ export class DatabaseConnection extends events.EventEmitter {
         let result: T[] = [];
         let errors: any[] = [];
         try {
-            if (NoderedUtil.IsNullUndefinded(items) || items.length == 0) { throw new Error("Cannot create null item"); }
-            if (NoderedUtil.IsNullEmpty(jwt)) {
+            if (Util.IsNullUndefinded(items) || items.length == 0) { throw new Error("Cannot create null item"); }
+            if (Util.IsNullEmpty(jwt)) {
                 throw new Error("jwt is null");
             }
             if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             await this.connect(span);
             const user = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
-            if (user.dblocked && !user.HasRoleName("admins")) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
+            if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
             Logger.instanse.verbose("received " + items.length + " items with uniqeness " + uniqeness, span, { collection: collectionname, user: user?.username, count: items.length });
@@ -3329,12 +3326,12 @@ export class DatabaseConnection extends events.EventEmitter {
 
                 if (Promises.length > 0) {
                     const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
-                    errors = errors.concat(tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error)))
+                    errors = errors.concat(tempresults.filter(result => Util.IsString(result) || (result instanceof Error)))
                     update = update.concat(tempresults.map(x => x.result));
                     result = result.concat(tempresults.map(x => x.result));
                 }
             } else {
-                let ids = items.filter(x => !NoderedUtil.IsNullEmpty(x._id)).map(x => x._id);
+                let ids = items.filter(x => !Util.IsNullEmpty(x._id)).map(x => x._id);
                 if (ids.length > 0) {
                     let query: any = { "_id": { "$in": ids } };
                     let exists = await this.query({ query, collectionname, top: ids.length, projection: { "_id": 1 }, jwt }, span);
@@ -3354,7 +3351,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         Promises.push(this._UpdateOne(um, span));
                     }
                     const tempresults = await Promise.all(Promises.map(p => p.catch(e => e)));
-                    errors = errors.concat(tempresults.filter(result => NoderedUtil.IsString(result) || (result instanceof Error)))
+                    errors = errors.concat(tempresults.filter(result => Util.IsString(result) || (result instanceof Error)))
                     result = result.concat(tempresults.map(x => x.result));
                 }
             }
@@ -3410,7 +3407,7 @@ export class DatabaseConnection extends events.EventEmitter {
             // }
             _query = { $and: [{ _id: id }, this.getbasequery(user, [Rights.delete], collectionname)] };
             if (collectionname == "audit") {
-                if (!user.HasRoleId(WellknownIds.admins)) {
+                if (!user.HasRoleId(Wellknown.admins._id)) {
                     throw new Error("Access denied");
                 }
             }
@@ -3559,7 +3556,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (Config.cleanup_on_delete_user || recursive) {
                         let skip_collections = [];
-                        if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
+                        if (!Util.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
 
                         let collections = await Logger.DBHelper.GetCollections(span);
                         collections = collections.filter(x => x.name.indexOf("system.") === -1 && x.type == "collection"
@@ -3604,7 +3601,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @returns Promise<void>
      */
     async DeleteMany(query: string | any, ids: string[], collectionname: string, queryas: string, recursive: boolean, jwt: string, parent: Span): Promise<number> {
-        if (NoderedUtil.IsNullUndefinded(ids) && NoderedUtil.IsNullUndefinded(query)) { throw new Error("id cannot be null"); }
+        if (Util.IsNullUndefinded(ids) && Util.IsNullUndefinded(query)) { throw new Error("id cannot be null"); }
         const span: Span = Logger.otel.startSubSpan("db.DeleteMany", parent);
         try {
             if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
@@ -3616,23 +3613,23 @@ export class DatabaseConnection extends events.EventEmitter {
             if (collectionname === "files") { collectionname = "fs.files"; }
             if (DatabaseConnection.usemetadata(collectionname)) {
                 let impersonationquery;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.delete], collectionname, span);
-                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.delete], collectionname, span);
+                if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                     baseq = impersonationquery;
                 } else {
                     baseq = this.getbasequery(user, [Rights.delete], collectionname);
                 }
             } else {
                 let impersonationquery: any;
-                if (!NoderedUtil.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.delete], collectionname, span)
-                if (!NoderedUtil.IsNullEmpty(queryas) && !NoderedUtil.IsNullUndefinded(impersonationquery)) {
+                if (!Util.IsNullEmpty(queryas)) impersonationquery = await this.getbasequeryuserid(user, queryas, [Rights.delete], collectionname, span)
+                if (!Util.IsNullEmpty(queryas) && !Util.IsNullUndefinded(impersonationquery)) {
                     baseq = impersonationquery;
                 } else {
                     baseq = this.getbasequery(user, [Rights.delete], collectionname);
                 }
             }
             let _query: any = {};
-            if (NoderedUtil.IsNullUndefinded(query) && !NoderedUtil.IsNullUndefinded(ids)) {
+            if (Util.IsNullUndefinded(query) && !Util.IsNullUndefinded(ids)) {
                 let objectids = [];
                 if (collectionname == "files" || collectionname == "fs.files") {
                     for (let i = 0; i < ids.length; i++) {
@@ -3652,7 +3649,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                 }
                 _query = { $and: [{ _id: { "$in": objectids } }, baseq] };
-            } else if (!NoderedUtil.IsNullUndefinded(query)) {
+            } else if (!Util.IsNullUndefinded(query)) {
                 if (query !== null && query !== undefined) {
                     let json: any = query;
                     if (typeof json !== "string" && !(json instanceof String)) {
@@ -3729,7 +3726,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 Logger.instanse.verbose("deleted " + deletecounter + " files in database", span, { collection: collectionname, user: user?.username, ms, count: deletecounter });
                 return deletecounter;
-            } else if (recursive && !NoderedUtil.IsNullUndefinded(ids) && ids.length > 0) {
+            } else if (recursive && !Util.IsNullUndefinded(ids) && ids.length > 0) {
                 for (let i = 0; i < ids.length; i++) {
                     await this.DeleteOne(ids[i], collectionname, recursive, jwt, span);
                 }
@@ -3866,7 +3863,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @returns T Object with encrypted fields
      */
     public encryptentity(item: Base): Base {
-        if (NoderedUtil.IsNullUndefinded(item) || NoderedUtil.IsNullUndefinded(item._encrypt) || NoderedUtil.IsNullUndefinded(item._encrypt)) { return item; }
+        if (Util.IsNullUndefinded(item) || Util.IsNullUndefinded(item._encrypt) || Util.IsNullUndefinded(item._encrypt)) { return item; }
         const me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => { return this._encryptentity(item, newObj, key) }, item) as Base);
     }
@@ -3898,7 +3895,7 @@ export class DatabaseConnection extends events.EventEmitter {
      * @returns T Object with decrypted fields
      */
     public decryptentity<T extends Base>(item: T): T {
-        if (NoderedUtil.IsNullUndefinded(item) || NoderedUtil.IsNullUndefinded(item._encrypt) || NoderedUtil.IsNullUndefinded(item._encrypt)) { return item; }
+        if (Util.IsNullUndefinded(item) || Util.IsNullUndefinded(item._encrypt) || Util.IsNullUndefinded(item._encrypt)) { return item; }
         const me: DatabaseConnection = this;
         return (Object.keys(item).reduce((newObj, key) => { return this._decryptentity(item, newObj, key); }, {}) as T);
     }
@@ -3920,7 +3917,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.api_bypass_perm_check) {
             return bypassquery;
         }
-        if (user._id === WellknownIds.root) {
+        if (user._id === Wellknown.root._id) {
             return bypassquery;
         }
         const isme: any[] = [];
@@ -3928,7 +3925,7 @@ export class DatabaseConnection extends events.EventEmitter {
         for (let i: number = 0; i < bits.length; i++) {
             bits[i]--; // bitwize matching is from offset 0, when used on bindata
         }
-        var hasadmin = user.roles.find(x => x._id == WellknownIds.admins);
+        var hasadmin = user.roles.find(x => x._id == Wellknown.admins._id);
         if (hasadmin != null) return bypassquery;
         if (field.indexOf("metadata") > -1) { // do always ?
             // timeseries does not support $elemMatch on "metadata" fields
@@ -3960,7 +3957,7 @@ export class DatabaseConnection extends events.EventEmitter {
     }
     private async getbasequeryuserid(calluser: TokenUser | User, userid: string, bits: number[], collectionname: string, parent: Span): Promise<Object> {
         let user: User = await this.getbyid(userid, "users", Crypt.rootToken(), true, parent);
-        if (NoderedUtil.IsNullUndefinded(user)) return null;
+        if (Util.IsNullUndefinded(user)) return null;
         if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
         if (user._type == "user" || user._type == "role") {
             user = await Logger.DBHelper.DecorateWithRoles(user as any, parent);
@@ -4025,10 +4022,10 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         if (!item._acl) { item._acl = []; }
         if (item._acl.length === 0) {
-            Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.addRight(item, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
         }
-        if (Config.force_add_admins && item._id != WellknownIds.root) {
-            Base.addRight(item, WellknownIds.admins, "admins", [Rights.full_control], false);
+        if (Config.force_add_admins && item._id != Wellknown.root._id) {
+            Base.addRight(item, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control], false);
         }
         if (DatabaseConnection.collections_with_text_index.indexOf(collectionname) > -1) {
             var _searchnames = [];
@@ -4038,7 +4035,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (Array.isArray(item[field])) {
                     for (var y = 0; y < item[field].length; y++) {
                         try {
-                            if (!NoderedUtil.IsNullEmpty(item[field][y])) {
+                            if (!Util.IsNullEmpty(item[field][y])) {
                                 var name: string = item[field][y].toLowerCase();
                                 name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
                                 _searchnames = _searchnames.concat(name.split(" "));
@@ -4050,7 +4047,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                 } else {
-                    if (!NoderedUtil.IsNullEmpty(item[field])) {
+                    if (!Util.IsNullEmpty(item[field])) {
                         try {
                             var name: string = item[field].toLowerCase();
                             name = name.replace(/[.*!#"'`|%$@+\-?^${}()|[\]\\]/g, " ").trim();
@@ -4107,51 +4104,51 @@ export class DatabaseConnection extends events.EventEmitter {
         if (user == null) throw new Error("user is mandatory");
         if (item == null) throw new Error("item is mandatory");
         if (action == null) throw new Error("action is mandatory");
-        if (user._id === WellknownIds.root) { return true; }
-        if (action === Rights.update && item._id === WellknownIds.admins && item.name.toLowerCase() !== "admins") {
+        if (user._id === Wellknown.root._id) { return true; }
+        if (action === Rights.update && item._id === Wellknown.admins._id && item.name.toLowerCase() !== Wellknown.admins.name) {
             return false;
         }
-        if (action === Rights.update && item._id === WellknownIds.users && item.name.toLowerCase() !== "users") {
+        if (action === Rights.update && item._id === Wellknown.users._id && item.name.toLowerCase() !== Wellknown.users.name) {
             return false;
         }
-        if (action === Rights.update && item._id === WellknownIds.root && item.name.toLowerCase() !== "root") {
+        if (action === Rights.update && item._id === Wellknown.root._id && item.name.toLowerCase() !== Wellknown.root.name) {
             return false;
         }
         if (item._type == "user" || item._type == "role") {
-            if (item.name.toLowerCase() == "root" && item._id != WellknownIds.root) return false;
-            if (item.name.toLowerCase() == "admins" && item._id != WellknownIds.admins) return false;
-            if (item.name.toLowerCase() == "users" && item._id != WellknownIds.users) return false;
-            if (item.name.toLowerCase() == "noderedusers" && item._id != WellknownIds.nodered_users) return false;
-            if (item.name.toLowerCase() == "noderedadmins" && item._id != WellknownIds.nodered_admins) return false;
-            if (item.name.toLowerCase() == "noderedapiusers" && item._id != WellknownIds.nodered_api_users) return false;
-            if (item.name.toLowerCase() == "filestoreusers" && item._id != WellknownIds.filestore_users) return false;
-            if (item.name.toLowerCase() == "filestoreadmins" && item._id != WellknownIds.filestore_admins) return false;
-            if (item.name.toLowerCase() == "robotusers" && item._id != WellknownIds.robot_users) return false;
-            if (item.name.toLowerCase() == "robotadmins" && item._id != WellknownIds.robot_admins) return false;
-            if (item.name.toLowerCase() == "personalnoderedusers" && item._id != WellknownIds.personal_nodered_users) return false;
-            if (item.name.toLowerCase() == "robotagentusers" && item._id != WellknownIds.robot_agent_users) return false;
-            if (item.name.toLowerCase() == "customeradmins" && item._id != WellknownIds.customer_admins) return false;
-            if (item.name.toLowerCase() == "resellers" && item._id != WellknownIds.resellers) return false;
-            if (item.name.toLowerCase() == "guest" && item._id != "65cb30c40ff51e174095573c") return false;
-            if (item.name.toLowerCase() == "workitem queue users" && item._id != "62544134231309e2cd2052ce") return false;
-            if (item.name.toLowerCase() == "workitem queue admins" && item._id != "625440c4231309af5f2052cd") return false;
-            if (item.name.toLowerCase() != "root" && item._id == WellknownIds.root) return false;
-            if (item.name.toLowerCase() != "admins" && item._id == WellknownIds.admins) return false;
-            if (item.name.toLowerCase() != "users" && item._id == WellknownIds.users) return false;
-            if (item.name.toLowerCase() != "noderedusers" && item._id == WellknownIds.nodered_users) return false;
-            if (item.name.toLowerCase() != "noderedadmins" && item._id == WellknownIds.nodered_admins) return false;
-            if (item.name.toLowerCase() != "noderedapiusers" && item._id == WellknownIds.nodered_api_users) return false;
-            if (item.name.toLowerCase() != "filestoreusers" && item._id == WellknownIds.filestore_users) return false;
-            if (item.name.toLowerCase() != "filestoreadmins" && item._id == WellknownIds.filestore_admins) return false;
-            if (item.name.toLowerCase() != "robotusers" && item._id == WellknownIds.robot_users) return false;
-            if (item.name.toLowerCase() != "robotadmins" && item._id == WellknownIds.robot_admins) return false;
-            if (item.name.toLowerCase() != "personalnoderedusers" && item._id == WellknownIds.personal_nodered_users) return false;
-            if (item.name.toLowerCase() != "robotagentusers" && item._id == WellknownIds.robot_agent_users) return false;
-            if (item.name.toLowerCase() != "customeradmins" && item._id == WellknownIds.customer_admins) return false;
-            if (item.name.toLowerCase() != "resellers" && item._id == WellknownIds.resellers) return false;
-            if (item.name.toLowerCase() != "guest" && item._id == "65cb30c40ff51e174095573c") return false;
-            if (item.name.toLowerCase() != "workitem queue users" && item._id == "62544134231309e2cd2052ce") return false;
-            if (item.name.toLowerCase() != "workitem queue admins" && item._id == "625440c4231309af5f2052cd") return false;
+            if (item.name.toLowerCase() == Wellknown.root.name && item._id != Wellknown.root._id) return false;
+            if (item.name.toLowerCase() == Wellknown.admins.name && item._id != Wellknown.admins._id) return false;
+            if (item.name.toLowerCase() == Wellknown.users.name && item._id != Wellknown.users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.nodered_users.name && item._id != Wellknown.nodered_users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.nodered_admins.name && item._id != Wellknown.nodered_admins._id) return false;
+            if (item.name.toLowerCase() == Wellknown.nodered_api_users.name && item._id != Wellknown.nodered_api_users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.filestore_users.name && item._id != Wellknown.filestore_users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.filestore_admins.name && item._id != Wellknown.filestore_admins._id) return false;
+            if (item.name.toLowerCase() == Wellknown.robot_users.name && item._id != Wellknown.robot_users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.robot_admins.name && item._id != Wellknown.robot_admins._id) return false;
+            if (item.name.toLowerCase() == Wellknown.personal_nodered_users.name && item._id != Wellknown.personal_nodered_users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.robot_agent_users.name && item._id != Wellknown.robot_agent_users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.customer_admins.name && item._id != Wellknown.customer_admins._id) return false;
+            if (item.name.toLowerCase() == Wellknown.resellers.name && item._id != Wellknown.resellers._id) return false;
+            if (item.name.toLowerCase() == Wellknown.guest.name && item._id != Wellknown.guest._id) return false;
+            if (item.name.toLowerCase() == Wellknown.workitem_queue_users.name && item._id != Wellknown.workitem_queue_users._id) return false;
+            if (item.name.toLowerCase() == Wellknown.workitem_queue_admins.name && item._id != Wellknown.workitem_queue_admins._id) return false;
+            if (item.name.toLowerCase() != Wellknown.root.name && item._id == Wellknown.root._id) return false;
+            if (item.name.toLowerCase() != Wellknown.admins.name && item._id == Wellknown.admins._id) return false;
+            if (item.name.toLowerCase() != Wellknown.users.name && item._id == Wellknown.users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.nodered_users.name && item._id == Wellknown.nodered_users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.nodered_admins.name && item._id == Wellknown.nodered_admins._id) return false;
+            if (item.name.toLowerCase() != Wellknown.nodered_api_users.name && item._id == Wellknown.nodered_api_users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.filestore_users.name && item._id == Wellknown.filestore_users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.filestore_admins.name && item._id == Wellknown.filestore_admins._id) return false;
+            if (item.name.toLowerCase() != Wellknown.robot_users.name && item._id == Wellknown.robot_users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.robot_admins.name && item._id == Wellknown.robot_admins._id) return false;
+            if (item.name.toLowerCase() != Wellknown.personal_nodered_users.name && item._id == Wellknown.personal_nodered_users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.robot_agent_users.name && item._id == Wellknown.robot_agent_users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.customer_admins.name && item._id == Wellknown.customer_admins._id) return false;
+            if (item.name.toLowerCase() != Wellknown.resellers.name && item._id == Wellknown.resellers._id) return false;
+            if (item.name.toLowerCase() != Wellknown.guest.name && item._id == Wellknown.guest._id) return false;
+            if (item.name.toLowerCase() != Wellknown.workitem_queue_users.name && item._id == Wellknown.workitem_queue_users._id) return false;
+            if (item.name.toLowerCase() != Wellknown.workitem_queue_admins.name && item._id == Wellknown.workitem_queue_admins._id) return false;
             if (DatabaseConnection.WellknownNamesArray.indexOf(item.name.toLowerCase()) > -1) {
                 if (DatabaseConnection.WellknownIdsArray.indexOf(item._id) == -1) return false;
             }
@@ -4433,7 +4430,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             if (original != null && original._version >= 0) {
                 delta = jsondiffpatch.diff(original, item);
-                if (NoderedUtil.IsNullUndefinded(delta)) return 0;
+                if (Util.IsNullUndefinded(delta)) return 0;
                 const keys = Object.keys(delta);
                 if (keys.length > 1) {
                     const deltahist = {
@@ -4493,9 +4490,9 @@ export class DatabaseConnection extends events.EventEmitter {
             try {
                 Logger.instanse.info("Adding index " + name + " to " + collectionname, span, { collection: collectionname });
                 if (typeof keypath === "string") keypath = JSON.parse(keypath);
-                if (NoderedUtil.IsNullEmpty(options)) options = {};
+                if (Util.IsNullEmpty(options)) options = {};
                 if (typeof options === "string") options = JSON.parse(options);
-                if (!NoderedUtil.IsNullEmpty(name)) options["name"] = name;
+                if (!Util.IsNullEmpty(name)) options["name"] = name;
                 this.db.collection(collectionname).createIndex(keypath, options, (err, name) => {
                     if (err) {
                         Logger.instanse.error(err, span);

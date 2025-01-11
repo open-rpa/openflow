@@ -1,13 +1,13 @@
-import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import Docker from "dockerode";
 import os from "os";
 import { Audit } from "./Audit.js";
 import { Auth } from "./Auth.js";
-import { iAgent, i_agent_driver } from "./commoninterfaces.js";
+import { User, iAgent, i_agent_driver } from "./commoninterfaces.js";
 import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
+import { Util } from "./Util.js";
 export class dockerdriver implements i_agent_driver {
     public async detect(): Promise<boolean> {
         try {
@@ -61,7 +61,7 @@ export class dockerdriver implements i_agent_driver {
         let hasbilling = false;
 
         var agentjwt = "";
-        if (NoderedUtil.IsNullEmpty(agent.runas)) {
+        if (Util.IsNullEmpty(agent.runas)) {
             agentjwt = await Auth.User2Token(user, Config.personalnoderedtoken_expires_in, parent);
         } else {
             var agentuser = await Config.db.GetOne<any>({ query: { _id: agent.runas }, collectionname: "users", jwt }, parent);
@@ -93,10 +93,10 @@ export class dockerdriver implements i_agent_driver {
             }
         }
 
-        if (NoderedUtil.IsNullUndefinded(instance)) {
+        if (Util.IsNullUndefinded(instance)) {
 
             let domain_schema = Config.agent_domain_schema;
-            if (NoderedUtil.IsNullEmpty(domain_schema)) {
+            if (Util.IsNullEmpty(domain_schema)) {
                 domain_schema = "$slug$." + Config.domain;
             }
             domain_schema = domain_schema.split("$nodered_id$").join("$slug$")
@@ -139,7 +139,7 @@ export class dockerdriver implements i_agent_driver {
                 Labels["traefik.http.routers." + agent.slug + ".entrypoints"] = Config.agent_docker_entrypoints;
                 Labels["traefik.http.routers." + agent.slug + ".rule"] = "Host(`" + hostname + "`)";
                 Labels["traefik.http.services." + agent.slug + ".loadbalancer.server.port"] = agentport.toString()
-                if (!NoderedUtil.IsNullEmpty(Config.agent_docker_certresolver)) {
+                if (!Util.IsNullEmpty(Config.agent_docker_certresolver)) {
                     Labels["traefik.http.routers." + agent.slug + ".tls.certresolver"] = Config.agent_docker_certresolver;
                 }
             }
@@ -283,9 +283,9 @@ export class dockerdriver implements i_agent_driver {
     }
     public async InstanceCleanup(parent: Span): Promise<void> {
         const resource: any = await Config.db.GetResource("Agent Instance", parent);
-        if (NoderedUtil.IsNullUndefinded(resource)) return;
+        if (Util.IsNullUndefinded(resource)) return;
         let runtime: number = resource?.defaultmetadata?.runtime_hours;
-        if (NoderedUtil.IsNullUndefinded(runtime)) {
+        if (Util.IsNullUndefinded(runtime)) {
             // If agent resource does not exists, dont turn off agents
             runtime = 0;
         }
@@ -305,7 +305,7 @@ export class dockerdriver implements i_agent_driver {
             const image = item.Image;
             const openiapagent = item.Labels["openiapagent"];
             const billed = item.Labels["billed"];
-            if (!NoderedUtil.IsNullEmpty(openiapagent)) {
+            if (!Util.IsNullEmpty(openiapagent)) {
                 const date = new Date();
                 const a: number = (date as any) - (Created as any);
                 const diffhours = a / (1000 * 60 * 60);
@@ -339,7 +339,7 @@ export class dockerdriver implements i_agent_driver {
                 const openiapagent = item.Labels["openiapagent"];
                 const billed = item.Labels["billed"];
                 let deleted: boolean = false;
-                if (!NoderedUtil.IsNullEmpty(openiapagent)) {
+                if (!Util.IsNullEmpty(openiapagent)) {
                     let addit: boolean = false;
 
                     if (agent == null) {

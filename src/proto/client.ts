@@ -2,7 +2,6 @@ import grpc from "@grpc/grpc-js";
 import { client, config, protowrap, QueueEvent, RefreshToken, WatchEvent } from "@openiap/nodeapi";
 import { clientAgent } from "@openiap/nodeapi/lib/client.js";
 import { Any } from "@openiap/nodeapi/lib/proto/google/protobuf/any.js";
-import { NoderedUtil, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import express from "express";
 import net from "net";
@@ -13,6 +12,8 @@ import { Config } from "../Config.js";
 import { Logger } from "../Logger.js";
 import { Message } from "../Messages/Message.js";
 import { RegisterExchangeResponse } from "../WebSocketServerClient.js";
+import { User } from "../commoninterfaces.js";
+import { Util } from "../Util.js";
 const { info, err } = config;
 const Semaphore = (n) => ({
     n,
@@ -124,6 +125,7 @@ export class flowclient extends client {
         return true;
     }
     async Watch(aggregates: object[], collectionname: string, jwt: string): Promise<string> {
+        if(collectionname == null || collectionname == "") throw new Error("collectionname is required");
         if (typeof aggregates === "string") {
             try {
                 aggregates = JSON.parse(aggregates);
@@ -160,17 +162,17 @@ export class flowclient extends client {
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let qname = queuename;
-            if (NoderedUtil.IsNullEmpty(qname)) {
+            if (Util.IsNullEmpty(qname)) {
                 if (this.agent == "nodered") {
-                    qname = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    qname = "nodered." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.agent == "browser") {
-                    qname = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    qname = "webapp." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.agent == "openrpa") {
-                    qname = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    qname = "openrpa." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.agent == "powershell") {
-                    qname = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    qname = "powershell." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else {
-                    qname = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    qname = "unknown." + Util.GetUniqueIdentifier(); exclusive = true;
                 }
             }
             await this.CloseConsumer(this.user, qname, span);
@@ -178,7 +180,7 @@ export class flowclient extends client {
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
                 AssertQueueOptions.exclusive = exclusive;
-                if (NoderedUtil.IsNullEmpty(queuename)) {
+                if (Util.IsNullEmpty(queuename)) {
                     AssertQueueOptions.autoDelete = true;
                 }
                 var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
@@ -237,17 +239,17 @@ export class flowclient extends client {
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let exchange = exchangename;
-            if (NoderedUtil.IsNullEmpty(exchange)) {
+            if (Util.IsNullEmpty(exchange)) {
                 if (this.agent == "nodered") {
-                    exchange = "nodered." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    exchange = "nodered." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.agent == "browser") {
-                    exchange = "webapp." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    exchange = "webapp." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.agent == "openrpa") {
-                    exchange = "openrpa." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    exchange = "openrpa." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else if (this.agent == "powershell") {
-                    exchange = "powershell." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    exchange = "powershell." + Util.GetUniqueIdentifier(); exclusive = true;
                 } else {
-                    exchange = "unknown." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                    exchange = "unknown." + Util.GetUniqueIdentifier(); exclusive = true;
                 }
             }
             let exchangequeue: amqpexchange = null;
@@ -370,7 +372,7 @@ export class flowclient extends client {
             } catch (error) {
             }
             if (typeof q.data !== "string") q.data = JSON.stringify(q.data);
-            if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = NoderedUtil.GetUniqueIdentifier(); }
+            if (Util.IsNullEmpty(q.correlationId)) { q.correlationId = Util.GetUniqueIdentifier(); }
             q.replyto = options.replyTo;
             q.correlationId = options.correlationId; q.queuename = queuename;
             q.consumerTag = options.consumerTag;

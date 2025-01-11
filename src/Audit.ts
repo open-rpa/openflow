@@ -1,8 +1,9 @@
-import { Base, NoderedUtil, Rights, User, WorkitemQueue } from "@openiap/openflow-api";
 import { Span, UpDownCounter } from "@opentelemetry/api";
 import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
+import { Util } from "./Util.js";
+import { Base, Rights, User } from "./commoninterfaces.js";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
@@ -10,8 +11,8 @@ export type clientAgent = "node" | "browser" | "rdservice" | "nodered" | "openrp
 export class Audit {
     public static openflow_logins: UpDownCounter = null;
     public static ensure_openflow_logins() {
-        if (!NoderedUtil.IsNullUndefinded(Audit.openflow_logins)) return;
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
+        if (!Util.IsNullUndefinded(Audit.openflow_logins)) return;
+        if (!Util.IsNullUndefinded(Logger.otel) && !Util.IsNullUndefinded(Logger.otel.meter)) {
             Audit.openflow_logins = Logger.otel.meter.createUpDownCounter("openflow_logins", {
                 description: "Number of login attempts"
             });
@@ -118,7 +119,7 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
-    public static async AuditWorkitemPurge(user: User, wiq: WorkitemQueue, parent: Span): Promise<void> {
+    public static async AuditWorkitemPurge(user: User, wiq: Base, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginSuccess", parent);
         try {
             Audit.ensure_openflow_logins();
@@ -150,19 +151,19 @@ export class Audit {
             log.name = name;
             log.username = user.username;
             log.instancename = instancename;
-            if (!NoderedUtil.IsNullEmpty(image)) {
+            if (!Util.IsNullEmpty(image)) {
                 while (image.indexOf("/") != image.lastIndexOf("/")) {
                     image = image.substring(image.indexOf("/") + 1);
                 }
             }
             log.image = image;
-            if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(":") > -1) {
+            if (!Util.IsNullEmpty(image) && image.indexOf(":") > -1) {
                 log.imagename = image.split(":")[0];
                 log.imageversion = image.split(":")[1];
             } else {
                 log.imagename = image;
             }
-            if (!NoderedUtil.IsNullEmpty(instancename) && NoderedUtil.IsNullEmpty(log.name)) log.name = instancename;
+            if (!Util.IsNullEmpty(instancename) && Util.IsNullEmpty(log.name)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
             Logger.instanse.error(error, span);
@@ -221,13 +222,13 @@ export class Audit {
         }
     }
     static dot2num(dot: string): number {
-        if (NoderedUtil.IsNullEmpty(dot)) return 0;
+        if (Util.IsNullEmpty(dot)) return 0;
         if (dot.indexOf(".") == -1) return 0;
         var d = dot.split(".");
         return ((((((+d[0]) * 256) + (+d[1])) * 256) + (+d[2])) * 256) + (+d[3]);
     }
     static num2dot(num: number): string {
-        if (NoderedUtil.IsNullEmpty(num)) return "";
+        if (Util.IsNullEmpty(num)) return "";
         if (num < 1) return "";
         var d: string = (num % 256).toString();
         for (var i = 3; i > 0; i--) {

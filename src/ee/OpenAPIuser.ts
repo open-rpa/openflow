@@ -116,7 +116,6 @@ export type OpenRPAWorkflowCreationParams = Pick<Workflow, "name" | "background"
 import express from "express";
 
 // src/users/usersController.ts
-import { NoderedUtil, UpdateOneMessage } from "@openiap/openflow-api";
 import {
   Body,
   Controller,
@@ -136,6 +135,7 @@ import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { OpenAPIProxy } from "./OpenAPIProxy.js";
+import { Util } from "../Util.js";
 
 @Route("api/v1/me")
 export class MeController extends Controller {
@@ -527,7 +527,7 @@ export class RunOpenRPAWorkflowController extends Controller {
         var result = await promise;
         return result as any;
       } else {
-        const correlationId = NoderedUtil.GetUniqueIdentifier();
+        const correlationId = Util.GetUniqueIdentifier();
         Logger.instanse.debug("Send message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
         await amqpwrapper.Instance().send("", robotuser._id, rpacommand, 5000, correlationId, "", null);
         return { correlationId };
@@ -563,7 +563,7 @@ export class QueueMessageController extends Controller {
         var result = await promise;
         return result as any;
       } else {
-        const correlationId = NoderedUtil.GetUniqueIdentifier();
+        const correlationId = Util.GetUniqueIdentifier();
         Logger.instanse.debug("Send message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy" });
         await amqpwrapper.Instance().send("", queuename, payload, 5000, correlationId, "", null);
         return { correlationId };

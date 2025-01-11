@@ -1,4 +1,4 @@
-import { ExchangeClosedMessage, NoderedUtil, QueueClosedMessage, QueuedMessage, QueuedMessageCallback, QueueMessage, SigninMessage, TokenUser, User, WatchEventMessage } from "@openiap/openflow-api";
+import { ExchangeClosedMessage, QueueClosedMessage, QueuedMessage, QueuedMessageCallback, QueueMessage, SigninMessage, WatchEventMessage } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import express from "express";
 import { ChangeStream } from "mongodb";
@@ -12,6 +12,8 @@ import { SocketMessage } from "./SocketMessage.js";
 import { WebServer } from "./WebServer.js";
 import { WebSocketServer } from "./WebSocketServer.js";
 import { amqpexchange, amqpqueue, amqpwrapper, exchangealgorithm, QueueMessageOptions } from "./amqpwrapper.js";
+import { TokenUser, User } from "./commoninterfaces.js";
+import { Util } from "./Util.js";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -98,8 +100,8 @@ export class WebSocketServerClient {
             this._dbdisconnected = this.dbdisconnected.bind(this);
             this._dbconnected = this.dbconnected.bind(this);
             this._amqpdisconnected = this.amqpdisconnected.bind(this);
-            this.id = NoderedUtil.GetUniqueIdentifier();
-            if (!NoderedUtil.IsNullUndefinded(req)) {
+            this.id = Util.GetUniqueIdentifier();
+            if (!Util.IsNullUndefinded(req)) {
                 this.remoteip = WebSocketServerClient.remoteip(req);
             }
             let _remoteip = "unknown";
@@ -298,7 +300,7 @@ export class WebSocketServerClient {
             }
 
             await this.CloseConsumers(span);
-            if (!NoderedUtil.IsNullUndefinded(this._socketObject)) {
+            if (!Util.IsNullUndefinded(this._socketObject)) {
                 try {
                     this._socketObject.close();
                 } catch (error) {
@@ -361,10 +363,10 @@ export class WebSocketServerClient {
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let exchange = exchangename;
-            if (NoderedUtil.IsNullEmpty(exchange)) {
+            if (Util.IsNullEmpty(exchange)) {
                 // @ts-ignore
                 if (this.clientagent == "") this.clientagent = "unknown"
-                exchange = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                exchange = this.clientagent + "." + Util.GetUniqueIdentifier(); exclusive = true;
             }
             let exchangequeue: amqpexchange = null;
             try {
@@ -415,17 +417,17 @@ export class WebSocketServerClient {
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let qname = queuename;
-            if (NoderedUtil.IsNullEmpty(qname)) {
+            if (Util.IsNullEmpty(qname)) {
                 // @ts-ignore
                 if (this.clientagent == "") this.clientagent = "unknown"
-                qname = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                qname = this.clientagent + "." + Util.GetUniqueIdentifier(); exclusive = true;
             }
             await this.CloseConsumer(this.user, qname, span);
             let queue: amqpqueue = null;
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
                 AssertQueueOptions.exclusive = exclusive;
-                if (NoderedUtil.IsNullEmpty(queuename)) {
+                if (Util.IsNullEmpty(queuename)) {
                     AssertQueueOptions.autoDelete = true;
                 }
                 var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
@@ -496,7 +498,7 @@ export class WebSocketServerClient {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.ProcessQueue", parent);
         try {
             let username: string = "Unknown";
-            if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
+            if (!Util.IsNullUndefinded(this.user)) { username = this.user.username; }
             let ids: string[] = [];
             this._receiveQueue.forEach(msg => {
                 if (ids.indexOf(msg.id) === -1) { ids.push(msg.id); }
@@ -538,7 +540,7 @@ export class WebSocketServerClient {
                     } else {
                         let chunk: string = "";
                         msgs.forEach(msg => {
-                            if (!NoderedUtil.IsNullUndefinded(msg.data)) { chunk += msg.data; }
+                            if (!Util.IsNullUndefinded(msg.data)) { chunk += msg.data; }
                         });
                         this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                         const result: Message = Message.frommessage(first, chunk);
@@ -574,16 +576,16 @@ export class WebSocketServerClient {
         return new Promise<T>(async (resolve, reject) => {
             if (message == null) return reject("message is null");
             this._Send(message, ((msg) => {
-                if (!NoderedUtil.IsNullUndefinded(msg.error)) { return reject(msg.error); }
+                if (!Util.IsNullUndefinded(msg.error)) { return reject(msg.error); }
                 resolve(msg);
             }).bind(this), parent);
         });
     }
     private _Send(message: Message, cb: QueuedMessageCallback, parent: Span): void {
         const messages: string[] = this.chunkString(message.data, Config.websocket_package_size);
-        if (NoderedUtil.IsNullUndefinded(messages) || messages.length === 0) {
+        if (Util.IsNullUndefinded(messages) || messages.length === 0) {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
-            if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
+            if (Util.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
             } else {
                 try {
@@ -595,12 +597,12 @@ export class WebSocketServerClient {
             this._cleanupMessageQueue();
             return;
         }
-        if (NoderedUtil.IsNullEmpty(message.id)) { message.id = NoderedUtil.GetUniqueIdentifier(); }
+        if (Util.IsNullEmpty(message.id)) { message.id = Util.GetUniqueIdentifier(); }
         for (let i: number = 0; i < messages.length; i++) {
             const _message: SocketMessage = SocketMessage.frommessage(message, messages[i], messages.length, i);
             this._sendQueue.push(_message);
         }
-        if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
+        if (Util.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
         } else {
             try {
@@ -626,7 +628,7 @@ export class WebSocketServerClient {
         });
     }
     public chunkString(str: string, length: number): string[] | null {
-        if (NoderedUtil.IsNullEmpty(str)) { return null; }
+        if (Util.IsNullEmpty(str)) { return null; }
         return str.match(new RegExp(".{1," + length + "}", "g"));
     }
     async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<any[]> {
@@ -644,7 +646,7 @@ export class WebSocketServerClient {
         q.routingkey = options.routingKey;
         q.exchangename = options.exchangename;
         let m: Message = Message.fromcommand("queuemessage");
-        if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
+        if (Util.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         const q2 = await this.Send<QueueMessage>(m, span);
         if ((q2 as any).command == "error") throw new Error(q2.data);
@@ -657,6 +659,7 @@ export class WebSocketServerClient {
     }
     public watches: IHashTable<ClientWatch> = {};
     async Watch(aggregates: object[], collectionname: string, jwt: string, id: string = null): Promise<string> {
+        if(collectionname == null || collectionname == "") throw new Error("collectionname is required");
         if (typeof aggregates === "string") {
             try {
                 aggregates = JSON.parse(aggregates);
@@ -664,10 +667,10 @@ export class WebSocketServerClient {
             }
         }
         const stream: clsstream = new clsstream();
-        stream.id = NoderedUtil.GetUniqueIdentifier();
+        stream.id = Util.GetUniqueIdentifier();
         stream.collectionname = collectionname;
         stream.aggregates = aggregates;
-        if (id == null) id = NoderedUtil.GetUniqueIdentifier();
+        if (id == null) id = Util.GetUniqueIdentifier();
         this.watches[id] = {
             aggregates, collectionname, id
         } as ClientWatch;

@@ -1,5 +1,5 @@
-import { NoderedUtil } from "@openiap/openflow-api";
 import { Message } from "./Messages/Message.js";
+import { Util } from "./Util.js";
 
 function isNumber(value: string | number): boolean {
     return ((value != null) && !isNaN(Number(value.toString())));
@@ -24,12 +24,12 @@ export class SocketMessage {
         result.index = 0;
         result.clientagent = obj.clientagent;
         result.clientversion = obj.clientversion;
-        if (!NoderedUtil.IsNullEmpty(obj.priority)) result.priority = obj.priority;
+        if (!Util.IsNullEmpty(obj.priority)) result.priority = obj.priority;
         result.data = obj.data;
         if (isNumber(obj.count)) { result.count = obj.count; }
         if (isNumber(obj.index)) { result.index = obj.index; }
         if (result.id === null || result.id === undefined || result.id === "") {
-            result.id = NoderedUtil.GetUniqueIdentifier();
+            result.id = Util.GetUniqueIdentifier();
         }
         return result;
     }
@@ -38,7 +38,7 @@ export class SocketMessage {
         result.command = command;
         result.count = 1;
         result.index = 0;
-        result.id = NoderedUtil.GetUniqueIdentifier();
+        result.id = Util.GetUniqueIdentifier();
         return result;
     }
     public static frommessage(msg: Message, data: string, count: number, index: number): SocketMessage {

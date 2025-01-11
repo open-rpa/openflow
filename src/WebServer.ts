@@ -1,4 +1,3 @@
-import { Base, InsertOrUpdateOneMessage, NoderedUtil, Rights, User, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import compression from "compression";
 import cookieParser from "cookie-parser";
@@ -31,6 +30,8 @@ import { Auth } from "./Auth.js";
 import { Message } from "./Messages/Message.js";
 import { flowclient } from "./proto/client.js";
 import { WebSocketServer } from "./WebSocketServer.js";
+import { Util, Wellknown } from "./Util.js";
+import { Base, Rights, User } from "./commoninterfaces.js";
 const { info, warn, err } = config;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -88,7 +89,7 @@ export class WebServer {
                 if (blocklist && Array.isArray(blocklist)) {
                     for (var x = 0; x < blocklist.length; x++) {
                         var ipBlock = blocklist[x];
-                        if (!NoderedUtil.IsNullEmpty(ipBlock)) {
+                        if (!Util.IsNullEmpty(ipBlock)) {
                             ipBlock = ipBlock.toLowerCase();
                             try {
                                 if (ipBlock.indexOf("/") > -1) {
@@ -114,7 +115,7 @@ export class WebServer {
     public static async isBlocked(req: express.Request): Promise<boolean> {
         try {
             var remoteip = LoginProvider.remoteip(req);
-            if (!NoderedUtil.IsNullEmpty(remoteip)) {
+            if (!Util.IsNullEmpty(remoteip)) {
                 return this.isIPBlocked(remoteip);
             }
         } catch (error) {
@@ -225,28 +226,28 @@ export class WebServer {
             });
 
             //setting vapid keys details
-            if (!NoderedUtil.IsNullEmpty(Config.wapid_pub) && !NoderedUtil.IsNullEmpty(Config.wapid_key)) {
+            if (!Util.IsNullEmpty(Config.wapid_pub) && !Util.IsNullEmpty(Config.wapid_key)) {
                 span?.addEvent("Setting openflow for WebPush");
                 var mail = Config.wapid_mail;
-                if (NoderedUtil.IsNullEmpty(mail)) mail = "me@email.com"
+                if (Util.IsNullEmpty(mail)) mail = "me@email.com"
                 webpush.setVapidDetails("mailto:" + mail, Config.wapid_pub, Config.wapid_key);
                 this.app.post("/webpushsubscribe", async (req, res) => {
                     var subspan = Logger.otel.startSpanExpress("webpushsubscribe", req);
                     try {
                         const subscription = req.body;
                         span?.setAttribute("subscription", JSON.stringify(subscription));
-                        if (NoderedUtil.IsNullUndefinded(subscription) && NoderedUtil.IsNullEmpty(subscription.jwt)) {
+                        if (Util.IsNullUndefinded(subscription) && Util.IsNullEmpty(subscription.jwt)) {
                             Logger.instanse.error("Received invalid subscription request", null);
                             return res.status(500).json({ "error": "no subscription" });
                         }
                         const jwt = subscription.jwt;
                         const tuser: User = await Auth.Token2User(jwt, span);
-                        if (NoderedUtil.IsNullUndefinded(tuser)) {
+                        if (Util.IsNullUndefinded(tuser)) {
                             Logger.instanse.error("jwt is invalid", null);
                             return res.status(500).json({ "error": "no subscription" });
                         }
                         delete subscription.jwt;
-                        if (NoderedUtil.IsNullEmpty(subscription._type)) subscription._type = "unknown";
+                        if (Util.IsNullEmpty(subscription._type)) subscription._type = "unknown";
                         subscription.userid = tuser._id;
                         subscription.name = tuser.name + " " + subscription._type + " " + subscription.host;
                         await Config.db.InsertOrUpdateOne(subscription, "webpushsubscriptions", "userid,_type,host,endpoint", 1, true, jwt, span);
@@ -387,10 +388,10 @@ export class WebServer {
             const bucket = new GridFSBucket(Config.db.db);
             var metadata = new Base();
             metadata._acl = [];
-            metadata._createdby = "root";
-            metadata._createdbyid = WellknownIds.root;
-            metadata._modifiedby = "root";
-            metadata._modifiedbyid = WellknownIds.root;
+            metadata._createdby = Wellknown.root.name;
+            metadata._createdbyid = Wellknown.root._id;
+            metadata._modifiedby = Wellknown.root.name;
+            metadata._modifiedbyid = Wellknown.root._id;
             if (msg.metadata != null && msg.metadata != "") {
                 try {
                     // is metadata a string ?
@@ -403,7 +404,7 @@ export class WebServer {
             }
             if (metadata.name == null || metadata.name == "") metadata.name = msg.filename;
             if (client.user) {
-                if (client.user._id == "65cb30c40ff51e174095573c" && Config.enable_guest_file_upload == false) {
+                if (client.user._id == Wellknown.guest._id && Config.enable_guest_file_upload == false) {
                     reject(new Error("Guests are not allowed to upload files"));
                     return;
                 }
@@ -416,16 +417,16 @@ export class WebServer {
             metadata._created = new Date(new Date().toISOString());
             metadata._modified = metadata._created;
 
-            Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            Base.addRight(metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
             if (!Config.multi_tenant) {
-                Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                Base.addRight(metadata, Wellknown.filestore_users._id, Wellknown.filestore_users.name, [Rights.read]);
             }
 
 
             const rs = new stream.Readable;
             rs._read = () => { };
             const s = protowrap.SetStream(client, rs, rid)
-            if (NoderedUtil.IsNullEmpty(msg.mimetype)) {
+            if (Util.IsNullEmpty(msg.mimetype)) {
                 msg.mimetype = mimetype.lookup(msg.filename);
             }
 
@@ -490,7 +491,7 @@ export class WebServer {
             msg.command = "addworkitems"
         }
 
-        msg.id = NoderedUtil.GetUniqueIdentifier();
+        msg.id = Util.GetUniqueIdentifier();
         msg.jwt = jwt;
         msg.data = req.body;
         msg.tuser = tuser;
@@ -524,7 +525,7 @@ export class WebServer {
             } else if (command == "ping") {
                 reply.command = "pong";
             } else if (command == "getelement") {
-                if (NoderedUtil.IsNullUndefinded(msg)) msg = { xpath: "" };
+                if (Util.IsNullUndefinded(msg)) msg = { xpath: "" };
                 msg.xpath = "Did you say " + msg?.xpath + " ?";
                 reply.data = GetElementResponse.encode(GetElementResponse.create(msg)).finish()
             } else if (command == "send") {
@@ -750,13 +751,13 @@ export class WebServer {
                     }
                 }
                 if (res.result && result.command != "createindex") res.result = JSON.stringify(res.result);
-                if (res.workitem && !NoderedUtil.IsNullUndefinded(res.workitem.payload)) {
+                if (res.workitem && !Util.IsNullUndefinded(res.workitem.payload)) {
                     res.workitem.payload = JSON.stringify(res.workitem.payload);
                 }
                 if (res.workitems) {
                     for (let i = 0; i < res.workitems.length; i++) {
                         const wi = res.workitems[i];
-                        if (!NoderedUtil.IsNullUndefinded(wi.payload)) {
+                        if (!Util.IsNullUndefinded(wi.payload)) {
                             wi.payload = JSON.stringify(wi.payload);
                         }
                     }
@@ -827,7 +828,7 @@ export class WebServer {
         let span = Logger.otel.startSpanExpress("get_livenessprobe", req)
         try {
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
-            if (NoderedUtil.IsNullEmpty(_hostname)) _hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
+            if (Util.IsNullEmpty(_hostname)) _hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
             res.end(JSON.stringify({ "success": "true", "hostname": _hostname, dt: new Date(), traceId, spanId }));
             res.end();
             // @ts-ignore

@@ -1,12 +1,12 @@
-import { Base, NoderedUtil, Resource, ResourceUsage, Rights, Role, UpdateManyMessage, User, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Binary, FindCursor } from "mongodb";
-import { iAgent } from "./commoninterfaces.js";
+import { Base, iAgent, Rights, Resource, ResourceUsage, Role, User } from "./commoninterfaces.js";
 import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { DatabaseConnection } from "./DatabaseConnection.js";
 import { Logger } from "./Logger.js";
 import { Message } from "./Messages/Message.js";
+import { Util, Wellknown } from "./Util.js";
 export class HouseKeeping {
   public static lastHouseKeeping: Date = null;
   public static ReadyForHousekeeping(): boolean {
@@ -115,7 +115,7 @@ export class HouseKeeping {
       fromdate.setMonth(fromdate.getMonth() - 1);
       const jwt: string = Crypt.rootToken();
 
-      let query = { "validated": false, "_type": "user", "_id": { "$ne": WellknownIds.root } };
+      let query = { "validated": false, "_type": "user", "_id": { "$ne": Wellknown.root._id } };
       query["_modified"] = { "$lt": todate.toISOString(), "$gt": fromdate.toISOString() }
       let count = await Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
       if (count > 0) {
@@ -127,16 +127,12 @@ export class HouseKeeping {
   private static async cleanupOpenRPAInstances(span: Span) {
     if (Config.housekeeping_cleanup_openrpa_instances == true) {
       Logger.instanse.debug("Begin cleaning up openrpa instances", span, { cls: "Housekeeping" });
-      let msg = new UpdateManyMessage();
-      msg.jwt = Crypt.rootToken();
-      msg.collectionname = "openrpa_instances";
-      msg.query = { "state": { "$in": ["idle", "running"] } };
-      msg.item = { "$set": { "state": "completed" }, "$unset": { "xml": "" } } as any;
-      let result = await Config.db._UpdateDocument(msg, span);
-      if (result?.opresult?.nModified > 0) {
-        Logger.instanse.verbose("Updated " + result.opresult.nModified + " openrpa instances", span, { cls: "Housekeeping" });
-      } else if (result?.opresult?.modifiedCount > 0) {
-        Logger.instanse.verbose("Updated " + result.opresult.modifiedCount + " openrpa instances", span, { cls: "Housekeeping" });
+      let result = await Config.db.UpdateDocument({ "state": { "$in": ["idle", "running"] } }, 
+        { "$set": { "state": "completed" }, "$unset": { "xml": "" } }, "openrpa_instances", 1, true, Crypt.rootToken(), span);
+      if (result.nModified > 0) {
+        Logger.instanse.verbose("Updated " + result.nModified + " openrpa instances", span, { cls: "Housekeeping" });
+      } else if (result.modifiedCount > 0) {
+        Logger.instanse.verbose("Updated " + result.modifiedCount + " openrpa instances", span, { cls: "Housekeeping" });
       }
     }
     logMemoryUsage("cleanupOpenRPAInstances", span);
@@ -265,7 +261,7 @@ export class HouseKeeping {
       if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) continue;
       if (DatabaseConnection.usemetadata(collectionname)) {
         let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
-        if (!NoderedUtil.IsNullUndefinded(exists)) {
+        if (!Util.IsNullUndefinded(exists)) {
           Logger.instanse.debug("Start creating metadata._searchnames for collection " + collectionname, span, { cls: "Housekeeping" });
           await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
             [
@@ -330,7 +326,7 @@ export class HouseKeeping {
         }
       } else {
         let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
-        if (!NoderedUtil.IsNullUndefinded(exists)) {
+        if (!Util.IsNullUndefinded(exists)) {
           Logger.instanse.debug("Start creating _searchnames for collection " + collectionname, span, { cls: "Housekeeping" });
           await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
             [
@@ -413,7 +409,7 @@ export class HouseKeeping {
       let totalusage = 0;
       let index = 0;
       let skip_collections = [];
-      if (!NoderedUtil.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
+      if (!Util.IsNullEmpty(Config.housekeeping_skip_collections)) skip_collections = Config.housekeeping_skip_collections.split(",")
       for (let col of collections) {
         var n: string = col.name;
         if (n.endsWith(".chunks")) continue;
@@ -776,7 +772,7 @@ export class HouseKeeping {
                 Logger.instanse.debug("Add usage_record for " + c.name + " using " + formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + formatBytes(config.product.metadata.dbusage), span, { cls: "Housekeeping" });
                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                 const payload: any = { "quantity": billablecount, "timestamp": dt };
-                if (!NoderedUtil.IsNullEmpty(config.siid) && !NoderedUtil.IsNullEmpty(c.stripeid)) {
+                if (!Util.IsNullEmpty(config.siid) && !Util.IsNullEmpty(c.stripeid)) {
                   try {
                     await Message.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
                   } catch (error) {
@@ -837,27 +833,27 @@ export class HouseKeeping {
   public static async ensureBuiltInUsersAndRoles(span: Span) {
     Logger.instanse.debug("Begin validating built in users and roles", span, { cls: "Housekeeping" });
     const jwt: string = Crypt.rootToken();
-    const admins: Role = await Logger.DBHelper.EnsureRole("admins", WellknownIds.admins, span);
-    const users: Role = await Logger.DBHelper.EnsureRole("users", WellknownIds.users, span);
-    const root: User = await Logger.DBHelper.EnsureUser(jwt, "root", "root", WellknownIds.root, null, null, span);
+    const admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.admins.name, Wellknown.admins._id, span);
+    const users: Role = await Logger.DBHelper.EnsureRole(Wellknown.users.name, Wellknown.users._id, span);
+    const root: User = await Logger.DBHelper.EnsureUser(jwt, Wellknown.root.name, Wellknown.root.name, Wellknown.root._id, null, null, span);
 
-    Base.addRight(root, WellknownIds.admins, "admins", [Rights.full_control]);
-    Base.removeRight(root, WellknownIds.admins, [Rights.delete]);
-    Base.addRight(root, WellknownIds.root, "root", [Rights.full_control]);
-    Base.removeRight(root, WellknownIds.root, [Rights.delete]);
+    Base.addRight(root, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+    Base.removeRight(root, Wellknown.admins._id, [Rights.delete]);
+    Base.addRight(root, Wellknown.root._id, Wellknown.root.name, [Rights.full_control]);
+    Base.removeRight(root, Wellknown.root._id, [Rights.delete]);
     await Logger.DBHelper.Save(root, jwt, span);
 
-    const guest: User = await Logger.DBHelper.EnsureUser(jwt, "guest", "guest", "65cb30c40ff51e174095573c", null, null, span);
-    Base.removeRight(guest, "65cb30c40ff51e174095573c", [Rights.full_control]);
-    Base.addRight(guest, "65cb30c40ff51e174095573c", "guest", [Rights.read]);
+    const guest: User = await Logger.DBHelper.EnsureUser(jwt, Wellknown.guest.name, Wellknown.guest.name, Wellknown.guest._id, null, null, span);
+    Base.removeRight(guest, Wellknown.guest._id, [Rights.full_control]);
+    Base.addRight(guest, Wellknown.guest._id, Wellknown.guest.name, [Rights.read]);
     await Logger.DBHelper.Save(guest, jwt, span);
 
-    Base.addRight(admins, WellknownIds.admins, "admins", [Rights.full_control]);
-    Base.removeRight(admins, WellknownIds.admins, [Rights.delete]);
+    Base.addRight(admins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+    Base.removeRight(admins, Wellknown.admins._id, [Rights.delete]);
     await Logger.DBHelper.Save(admins, jwt, span);
 
-    Base.addRight(users, WellknownIds.admins, "admins", [Rights.full_control]);
-    Base.removeRight(users, WellknownIds.admins, [Rights.delete]);
+    Base.addRight(users, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+    Base.removeRight(users, Wellknown.admins._id, [Rights.delete]);
     users.AddMember(root);
     if (Config.multi_tenant) {
       Base.removeRight(users, users._id, [Rights.full_control]);
@@ -892,21 +888,21 @@ export class HouseKeeping {
 
     if (Config.multi_tenant) {
       try {
-        const resellers: Role = await Logger.DBHelper.EnsureRole("resellers", WellknownIds.resellers, span);
+        const resellers: Role = await Logger.DBHelper.EnsureRole(Wellknown.resellers.name, Wellknown.resellers._id, span);
         // @ts-ignore
         resellers.hidemembers = true;
-        Base.addRight(resellers, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(resellers, WellknownIds.admins, [Rights.delete]);
-        Base.removeRight(resellers, WellknownIds.resellers, [Rights.full_control]);
+        Base.addRight(resellers, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+        Base.removeRight(resellers, Wellknown.admins._id, [Rights.delete]);
+        Base.removeRight(resellers, Wellknown.resellers._id, [Rights.full_control]);
         resellers.AddMember(admins);
         await Logger.DBHelper.Save(resellers, jwt, span);
 
-        const customer_admins: Role = await Logger.DBHelper.EnsureRole("customer admins", WellknownIds.customer_admins, span);
+        const customer_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.customer_admins.name, Wellknown.customer_admins._id, span);
         // @ts-ignore
         customer_admins.hidemembers = true;
-        Base.addRight(customer_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-        Base.removeRight(customer_admins, WellknownIds.admins, [Rights.delete]);
-        Base.removeRight(customer_admins, WellknownIds.customer_admins, [Rights.full_control]);
+        Base.addRight(customer_admins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+        Base.removeRight(customer_admins, Wellknown.admins._id, [Rights.delete]);
+        Base.removeRight(customer_admins, Wellknown.customer_admins._id, [Rights.full_control]);
         await Logger.DBHelper.Save(customer_admins, jwt, span);
       } catch (error) {
         Logger.instanse.error(error, span);
@@ -918,47 +914,47 @@ export class HouseKeeping {
       await Logger.DBHelper.Save(admins, jwt, span);
     }
 
-    const filestore_admins: Role = await Logger.DBHelper.EnsureRole("filestore admins", WellknownIds.filestore_admins, span);
+    const filestore_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.filestore_admins.name, Wellknown.filestore_admins._id, span);
     filestore_admins.AddMember(admins);
-    Base.addRight(filestore_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-    Base.removeRight(filestore_admins, WellknownIds.admins, [Rights.delete]);
+    Base.addRight(filestore_admins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+    Base.removeRight(filestore_admins, Wellknown.admins._id, [Rights.delete]);
     if (Config.multi_tenant) {
       Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self", span);
       Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(filestore_admins, jwt, span);
-    const filestore_users: Role = await Logger.DBHelper.EnsureRole("filestore users", WellknownIds.filestore_users, span);
+    const filestore_users: Role = await Logger.DBHelper.EnsureRole(Wellknown.filestore_users.name, Wellknown.filestore_users._id, span);
     filestore_users.AddMember(admins);
     if (!Config.multi_tenant) {
       filestore_users.AddMember(users);
     }
-    Base.addRight(filestore_users, WellknownIds.admins, "admins", [Rights.full_control]);
-    Base.removeRight(filestore_users, WellknownIds.admins, [Rights.delete]);
+    Base.addRight(filestore_users, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+    Base.removeRight(filestore_users, Wellknown.admins._id, [Rights.delete]);
     if (Config.multi_tenant) {
       Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self", span);
       Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
     } else if (Config.update_acl_based_on_groups) {
       Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
-      Base.addRight(filestore_users, filestore_users._id, "filestore users", [Rights.read]);
+      Base.addRight(filestore_users, filestore_users._id,  filestore_users.name, [Rights.read]);
     }
     await Logger.DBHelper.Save(filestore_users, jwt, span);
 
 
 
-    const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole("workitem queue admins", "625440c4231309af5f2052cd", span);
+    const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.workitem_queue_admins.name, Wellknown.workitem_queue_admins._id, span);
     workitem_queue_admins.AddMember(admins);
-    Base.addRight(workitem_queue_admins, WellknownIds.admins, "admins", [Rights.full_control]);
-    Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.delete]);
+    Base.addRight(workitem_queue_admins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+    Base.removeRight(workitem_queue_admins, Wellknown.admins._id, [Rights.delete]);
     if (Config.multi_tenant) {
-      Base.removeRight(workitem_queue_admins, WellknownIds.admins, [Rights.full_control]);
+      Base.removeRight(workitem_queue_admins, Wellknown.admins._id, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(workitem_queue_admins, jwt, span);
 
-    const workitem_queue_users: Role = await Logger.DBHelper.EnsureRole("workitem queue users", "62544134231309e2cd2052ce", span);
-    Base.addRight(workitem_queue_users, WellknownIds.admins, "admins", [Rights.full_control]);
-    Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.delete]);
+    const workitem_queue_users: Role = await Logger.DBHelper.EnsureRole(Wellknown.workitem_queue_users.name, Wellknown.workitem_queue_users._id, span);
+    Base.addRight(workitem_queue_users, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+    Base.removeRight(workitem_queue_users, Wellknown.admins._id, [Rights.delete]);
     if (Config.multi_tenant) {
-      Base.removeRight(workitem_queue_users, WellknownIds.admins, [Rights.full_control]);
+      Base.removeRight(workitem_queue_users, Wellknown.admins._id, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
   }

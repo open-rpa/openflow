@@ -1,5 +1,4 @@
 import passportsaml from "@node-saml/passport-saml";
-import { Base, FederationId, NoderedUtil, Role, User } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import dns from "dns";
 import express from "express";
@@ -22,6 +21,8 @@ import { DatabaseConnection } from "./DatabaseConnection.js";
 import { Logger } from "./Logger.js";
 import { TokenRequest } from "./TokenRequest.js";
 import { WebServer } from "./WebServer.js";
+import { Util, Wellknown } from "./Util.js";
+import { Base, FederationId, Role, User } from "./commoninterfaces.js";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -145,9 +146,9 @@ export class LoginProvider {
         });
         passport.deserializeUser(async function (userid: string, done: any): Promise<void> {
             Logger.instanse.silly("userid " + userid, null, { cls: "LoginProvider", func: "deserializeUser" });
-            if (NoderedUtil.IsNullEmpty(userid)) return done("missing userid", null);
+            if (Util.IsNullEmpty(userid)) return done("missing userid", null);
             if (typeof userid !== "string") userid = (userid as any)._id
-            if (NoderedUtil.IsNullEmpty(userid)) return done("missing userid", null);
+            if (Util.IsNullEmpty(userid)) return done("missing userid", null);
             const _user = await Logger.DBHelper.FindById(userid, null);
             if (_user == null) {
                 Logger.instanse.error("Failed locating user " + userid, null, { cls: "LoginProvider", func: "deserializeUser" });
@@ -188,7 +189,7 @@ export class LoginProvider {
             if (providers.length === 0) { hasLocal = true; }
             providers.forEach(async (provider) => {
                 try {
-                    if (NoderedUtil.IsNullUndefinded(LoginProvider._providers[provider.id])) {
+                    if (Util.IsNullUndefinded(LoginProvider._providers[provider.id])) {
                         if (provider.provider === "saml") {
                             const metadata: any = await Config.parse_federation_metadata(Config.tls_ca, provider.saml_federation_metadata);
                             LoginProvider._providers[provider.id] =
@@ -211,7 +212,7 @@ export class LoginProvider {
                 }
             });
             if (hasLocal === true) {
-                if (NoderedUtil.IsNullUndefinded(LoginProvider._providers.local)) {
+                if (Util.IsNullUndefinded(LoginProvider._providers.local)) {
                     LoginProvider._providers.local = LoginProvider.CreateLocalStrategy(app, baseurl);
                 }
             }
@@ -269,7 +270,7 @@ export class LoginProvider {
                 try {
                     if (req.user != null) {
                         // @ts-ignore
-                        if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                        if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
                             res.redirect("/login");
                             return next();
                         }
@@ -280,7 +281,7 @@ export class LoginProvider {
                     } catch (error) {
                     }
 
-                    if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                    if (!Util.IsNullEmpty(originalUrl)) {
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
                         } catch (error) {
@@ -318,7 +319,7 @@ export class LoginProvider {
                 try {
                     if (req.user != null) {
                         // @ts-ignore
-                        if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                        if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
                             res.redirect("/login");
                             return next();
                         }
@@ -329,7 +330,7 @@ export class LoginProvider {
                     } catch (error) {
                     }
 
-                    if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                    if (!Util.IsNullEmpty(originalUrl)) {
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
                         } catch (error) {
@@ -431,7 +432,7 @@ export class LoginProvider {
                 try {
                     if (req.user != null) {
                         // @ts-ignore
-                        if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                        if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
                             res.redirect("/login");
                             return next();
                         }
@@ -442,7 +443,7 @@ export class LoginProvider {
                     } catch (error) {
                     }
 
-                    if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                    if (!Util.IsNullEmpty(originalUrl)) {
                         try {
                             res.cookie("originalUrl", "", { expires: new Date(0) });
                         } catch (error) {
@@ -470,14 +471,14 @@ export class LoginProvider {
             Logger.instanse.debug("Adding new local strategy", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
             try {
                 let remoteip: string = "";
-                if (!NoderedUtil.IsNullUndefinded(req)) {
+                if (!Util.IsNullUndefinded(req)) {
                     remoteip = LoginProvider.remoteip(req);
                 }
                 span?.setAttribute("remoteip", remoteip);
                 if (username !== null && username != undefined) { username = username.toLowerCase(); }
                 let user: User = null;
                 var providers = await Logger.DBHelper.GetProviders(span);
-                if (providers.length === 0 || NoderedUtil.IsNullEmpty(providers[0]._id)) {
+                if (providers.length === 0 || Util.IsNullEmpty(providers[0]._id)) {
                     user = await Logger.DBHelper.FindByUsername(username, null, span);
                     if (user == null) {
                         Logger.instanse.info("No login providers, creating " + username + " as admin", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
@@ -486,7 +487,7 @@ export class LoginProvider {
                         const jwt: string = Crypt.rootToken();
                         user = await Logger.DBHelper.EnsureUser(jwt, user.name, user.username, null, password, null, span);
 
-                        const admins: Role = await Logger.DBHelper.FindRoleByName("admins", null, span);
+                        const admins: Role = await Logger.DBHelper.FindRoleByName(Wellknown.admins.name, null, span);
                         if (admins == null) throw new Error("Failed locating admins role!")
                         admins.AddMember(user);
                         await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
@@ -497,7 +498,7 @@ export class LoginProvider {
                             return done(null, false);
                         }
                         Logger.instanse.info("No login providers, updating " + username + " as admin", span, { cls: "LoginProvider", func: "CreateLocalStrategy" });
-                        const admins: Role = await Logger.DBHelper.FindRoleByName("admins", null, span);
+                        const admins: Role = await Logger.DBHelper.FindRoleByName(Wellknown.admins.name, null, span);
                         if (admins == null) throw new Error("Failed locating admins role!")
                         admins.AddMember(user);
                         await Logger.DBHelper.Save(admins, Crypt.rootToken(), span)
@@ -535,7 +536,7 @@ export class LoginProvider {
                     return
                 }
                 user = await Logger.DBHelper.FindByUsername(username, null, span);
-                if (NoderedUtil.IsNullUndefinded(user)) {
+                if (Util.IsNullUndefinded(user)) {
                     let createUser: boolean = Config.auto_create_users;
                     if (!createUser) {
                         return done(null, false);
@@ -567,7 +568,7 @@ export class LoginProvider {
             express.urlencoded({ extended: false }),
             async (req: any, res: any, next: any) => {
                 const username = req.body?.username;
-                if (!NoderedUtil.IsNullEmpty(username) && username.indexOf("@") > -1) {
+                if (!Util.IsNullEmpty(username) && username.indexOf("@") > -1) {
                     const domain = username.substr(username.indexOf("@") + 1)
 
                     var providers = await Logger.DBHelper.GetProviders(null);
@@ -599,10 +600,10 @@ export class LoginProvider {
                                 Logger.instanse.error(err, null, { cls: "LoginProvider", func: "Localauthenticate" });
                                 return next(err);
                             }
-                            if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                            if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
                                 res.redirect("/login");
                                 return next();
-                            } else if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                            } else if (!Util.IsNullEmpty(originalUrl)) {
                                 try {
                                     try {
                                         res.cookie("originalUrl", "", { expires: new Date(0) });
@@ -621,7 +622,7 @@ export class LoginProvider {
                         });
                         return;
                     }
-                    if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+                    if (!Util.IsNullEmpty(originalUrl)) {
                         if (originalUrl.indexOf("?") == -1) {
                             originalUrl = originalUrl + "?error=1"
                         } else if (originalUrl.indexOf("error=1") == -1) {
@@ -653,32 +654,32 @@ export class LoginProvider {
         try {
             const issuer = req.baseUrl.replace("/", "");
             let username: string = profile.username;
-            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
-            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            if (Util.IsNullEmpty(username)) username = profile.nameID;
+            if (!Util.IsNullEmpty(username)) { username = username.toLowerCase(); }
             Logger.instanse.debug(username, span, { cls: "LoginProvider", func: "samlverify" });
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
             let remoteip: string = "";
-            if (!NoderedUtil.IsNullUndefinded(req)) {
+            if (!Util.IsNullUndefinded(req)) {
                 remoteip = LoginProvider.remoteip(req);
             }
             span?.setAttribute("remoteip", remoteip);
 
-            if (NoderedUtil.IsNullUndefinded(_user)) {
+            if (Util.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
                 if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
                 if (createUser) {
                     _user = new User(); _user.name = profile.name;
-                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
+                    if (!Util.IsNullEmpty(profile["http://schemas.microsoft.com/identity/claims/displayname"])) {
                         _user.name = profile["http://schemas.microsoft.com/identity/claims/displayname"];
                     }
-                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
+                    if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"])) {
                         _user.name = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
                     }
                     _user.username = username;
-                    if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                    if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                         (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                     }
-                    if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
+                    if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty, please add displayname to claims", null); return; }
                     const jwt: string = Crypt.rootToken();
                     let extraoptions = {
                         federationids: [new FederationId(username, issuer)],
@@ -687,7 +688,7 @@ export class LoginProvider {
                     _user = await Logger.DBHelper.EnsureUser(jwt, _user.name, _user.username, null, null, extraoptions, span);
                 }
             } else {
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"])) {
                     (_user as any).mobile = profile["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/mobile"];
                 }
                 if (_user.federationids == null) _user.federationids = [];
@@ -703,13 +704,13 @@ export class LoginProvider {
                 await Logger.DBHelper.CheckCache("users", _user, false, false, span);
             }
 
-            if (!NoderedUtil.IsNullUndefinded(_user)) {
-                if (!NoderedUtil.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
+            if (!Util.IsNullUndefinded(_user)) {
+                if (!Util.IsNullEmpty(profile["http://schemas.xmlsoap.org/claims/Group"])) {
                     const jwt: string = Crypt.rootToken();
                     const strroles: string[] = profile["http://schemas.xmlsoap.org/claims/Group"];
                     for (let i = 0; i < strroles.length; i++) {
                         const role: Role = await Logger.DBHelper.FindRoleByName(strroles[i], jwt, span);
-                        if (!NoderedUtil.IsNullUndefinded(role)) {
+                        if (!Util.IsNullUndefinded(role)) {
                             role.AddMember(_user);
                             await Logger.DBHelper.Save(role, jwt, span);
                         }
@@ -718,7 +719,7 @@ export class LoginProvider {
                 }
             }
 
-            if (NoderedUtil.IsNullUndefinded(_user)) {
+            if (Util.IsNullUndefinded(_user)) {
                 await Audit.LoginFailed(username, "weblogin", "saml", remoteip, "unknown", "unknown", span);
                 done("unknown user " + username, null);
                 return;
@@ -749,23 +750,23 @@ export class LoginProvider {
                 profile.username = email.value;
             }
             let username: string = profile.username;
-            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
-            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            if (Util.IsNullEmpty(username)) username = profile.nameID;
+            if (!Util.IsNullEmpty(username)) { username = username.toLowerCase(); }
             Logger.instanse.debug(profile.id, span, { cls: "LoginProvider", func: "openidverify" });
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(profile.id, issuer, span);
-            if (NoderedUtil.IsNullUndefinded(_user)) {
+            if (Util.IsNullUndefinded(_user)) {
                 _user = await Logger.DBHelper.FindByUsernameOrFederationid(profile.username, issuer, span);
             }
-            if (NoderedUtil.IsNullUndefinded(_user)) {
+            if (Util.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
                 if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
                 if (createUser) {
                     const jwt: string = Crypt.rootToken();
                     _user = new User(); _user.name = profile.name;
-                    if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
+                    if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
-                    if (NoderedUtil.IsNullEmpty(_user.name)) _user.name = username
+                    if (Util.IsNullEmpty(_user.name)) _user.name = username
                     let extraoptions = {
                         federationids: [new FederationId(profile.id, issuer)],
                         emailvalidated: true
@@ -785,7 +786,7 @@ export class LoginProvider {
                     await Logger.DBHelper.CheckCache("users", _user, false, false, span);
                 }
             }
-            if (NoderedUtil.IsNullUndefinded(_user)) {
+            if (Util.IsNullUndefinded(_user)) {
                 await Audit.LoginFailed(username, "weblogin", "openid", remoteip, "openidverify" as any, "unknown", span);
                 done("unknown user " + username, null); return;
             }
@@ -810,26 +811,26 @@ export class LoginProvider {
                 profile.username = email.value;
             }
             let remoteip: string = "";
-            if (!NoderedUtil.IsNullUndefinded(req)) {
+            if (!Util.IsNullUndefinded(req)) {
                 remoteip = LoginProvider.remoteip(req);
             }
             span?.setAttribute("remoteip", remoteip);
             const issuer = req.baseUrl.replace("/", "");
             let username: string = profile.username;
-            if (NoderedUtil.IsNullEmpty(username)) username = profile.nameID;
-            if (!NoderedUtil.IsNullEmpty(username)) { username = username.toLowerCase(); }
+            if (Util.IsNullEmpty(username)) username = profile.nameID;
+            if (!Util.IsNullEmpty(username)) { username = username.toLowerCase(); }
             Logger.instanse.debug(username, span, { cls: "LoginProvider", func: "googleverify" });
             let _user: User = await Logger.DBHelper.FindByUsernameOrFederationid(username, issuer, span);
-            if (NoderedUtil.IsNullUndefinded(_user)) {
+            if (Util.IsNullUndefinded(_user)) {
                 let createUser: boolean = Config.auto_create_users;
                 if (Config.auto_create_domains.map(x => username.endsWith(x)).length > 0) { createUser = true; }
                 if (createUser) {
                     const jwt: string = Crypt.rootToken();
                     _user = new User(); _user.name = profile.name;
-                    if (!NoderedUtil.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
+                    if (!Util.IsNullEmpty(profile.displayName)) { _user.name = profile.displayName; }
                     _user.username = username;
                     (_user as any).mobile = profile.mobile;
-                    if (NoderedUtil.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
+                    if (Util.IsNullEmpty(_user.name)) { done("Cannot add new user, name is empty.", null); return; }
                     let extraoptions = {
                         federationids: [new FederationId(username, issuer)],
                         emailvalidated: true
@@ -849,7 +850,7 @@ export class LoginProvider {
                     await Logger.DBHelper.CheckCache("users", _user, false, false, span);
                 }
             }
-            if (NoderedUtil.IsNullUndefinded(_user)) {
+            if (Util.IsNullUndefinded(_user)) {
                 await Audit.LoginFailed(username, "weblogin", "google", remoteip, "unknown", "unknown", span);
                 done("unknown user " + username, null); return;
             }
@@ -883,7 +884,7 @@ export class LoginProvider {
     static sendEmail(type: string, userid: string, to: string, subject: string, text: string, span: Span): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             var transporter = null;
-            if (!NoderedUtil.IsNullEmpty(Config.smtp_url)) {
+            if (!Util.IsNullEmpty(Config.smtp_url)) {
                 transporter = nodemailer.createTransport(Config.smtp_url);
             } else {
                 transporter = nodemailer.createTransport({
@@ -894,7 +895,7 @@ export class LoginProvider {
                     }
                 });
             }
-            let id = NoderedUtil.GetUniqueIdentifier();
+            let id = Util.GetUniqueIdentifier();
             let imgurl = Config.baseurl() + "read/" + id;
             text = text.split("\n").join("<br/>\n");
             let html = text + `<img src="${imgurl}" alt="isread" border="0" width="1" height="1">`
@@ -944,7 +945,7 @@ export class LoginProvider {
                 const user: User = req.user;
                 span?.setAttribute("username", user.username);
                 if (user != null) {
-                    const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                    const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == Wellknown.admins.name);
                     if (allowed.length > 0) {
                         Logger.instanse.verbose("Authorized " + user.username + " for " + req.url, span, { cls: "LoginProvider", func: "dashboardauth" });
                         return res.send({
@@ -961,7 +962,7 @@ export class LoginProvider {
             }
             const authorization: string = req.headers.authorization;
 
-            if (NoderedUtil.IsNullEmpty(authorization)) {
+            if (Util.IsNullEmpty(authorization)) {
                 res.statusCode = 401;
                 res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);
                 res.end("Unauthorized");
@@ -971,7 +972,7 @@ export class LoginProvider {
             Logger.instanse.verbose("Lookup user by authentication header", span, { cls: "LoginProvider", func: "dashboardauth" });
             var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
             if (user != null) {
-                const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == "admins");
+                const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == Wellknown.admins.name);
                 if (allowed.length > 0) {
                     Logger.instanse.debug("User is authorized to see dashboard", span, { cls: "LoginProvider", func: "dashboardauth" });
                     return res.send({
@@ -1003,7 +1004,7 @@ export class LoginProvider {
             res.cookie("_interaction", "", { expires: new Date(0) });
             res.cookie("_session", "", { expires: new Date(0) });
             const originalUrl: any = req.cookies.originalUrl;
-            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+            if (!Util.IsNullEmpty(originalUrl)) {
                 Logger.instanse.debug("Redirect user to " + originalUrl, span, { cls: "LoginProvider", func: "Signout" });
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
@@ -1023,7 +1024,7 @@ export class LoginProvider {
         try {
             req.logout();
             const originalUrl: any = req.cookies.originalUrl;
-            if (!NoderedUtil.IsNullEmpty(originalUrl)) {
+            if (!Util.IsNullEmpty(originalUrl)) {
                 Logger.instanse.debug("Redirect user to " + originalUrl, span, { cls: "LoginProvider", func: "PassiveSignout" });
                 res.cookie("originalUrl", "", { expires: new Date(0) });
                 LoginProvider.redirect(res, originalUrl);
@@ -1134,10 +1135,10 @@ export class LoginProvider {
     }
     static async config(): Promise<any> {
         let _url = Config.basewsurl();
-        if (!NoderedUtil.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
+        if (!Util.IsNullEmpty(Config.api_ws_url)) _url = Config.api_ws_url;
         if (!_url.endsWith("/")) _url += "/";
         let agent_domain_schema = Config.agent_domain_schema;
-        if (NoderedUtil.IsNullEmpty(agent_domain_schema)) {
+        if (Util.IsNullEmpty(agent_domain_schema)) {
             agent_domain_schema = "$slug$." + Config.domain;
         }
 
@@ -1220,7 +1221,7 @@ export class LoginProvider {
             span?.setAttribute("remoteip", remoteip);
             const key = req.body.key;
             let exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
-            if (!NoderedUtil.IsNullUndefinded(exists)) {
+            if (!Util.IsNullUndefinded(exists)) {
                 Logger.instanse.error("Key has already been used! " + key, span, { cls: "LoginProvider", func: "AddTokenRequest" });
                 return res.status(500).send({ message: "Illegal key" });
             }
@@ -1242,13 +1243,13 @@ export class LoginProvider {
             const key = req.query.key;
             let exists: TokenRequest = null;
             exists = await Logger.DBHelper.FindRequestTokenID(key, span);
-            if (NoderedUtil.IsNullUndefinded(exists)) {
+            if (Util.IsNullUndefinded(exists)) {
                 Logger.instanse.error("Unknown key " + key + " from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                 res.status(200).send({ message: "Illegal key" });
                 return;
             }
 
-            if (!NoderedUtil.IsNullEmpty(exists.jwt)) {
+            if (!Util.IsNullEmpty(exists.jwt)) {
                 Logger.instanse.debug("Token " + key + " has been forfilled from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                 if (Config.validate_user_form != "") {
                     try {
@@ -1294,13 +1295,13 @@ export class LoginProvider {
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             let key = req.query.key;
-            if (NoderedUtil.IsNullEmpty(key) && !NoderedUtil.IsNullEmpty(req.cookies.requesttoken)) key = req.cookies.requesttoken;
+            if (Util.IsNullEmpty(key) && !Util.IsNullEmpty(req.cookies.requesttoken)) key = req.cookies.requesttoken;
 
-            if (!NoderedUtil.IsNullEmpty(key)) {
+            if (!Util.IsNullEmpty(key)) {
                 if (req.user) {
                     const user: User = await Logger.DBHelper.FindById(req.user._id, span);
                     var exists: TokenRequest = await Logger.DBHelper.FindRequestTokenID(key, span);
-                    if (!NoderedUtil.IsNullUndefinded(exists)) {
+                    if (!Util.IsNullUndefinded(exists)) {
                         Logger.instanse.debug("adding jwt for request token " + key, span, { cls: "LoginProvider", func: "getlogin" });
                         await Logger.DBHelper.AddRequestTokenID(key, { jwt: await Auth.User2Token(user, Config.longtoken_expires_in, span) }, span);
                         try {
@@ -1315,7 +1316,7 @@ export class LoginProvider {
                     }
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(req.query.key)) {
+            if (!Util.IsNullEmpty(req.query.key)) {
                 if (req.user) {
                     res.cookie("originalUrl", "", { expires: new Date(0) });
                     Logger.instanse.debug("User signed in, with key " + key, span, { cls: "LoginProvider", func: "getlogin" });
@@ -1345,14 +1346,14 @@ export class LoginProvider {
             }
             const originalUrl: any = req.cookies.originalUrl;
             const validateurl: any = req.cookies.validateurl;
-            if (NoderedUtil.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
+            if (Util.IsNullEmpty(originalUrl) && !req.originalUrl.startsWith("/login")) {
                 Logger.instanse.debug("Save originalUrl as " + originalUrl, span, { cls: "LoginProvider", func: "getlogin" });
                 try {
                     res.cookie("originalUrl", req.originalUrl, { maxAge: 900000, httpOnly: true });
                 } catch (error) {
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(validateurl)) {
+            if (!Util.IsNullEmpty(validateurl)) {
                 if (tuser != null) {
                     if (tuser.validated) {
                         await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
@@ -1367,8 +1368,8 @@ export class LoginProvider {
                     }
                 }
             }
-            if (req.user != null && !NoderedUtil.IsNullEmpty(originalUrl) && tuser.validated) {
-                if (!NoderedUtil.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
+            if (req.user != null && !Util.IsNullEmpty(originalUrl) && tuser.validated) {
+                if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == true) {
                     if (originalUrl != "/login" && originalUrl != "/Login") {
                         Logger.instanse.debug("user validated, redirect to " + originalUrl, span, { cls: "LoginProvider", func: "getlogin" });
                         this.redirect(res, originalUrl);
@@ -1377,7 +1378,7 @@ export class LoginProvider {
                         this.redirect(res, "/");
                     }
                     return;
-                } else if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+                } else if (Util.IsNullEmpty(Config.validate_user_form)) {
                     if (originalUrl != "/login" && originalUrl != "/Login") {
                         Logger.instanse.debug("user signed in, redirect to " + originalUrl, span, { cls: "LoginProvider", func: "getlogin" });
                         this.redirect(res, originalUrl);
@@ -1478,7 +1479,7 @@ export class LoginProvider {
         try {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             res.setHeader("Content-Type", "application/json");
-            if (NoderedUtil.IsNullEmpty(Config.validate_user_form)) {
+            if (Util.IsNullEmpty(Config.validate_user_form)) {
                 Logger.instanse.debug("No validate user form set, return nothing", span, { cls: "LoginProvider", func: "validateuserform" });
                 res.end(JSON.stringify({}));
                 res.end();
@@ -1506,7 +1507,7 @@ export class LoginProvider {
         return;
     }
     static async get_read(req: any, res) {
-        if (NoderedUtil.IsNullEmpty(req.params.id)) return res.end(JSON.stringify({ "message": "notok" }));
+        if (Util.IsNullEmpty(req.params.id)) return res.end(JSON.stringify({ "message": "notok" }));
         const buffer = Buffer.alloc(43)
         buffer.write("R0lGODlhAQABAIAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=", "base64")
         res.writeHead(200, { "Content-Type": "image/gif" })
@@ -1534,7 +1535,7 @@ export class LoginProvider {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             if (req.user) {
                 var u: User = req.user;
-                if (!NoderedUtil.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, span);
+                if (!Util.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, span);
                 var tuser: User = u;
                 if (req.body && req.body.data) {
                     if (!tuser.formvalidated || tuser.formvalidated) {
@@ -1562,14 +1563,14 @@ export class LoginProvider {
 
                         if (Config.validate_emails) {
                             if (Config.smtp_service == "gmail") {
-                                if (NoderedUtil.IsNullEmpty(Config.smtp_user) || NoderedUtil.IsNullEmpty(Config.smtp_pass)) {
+                                if (Util.IsNullEmpty(Config.smtp_user) || Util.IsNullEmpty(Config.smtp_pass)) {
                                     Logger.instanse.error("Disabling email validation, missing login information fot gmail", span, { cls: "LoginProvider", func: "validateuserform" });
                                     Config.validate_emails = false;
                                 }
-                            } else if (NoderedUtil.IsNullEmpty(Config.smtp_url)) {
+                            } else if (Util.IsNullEmpty(Config.smtp_url)) {
                                 Logger.instanse.error("Disabling email validation, missing smtp_url", span, { cls: "LoginProvider", func: "validateuserform" });
                                 Config.validate_emails = false;
-                            } else if (NoderedUtil.IsNullEmpty(Config.smtp_from)) {
+                            } else if (Util.IsNullEmpty(Config.smtp_from)) {
                                 Logger.instanse.error("Disabling email validation, missing smtp_from", span, { cls: "LoginProvider", func: "validateuserform" });
                                 Config.validate_emails = false;
                             }
@@ -1615,7 +1616,7 @@ export class LoginProvider {
                                     UpdateDoc.$set["validated"] = true;
                                     tuser.validated = true;
                                 } else {
-                                    const code = NoderedUtil.GetUniqueIdentifier();
+                                    const code = Util.GetUniqueIdentifier();
                                     UpdateDoc.$set["_mailcode"] = code;
                                     this.sendEmail("validate", tuser._id, email, "Validate email in OpenIAP flow",
                                         `Hi ${tuser.name}\nPlease use the below code to validate your email\n${code}`, span);
@@ -1648,7 +1649,7 @@ export class LoginProvider {
                             var u: User = exists[0];
                             let email: string = u.username;
                             if (u.email.indexOf("@") > -1) email = u.email;
-                            (u as any)._mailcode = NoderedUtil.GetUniqueIdentifier();
+                            (u as any)._mailcode = Util.GetUniqueIdentifier();
                             this.sendEmail("validate", u._id, email, "Validate email in OpenIAP flow",
                                 `Hi ${u.name}\nPlease use the below code to validate your email\n${(u as any)._mailcode}`, span);
 
@@ -1700,14 +1701,14 @@ export class LoginProvider {
         res.setHeader("Content-Type", "application/json");
         try {
             if (req.body && req.body.email) {
-                const id = NoderedUtil.GetUniqueIdentifier();
+                const id = Util.GetUniqueIdentifier();
                 const email: string = req.body.email;
                 let user = await Config.db.getbyusername(req.body.email, null, Crypt.rootToken(), true, span);
                 if (user == null) {
                     Logger.instanse.error("Received unknown email " + email, span, { cls: "LoginProvider", func: "forgotpassword" });
                     return res.end(JSON.stringify({ id }));
                 }
-                const code = NoderedUtil.GetUniqueIdentifier();
+                const code = Util.GetUniqueIdentifier();
                 var key = ("forgotpass_" + id).toString();
                 let item = await Logger.DBHelper.memoryCache.wrap(key, () => {
                     Logger.instanse.debug(`Add forgotpass if ${id} with code ${code} for ${email}`, span, { cls: "LoginProvider", func: "forgotpassword" });

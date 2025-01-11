@@ -1,4 +1,3 @@
-import { Base, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { config } from "dotenv";
 import fs from "fs";
@@ -12,6 +11,8 @@ import xml2js from "xml2js";
 import { Crypt } from "./Crypt.js";
 import { DatabaseConnection } from "./DatabaseConnection.js";
 import { Logger, promiseRetry } from "./Logger.js";
+import { Util, Wellknown } from "./Util.js";
+import { Base, Rights } from "./commoninterfaces.js";
 const env = path.join(process.cwd(), "config", ".env");
 if (fs.existsSync(env)) {
     console.log("Loading env file: " + env);
@@ -40,12 +41,12 @@ export class dbConfig extends Base {
             this.needsupdate = false;
             this.version = Config.version;
         }
-        Base.addRight(this, WellknownIds.admins, "admins", [Rights.full_control]);
-        if (NoderedUtil.IsNullEmpty(this._id)) {
+        Base.addRight(this, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+        if (Util.IsNullEmpty(this._id)) {
             const result = await Config.db.InsertOne(this, "config", 1, true, jwt, parent);
             this._id = result._id;
         }
-        if (!NoderedUtil.IsNullEmpty(this._id)) {
+        if (!Util.IsNullEmpty(this._id)) {
             await Config.db.UpdateOne(this, "config", 1, true, jwt, parent);
         }
     }
@@ -905,7 +906,7 @@ export class Config {
             // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             const data: string = await Config.get(url)
             // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (NoderedUtil.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
+            if (Util.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
             var xml = await xml2js.parseStringPromise(data);
             if (xml && xml.EntityDescriptor && xml.EntityDescriptor.IDPSSODescriptor && xml.EntityDescriptor.IDPSSODescriptor.length > 0) {
                 var IDPSSODescriptor = xml.EntityDescriptor.IDPSSODescriptor[0];

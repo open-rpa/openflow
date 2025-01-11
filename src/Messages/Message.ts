@@ -1,4 +1,4 @@
-import { Ace, AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, AggregateMessage, Base, CloseQueueMessage, CountMessage, CreateCollectionMessage, CreateWorkflowInstanceMessage, CustomCommandMessage, Customer, DeleteManyMessage, DeleteOneMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, DropCollectionMessage, EnsureCustomerMessage, GetDocumentVersionMessage, GetFileMessage, GetKubeNodeLabelsMessage, GetNextInvoiceMessage, GetWorkitemQueueMessage, InsertManyMessage, InsertOneMessage, InsertOrUpdateManyMessage, InsertOrUpdateOneMessage, ListCollectionsMessage, NoderedUtil, PopWorkitemMessage, QueryMessage, QueuedMessage, QueueMessage, RegisterExchangeMessage, RegisterQueueMessage, Resource, ResourceUsage, ResourceVariant, Rights, Role, Rolemember, SaveFileMessage, SelectCustomerMessage, SigninMessage, stripe_base, stripe_customer, stripe_invoice, stripe_invoice_line, stripe_list, stripe_plan, stripe_price, stripe_subscription, stripe_subscription_item, StripeAddPlanMessage, StripeCancelPlanMessage, StripeMessage, TokenUser, UpdateFileMessage, UpdateManyMessage, UpdateOneMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, User, WatchMessage, WellknownIds, Workitem, WorkitemQueue } from "@openiap/openflow-api";
+import { Ace, AddWorkitemMessage, AddWorkitemQueueMessage, AddWorkitemsMessage, AggregateMessage, CloseQueueMessage, CountMessage, CreateCollectionMessage, CreateWorkflowInstanceMessage, CustomCommandMessage, DeleteManyMessage, DeleteOneMessage, DeleteWorkitemMessage, DeleteWorkitemQueueMessage, DropCollectionMessage, EnsureCustomerMessage, GetDocumentVersionMessage, GetFileMessage, GetKubeNodeLabelsMessage, GetNextInvoiceMessage, GetWorkitemQueueMessage, InsertManyMessage, InsertOneMessage, InsertOrUpdateManyMessage, InsertOrUpdateOneMessage, ListCollectionsMessage, PopWorkitemMessage, QueryMessage, QueuedMessage, QueueMessage, RegisterExchangeMessage, RegisterQueueMessage, SaveFileMessage, SelectCustomerMessage, SigninMessage, stripe_base, stripe_customer, stripe_invoice, stripe_invoice_line, stripe_list, stripe_plan, stripe_price, stripe_subscription, stripe_subscription_item, StripeAddPlanMessage, StripeCancelPlanMessage, StripeMessage, UpdateFileMessage, UpdateManyMessage, UpdateOneMessage, UpdateWorkitemMessage, UpdateWorkitemQueueMessage, WatchMessage, Workitem } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import got from "got";
 import mimetype from "mimetype";
@@ -11,7 +11,7 @@ import webpush from "web-push";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper.js";
 import { Audit, clientType, tokenType } from "../Audit.js";
 import { Auth } from "../Auth.js";
-import { iAgent } from "../commoninterfaces.js";
+import { Base, Customer, iAgent, Product, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, User, WorkitemQueue } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
@@ -27,6 +27,7 @@ import { WebSocketServerClient } from "../WebSocketServerClient.js";
 import { Workspaces } from "../ee/Workspaces.js";
 import { Resources } from "../ee/Resources.js";
 import { Billings } from "../ee/Billings.js";
+import { Util, Wellknown } from "../Util.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -34,7 +35,7 @@ async function handleError(cli: WebSocketServerClient, error: Error, span: Span)
             Logger.instanse.error(error, span);
             return;
         }
-        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_errors))
+        if (!Util.IsNullUndefinded(WebSocketServer.websocket_errors))
             WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
         Logger.instanse.error(error, span, Logger.parsecli(cli));
@@ -139,7 +140,7 @@ export class Message {
             } else {
                 Logger.instanse.debug("Discard " + this.command + " due to missing jwt", span);
             }
-            if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
+            if (!Util.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
         } catch (error) {
             Logger.instanse.error(error, span);
             this.command = "error";
@@ -151,7 +152,7 @@ export class Message {
     public static fromcommand(command: string): Message {
         const result: Message = new Message();
         result.command = command;
-        result.id = NoderedUtil.GetUniqueIdentifier();
+        result.id = Util.GetUniqueIdentifier();
         return result;
     }
     public static frommessage(msg: SocketMessage, data: string): Message {
@@ -195,31 +196,31 @@ export class Message {
         return result;
     }
     public Reply(command: string = null): void {
-        if (!NoderedUtil.IsNullEmpty(command)) { this.command = command; }
+        if (!Util.IsNullEmpty(command)) { this.command = command; }
         this.replyto = this.id;
-        this.id = NoderedUtil.GetUniqueIdentifier();
+        this.id = Util.GetUniqueIdentifier();
     }
     public async EnsureJWT(cli: WebSocketServerClient, jwtrequired: boolean): Promise<boolean> {
-        if (!NoderedUtil.IsNullUndefinded(this.data)) {
+        if (!Util.IsNullUndefinded(this.data)) {
             var obj: any = this.data;
             if (typeof obj == "string") obj = JSON.parse(obj);
-            if (!NoderedUtil.IsNullEmpty(obj.jwt)) {
+            if (!Util.IsNullEmpty(obj.jwt)) {
                 this.jwt = obj.jwt;
                 if (jwtrequired) delete obj.jwt;
                 this.data = JSON.stringify(obj);
             }
         }
-        if (!NoderedUtil.IsNullUndefinded(cli) && NoderedUtil.IsNullEmpty(this.jwt)) {
+        if (!Util.IsNullUndefinded(cli) && Util.IsNullEmpty(this.jwt)) {
             this.jwt = cli.jwt;
         }
-        if (NoderedUtil.IsNullEmpty(this.jwt) && jwtrequired) {
+        if (Util.IsNullEmpty(this.jwt) && jwtrequired) {
             if (Config.enable_guest == true) {
                 this.tuser = await Crypt.guestUser();
                 this.jwt = Crypt.createToken(this.tuser, Config.shorttoken_expires_in);
             } else {
                 throw new Error("Not signed in, and missing jwt");
             }
-        } else if (!NoderedUtil.IsNullEmpty(this.jwt)) {
+        } else if (!Util.IsNullEmpty(this.jwt)) {
             try {
                 this.tuser = await Auth.Token2User(this.jwt, null);
                 if (this.tuser == null) {
@@ -232,13 +233,13 @@ export class Message {
                     try {
                         var msg = SigninMessage.assign(this.data);
                         if (cli != null) {
-                            if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
+                            if (Util.IsNullEmpty(cli.clientagent) && !Util.IsNullEmpty(msg.clientagent)) {
                                 if (msg.clientagent == "pyclient") msg.clientagent = "python"
                                 cli.clientagent = msg.clientagent as any;
                                 // @ts-ignore
                                 cli.agent = msg.clientagent as any;
                             }
-                            if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) {
+                            if (Util.IsNullEmpty(cli.clientversion) && !Util.IsNullEmpty(msg.clientversion)) {
                                 cli.clientversion = msg.clientversion;
                                 // @ts-ignore
                                 cli.version = msg.clientversion;
@@ -260,9 +261,9 @@ export class Message {
             let span: Span = undefined;
             try {
                 let username: string = "Unknown";
-                if (!NoderedUtil.IsNullUndefinded(cli.user)) { username = cli.user.username; }
+                if (!Util.IsNullUndefinded(cli.user)) { username = cli.user.username; }
 
-                if (!NoderedUtil.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
+                if (!Util.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
                 let command: string = this.command;
                 try {
                     if (Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
@@ -278,37 +279,37 @@ export class Message {
                     return reject(e);
                 }
 
-                if (!NoderedUtil.IsNullEmpty(this.replyto)) {
+                if (!Util.IsNullEmpty(this.replyto)) {
                     const qmsg: QueuedMessage = cli.messageQueue[this.replyto];
-                    if (!NoderedUtil.IsNullUndefinded(qmsg)) {
+                    if (!Util.IsNullUndefinded(qmsg)) {
                         span = Logger.otel.startSpan("ProcessMessageReply " + command, this.traceId, this.spanId);
                         span?.setAttribute("clientid", cli.id);
                         span?.setAttribute("command", command);
                         span?.setAttribute("id", this.id);
                         span?.setAttribute("replyto", this.replyto);
-                        if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span?.setAttribute("clientversion", cli.clientversion);
-                        if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span?.setAttribute("clientagent", cli.clientagent);
-                        if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span?.setAttribute("remoteip", cli.remoteip);
-                        if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span?.setAttribute("username", cli.user.username);
+                        if (!Util.IsNullEmpty(cli.clientversion)) span?.setAttribute("clientversion", cli.clientversion);
+                        if (!Util.IsNullEmpty(cli.clientagent)) span?.setAttribute("clientagent", cli.clientagent);
+                        if (!Util.IsNullEmpty(cli.remoteip)) span?.setAttribute("remoteip", cli.remoteip);
+                        if (!Util.IsNullUndefinded(cli.user) && !Util.IsNullEmpty(cli.user.username)) span?.setAttribute("username", cli.user.username);
                         const ot_end = Logger.otel.startTimer();
                         try {
                             qmsg.message = Object.assign(qmsg.message, JSON.parse(this.data));
                         } catch (error) {
                             // TODO: should we set message to data ?
                         }
-                        if (!NoderedUtil.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
+                        if (!Util.IsNullUndefinded(qmsg.cb)) { qmsg.cb(this); }
                         delete cli.messageQueue[this.replyto];
-                        if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
+                        if (!Util.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                     }
                     return resolve(null);
                 }
                 const ot_end = Logger.otel.startTimer();
                 span = Logger.otel.startSpan("ProcessMessage " + command, this.traceId, this.spanId);
                 span?.setAttribute("clientid", cli.id);
-                if (!NoderedUtil.IsNullEmpty(cli.clientversion)) span?.setAttribute("clientversion", cli.clientversion);
-                if (!NoderedUtil.IsNullEmpty(cli.clientagent)) span?.setAttribute("clientagent", cli.clientagent);
-                if (!NoderedUtil.IsNullEmpty(cli.remoteip)) span?.setAttribute("remoteip", cli.remoteip);
-                if (!NoderedUtil.IsNullUndefinded(cli.user) && !NoderedUtil.IsNullEmpty(cli.user.username)) span?.setAttribute("username", cli.user.username);
+                if (!Util.IsNullEmpty(cli.clientversion)) span?.setAttribute("clientversion", cli.clientversion);
+                if (!Util.IsNullEmpty(cli.clientagent)) span?.setAttribute("clientagent", cli.clientagent);
+                if (!Util.IsNullEmpty(cli.remoteip)) span?.setAttribute("remoteip", cli.remoteip);
+                if (!Util.IsNullUndefinded(cli.user) && !Util.IsNullEmpty(cli.user.username)) span?.setAttribute("username", cli.user.username);
                 span?.setAttribute("command", command);
                 span?.setAttribute("id", this.id);
                 let process: boolean = true;
@@ -638,7 +639,7 @@ export class Message {
                             break;
                     }
                 }
-                if (!NoderedUtil.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
+                if (!Util.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: command });
                 resolve(this);
             } catch (error) {
                 if (this.replyto == null || this.replyto == "") {
@@ -692,7 +693,7 @@ export class Message {
                 msg.result = await Logger.agentdriver.GetInstanceLog(this.tuser, this.jwt, agent, msg.podname, parent);
             } else if (this.command == "getagentpods") {
                 var getstats = false;
-                if (!NoderedUtil.IsNullEmpty(msg.stats)) getstats = msg.stats;
+                if (!Util.IsNullEmpty(msg.stats)) getstats = msg.stats;
                 msg.results = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, msg.podname, parent);
             } else if (this.command == "deleteagentpod") {
                 await Logger.agentdriver.RemoveInstancePod(this.tuser, this.jwt, agent, msg.podname, parent);
@@ -715,7 +716,7 @@ export class Message {
         }
         msg = JSON.parse(JSON.stringify(msg));
         try {
-            if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+            if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
             msg.result = await Config.db.createIndex(msg.collectionname, msg.name, msg.index, msg.options, parent);
         } finally {
             this.data = JSON.stringify(msg);
@@ -729,7 +730,7 @@ export class Message {
         }
         msg = JSON.parse(JSON.stringify(msg));
         try {
-            if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+            if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
             const indexes = await Config.db.db.collection(msg.collectionname).indexes();
             msg.results = indexes;
         } finally {
@@ -744,7 +745,7 @@ export class Message {
         }
         msg = JSON.parse(JSON.stringify(msg));
         try {
-            if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+            if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
             msg.result = await Config.db.deleteIndex(msg.collectionname, msg.name, parent);
         } finally {
             this.data = JSON.stringify(msg);
@@ -797,11 +798,11 @@ export class Message {
             }
             if (data == null || data == "") throw new Error("No data found");
             var domain = data.domain;
-            if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+            if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
                 delete data.months;
             }
             var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage" }, collectionname: "config", jwt: this.jwt }, parent);
-            if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+            if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
                 if (exists == null) throw new Error("Access denied");
             }
             if (data.months == null || data.months == "") {
@@ -828,20 +829,20 @@ export class Message {
         this.Reply();
         let msg: RegisterExchangeMessage;
         msg = RegisterExchangeMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.exchangename) || msg.exchangename.toLowerCase() == "openflow") {
+        if (Util.IsNullEmpty(msg.exchangename) || msg.exchangename.toLowerCase() == "openflow") {
             throw new Error("Access denied");
         }
         const jwt: string = this.jwt;
         const rootjwt = Crypt.rootToken();
         const tuser = this.tuser;
-        if (Config.amqp_force_exchange_prefix && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
+        if (Config.amqp_force_exchange_prefix && !Util.IsNullEmpty(msg.exchangename)) {
             let name = tuser.username.split("@").join("").split(".").join("");
             name = name.toLowerCase();
             msg.exchangename = name + msg.exchangename;
             if (msg.exchangename.length == 24) { msg.exchangename += "1"; }
         }
 
-        if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
+        if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !Util.IsNullEmpty(msg.exchangename)) {
             let mq = await Logger.DBHelper.FindExchangeByName(msg.exchangename, rootjwt, parent);
             if (mq != null) {
                 if (Config.amqp_force_consumer_has_update) {
@@ -865,13 +866,13 @@ export class Message {
             }
 
         }
-        if (NoderedUtil.IsNullUndefinded(msg.algorithm)) throw new Error("algorithm is mandatory, as either direct, fanout, topic or header");
+        if (Util.IsNullUndefinded(msg.algorithm)) throw new Error("algorithm is mandatory, as either direct, fanout, topic or header");
         if (msg.algorithm != "direct" && msg.algorithm != "fanout" && msg.algorithm != "topic" && msg.algorithm != "header") {
             throw new Error("invalid algorithm must be either direct, fanout, topic or header");
         }
-        if (NoderedUtil.IsNullUndefinded(msg.routingkey)) msg.routingkey = "";
+        if (Util.IsNullUndefinded(msg.routingkey)) msg.routingkey = "";
         var addqueue: boolean = (msg.addqueue as any);
-        if (NoderedUtil.IsNullEmpty(addqueue)) addqueue = true;
+        if (Util.IsNullEmpty(addqueue)) addqueue = true;
         addqueue = Config.parseBoolean(addqueue);
         var res = await cli.RegisterExchange(tuser, msg.exchangename, msg.algorithm, msg.routingkey, addqueue, parent);
         msg.queuename = res.queuename;
@@ -886,13 +887,13 @@ export class Message {
         msg = RegisterQueueMessage.assign(this.data);
         const jwt: string = this.jwt;
         const rootjwt = Crypt.rootToken();
-        if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
-        if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
+        if (!Util.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
+        if (!Util.IsNullEmpty(msg.queuename) && msg.queuename.toLowerCase() == "openflow") {
             throw new Error("Access denied");
         }
 
         const tuser = this.tuser;
-        if (Config.amqp_force_queue_prefix && !NoderedUtil.IsNullEmpty(msg.queuename)) {
+        if (Config.amqp_force_queue_prefix && !Util.IsNullEmpty(msg.queuename)) {
             // assume queue names if 24 letters is an mongodb is, should proberly do a real test here
             if (msg.queuename.length == 24) {
                 let name = tuser.username.split("@").join("").split(".").join("");
@@ -926,7 +927,7 @@ export class Message {
                 if (msg.queuename.length == 24) { msg.queuename += "1"; }
             }
         }
-        if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
+        if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !Util.IsNullEmpty(msg.queuename)) {
             let allowed: boolean = false;
             if (tuser._id == msg.queuename) {
                 // Queue is mine
@@ -997,13 +998,13 @@ export class Message {
             msg = QueueMessage.assign(this.data);
             // Backward compatibility
             // @ts-ignore
-            if (!NoderedUtil.IsNullEmpty(msg.exchange) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
+            if (!Util.IsNullEmpty(msg.exchange) && Util.IsNullEmpty(msg.exchangename)) {
                 // @ts-ignore
                 msg.exchangename = msg.exchange
             }
             const jwt: string = this.jwt;
             const rootjwt = Crypt.rootToken();
-            if (!NoderedUtil.IsNullUndefinded(msg.data)) {
+            if (!Util.IsNullUndefinded(msg.data)) {
                 if (typeof msg.data == "string") {
                     try {
                         const obj = JSON.parse(msg.data);
@@ -1013,7 +1014,7 @@ export class Message {
                     msg.data.jwt = jwt;
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(msg.exchangename) && !Config.amqp_enabled_exchange) {
+            if (!Util.IsNullEmpty(msg.exchangename) && !Config.amqp_enabled_exchange) {
                 throw new Error("AMQP exchange is not enabled on this OpenFlow");
             }
             const expiration: number = (typeof msg.expiration == "number" ? msg.expiration : Config.amqp_default_expiration);
@@ -1024,24 +1025,24 @@ export class Message {
                 }
             }
             if (Config.amqp_allow_replyto_empty_queuename) {
-                if (!NoderedUtil.IsNullEmpty(msg.replyto) && NoderedUtil.IsNullEmpty(msg.queuename)) {
+                if (!Util.IsNullEmpty(msg.replyto) && Util.IsNullEmpty(msg.queuename)) {
                     msg.queuename = msg.replyto;
                     msg.replyto = "";
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
-            if (!NoderedUtil.IsNullEmpty(msg.exchangename)) msg.exchangename = msg.exchangename.toLowerCase();
-            if (!NoderedUtil.IsNullEmpty(msg.replyto)) msg.replyto = msg.replyto.toLowerCase();
-            if (!NoderedUtil.IsNullEmpty(msg.queuename) && msg.queuename == "openflow") {
+            if (!Util.IsNullEmpty(msg.queuename)) msg.queuename = msg.queuename.toLowerCase();
+            if (!Util.IsNullEmpty(msg.exchangename)) msg.exchangename = msg.exchangename.toLowerCase();
+            if (!Util.IsNullEmpty(msg.replyto)) msg.replyto = msg.replyto.toLowerCase();
+            if (!Util.IsNullEmpty(msg.queuename) && msg.queuename == "openflow") {
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.exchangename) && msg.exchangename == "openflow") {
+            } else if (!Util.IsNullEmpty(msg.exchangename) && msg.exchangename == "openflow") {
                 throw new Error("Access denied");
-            } else if (!NoderedUtil.IsNullEmpty(msg.replyto) && msg.replyto == "openflow") {
+            } else if (!Util.IsNullEmpty(msg.replyto) && msg.replyto == "openflow") {
                 throw new Error("Access denied");
-            } else if (NoderedUtil.IsNullEmpty(msg.queuename) && NoderedUtil.IsNullEmpty(msg.exchangename)) {
+            } else if (Util.IsNullEmpty(msg.queuename) && Util.IsNullEmpty(msg.exchangename)) {
                 throw new Error("queuename or exchange must be given");
             }
-            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.queuename)) {
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !Util.IsNullEmpty(msg.queuename)) {
                 const tuser = this.tuser;
                 let allowed: boolean = false;
                 if (tuser._id == msg.queuename) {
@@ -1087,7 +1088,7 @@ export class Message {
                     }
                 }
             }
-            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !NoderedUtil.IsNullEmpty(msg.exchangename)) {
+            if ((Config.amqp_force_sender_has_read || Config.amqp_force_sender_has_invoke) && !Util.IsNullEmpty(msg.exchangename)) {
                 const tuser = this.tuser;
                 let allowed: boolean = false;
                 if (tuser._id == msg.exchangename) {
@@ -1116,12 +1117,12 @@ export class Message {
                 }
             }
             const sendthis: any = msg.data;
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && !NoderedUtil.IsNullEmpty(msg.data.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt) && !Util.IsNullEmpty(msg.data.jwt)) {
                 msg.jwt = msg.data.jwt;
             }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (!Util.IsNullEmpty(msg.jwt)) {
                 const tuser = await Auth.Token2User(msg.jwt, span);
                 if (tuser == null) throw new Error("Access denied");
                 msg.user = TokenUser.From(tuser);
@@ -1137,7 +1138,7 @@ export class Message {
                 delete sendthis.__jwt;
                 delete sendthis.__user;
             }
-            if (NoderedUtil.IsNullEmpty(msg.replyto)) {
+            if (Util.IsNullEmpty(msg.replyto)) {
                 const sendthis = msg.data;
                 if (msg.queuename != null && msg.queuename != "" && amqpwrapper.bad_queues.indexOf(msg.queuename) > -1) {
                     throw new Error("bad queue: " + msg.queuename + " correlationId: " + msg.correlationId);
@@ -1167,7 +1168,7 @@ export class Message {
         this.data = JSON.stringify(msg);
     }
     private UnknownCommand(): void {
-        if (NoderedUtil.IsNullEmpty(this.command)) {
+        if (Util.IsNullEmpty(this.command)) {
             Logger.instanse.error(new Error("Received message with no command"), null);
             return;
         }
@@ -1183,7 +1184,7 @@ export class Message {
         let msg: ListCollectionsMessage
         try {
             msg = ListCollectionsMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             const d = new Date(Message.collectionCachetime.getTime() + 1000 * 60);
             if (d < new Date()) {
                 Message.collectionCache = {};
@@ -1196,7 +1197,7 @@ export class Message {
                 msg.result = Message.collectionCache[msg.jwt];
             } else {
                 span?.addEvent("ListCollections");
-                msg.result = await Config.db.ListCollections(this.tuser.HasRoleId(WellknownIds.admins), msg.jwt);
+                msg.result = await Config.db.ListCollections(this.tuser.HasRoleId(Wellknown.admins._id), msg.jwt);
                 span?.addEvent("Filter collections");
                 if (msg.includehist !== true) {
                     msg.result = msg.result.filter(x => !x.name.endsWith("_hist"));
@@ -1220,7 +1221,7 @@ export class Message {
                 msg.result = result;
             }
             const _tuser = this.tuser;
-            if (Config.enable_entity_restriction && !_tuser.HasRoleId(WellknownIds.admins)) {
+            if (Config.enable_entity_restriction && !_tuser.HasRoleId(Wellknown.admins._id)) {
                 var EntityRestrictions = await Logger.DBHelper.GetEntityRestrictions(span);
                 if (EntityRestrictions.length > 1) {
                     const tuser = this.tuser;
@@ -1246,7 +1247,7 @@ export class Message {
         let msg: DropCollectionMessage
         try {
             msg = DropCollectionMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.DropCollection(msg.collectionname, msg.jwt, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
@@ -1260,7 +1261,7 @@ export class Message {
         let msg: CreateCollectionMessage
         try {
             msg = CreateCollectionMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             await Config.db.CreateCollection(msg.collectionname, msg, msg.jwt, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
@@ -1274,8 +1275,8 @@ export class Message {
         let msg: QueryMessage
         try {
             msg = QueryMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) {
                 await handleError(null, new Error("Access denied, not signed in"), span);
                 msg.error = "Access denied, not signed in";
             } else {
@@ -1303,8 +1304,8 @@ export class Message {
                 msg = JSON.stringify(this.data);
             }
 
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) {
                 await handleError(null, new Error("Access denied, not signed in"), span);
                 msg.error = "Access denied, not signed in";
             } else {
@@ -1325,8 +1326,8 @@ export class Message {
         let msg: CountMessage
         try {
             msg = CountMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) {
                 await handleError(null, new Error("Access denied, not signed in"), span);
                 msg.error = "Access denied, not signed in";
             } else {
@@ -1354,8 +1355,8 @@ export class Message {
             msg = GetDocumentVersionMessage.assign(this.data);
             if (msg && msg.version) version = msg.version;
             if (version < 0) version = undefined;
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) {
                 msg.error = "Access denied, not signed in";
             } else {
                 msg.result = await Config.db.GetDocumentVersion({ collectionname: msg.collectionname, id: msg.id, version: version, jwt: msg.jwt }, span);
@@ -1373,7 +1374,7 @@ export class Message {
         this.Reply();
         let msg: AggregateMessage
         msg = AggregateMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
         // @ts-ignore
         var queryas = msg.queryas;
         // @ts-ignore
@@ -1388,8 +1389,8 @@ export class Message {
         this.Reply();
         let msg: WatchMessage
         msg = WatchMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
         await cli.UnWatch(msg.id, msg.jwt);
         msg.result = null;
         delete msg.jwt;
@@ -1399,8 +1400,8 @@ export class Message {
         this.Reply();
         let msg: WatchMessage
         msg = WatchMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
         msg.id = null;
         // @ts-ignore
         const paths = msg.aggregates || msg.paths
@@ -1415,10 +1416,10 @@ export class Message {
         let msg: InsertOneMessage
         try {
             msg = InsertOneMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (Util.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
             if (typeof msg.item === "string") { msg.item = JSON.parse(msg.item); }
@@ -1437,10 +1438,10 @@ export class Message {
         let msg: InsertManyMessage
         try {
             msg = InsertManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (Util.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
             if (typeof msg.items == "string") { msg.items = JSON.parse(msg.items); }
@@ -1460,9 +1461,9 @@ export class Message {
         let msg: UpdateOneMessage
         try {
             msg = UpdateOneMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             var tempres = await Config.db._UpdateOne(msg, span);
             msg = tempres;
             delete msg.item;
@@ -1482,9 +1483,9 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.UpdateOne", parent);
         try {
             msg = UpdateManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
             msg = await Config.db._UpdateDocument(msg, span);
             if (this.clientagent == "openrpa") Config.db.parseResults(msg.result, this.clientagent, this.clientversion);
             delete msg.item;
@@ -1501,9 +1502,9 @@ export class Message {
         this.Reply();
         let msg: InsertOrUpdateOneMessage
         msg = InsertOrUpdateOneMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-        if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-        if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+        if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
         if (msg.collectionname == "openrpa_instances" && msg.item._type == "workflowinstance") {
             let state: string = (msg.item as any).state;
             // Force removing completed states, for old versions of openrpa
@@ -1526,10 +1527,10 @@ export class Message {
         let msg: InsertOrUpdateManyMessage
         try {
             msg = InsertOrUpdateManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.w as any)) { msg.w = 0; }
-            if (NoderedUtil.IsNullEmpty(msg.j as any)) { msg.j = false; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.w as any)) { msg.w = 0; }
+            if (Util.IsNullEmpty(msg.j as any)) { msg.j = false; }
+            if (Util.IsNullEmpty(msg.jwt)) {
                 throw new Error("jwt is null and client is not authenticated");
             }
             if (msg.items && typeof msg.items === "string") msg.items = JSON.parse(msg.items);
@@ -1549,12 +1550,12 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.DeleteOne", parent);
         try {
             msg = DeleteOneMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (!NoderedUtil.IsNullEmpty((msg as any)._id) && NoderedUtil.IsNullEmpty(msg.id)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (!Util.IsNullEmpty((msg as any)._id) && Util.IsNullEmpty(msg.id)) {
                 msg.id = (msg as any)._id
             }
             if (msg.collectionname == "mq") {
-                if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
+                if (Util.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
                 var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
                 if (doc == null) throw new Error("item not found, or Access Denied");
                 if (doc._type == "workitemqueue") {
@@ -1562,7 +1563,7 @@ export class Message {
                 }
             }
             if (msg.collectionname == "agents") {
-                if (NoderedUtil.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
+                if (Util.IsNullEmpty(msg.id)) throw new Error("id is mandatory");
                 var doc = await Config.db.getbyid(msg.id, msg.collectionname, msg.jwt, false, span);
                 if (doc._type == "agent" || doc._type == "package") {
                     throw new Error("Access denied, use packages page or api to delete package");
@@ -1582,7 +1583,7 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.DeleteMany", parent);
         try {
             msg = DeleteManyMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
             if (msg.collectionname == "agents") {
                 throw new Error("Access denied, use agents page or api to delete agents");
             }
@@ -1599,23 +1600,23 @@ export class Message {
         const span: Span = Logger.otel.startSubSpan("message.DoSignin", parent);
         let tuser: User;
         let type: tokenType = "jwtsignin";
-        if (!NoderedUtil.IsNullEmpty(rawAssertion)) {
+        if (!Util.IsNullEmpty(rawAssertion)) {
             type = "samltoken";
             cli.user = await LoginProvider.validateToken(rawAssertion, span);
-            if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+            if (!Util.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
             tuser = cli.user;
-        } else if (!NoderedUtil.IsNullEmpty(cli.jwt)) {
+        } else if (!Util.IsNullEmpty(cli.jwt)) {
             tuser = await Auth.Token2User(cli.jwt, span);
             if (tuser == null) throw new Error("Access denied");
             const impostor: string = (tuser as any).impostor;
             cli.user = await Logger.DBHelper.FindById(cli.user._id, span);
-            if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+            if (!Util.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
             tuser = cli.user;
             (tuser as any).impostor = impostor;
         }
         span?.setAttribute("type", type);
         span?.setAttribute("clientid", cli.id);
-        if (!NoderedUtil.IsNullUndefinded(cli.user)) {
+        if (!Util.IsNullUndefinded(cli.user)) {
             var validated = true;
             if (Config.validate_user_form != "") {
                 if (!cli.user.formvalidated) validated = false;
@@ -1624,7 +1625,7 @@ export class Message {
                 if (!cli.user.emailvalidated) validated = false;
             }
             if (!validated) {
-                if (cli.clientagent != "nodered" && NoderedUtil.IsNullEmpty((tuser as any).impostor)) {
+                if (cli.clientagent != "nodered" && Util.IsNullEmpty((tuser as any).impostor)) {
                     Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, Logger.parsecli(cli));
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     tuser = null;
@@ -1649,13 +1650,13 @@ export class Message {
             // @ts-ignore
             if (msg.validateonly != null) msg.validate_only = msg.validateonly;
             if (cli != null) {
-                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
-                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
+                if (Util.IsNullEmpty(cli.clientagent) && !Util.IsNullEmpty(msg.clientagent)) cli.clientagent = msg.clientagent as any;
+                if (Util.IsNullEmpty(cli.clientversion) && !Util.IsNullEmpty(msg.clientversion)) cli.clientversion = msg.clientversion;
                 // @ts-ignore
-                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.agent)) cli.clientagent = msg.agent as any;
+                if (Util.IsNullEmpty(cli.clientagent) && !Util.IsNullEmpty(msg.agent)) cli.clientagent = msg.agent as any;
                 // @ts-ignore
-                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.version)) cli.clientversion = msg.version;
-                if (NoderedUtil.IsNullEmpty(cli.clientagent)) cli.clientagent = "unknown"
+                if (Util.IsNullEmpty(cli.clientversion) && !Util.IsNullEmpty(msg.version)) cli.clientversion = msg.version;
+                if (Util.IsNullEmpty(cli.clientagent)) cli.clientagent = "unknown"
                 // @ts-ignore
                 if (cli.clientagent == "assistent") cli.clientagent = "assistant"
                 // @ts-ignore
@@ -1692,10 +1693,10 @@ export class Message {
             let originialjwt = msg.jwt;
             let tuser: User = null;
             let user: User = null;
-            if (NoderedUtil.IsNullEmpty(msg.jwt) && NoderedUtil.IsNullEmpty(msg.username) && NoderedUtil.IsNullEmpty(msg.password) && msg.validate_only == true) {
+            if (Util.IsNullEmpty(msg.jwt) && Util.IsNullEmpty(msg.username) && Util.IsNullEmpty(msg.password) && msg.validate_only == true) {
                 msg.jwt = cli.jwt;
             }
-            if (!NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (!Util.IsNullEmpty(msg.jwt)) {
                 span?.addEvent("using jwt, verify token");
                 tokentype = "jwtsignin";
                 try {
@@ -1710,7 +1711,7 @@ export class Message {
                 }
                 let _id = tuser?._id;
                 if (tuser != null) {
-                    if (NoderedUtil.IsNullEmpty(tuser._id)) {
+                    if (Util.IsNullEmpty(tuser._id)) {
                         span?.addEvent("token valid, lookup username " + tuser.username);
                         _id = tuser.username;
                         user = await Logger.DBHelper.FindByUsername(tuser.username, null, span);
@@ -1770,13 +1771,13 @@ export class Message {
                 if (impostor !== "") {
                     (tuser as any).impostor = impostor;
                 }
-            } else if (!NoderedUtil.IsNullEmpty(msg.rawAssertion)) {
+            } else if (!Util.IsNullEmpty(msg.rawAssertion)) {
                 span?.addEvent("using rawAssertion, verify token");
                 let AccessToken = null;
                 let User = null;
                 span?.addEvent("AccessToken.find");
                 AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(msg.rawAssertion);
-                if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                if (!Util.IsNullUndefinded(AccessToken)) {
                     span?.addEvent("Account.findAccount");
                     User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId);
                 } else {
@@ -1787,7 +1788,7 @@ export class Message {
                             var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);;
                             span?.addEvent("IdToken.validate");
                             AccessToken = await OAuthProvider.instance.oidc.IdToken.validate(msg.rawAssertion, _cli);
-                            if (!NoderedUtil.IsNullEmpty(AccessToken)) {
+                            if (!Util.IsNullEmpty(AccessToken)) {
                                 span?.addEvent("Account.findAccount");
                                 User = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.payload.sub);
                                 break;
@@ -1797,7 +1798,7 @@ export class Message {
                         }
                     }
                 }
-                if (!NoderedUtil.IsNullUndefinded(AccessToken)) {
+                if (!Util.IsNullUndefinded(AccessToken)) {
                     user = User.user;
                     if (user !== null && user != undefined) { tuser = user; }
                 } else {
@@ -1821,10 +1822,10 @@ export class Message {
                 }
             }
             if (msg.validate_only !== true && cli) {
-                if (NoderedUtil.IsNullEmpty(cli.clientagent) && !NoderedUtil.IsNullEmpty(msg.clientagent)) {
+                if (Util.IsNullEmpty(cli.clientagent) && !Util.IsNullEmpty(msg.clientagent)) {
                     if (cli) cli.clientagent = msg.clientagent as any;
                 }
-                if (NoderedUtil.IsNullEmpty(cli.clientversion) && !NoderedUtil.IsNullEmpty(msg.clientversion)) {
+                if (Util.IsNullEmpty(cli.clientversion) && !Util.IsNullEmpty(msg.clientversion)) {
                     if (cli) cli.clientversion = msg.clientversion;
                 }
             }
@@ -1843,7 +1844,7 @@ export class Message {
                     user = await Logger.DBHelper.FindById(impostor, span);
                     if (Config.persist_user_impersonation) UpdateDoc.$unset = { "impersonating": "" };
                     user.impersonating = undefined;
-                    if (!NoderedUtil.IsNullEmpty((tuser as any).impostor)) {
+                    if (!Util.IsNullEmpty((tuser as any).impostor)) {
                         tuser = user;
                         tuser.validated = true;
                     } else {
@@ -1873,7 +1874,7 @@ export class Message {
                     originialjwt = msg.jwt;
                 }
                 msg.user = TokenUser.From(tuser);
-                if (!NoderedUtil.IsNullEmpty(user.impersonating) && NoderedUtil.IsNullEmpty(msg.impersonate)) {
+                if (!Util.IsNullEmpty(user.impersonating) && Util.IsNullEmpty(msg.impersonate)) {
                     span?.addEvent("Lookup impersonating user " + user.impersonating);
                     const items = await Config.db.query({ query: { _id: user.impersonating }, top: 1, collectionname: "users", jwt: msg.jwt }, span);
                     if (items.length == 0) {
@@ -1967,13 +1968,13 @@ export class Message {
                     Logger.instanse.debug(tuser.username + " signed in using " + tokentype + " " + cli?.id + "/" + cli?.clientagent, span);
                     if (cli) cli.jwt = msg.jwt;
                     if (cli) cli.user = user;
-                    if (!NoderedUtil.IsNullUndefinded(cli) && !NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+                    if (!Util.IsNullUndefinded(cli) && !Util.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 } else {
                     Logger.instanse.debug(tuser.username + " was validated in using " + tokentype, span);
                 }
                 msg.supports_watch = true;
                 var keys = Object.keys(UpdateDoc.$set);
-                if (keys.length > 0 || UpdateDoc.$unset || NoderedUtil.IsNullEmpty(user.lastseen)) {
+                if (keys.length > 0 || UpdateDoc.$unset || Util.IsNullEmpty(user.lastseen)) {
                     // ping will handle this, if no new information needs to be added
                     span?.addEvent("Update user using update document");
                     var newdoc = { ...UpdateDoc, ...Logger.DBHelper.UpdateHeartbeat(cli) }
@@ -1981,12 +1982,12 @@ export class Message {
                 }
                 span?.addEvent("memoryCache.delete users" + user._id);
                 await Logger.DBHelper.CheckCache("users", user, false, false, span);
-                if (!NoderedUtil.IsNullEmpty((tuser as any).impostor) && (tuser as any).impostor != user._id) {
+                if (!Util.IsNullEmpty((tuser as any).impostor) && (tuser as any).impostor != user._id) {
                     await Logger.DBHelper.CheckCache("users", tuser as any, false, false, span);
                     span?.addEvent("memoryCache.delete users" + (tuser as any).impostor);
                 }
             }
-            if (!NoderedUtil.IsNullUndefinded(msg.user) && !NoderedUtil.IsNullEmpty(msg.jwt)) {
+            if (!Util.IsNullUndefinded(msg.user) && !Util.IsNullEmpty(msg.jwt)) {
                 var validated = true;
                 if (Config.validate_user_form != "") {
                     if (!msg.user.formvalidated) validated = false;
@@ -1995,7 +1996,7 @@ export class Message {
                     if (!msg.user.emailvalidated) validated = false;
                 }
                 if (!validated) {
-                    if (cli?.clientagent != "nodered" && NoderedUtil.IsNullEmpty(msg.user.impostor)) {
+                    if (cli?.clientagent != "nodered" && Util.IsNullEmpty(msg.user.impostor)) {
                         span?.addEvent("User not validet, decline login");
                         await Audit.LoginFailed(msg.user.username, tokentype, protocol, cli?.remoteip, cli?.clientagent, cli?.clientversion, span);
                         msg.error = "User not validated, please login again";
@@ -2016,8 +2017,8 @@ export class Message {
             // openrpa settings
             msg.websocket_package_size = Config.websocket_package_size;
             msg.openflow_uniqueid = Config.openflow_uniqueid;
-            if (!NoderedUtil.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
-            if (!NoderedUtil.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
+            if (!Util.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
+            if (!Util.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
             if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
             if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
             msg.enable_analytics = Config.enable_analytics;
@@ -2048,7 +2049,7 @@ export class Message {
         } else {
             name = myusername;
         }
-        if (NoderedUtil.IsNullEmpty(name)) throw new Error("Instance name cannot be empty");
+        if (Util.IsNullEmpty(name)) throw new Error("Instance name cannot be empty");
         name = name.toLowerCase();
         name = name.replace(/([^a-z0-9]+){1,63}/gi, "");
         span?.setAttribute("instancename", name)
@@ -2089,8 +2090,8 @@ export class Message {
     }
 
     public async _addFile(file: string | Buffer | Stream, filename: string, mimeType: string, metadata: Base, compressed: boolean, jwt: string): Promise<string> {
-        if (NoderedUtil.IsNullEmpty(filename)) throw new Error("Filename is mandatory");
-        if (NoderedUtil.IsNullEmpty(file)) throw new Error("file is mandatory");
+        if (Util.IsNullEmpty(filename)) throw new Error("Filename is mandatory");
+        if (Util.IsNullEmpty(file)) throw new Error("file is mandatory");
         if (process.platform === "win32") {
             filename = filename.replace(/\//g, "\\");
         }
@@ -2098,7 +2099,7 @@ export class Message {
             filename = filename.replace(/\\/g, "/");
         }
 
-        if (NoderedUtil.IsNullEmpty(mimeType)) {
+        if (Util.IsNullEmpty(mimeType)) {
             mimeType = mimetype.lookup(filename);
         }
 
@@ -2139,11 +2140,11 @@ export class Message {
         metadata = Base.assign(metadata);
         const user: User = await Auth.Token2User(jwt, null);
         if (user == null) throw new Error("Access denied");
-        if (NoderedUtil.IsNullUndefinded(metadata._acl)) {
+        if (Util.IsNullUndefinded(metadata._acl)) {
             metadata._acl = [];
-            Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            Base.addRight(metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
             if (!Config.multi_tenant) {
-                Base.addRight(metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                Base.addRight(metadata, Wellknown.filestore_users._id, Wellknown.filestore_users.name, [Rights.read]);
             }
             Base.addRight(metadata, user._id, user.name, [Rights.full_control]);
         }
@@ -2153,19 +2154,19 @@ export class Message {
         metadata._modifiedby = user.name;
         metadata._modifiedbyid = user._id;
         metadata._modified = metadata._created;
-        if (NoderedUtil.IsNullEmpty((metadata as any).uniquename)) {
-            (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(filename);
+        if (Util.IsNullEmpty((metadata as any).uniquename)) {
+            (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(filename);
         }
-        if (NoderedUtil.IsNullEmpty(metadata.name)) {
+        if (Util.IsNullEmpty(metadata.name)) {
             metadata.name = filename;
         }
         let hasUser: any = metadata._acl.find(e => e._id === user._id);
         if ((hasUser === null || hasUser === undefined)) {
             Base.addRight(metadata, user._id, user.name, [Rights.full_control]);
         }
-        hasUser = metadata._acl.find(e => e._id === WellknownIds.filestore_admins);
+        hasUser = metadata._acl.find(e => e._id === Wellknown.filestore_admins._id);
         if ((hasUser === null || hasUser === undefined)) {
-            Base.addRight(metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+            Base.addRight(metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
         }
         metadata = Config.db.ensureResource(metadata, "fs.files");
         if (!DatabaseConnection.hasAuthorization(user, metadata, Rights.create)) { throw new Error("Access denied, no authorization to save file"); }
@@ -2176,18 +2177,18 @@ export class Message {
         this.Reply();
         let msg: SaveFileMessage
         msg = SaveFileMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-        if (NoderedUtil.IsNullEmpty(msg.jwt) && cli) { msg.jwt = cli.jwt; }
-        if (NoderedUtil.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
-        if (NoderedUtil.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (Util.IsNullEmpty(msg.jwt) && cli) { msg.jwt = cli.jwt; }
+        if (Util.IsNullEmpty(msg.filename)) throw new Error("Filename is mandatory");
+        if (Util.IsNullEmpty(msg.file)) throw new Error("file is mandatory");
 
         msg.id = await this._addFile(msg.file, msg.filename, msg.mimeType, msg.metadata, msg.compressed, msg.jwt);
         msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
-        if (NoderedUtil.IsNullUndefinded(msg.result)) {
+        if (Util.IsNullUndefinded(msg.result)) {
             await this.sleep(1000);
             msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
         }
-        if (NoderedUtil.IsNullUndefinded(msg.result)) {
+        if (Util.IsNullUndefinded(msg.result)) {
             await this.sleep(1000);
             msg.result = await Config.db.getbyid(msg.id, "fs.files", msg.jwt, true, null);
         }
@@ -2232,14 +2233,14 @@ export class Message {
         let msg: GetFileMessage
         try {
             msg = GetFileMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (!NoderedUtil.IsNullEmpty(msg.id)) {
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (!Util.IsNullEmpty(msg.id)) {
                 const rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: msg.jwt }, span);
                 if (rows.length == 0) { throw new Error("File " + msg.id + " not found"); }
                 msg.metadata = (rows[0] as any).metadata
                 msg.mimeType = (rows[0] as any).contentType;
-            } else if (!NoderedUtil.IsNullEmpty(msg.filename)) {
+            } else if (!Util.IsNullEmpty(msg.filename)) {
                 let rows = await Config.db.query({ query: { "metadata.uniquename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
                 if (rows.length == 0) rows = await Config.db.query({ query: { "filename": msg.filename }, top: 1, orderby: { uploadDate: -1 }, collectionname: "fs.files", jwt: msg.jwt }, span);
                 if (rows.length == 0) { throw new Error("File " + msg.filename + " not found"); }
@@ -2276,8 +2277,8 @@ export class Message {
         this.Reply();
         let msg: UpdateFileMessage
         msg = UpdateFileMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-        if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+        if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
 
         const bucket = new GridFSBucket(Config.db.db);
         const q: Filter<GridFSFile> = {};
@@ -2305,7 +2306,7 @@ export class Message {
         if ((hasUser === null || hasUser === undefined)) {
             Base.addRight(msg.metadata, user._id, user.name, [Rights.full_control]);
         }
-        Base.addRight(msg.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
+        Base.addRight(msg.metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
         if (!DatabaseConnection.hasAuthorization(user, msg.metadata, Rights.update)) { throw new Error("Access denied, no authorization to update file"); }
 
         msg.metadata = Config.db.ensureResource(msg.metadata, "fs.files");
@@ -2323,22 +2324,22 @@ export class Message {
         let msg: CreateWorkflowInstanceMessage
         try {
             msg = CreateWorkflowInstanceMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.workflowid) && NoderedUtil.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
-            if (NoderedUtil.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
-            if (NoderedUtil.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (Util.IsNullEmpty(msg.workflowid) && Util.IsNullEmpty(msg.queue)) throw new Error("workflowid or queue is mandatory");
+            if (Util.IsNullEmpty(msg.resultqueue)) throw new Error("replyqueuename is mandatory");
+            if (Util.IsNullEmpty(msg.targetid)) throw new Error("targetid is mandatory");
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = cli.jwt; }
             const tuser = this.tuser;
             msg.jwt = await Auth.User2Token(tuser, Config.longtoken_expires_in, span);
             let workflow: any = null;
-            if (NoderedUtil.IsNullEmpty(msg.queue)) {
+            if (Util.IsNullEmpty(msg.queue)) {
                 const res = await Config.db.query({ query: { "_id": msg.workflowid }, top: 1, collectionname: "workflow", jwt: msg.jwt }, span);
                 if (res.length != 1) throw new Error("Unknown workflow id " + msg.workflowid);
                 workflow = res[0];
                 msg.queue = workflow.queue;
-                if (NoderedUtil.IsNullEmpty(msg.name)) { msg.name = workflow.name; }
+                if (Util.IsNullEmpty(msg.name)) { msg.name = workflow.name; }
             }
-            if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("name is mandatory when workflowid not set")
+            if (Util.IsNullEmpty(msg.name)) throw new Error("name is mandatory when workflowid not set")
 
             if (msg.queue === msg.resultqueue) {
                 throw new Error("Cannot reply to self queuename: " + msg.queue + " correlationId: " + msg.resultqueue);
@@ -2349,8 +2350,8 @@ export class Message {
             workflow = res[0];
             (msg as any).workflow = msg.workflowid;
 
-            if (NoderedUtil.IsNullEmpty(msg.correlationId)) {
-                msg.correlationId = NoderedUtil.GetUniqueIdentifier();
+            if (Util.IsNullEmpty(msg.correlationId)) {
+                msg.correlationId = Util.GetUniqueIdentifier();
             }
 
             (msg as any).payload = msg.data;
@@ -2424,18 +2425,18 @@ export class Message {
             // @ts-ignore
             if (usage.mode == "one_time") throw new Error("Cannot cancel a one time purchase");
             let user: User;
-            if (!NoderedUtil.IsNullEmpty(usage.userid)) {
+            if (!Util.IsNullEmpty(usage.userid)) {
                 user = await Config.db.getbyid(usage.userid, "users", jwt, true, span) as any;
                 if (user == null) throw new Error("Unknown usage or Access Denied (user)");
             }
             const tuser = await Auth.Token2User(jwt, span);
             if (tuser == null) throw new Error("Access denied");
-            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName(Wellknown.admins.name)) {
                 throw new Error(`Access denied, adding plan (not in "${customer.name} admins")`);
             }
 
 
-            if (!NoderedUtil.IsNullEmpty(usage.product.added_resourceid) && !NoderedUtil.IsNullEmpty(usage.product.added_stripeprice)) {
+            if (!Util.IsNullEmpty(usage.product.added_resourceid) && !Util.IsNullEmpty(usage.product.added_stripeprice)) {
                 if (user != null) {
                     const subusage: ResourceUsage[] = await Config.db.query({ query: { "_type": "resourceusage", "userid": usage.userid, "product.stripeprice": usage.product.added_stripeprice }, top: 2, collectionname: "config", jwt }, span);
                     if (subusage.length == 1) {
@@ -2467,8 +2468,8 @@ export class Message {
                 (user == null && usage.product.customerassign == "metered")) {
                 delete payload.quantity;
             }
-            if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
-                if (!NoderedUtil.IsNullEmpty(usage.siid)) {
+            if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
+                if (!Util.IsNullEmpty(usage.siid)) {
                     if (payload.quantity == 0) {
                         var sub = await Message.Stripe<stripe_subscription>("GET", "subscriptions", usage.subid, null, customer.stripeid);
                         if (sub.items.total_count < 2) {
@@ -2505,13 +2506,13 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         try {
             msg = StripeCancelPlanMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             await this._StripeCancelPlan(msg.resourceusageid, msg.quantity, msg.jwt, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
@@ -2544,28 +2545,28 @@ export class Message {
         let msg: GetNextInvoiceMessage;
         try {
             msg = GetNextInvoiceMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
 
             let payload: any = {};
             const customer: Customer = await Config.db.getbyid(msg.customerid, "users", msg.jwt, true, span);
-            if (NoderedUtil.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
-            if (NoderedUtil.IsNullEmpty(customer.stripeid) && NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            if (Util.IsNullUndefinded(customer)) throw new Error("Unknown customer or Access Denied");
+            if (Util.IsNullEmpty(customer.stripeid) && Util.IsNullEmpty(Config.stripe_api_secret)) {
                 return;
             }
             if (Config.stripe_force_vat) {
-                if (NoderedUtil.IsNullEmpty(customer.stripeid)) throw new Error("Customer " + customer.name + " has no billing information, please update with vattype and vatnumber");
+                if (Util.IsNullEmpty(customer.stripeid)) throw new Error("Customer " + customer.name + " has no billing information, please update with vattype and vatnumber");
             }
 
 
             const user = await Auth.Token2User(msg.jwt, span);
             if (user == null) throw new Error("Access denied");
-            if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
+            if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName(Wellknown.admins.name)) {
                 throw new Error(`Access denied, getting invoice (not in "${customer.name} admins")`);
             }
 
             let subscription: stripe_subscription;
-            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+            if (!Util.IsNullEmpty(customer.subscriptionid)) {
                 subscription = await Message.Stripe<stripe_subscription>("GET", "subscriptions", customer.subscriptionid, payload, customer.stripeid);
                 if (subscription != null) {
                     payload.subscription = customer.subscriptionid;
@@ -2598,9 +2599,9 @@ export class Message {
                     }
                 }
             }
-            if (!NoderedUtil.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
-            if (!NoderedUtil.IsNullUndefinded(msg.subscription_items) && msg.subscription_items.length > 0) {
-                if (!NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+            if (!Util.IsNullEmpty(msg.subscriptionid)) payload.subscription = msg.subscriptionid;
+            if (!Util.IsNullUndefinded(msg.subscription_items) && msg.subscription_items.length > 0) {
+                if (!Util.IsNullEmpty(customer.subscriptionid)) {
                     const proration_date = Math.floor(Date.now() / 1000);
                     payload.subscription_proration_date = proration_date;
                 }
@@ -2654,19 +2655,19 @@ export class Message {
                 }
                 payload.subscription_items = msg.subscription_items;
             }
-            if (!NoderedUtil.IsNullEmpty(customer.subscriptionid) && msg.subscription_items != null) {
-                if (!NoderedUtil.IsNullEmpty(msg.proration_date) && msg.proration_date > 0) payload.subscription_proration_date = msg.proration_date;
+            if (!Util.IsNullEmpty(customer.subscriptionid) && msg.subscription_items != null) {
+                if (!Util.IsNullEmpty(msg.proration_date) && msg.proration_date > 0) payload.subscription_proration_date = msg.proration_date;
                 payload.subscription = customer.subscriptionid;
-            } else if (NoderedUtil.IsNullEmpty(customer.subscriptionid)) {
+            } else if (Util.IsNullEmpty(customer.subscriptionid)) {
                 payload.customer = customer.stripeid;
             }
 
 
             if (msg.subscription_items) {
                 let tax_rates = [];
-                if (NoderedUtil.IsNullEmpty(customer.country)) customer.country = "";
+                if (Util.IsNullEmpty(customer.country)) customer.country = "";
                 customer.country = customer.country.toUpperCase();
-                if (NoderedUtil.IsNullEmpty(customer.vattype) || customer.country == "DK") {
+                if (Util.IsNullEmpty(customer.vattype) || customer.country == "DK") {
                     const tax_ids = await Message.Stripe<stripe_list<any>>("GET", "tax_rates", null, null, null);
                     if (tax_ids && tax_ids.data && tax_ids.data.length > 0) {
                         tax_rates = tax_ids.data.filter(x => x.active && x.country == customer.country).map(x => x.id);
@@ -2703,7 +2704,7 @@ export class Message {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (_error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             const errormessage = (_error.message ? _error.message : _error);
             let error = new Error("Unknown error");
             try {
@@ -2729,16 +2730,16 @@ export class Message {
         let msg: StripeAddPlanMessage;
         try {
             msg = StripeAddPlanMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (NoderedUtil.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (Util.IsNullUndefinded(msg.userid)) msg.userid = cli.user._id;
             const [customer, checkout] = await this._StripeAddPlan(msg.customerid, msg.userid, msg.resourceid, msg.stripeprice,
                 msg.quantity, false, msg.jwt, span);
             msg.checkout = checkout;
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
@@ -2773,22 +2774,22 @@ export class Message {
 
             const customer: Customer = await Config.db.getbyid(customerid, "users", jwt, true, span);
             if (customer == null) throw new Error("Unknown customer or Access Denied");
-            if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(customer.vattype) || NoderedUtil.IsNullEmpty(customer.vatnumber))) {
+            if (Config.stripe_force_vat && (Util.IsNullEmpty(customer.vattype) || Util.IsNullEmpty(customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
 
             const tuser = await Auth.Token2User(jwt, span);
             if (tuser == null) throw new Error("Access denied");
-            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+            if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName(Wellknown.admins.name)) {
                 throw new Error(`Access denied, adding plan (not in ${customer.name} admins")`);
             }
 
-            if (NoderedUtil.IsNullEmpty(customer.vattype)) customer.vattype = "";
-            if (NoderedUtil.IsNullEmpty(customer.vatnumber)) customer.vatnumber = "";
+            if (Util.IsNullEmpty(customer.vattype)) customer.vattype = "";
+            if (Util.IsNullEmpty(customer.vatnumber)) customer.vatnumber = "";
             customer.vatnumber = customer.vatnumber.toUpperCase();
             customer.vattype = customer.vattype.toLocaleLowerCase();
 
-            if (!NoderedUtil.IsNullEmpty(customer.vatnumber) && customer.vattype == "eu_vat" && customer.vatnumber.substring(0, 2) != customer.country) {
+            if (!Util.IsNullEmpty(customer.vatnumber) && customer.vattype == "eu_vat" && customer.vatnumber.substring(0, 2) != customer.country) {
                 customer.country = customer.vatnumber.substring(0, 2).toUpperCase();
             }
             const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, true, span);
@@ -2797,9 +2798,9 @@ export class Message {
             console.log("resource", resource.products.map(x => x.stripeprice));
             console.log("count", resource.products.filter(x => x.stripeprice == stripeprice).length);
             if (resource.products.filter(x => x.stripeprice == stripeprice).length != 1) throw new Error("Unknown resource product");
-            const product: ResourceVariant = resource.products.filter(x => x.stripeprice == stripeprice)[0];
+            const product: Product = resource.products.filter(x => x.stripeprice == stripeprice)[0];
 
-            if (resource.target == "user" && NoderedUtil.IsNullEmpty(userid)) throw new Error("Missing userid for user targeted resource");
+            if (resource.target == "user" && Util.IsNullEmpty(userid)) throw new Error("Missing userid for user targeted resource");
             let user: User = null
             if (resource.target == "user") {
                 user = await Config.db.getbyid(userid, "users", jwt, true, span) as any;
@@ -2811,12 +2812,12 @@ export class Message {
             // Ensure assign does not conflict with resource assign limit
             if (resource.target == "customer") {
                 if (resource.customerassign == "singlevariant") {
-                    const notsame = total_usage.filter(x => x.resourceid == resource._id && x.product.stripeprice != stripeprice && !NoderedUtil.IsNullEmpty(x.siid) && NoderedUtil.IsNullEmpty(x.userid));
+                    const notsame = total_usage.filter(x => x.resourceid == resource._id && x.product.stripeprice != stripeprice && !Util.IsNullEmpty(x.siid) && Util.IsNullEmpty(x.userid));
                     if (notsame.length > 0 && notsame[0].quantity > 0) throw new Error("Cannot assign, customer already have " + notsame[0].product.name);
                 }
             } else {
                 if (resource.userassign == "singlevariant") {
-                    const notsame = total_usage.filter(x => x.resourceid == resource._id && x.product.stripeprice != stripeprice && x.userid == user._id && !NoderedUtil.IsNullEmpty(x.siid));
+                    const notsame = total_usage.filter(x => x.resourceid == resource._id && x.product.stripeprice != stripeprice && x.userid == user._id && !Util.IsNullEmpty(x.siid));
                     if (notsame.length > 0 && notsame[0].quantity > 0) throw new Error("Cannot assign, user already have " + notsame[0].product.name);
                 }
             }
@@ -2830,7 +2831,7 @@ export class Message {
             let filter: ResourceUsage[] = [];
             // Ensure assign does not conflict with product assign limit
             if (resource.target == "customer" && product.customerassign == "single") {
-                filter = total_usage.filter(x => x.product.stripeprice == stripeprice && !NoderedUtil.IsNullEmpty(x.siid) && NoderedUtil.IsNullEmpty(x.userid));
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice && !Util.IsNullEmpty(x.siid) && Util.IsNullEmpty(x.userid));
                 if (filter.length == 1) {
                     usage = filter[0];
                     if (usage.quantity > 0) throw new Error("Cannot assign, customer already have 1 " + product.name);
@@ -2838,7 +2839,7 @@ export class Message {
                     throw new Error("Cannot assign (error multiple found), customer already have 1 " + product.name);
                 }
             } else if (resource.target == "user" && product.userassign == "single") {
-                filter = total_usage.filter(x => x.product.stripeprice == stripeprice && x.userid == user._id && !NoderedUtil.IsNullEmpty(x.siid));
+                filter = total_usage.filter(x => x.product.stripeprice == stripeprice && x.userid == user._id && !Util.IsNullEmpty(x.siid));
                 if (filter.length == 1) {
                     usage = filter[0];
                     if (usage.quantity > 0) throw new Error("Cannot assign, user already have 1 " + product.name);
@@ -2853,7 +2854,7 @@ export class Message {
                 filter = total_usage.filter(x => x.product.stripeprice == stripeprice && x.userid == user._id);
                 if (filter.length > 0) usage = filter[0];
             }
-            if (total_usage.length > 0 && !NoderedUtil.IsNullEmpty(total_usage[0].subid)) {
+            if (total_usage.length > 0 && !Util.IsNullEmpty(total_usage[0].subid)) {
                 usage.subid = total_usage[0].subid;
             }
             if (!Config.stripe_force_checkout) {
@@ -2865,9 +2866,9 @@ export class Message {
             }
 
             // Backward compatability and/or pick up after deleting customer object 
-            if (NoderedUtil.IsNullEmpty(usage.siid) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            if (Util.IsNullEmpty(usage.siid) && !Util.IsNullEmpty(Config.stripe_api_secret)) {
                 const stripecustomer = await Message.Stripe<stripe_customer>("GET", "customers", customer.stripeid, null, null);
-                if (!NoderedUtil.IsNullUndefinded(stripecustomer) && !NoderedUtil.IsNullUndefinded(stripecustomer.subscriptions)) {
+                if (!Util.IsNullUndefinded(stripecustomer) && !Util.IsNullUndefinded(stripecustomer.subscriptions)) {
                     for (let sub of stripecustomer.subscriptions.data) {
                         if (sub.id == customer.subscriptionid) {
                             for (let si of sub.items.data) {
@@ -2884,19 +2885,19 @@ export class Message {
             let _quantity: number = 0;
             // Count what we have already bought
             total_usage.forEach(x => {
-                if (x.product.stripeprice == stripeprice && !NoderedUtil.IsNullEmpty(x.siid)) _quantity += x.quantity;
+                if (x.product.stripeprice == stripeprice && !Util.IsNullEmpty(x.siid)) _quantity += x.quantity;
             });
             // Add requested quantity, now we have our target count
             _quantity += quantity;
 
-            if (!NoderedUtil.IsNullEmpty(product.stripeproduct) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            if (!Util.IsNullEmpty(product.stripeproduct) && !Util.IsNullEmpty(Config.stripe_api_secret)) {
                 const stripe_product = await Message.Stripe<stripe_price>("GET", "products", product.stripeproduct, null, null);
                 if (stripe_product == null) throw new Error("Unknown product");
                 if (stripe_product.active == false) throw new Error("Product is not active");
             }
             let stripe_price: stripe_price = { type: "payment" } as any;
 
-            if (!NoderedUtil.IsNullEmpty(product.stripeprice) && !NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+            if (!Util.IsNullEmpty(product.stripeprice) && !Util.IsNullEmpty(Config.stripe_api_secret)) {
                 stripe_price = await Message.Stripe<stripe_price>("GET", "prices", product.stripeprice, null, null);
                 if (stripe_price == null) throw new Error("Unknown price " + product.stripeprice + " for product " + product.name);
                 if (stripe_price.active == false) throw new Error("Price " + product.stripeprice + " for product " + product.name + " is not active");
@@ -2904,7 +2905,7 @@ export class Message {
 
 
             if ((stripe_price as any).type != "one_time") {
-                if (NoderedUtil.IsNullEmpty(usage.subid)) {
+                if (Util.IsNullEmpty(usage.subid)) {
                     usage.quantity = quantity;
                 } else {
                     usage.quantity += quantity;
@@ -2924,25 +2925,25 @@ export class Message {
             // @ts-ignore
             usage.mode = (stripe_price as any).type
 
-            if (NoderedUtil.IsNullEmpty(usage._id) || NoderedUtil.IsNullEmpty(usage.subid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
+            if (Util.IsNullEmpty(usage._id) || Util.IsNullEmpty(usage.subid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
                 let tax_rates = [];
                 // https://stripe.com/docs/payments/checkout/taxes
                 Base.addRight(usage, customer.admins, customer.name + " admin", [Rights.read]);
 
-                if (NoderedUtil.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
-                    if (NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                if (Util.IsNullEmpty(customer.subscriptionid) || Config.stripe_force_checkout || (stripe_price as any).type == "one_time") {
+                    if (Util.IsNullEmpty(Config.stripe_api_secret)) {
                         // Create fake subscription id
-                        usage.siid = NoderedUtil.GetUniqueIdentifier();
-                        usage.subid = NoderedUtil.GetUniqueIdentifier();
+                        usage.siid = Util.GetUniqueIdentifier();
+                        usage.subid = Util.GetUniqueIdentifier();
                     }
 
-                    if (NoderedUtil.IsNullEmpty(usage._id)) {
+                    if (Util.IsNullEmpty(usage._id)) {
                         const res = await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
                         usage._id = res._id;
                     } else {
                         await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                     }
-                    if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                    if (!Util.IsNullEmpty(product.added_resourceid) && !Util.IsNullEmpty(product.added_stripeprice)) {
                         const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
                             product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
                     }
@@ -2962,7 +2963,7 @@ export class Message {
                         if (Config.stripe_allow_promotion_codes) {
                             payload.allow_promotion_codes = true;
                         }
-                        if (!NoderedUtil.IsNullEmpty(customer.stripeid)) {
+                        if (!Util.IsNullEmpty(customer.stripeid)) {
                             payload.customer = customer.stripeid;
                             payload.customer_update = { "address": "auto", "name": "auto" };
                         } else {
@@ -2977,7 +2978,7 @@ export class Message {
                             line_item.quantity = _quantity
                         }
                         payload.line_items.push(line_item);
-                        if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                        if (!Util.IsNullEmpty(product.added_resourceid) && !Util.IsNullEmpty(product.added_stripeprice)) {
                             const addresource: Resource = await Config.db.getbyid(product.added_resourceid, "config", jwt, true, span);
                             const addproduct = addresource.products.filter(x => x.stripeprice == product.added_stripeprice)[0];
                             let line_item: any = { price: addproduct.stripeprice, tax_rates };
@@ -2988,7 +2989,7 @@ export class Message {
                             payload.line_items.push(line_item);
                         }
                         console.log(JSON.stringify(payload, null, 2));
-                        if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                        if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
                             checkout = await Message.Stripe("POST", "checkout.sessions", null, payload, null);
                             // @ts-ignore
                             customer.sessionid = checkout.id;
@@ -2999,7 +3000,7 @@ export class Message {
                             await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                         } else {
                             // Create fake subscription id
-                            usage.siid = NoderedUtil.GetUniqueIdentifier();
+                            usage.siid = Util.GetUniqueIdentifier();
                         }
 
                     }
@@ -3010,13 +3011,13 @@ export class Message {
                         (resource.target == "customer" && product.customerassign != "metered")) {
                         line_item.quantity = _quantity
                     }
-                    if (NoderedUtil.IsNullEmpty(usage.siid)) line_item["subscription"] = customer.subscriptionid;
+                    if (Util.IsNullEmpty(usage.siid)) line_item["subscription"] = customer.subscriptionid;
                     // Add new if usage.siid is null / updates if we have usage.siid
                     const res = await Message.Stripe<stripe_subscription_item>("POST", "subscription_items", usage.siid, line_item, customer.stripeid);
                     usage.siid = res.id;
                     usage.subid = customer.subscriptionid;
                     await Config.db.InsertOne(usage, "config", 1, false, rootjwt, span);
-                    if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                    if (!Util.IsNullEmpty(product.added_resourceid) && !Util.IsNullEmpty(product.added_stripeprice)) {
                         const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
                             product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
                     }
@@ -3027,13 +3028,13 @@ export class Message {
                 if ((resource.target == "user" && product.userassign != "metered") ||
                     (resource.target == "customer" && product.customerassign != "metered")) {
                     payload.quantity = _quantity
-                    if (!NoderedUtil.IsNullEmpty(Config.stripe_api_secret)) {
+                    if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
                         const res = await Message.Stripe("POST", "subscription_items", usage.siid, payload, customer.stripeid);
                     }
                 }
 
                 await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
-                if (!NoderedUtil.IsNullEmpty(product.added_resourceid) && !NoderedUtil.IsNullEmpty(product.added_stripeprice)) {
+                if (!Util.IsNullEmpty(product.added_resourceid) && !Util.IsNullEmpty(product.added_stripeprice)) {
                     const [customer2, checkout2] = await this._StripeAddPlan(customerid, userid,
                         product.added_resourceid, product.added_stripeprice, product.added_quantity_multiplier * usage.quantity, true, jwt, span);
                 }
@@ -3053,20 +3054,20 @@ export class Message {
 
     static async Stripe<T>(method: string, object: string, id: string, payload: any, customerid: string): Promise<T> {
         let url = "https://api.stripe.com/v1/" + object;
-        if (!NoderedUtil.IsNullEmpty(id)) url = url + "/" + id;
+        if (!Util.IsNullEmpty(id)) url = url + "/" + id;
         if (object == "tax_ids") {
-            if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with tax_id");
+            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with tax_id");
             url = "https://api.stripe.com/v1/customers/" + customerid + "/tax_ids";
             if (method == "DELETE" || method == "PUT") {
-                if (NoderedUtil.IsNullEmpty(id)) throw new Error("Need id");
+                if (Util.IsNullEmpty(id)) throw new Error("Need id");
             }
-            if (!NoderedUtil.IsNullEmpty(id)) {
+            if (!Util.IsNullEmpty(id)) {
                 url = "https://api.stripe.com/v1/customers/" + customerid + "/tax_ids/" + id;
             }
         }
         if (object == "checkout.sessions") {
             url = "https://api.stripe.com/v1/checkout/sessions";
-            if (!NoderedUtil.IsNullEmpty(id)) {
+            if (!Util.IsNullEmpty(id)) {
                 url = "https://api.stripe.com/v1/checkout/sessions/" + id;
             }
         }
@@ -3077,15 +3078,15 @@ export class Message {
             url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_record_summaries";
         }
         if (object == "sources") {
-            if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");
+            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");
             url = "https://api.stripe.com/v1/customers/" + customerid + "/sources";
-            if (!NoderedUtil.IsNullEmpty(id)) {
+            if (!Util.IsNullEmpty(id)) {
                 url = "https://api.stripe.com/v1/customers/" + customerid + "/sources/" + id;
             }
 
         }
         if (object == "invoices_upcoming") {
-            if (NoderedUtil.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
+            if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
             url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
             if (payload != null && payload.subscription_items) {
                 let index = 0;
@@ -3134,7 +3135,7 @@ export class Message {
             url = "https://api.stripe.com/v1/invoices/upcoming/lines?customer=" + customerid;
             if (payload != null && payload.subscription) {
                 url += "&subscription=" + payload.subscription;
-            } else if (!NoderedUtil.IsNullEmpty(id)) {
+            } else if (!Util.IsNullEmpty(id)) {
                 url += "&subscription=" + id;
             }
         }
@@ -3187,11 +3188,11 @@ export class Message {
         let msg: StripeMessage;
         try {
             msg = StripeMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
-            if (NoderedUtil.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
-            if (!cli.user.HasRoleName("admins")) {
-                if (!NoderedUtil.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (Util.IsNullEmpty(msg.object)) throw new Error("object is mandatory");
+            if (!cli.user.HasRoleName(Wellknown.admins.name)) {
+                if (!Util.IsNullEmpty(msg.url)) throw new Error("Custom url not allowed");
                 if (msg.object != "plans" && msg.object != "subscription_items" && msg.object != "invoices_upcoming" && msg.object != "billing_portal/sessions") {
                     throw new Error("Access to " + msg.object + " is not allowed");
                 }
@@ -3199,10 +3200,10 @@ export class Message {
                     const tuser = await Auth.Token2User(msg.jwt, null);
                     if (tuser == null) throw new Error("Access denied");
                     let customer: Customer;
-                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
-                    if (!NoderedUtil.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
+                    if (!Util.IsNullEmpty(tuser.selectedcustomerid)) customer = await Config.db.getbyid(tuser.selectedcustomerid, "users", cli.jwt, true, null);
+                    if (!Util.IsNullEmpty(tuser.selectedcustomerid) && customer == null) customer = await Config.db.getbyid(tuser.customerid, "users", cli.jwt, true, null);
                     if (customer == null) throw new Error("Access denied, or customer not found");
-                    if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName("admins")) {
+                    if (!tuser.HasRoleName(customer.name + " admins") && !tuser.HasRoleName(Wellknown.admins.name)) {
                         throw new Error(`Access denied, (not in "${customer.name} admins")`);
                     }
                 }
@@ -3214,7 +3215,7 @@ export class Message {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
@@ -3232,13 +3233,13 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         try {
             msg = EnsureCustomerMessage.assign(this.data);
-            if (NoderedUtil.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
-            if (NoderedUtil.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
+            if (Util.IsNullEmpty(msg.jwt)) { msg.jwt = this.jwt; }
+            if (Util.IsNullUndefinded(msg.jwt)) { msg.jwt = cli.jwt; }
             let user: User = await Auth.Token2User(msg.jwt, span);
             if (user == null) throw new Error("Access denied");
             // @ts-ignore
             var ensureas = msg.ensureas;
-            if (!NoderedUtil.IsNullEmpty(ensureas)) {
+            if (!Util.IsNullEmpty(ensureas)) {
                 var targetuser = await Config.db.getbyid(ensureas, "users", msg.jwt, true, span);
                 if (targetuser == null) {
                     throw new Error("Access denied creating customer on behalf of " + ensureas);
@@ -3260,35 +3261,35 @@ export class Message {
                     customer = customers[0];
                 }
             }
-            if (!user.HasRoleId(WellknownIds.admins)) {
+            if (!user.HasRoleId(Wellknown.admins._id)) {
                 delete msg.customer.domains;
             }
             if (customer == null) {
-                if (!NoderedUtil.IsNullEmpty(user.customerid) && !user.HasRoleName("resellers")) {
+                if (!Util.IsNullEmpty(user.customerid) && !user.HasRoleName(Wellknown.resellers.name)) {
                     throw new Error("Access denied creating customer");
                 }
                 if (msg.customer != null) msg.customer = Customer.assign(msg.customer);
                 if (msg.customer == null) msg.customer = new Customer();
                 msg.customer.userid = user._id;
-                if (NoderedUtil.IsNullEmpty(msg.customer.name)) {
-                    if (!NoderedUtil.IsNullEmpty((user as any).customer)) {
+                if (Util.IsNullEmpty(msg.customer.name)) {
+                    if (!Util.IsNullEmpty((user as any).customer)) {
                         msg.customer.name = (user as any).customer;
                     } else {
                         msg.customer.name = user.name;
                     }
                 }
-                if (NoderedUtil.IsNullEmpty(msg.customer.email)) {
-                    if (!NoderedUtil.IsNullEmpty((user as any).email)) {
+                if (Util.IsNullEmpty(msg.customer.email)) {
+                    if (!Util.IsNullEmpty((user as any).email)) {
                         msg.customer.email = (user as any).email;
                     } else {
                         msg.customer.email = user.username;
                     }
                 }
                 Base.addRight(msg.customer, user._id, user.name, [Rights.read]);
-                Base.addRight(msg.customer, WellknownIds.admins, "admins", [Rights.full_control]);
-                customer = msg.customer;
+                Base.addRight(msg.customer, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+                customer = msg.customer as any;
             } else {
-                if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName("admins")) {
+                if (!user.HasRoleName(customer.name + " admins") && !user.HasRoleName(Wellknown.admins.name)) {
                     throw new Error("You are not logged in as a customer admin, so you cannot update");
                 }
                 if (customer.name != msg.customer.name || customer.email != msg.customer.email || customer.vatnumber != msg.customer.vatnumber || customer.vattype != msg.customer.vattype || customer.coupon != msg.customer.coupon) {
@@ -3304,19 +3305,19 @@ export class Message {
                 customer.customattr3 = msg.customer.customattr3;
                 customer.customattr4 = msg.customer.customattr4;
                 customer.customattr5 = msg.customer.customattr5;
-                if (!NoderedUtil.IsNullUndefinded(msg.customer.domains)) {
+                if (!Util.IsNullUndefinded(msg.customer.domains)) {
                     customer.domains = msg.customer.domains;
                 }
 
                 msg.customer = customer;
-                if (!NoderedUtil.IsNullEmpty(customer.vatnumber)) msg.customer.vatnumber = msg.customer.vatnumber.toUpperCase();
+                if (!Util.IsNullEmpty(customer.vatnumber)) msg.customer.vatnumber = msg.customer.vatnumber.toUpperCase();
             }
             msg.customer._type = "customer";
             let tax_exempt: string = "none";
-            if (Config.stripe_force_vat && (NoderedUtil.IsNullEmpty(msg.customer.vattype) || NoderedUtil.IsNullEmpty(msg.customer.vatnumber))) {
+            if (Config.stripe_force_vat && (Util.IsNullEmpty(msg.customer.vattype) || Util.IsNullEmpty(msg.customer.vatnumber))) {
                 throw new Error("Only business can buy, please fill out vattype and vatnumber");
             }
-            if (!NoderedUtil.IsNullUndefinded(customer.domains)) {
+            if (!Util.IsNullUndefinded(customer.domains)) {
                 for (var i = 0; i < customer.domains.length; i++) {
                     customer.domains[i] = customer.domains[i].toLowerCase();
                 }
@@ -3324,7 +3325,7 @@ export class Message {
 
             // @ts-ignore
             let sessionid = customer.sessionid
-            if (!NoderedUtil.IsNullEmpty(sessionid)) {
+            if (!Util.IsNullEmpty(sessionid)) {
                 var session = await Message.Stripe<stripe_base>("GET", "checkout.sessions", sessionid, null, null);
 
                 var onetime = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "mode": "one_time", "sessionid": sessionid }, top: 1, collectionname: "config", jwt: msg.jwt }, span);
@@ -3334,14 +3335,14 @@ export class Message {
                         if (usage.quantity == null) usage.quantity = 0;
                         usage.quantity++;
                         // add fake siid, since this is a onetime purche and does not have a subscription item
-                        usage.siid = NoderedUtil.GetUniqueIdentifier();
+                        usage.siid = Util.GetUniqueIdentifier();
                         // @ts-ignore
                         delete usage.sessionid;
                         await Config.db.UpdateOne(usage, "config", 1, false, rootjwt, span);
                     }
                 }
                 // @ts-ignore
-                if (session != null && !NoderedUtil.IsNullEmpty(session.customer)) {
+                if (session != null && !Util.IsNullEmpty(session.customer)) {
                     // @ts-ignore
                     msg.customer.stripeid = session.customer
                     // @ts-ignore
@@ -3349,17 +3350,17 @@ export class Message {
                 }
 
             }
-            if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid) || Config.stripe_force_vat) {
+            if (!Util.IsNullEmpty(msg.customer.stripeid) || Config.stripe_force_vat) {
 
-                if (NoderedUtil.IsNullUndefinded(msg.stripecustomer) && !NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                if (Util.IsNullUndefinded(msg.stripecustomer) && !Util.IsNullEmpty(msg.customer.stripeid)) {
                     msg.stripecustomer = await Message.Stripe<stripe_customer>("GET", "customers", msg.customer.stripeid, null, null);
                     if (msg.stripecustomer == null) {
                         msg.customer.stripeid = "";
                     }
                 }
-                if (NoderedUtil.IsNullUndefinded(msg.stripecustomer)) {
+                if (Util.IsNullUndefinded(msg.stripecustomer)) {
                     msg.customer.subscriptionid = null;
-                    if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                    if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                         Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
                         for (let usage of total_usage) {
@@ -3371,14 +3372,14 @@ export class Message {
                     }
 
                 } else {
-                    if (NoderedUtil.IsNullEmpty(msg.customer.email)) {
+                    if (Util.IsNullEmpty(msg.customer.email)) {
                         msg.customer.email = msg.stripecustomer.email;
                     }
                     if (msg.stripecustomer.name != msg.customer.name) {
                         const payload: any = { name: msg.customer.name };
                         msg.stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", msg.customer.stripeid, payload, null);
                     }
-                    if (!NoderedUtil.IsNullEmpty(msg.stripecustomer?.address?.country)) {
+                    if (!Util.IsNullEmpty(msg.stripecustomer?.address?.country)) {
                         msg.customer.country = msg.stripecustomer.address.country;
                     }
                     var test = msg.stripecustomer;
@@ -3407,7 +3408,7 @@ export class Message {
                             }
                         }
                     } else {
-                        if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                        if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                             msg.customer.subscriptionid = null;
                             const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                             Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
@@ -3422,7 +3423,7 @@ export class Message {
                     }
                 }
             } else {
-                if (!NoderedUtil.IsNullEmpty(msg.customer.stripeid)) {
+                if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                     msg.customer.subscriptionid = null;
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
                     Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
@@ -3435,14 +3436,14 @@ export class Message {
                 }
             }
 
-            if (NoderedUtil.IsNullEmpty(msg.customer._id)) {
+            if (Util.IsNullEmpty(msg.customer._id)) {
                 msg.customer = await Config.db.InsertOne(msg.customer, "users", 3, true, rootjwt, span);
             } else {
                 msg.customer = await Config.db.UpdateOne(msg.customer, "users", 3, true, rootjwt, span);
             }
             if (user.customerid != msg.customer._id) {
                 const UpdateDoc: any = { "$set": {} };
-                if (NoderedUtil.IsNullEmpty(user.customerid)) {
+                if (Util.IsNullEmpty(user.customerid)) {
                     user.customerid = msg.customer._id;
                     UpdateDoc.$set["customerid"] = msg.customer._id;
                 }
@@ -3456,20 +3457,20 @@ export class Message {
                 await Config.db.UpdateDocument({ "_id": cli.user._id }, UpdateDoc, "users", 1, false, rootjwt, span)
             }
 
-            const global_customer_admins: Role = await Logger.DBHelper.EnsureRole("customer admins", WellknownIds.customer_admins, span);
+            const global_customer_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.customer_admins.name, Wellknown.customer_admins._id, span);
 
             const customeradmins: Role = await Logger.DBHelper.EnsureRole(msg.customer.name + " admins", msg.customer.admins, span);
             customeradmins.name = msg.customer.name + " admins";
-            Base.addRight(customeradmins, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.addRight(customeradmins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
             Base.addRight(customeradmins, global_customer_admins._id, global_customer_admins.name, [Rights.full_control]);
-            if (!user.HasRoleId(WellknownIds.admins)) {
+            if (!user.HasRoleId(Wellknown.admins._id)) {
                 customeradmins.AddMember(user as any);
             }
 
             customeradmins.AddMember(global_customer_admins);
-            if (!NoderedUtil.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
+            if (!Util.IsNullEmpty(user.customerid) && user.customerid != msg.customer._id) {
                 const usercustomer = await Config.db.getbyid<Customer>(user.customerid, "users", msg.jwt, true, span);
-                if (usercustomer != null && !user.HasRoleId(WellknownIds.admins)) {
+                if (usercustomer != null && !user.HasRoleId(Wellknown.admins._id)) {
                     const usercustomeradmins = await Config.db.getbyid<Role>(usercustomer.admins, "users", msg.jwt, true, span);
                     if (usercustomeradmins != null) customeradmins.AddMember(usercustomeradmins);
                 }
@@ -3483,8 +3484,8 @@ export class Message {
             Base.addRight(customerusers, customeradmins._id, customeradmins.name, [Rights.full_control]);
             Base.removeRight(customerusers, customeradmins._id, [Rights.delete]);
             customerusers.AddMember(customeradmins);
-            if (NoderedUtil.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
-                if (!user.HasRoleId(WellknownIds.admins)) customerusers.AddMember(cli.user);
+            if (Util.IsNullEmpty(cli.user.customerid) || cli.user.customerid == msg.customer._id) {
+                if (!user.HasRoleId(Wellknown.admins._id)) customerusers.AddMember(cli.user);
             }
             await Logger.DBHelper.Save(customerusers, rootjwt, span);
 
@@ -3499,7 +3500,7 @@ export class Message {
             if (msg.customer._id == cli.user.customerid) {
                 cli.user.selectedcustomerid = msg.customer._id;
                 cli.user = await Logger.DBHelper.DecorateWithRoles(cli.user, span);
-                if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+                if (!Util.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 cli.user.roles.push(new Rolemember(customerusers.name, customerusers._id));
                 cli.user.roles.push(new Rolemember(customeradmins.name, customeradmins._id));
                 await this.ReloadUserToken(cli, span);
@@ -3507,7 +3508,7 @@ export class Message {
             delete msg.jwt;
             this.data = JSON.stringify(msg);
         } catch (error) {
-            if (NoderedUtil.IsNullUndefinded(msg)) { (msg as any) = {}; }
+            if (Util.IsNullUndefinded(msg)) { (msg as any) = {}; }
             if (msg !== null && msg !== undefined) {
                 msg.error = (error.message ? error.message : error);
                 if (error.response && error.response.body) {
@@ -3535,7 +3536,7 @@ export class Message {
         return new Promise(resolve => { setTimeout(resolve, ms) })
     }
     public async ReloadUserToken(cli: WebSocketServerClient, parent: Span) {
-        if (NoderedUtil.IsNullUndefinded(cli)) return;
+        if (Util.IsNullUndefinded(cli)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
         await Logger.DBHelper.CheckCache("users", cli.user, false, false, parent);
@@ -3545,7 +3546,7 @@ export class Message {
             cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, parent);
         }
         cli.jwt = await Auth.User2Token(cli.user, Config.shorttoken_expires_in, parent);
-        if (!NoderedUtil.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
+        if (!Util.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
         l.jwt = cli.jwt;
         l.user = TokenUser.From(cli.user);
         const m: Message = new Message(); m.command = "refreshtoken";
@@ -3558,9 +3559,9 @@ export class Message {
         try {
             msg = JSON.parse(this.data);
             HouseKeeping.lastHouseKeeping = null;
-            if (NoderedUtil.IsNullEmpty(msg.skipnodered)) msg.skipnodered = false;
-            if (NoderedUtil.IsNullEmpty(msg.skipcalculatesize)) msg.skipcalculatesize = false;
-            if (NoderedUtil.IsNullEmpty(msg.skipupdateusersize)) msg.skipupdateusersize = false;
+            if (Util.IsNullEmpty(msg.skipnodered)) msg.skipnodered = false;
+            if (Util.IsNullEmpty(msg.skipcalculatesize)) msg.skipcalculatesize = false;
+            if (Util.IsNullEmpty(msg.skipupdateusersize)) msg.skipupdateusersize = false;
             await HouseKeeping.DoHouseKeeping(msg.skipnodered, msg.skipcalculatesize, msg.skipupdateusersize, span);
             delete msg.jwt;
             this.data = JSON.stringify(msg);
@@ -3575,7 +3576,7 @@ export class Message {
         this.Reply();
         let msg: SelectCustomerMessage;
         msg = SelectCustomerMessage.assign(this.data);
-        if (!NoderedUtil.IsNullEmpty(msg.customerid)) {
+        if (!Util.IsNullEmpty(msg.customerid)) {
             var customer = await Config.db.getbyid<Customer>(msg.customerid, "users", this.jwt, true, parent)
             if (customer == null) msg.customerid = null;
         }
@@ -3600,14 +3601,14 @@ export class Message {
         const user: User = this.tuser;
 
         msg = AddWorkitemMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+        if (Util.IsNullEmpty(msg.wiqid) && Util.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
         var wiq: WorkitemQueue = null;
-        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+        if (!Util.IsNullEmpty(msg.wiqid)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
-        if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+        if (wiq == null && !Util.IsNullEmpty(msg.wiq)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
@@ -3646,8 +3647,8 @@ export class Message {
                 wi.nextrun = date;
             }
         }
-        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
-        if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+        if (!Util.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
+        if (Util.IsNullEmpty(wi.priority)) wi.priority = 2;
         wi.failed_wiq = msg.failed_wiq;
         wi.failed_wiqid = msg.failed_wiqid;
         wi.success_wiq = msg.success_wiq;
@@ -3670,8 +3671,8 @@ export class Message {
                 // @ts-ignore
                 let _id = file._id;
                 try {
-                    if (NoderedUtil.IsNullUndefinded(file.file)) {
-                        if (!NoderedUtil.IsNullEmpty(file.filename) && !NoderedUtil.IsNullEmpty(_id)) {
+                    if (Util.IsNullUndefinded(file.file)) {
+                        if (!Util.IsNullEmpty(file.filename) && !Util.IsNullEmpty(_id)) {
                             wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: _id });
                         }
                         continue;
@@ -3704,7 +3705,7 @@ export class Message {
                     (metadata as any).wi = wi._id;
                     (metadata as any).wiq = wiq.name;
                     (metadata as any).wiqid = wiq._id;
-                    (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
+                    (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                     metadata._acl = wiq._acl;
                     metadata.name = path.basename(file.filename);
@@ -3751,11 +3752,11 @@ export class Message {
         delete wi.username;
         wi.state = "new";
         var _wiq: WorkitemQueue = null;
-        if (!NoderedUtil.IsNullEmpty(wiqid)) {
+        if (!Util.IsNullEmpty(wiqid)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wiqid }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) _wiq = queues[0];
         }
-        if (_wiq == null && !NoderedUtil.IsNullEmpty(wiq)) {
+        if (_wiq == null && !Util.IsNullEmpty(wiq)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { name: wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) _wiq = queues[0];
         }
@@ -3807,14 +3808,14 @@ export class Message {
         let end: number = new Date().getTime();
 
         msg = AddWorkitemsMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+        if (Util.IsNullEmpty(msg.wiqid) && Util.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
         var wiq: WorkitemQueue = null;
-        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+        if (!Util.IsNullEmpty(msg.wiqid)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
-        if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+        if (wiq == null && !Util.IsNullEmpty(msg.wiq)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
@@ -3836,8 +3837,8 @@ export class Message {
             wi.payload = item.payload ? item.payload : {};
             if (typeof wi.payload !== "object") wi.payload = { "value": wi.payload };
             wi.priority = item.priority;
-            if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
-            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+            if (!Util.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority;
+            if (Util.IsNullEmpty(wi.priority)) wi.priority = 2;
             wi.nextrun = item.nextrun;
             // @ts-ignore
             if (wi.nextrun?.seconds || wi.nextrun?.nanos) {
@@ -3862,11 +3863,11 @@ export class Message {
             wi.state = "new"
             wi.retries = 0;
             wi.files = [];
-            if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
-            if (!NoderedUtil.IsNullEmpty(msg.failed_wiq)) wi.failed_wiq = msg.failed_wiq;
-            if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid)) wi.failed_wiqid = msg.failed_wiqid;
-            if (!NoderedUtil.IsNullEmpty(msg.success_wiq)) wi.success_wiq = msg.success_wiq;
-            if (!NoderedUtil.IsNullEmpty(msg.success_wiqid)) wi.success_wiqid = msg.success_wiqid;
+            if (Util.IsNullEmpty(wi.priority)) wi.priority = 2;
+            if (!Util.IsNullEmpty(msg.failed_wiq)) wi.failed_wiq = msg.failed_wiq;
+            if (!Util.IsNullEmpty(msg.failed_wiqid)) wi.failed_wiqid = msg.failed_wiqid;
+            if (!Util.IsNullEmpty(msg.success_wiq)) wi.success_wiq = msg.success_wiq;
+            if (!Util.IsNullEmpty(msg.success_wiqid)) wi.success_wiqid = msg.success_wiqid;
 
             wi.lastrun = null;
             if (!wi.nextrun) {
@@ -3884,7 +3885,7 @@ export class Message {
                 for (let i = 0; i < item.files.length; i++) {
                     let file = item.files[i];
                     try {
-                        if (NoderedUtil.IsNullUndefinded(file.file)) continue;
+                        if (Util.IsNullUndefinded(file.file)) continue;
                         const readable = new Readable();
                         readable._read = () => { }; // _read is required but you can noop it
                         if (file.file && (!file.compressed)) {
@@ -3913,7 +3914,7 @@ export class Message {
                         (metadata as any).wi = wi._id;
                         (metadata as any).wiq = wiq.name;
                         (metadata as any).wiqid = wiq._id;
-                        (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
+                        (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                         metadata._acl = wiq._acl;
                         metadata.name = path.basename(file.filename);
@@ -3961,28 +3962,28 @@ export class Message {
         let retry: boolean = false;
 
         msg = UpdateWorkitemMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
+        if (Util.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
 
         var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
         if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
         var wi: Workitem = wis[0];
 
         var wiq: WorkitemQueue = null;
-        if (!NoderedUtil.IsNullEmpty(wi.wiqid)) {
+        if (!Util.IsNullEmpty(wi.wiqid)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { _id: wi.wiqid }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
-        if (wiq == null && !NoderedUtil.IsNullEmpty(wi.wiq)) {
+        if (wiq == null && !Util.IsNullEmpty(wi.wiq)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { name: wi.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
         if (wiq == null) throw new Error("Work item queue not found " + wi.wiq + " (" + wi.wiqid + ") not found.");
 
 
-        if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wi.failed_wiq = msg.failed_wiq;
-        if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wi.failed_wiqid = msg.failed_wiqid;
-        if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wi.success_wiq = msg.success_wiq;
-        if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wi.success_wiqid = msg.success_wiqid;
+        if (!Util.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wi.failed_wiq = msg.failed_wiq;
+        if (!Util.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wi.failed_wiqid = msg.failed_wiqid;
+        if (!Util.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wi.success_wiq = msg.success_wiq;
+        if (!Util.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wi.success_wiqid = msg.success_wiqid;
 
         wi._acl = wiq._acl;
         if (!DatabaseConnection.hasAuthorization(user, wi, Rights.invoke)) {
@@ -3990,22 +3991,22 @@ export class Message {
         }
         wi.wiq = wiq.name;
         wi.wiqid = wiq._id;
-        if (!NoderedUtil.IsNullEmpty(msg.name)) wi.name = msg.name;
-        if (!NoderedUtil.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
+        if (!Util.IsNullEmpty(msg.name)) wi.name = msg.name;
+        if (!Util.IsNullUndefinded(msg.payload)) wi.payload = msg.payload;
         if (typeof wi.payload !== "object") wi.payload = { "value": wi.payload };
-        if (!NoderedUtil.IsNullUndefinded(msg.errormessage)) {
+        if (!Util.IsNullUndefinded(msg.errormessage)) {
             wi.errormessage = msg.errormessage;
-            if (!NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = msg.errortype;
-            if (NoderedUtil.IsNullEmpty(msg.errortype)) wi.errortype = "application";
+            if (!Util.IsNullEmpty(msg.errortype)) wi.errortype = msg.errortype;
+            if (Util.IsNullEmpty(msg.errortype)) wi.errortype = "application";
         }
-        if (!NoderedUtil.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
-        if (!NoderedUtil.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority; // old api
+        if (!Util.IsNullUndefinded(msg.errorsource)) wi.errorsource = msg.errorsource;
+        if (!Util.IsNullEmpty(msg.wipriority)) wi.priority = msg.wipriority; // old api
         // @ts-ignore
-        if (!NoderedUtil.IsNullEmpty(msg.priority)) wi.priority = msg.priority; // new api
-        if (NoderedUtil.IsNullEmpty(wi.priority)) wi.priority = 2;
+        if (!Util.IsNullEmpty(msg.priority)) wi.priority = msg.priority; // new api
+        if (Util.IsNullEmpty(wi.priority)) wi.priority = 2;
 
         var oldstate = wi.state;
-        if (!NoderedUtil.IsNullEmpty(msg.state)) {
+        if (!Util.IsNullEmpty(msg.state)) {
             msg.state = msg.state.toLowerCase() as any;
             if (msg.state == "new" && wi.state == "new") {
             } else if (["failed", "successful", "retry", "processing"].indexOf(msg.state) == -1) {
@@ -4013,7 +4014,7 @@ export class Message {
             }
             if (msg.errortype == "business" && msg.state == "retry" && msg.ignoremaxretries != true) msg.state = "failed";
             if (msg.state == "retry") {
-                if (NoderedUtil.IsNullEmpty(wi.retries)) wi.retries = 0;
+                if (Util.IsNullEmpty(wi.retries)) wi.retries = 0;
                 if ((wi.retries + 1) < wiq.maxretries || msg.ignoremaxretries) {
                     wi.retries += 1;
                     retry = true;
@@ -4022,7 +4023,7 @@ export class Message {
                     wi.username = null;
                     wi.nextrun = new Date(new Date().toISOString());
                     wi.nextrun.setSeconds(wi.nextrun.getSeconds() + wiq.retrydelay);
-                    if (!NoderedUtil.IsNullEmpty(msg.nextrun)) {
+                    if (!Util.IsNullEmpty(msg.nextrun)) {
                         // @ts-ignore
                         if (msg.nextrun.seconds && msg.nextrun.nanos) {
                             // @ts-ignore
@@ -4051,7 +4052,7 @@ export class Message {
                 if ((file as any)._id != null) {
                     _id = JSON.parse(JSON.stringify((file as any)._id));
                 }
-                if (NoderedUtil.IsNullUndefinded(file.file) || file.file.length == 0) {
+                if (Util.IsNullUndefinded(file.file) || file.file.length == 0) {
                     if (_id == null || _id == "") {
                         deleteit = true;
                     } else {
@@ -4072,7 +4073,7 @@ export class Message {
                         wi.files = wi.files.filter(x => x.name != file.filename);
                     }
                 }
-                if (NoderedUtil.IsNullUndefinded(file.file) || file.file.length == 0) continue;
+                if (Util.IsNullUndefinded(file.file) || file.file.length == 0) continue;
                 try {
                     const readable = new Readable();
                     readable._read = () => { }; // _read is required but you can noop it
@@ -4102,7 +4103,7 @@ export class Message {
                     (metadata as any).wi = wi._id;
                     (metadata as any).wiq = wiq.name;
                     (metadata as any).wiqid = wiq._id;
-                    (metadata as any).uniquename = NoderedUtil.GetUniqueIdentifier() + "-" + path.basename(file.filename);
+                    (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
                     metadata._acl = wiq._acl;
                     metadata.name = path.basename(file.filename);
@@ -4146,16 +4147,16 @@ export class Message {
         if (oldstate != wi.state && (wi.state == "successful" || wi.state == "failed")) {
             var success_wiq = wi.success_wiq || wiq.success_wiq;
             var success_wiqid = wi.success_wiqid || wiq.success_wiqid;
-            if (!NoderedUtil.IsNullEmpty(wi.success_wiq)) success_wiqid = wi.success_wiqid;
-            if (!NoderedUtil.IsNullEmpty(wi.success_wiqid)) success_wiq = wi.success_wiq;
+            if (!Util.IsNullEmpty(wi.success_wiq)) success_wiqid = wi.success_wiqid;
+            if (!Util.IsNullEmpty(wi.success_wiqid)) success_wiq = wi.success_wiq;
             var failed_wiq = wi.failed_wiq || wiq.failed_wiq;
             var failed_wiqid = wi.failed_wiqid || wiq.failed_wiqid;
-            if (!NoderedUtil.IsNullEmpty(wi.failed_wiq)) failed_wiqid = wi.failed_wiqid;
-            if (!NoderedUtil.IsNullEmpty(wi.failed_wiqid)) failed_wiq = wi.failed_wiq;
-            if (wi.state == "successful" && (!NoderedUtil.IsNullEmpty(success_wiq) || !NoderedUtil.IsNullEmpty(success_wiqid))) {
+            if (!Util.IsNullEmpty(wi.failed_wiq)) failed_wiqid = wi.failed_wiqid;
+            if (!Util.IsNullEmpty(wi.failed_wiqid)) failed_wiq = wi.failed_wiq;
+            if (wi.state == "successful" && (!Util.IsNullEmpty(success_wiq) || !Util.IsNullEmpty(success_wiqid))) {
                 await this.DuplicateWorkitem(wi, success_wiq, success_wiqid, this.jwt, parent);
             }
-            if (wi.state == "failed" && (!NoderedUtil.IsNullEmpty(failed_wiq) || !NoderedUtil.IsNullEmpty(failed_wiqid))) {
+            if (wi.state == "failed" && (!Util.IsNullEmpty(failed_wiq) || !Util.IsNullEmpty(failed_wiqid))) {
                 await this.DuplicateWorkitem(wi, failed_wiq, failed_wiqid, this.jwt, parent);
             }
         }
@@ -4177,14 +4178,14 @@ export class Message {
         const user: User = this.tuser;
 
         msg = PopWorkitemMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.wiqid) && NoderedUtil.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
+        if (Util.IsNullEmpty(msg.wiqid) && Util.IsNullEmpty(msg.wiq)) throw new Error("wiq or wiqid is mandatory")
 
         var wiq: Base = null;
-        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) {
+        if (!Util.IsNullEmpty(msg.wiqid)) {
             var queues = await Config.db.query({ query: { _id: msg.wiqid }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
-        if (wiq == null && !NoderedUtil.IsNullEmpty(msg.wiq)) {
+        if (wiq == null && !Util.IsNullEmpty(msg.wiq)) {
             var queues = await Config.db.query({ query: { name: msg.wiq, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         }
@@ -4205,14 +4206,14 @@ export class Message {
                 }
                 _wi.lastrun = new Date(new Date().toISOString());
 
-                if (NoderedUtil.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
+                if (Util.IsNullEmpty(workitems[0].retries)) UpdateDoc["$set"]["retries"] = 0;
                 if (typeof workitems[0].payload !== "object") UpdateDoc["$set"]["payload"] = { "value": workitems[0].payload };
                 UpdateDoc["$set"]["state"] = "processing";
                 UpdateDoc["$set"]["userid"] = user._id;
                 UpdateDoc["$set"]["username"] = user.name;
                 UpdateDoc["$set"]["lastrun"] = _wi.lastrun;
                 UpdateDoc["$unset"]["nextrun"] = "";
-                if (NoderedUtil.IsNullEmpty(workitems[0].priority)) UpdateDoc["$set"]["priority"] = 2;
+                if (Util.IsNullEmpty(workitems[0].priority)) UpdateDoc["$set"]["priority"] = 2;
 
                 var result: any = null;
                 try {
@@ -4223,13 +4224,13 @@ export class Message {
                         "username": workitems[0].username,
                     }, UpdateDoc, "workitems", 1, true, rootjwt, null)
 
-                    if (NoderedUtil.IsNullEmpty(_wi.retries)) _wi.retries = 0;
+                    if (Util.IsNullEmpty(_wi.retries)) _wi.retries = 0;
                     if (typeof _wi.payload !== "object") _wi.payload = { "value": _wi.payload };
                     _wi.state = "processing";
                     _wi.userid = user._id;
                     _wi.username = user.name;
                     _wi.nextrun = null;
-                    if (NoderedUtil.IsNullEmpty(_wi.priority)) _wi.priority = 2;
+                    if (Util.IsNullEmpty(_wi.priority)) _wi.priority = 2;
 
                     msg.result = _wi;
                 } catch (error) {
@@ -4254,7 +4255,7 @@ export class Message {
 
         msg = DeleteWorkitemMessage.assign(this.data);
 
-        if (NoderedUtil.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
+        if (Util.IsNullEmpty(msg._id)) throw new Error("_id is mandatory")
 
         var wis = await Config.db.query<Workitem>({ query: { "_id": msg._id, "_type": "workitem" }, collectionname: "workitems", jwt }, parent);
         if (wis.length == 0) throw new Error("Work item  with _id " + msg._id + " not found.");
@@ -4298,10 +4299,10 @@ export class Message {
         }
         // @ts-ignore
         if (this.data.workitemqueue != null) msg = this.data.workitemqueue;
-        if (NoderedUtil.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
-        if (NoderedUtil.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
-        if (NoderedUtil.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
-        if (NoderedUtil.IsNullEmpty(msg.initialdelay)) throw new Error("initialdelay is mandatory")
+        if (Util.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
+        if (Util.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
+        if (Util.IsNullEmpty(msg.retrydelay)) throw new Error("retrydelay is mandatory")
+        if (Util.IsNullEmpty(msg.initialdelay)) throw new Error("initialdelay is mandatory")
 
         var queues = await Config.db.query({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt: rootjwt }, parent);
         if (queues.length > 0) {
@@ -4310,10 +4311,10 @@ export class Message {
         user = this.tuser;
 
         var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
-        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole("workitem queue admins", "625440c4231309af5f2052cd", parent);
+        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.workitem_queue_admins.name, Wellknown.workitem_queue_admins._id, parent);
         if (!skiprole) {
             const wiqusers: Role = await Logger.DBHelper.EnsureRole(msg.name + " users", null, parent);
-            Base.addRight(wiqusers, WellknownIds.admins, "admins", [Rights.full_control]);
+            Base.addRight(wiqusers, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
             Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
             wiqusers.AddMember(user as any);
             wiqusers.AddMember(workitem_queue_admins);
@@ -4324,7 +4325,7 @@ export class Message {
             Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
         }
 
-        if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+        if (Util.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
         wiq.name = msg.name;
         wiq.workflowid = msg.workflowid;
         wiq.robotqueue = msg.robotqueue;
@@ -4347,7 +4348,7 @@ export class Message {
         msg = JSON.parse(JSON.stringify(msg));
         msg.result = await Config.db.InsertOne(wiq, "mq", 1, true, jwt, parent);
 
-        if (!NoderedUtil.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
+        if (!Util.IsNullUndefinded(cli)) await this.ReloadUserToken(cli, parent);
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
@@ -4357,10 +4358,10 @@ export class Message {
         const rootjwt = Crypt.rootToken();
         const jwt = this.jwt;
         msg = GetWorkitemQueueMessage.assign(this.data);
-        if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+        if (Util.IsNullEmpty(msg.name) && Util.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
         var wiq: WorkitemQueue = null;
-        if (!NoderedUtil.IsNullEmpty(msg._id)) {
+        if (!Util.IsNullEmpty(msg._id)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
             if (queues.length > 0) wiq = queues[0];
         } else {
@@ -4386,10 +4387,10 @@ export class Message {
             msg.purge = this.data.purge;
         }
 
-        if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+        if (Util.IsNullEmpty(msg.name) && Util.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
         var wiq = new WorkitemQueue();
-        if (!NoderedUtil.IsNullEmpty(msg._id)) {
+        if (!Util.IsNullEmpty(msg._id)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
             if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
             wiq = queues[0];
@@ -4400,7 +4401,7 @@ export class Message {
         }
         user = this.tuser;
 
-        if (NoderedUtil.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
+        if (Util.IsNullEmpty(msg.workflowid)) msg.workflowid = undefined;
         if (wiq.name != msg.name) {
             let exists = await Config.db.query<WorkitemQueue>({ query: { name: msg.name, "_type": "workitemqueue" }, collectionname: "mq", jwt }, parent);
             if (exists.length > 0) throw new Error("Work item queue with name " + msg.name + " already exists");
@@ -4410,17 +4411,17 @@ export class Message {
         wiq.robotqueue = msg.robotqueue;
         wiq.projectid = msg.projectid;
         wiq.amqpqueue = msg.amqpqueue;
-        if (!NoderedUtil.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
-        if (!NoderedUtil.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
-        if (!NoderedUtil.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
-        if (!NoderedUtil.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
+        if (!Util.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
+        if (!Util.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
+        if (!Util.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
+        if (!Util.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
         if (msg.failed_wiq === null) { delete wiq.failed_wiq; delete wiq.failed_wiqid; }
-        if (!NoderedUtil.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
-        if (!NoderedUtil.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
-        if (!NoderedUtil.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
+        if (!Util.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
+        if (!Util.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
+        if (!Util.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
         if (msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
         // @ts-ignore
-        if (!NoderedUtil.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
+        if (!Util.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
 
 
         if (msg._acl) {
@@ -4453,13 +4454,13 @@ export class Message {
         const jwt = this.jwt;
         msg = DeleteWorkitemQueueMessage.assign(this.data);
         // @ts-ignore
-        if (!NoderedUtil.IsNullEmpty(msg.wiq)) msg.name = msg.wiq;
+        if (!Util.IsNullEmpty(msg.wiq)) msg.name = msg.wiq;
         // @ts-ignore
-        if (!NoderedUtil.IsNullEmpty(msg.wiqid)) msg._id = msg.wiqid;
-        if (NoderedUtil.IsNullEmpty(msg.name) && NoderedUtil.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
+        if (!Util.IsNullEmpty(msg.wiqid)) msg._id = msg.wiqid;
+        if (Util.IsNullEmpty(msg.name) && Util.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
 
         var wiq = new WorkitemQueue();
-        if (!NoderedUtil.IsNullEmpty(msg._id)) {
+        if (!Util.IsNullEmpty(msg._id)) {
             var queues = await Config.db.query<WorkitemQueue>({ query: { _id: msg._id }, collectionname: "mq", jwt }, parent);
             if (queues.length == 0) throw new Error("Work item queue with _id " + msg._id + " not found.");
             wiq = queues[0];
@@ -4507,7 +4508,7 @@ export class Message {
                 msg.result = WebSocketServer.getclients(this.tuser);
                 break;
             case "dumpwebsocketclients":
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
                 await Config.db.DeleteMany({ "_type": "websocketclient" }, null, "websocketclients", null, false, jwt, parent);
                 if (Config.enable_openflow_amqp) {
                     amqpwrapper.Instance().send("openflow", "", { "command": "dumpwebsocketclients" }, 10000, null, "", parent, 1);
@@ -4516,7 +4517,7 @@ export class Message {
                 }
                 break;
             case "killwebsocketclient":
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
                 if (Config.enable_openflow_amqp) {
                     amqpwrapper.Instance().send("openflow", "", { "command": "killwebsocketclient", "id": msg.id }, 10000, null, "", parent, 1);
                 } else {
@@ -4530,11 +4531,11 @@ export class Message {
                 }
                 break;
             case "clearcache":
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
                 Logger.DBHelper.clearCache("user requested clear cache", parent);
                 break;
             case "heapdump":
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
                 if (Config.enable_openflow_amqp) {
                     amqpwrapper.Instance().send("openflow", "", { "command": "heapdump" }, 10000, null, "", parent, 1);
                 } else {
@@ -4542,7 +4543,7 @@ export class Message {
                 }
                 break;
             case "shutdown":
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
                 if (Config.enable_openflow_amqp) {
                     amqpwrapper.Instance().send("openflow", "", { "command": "shutdown" }, 10000, null, "", parent, 1);
                 } else {
@@ -4565,8 +4566,8 @@ export class Message {
                 var wpuser = await Config.db.GetOne<User>({ query: { _id: msg.id }, collectionname: "users", jwt }, parent);
                 if (wpuser == null) break;
                 var query: any = { userid: msg.id }
-                if (!NoderedUtil.IsNullEmpty(host)) query.host = host;
-                if (!NoderedUtil.IsNullEmpty(_type)) query._type = _type;
+                if (!Util.IsNullEmpty(host)) query.host = host;
+                if (!Util.IsNullEmpty(_type)) query._type = _type;
                 var subscriptions = await Config.db.query<User>({ query, collectionname: "webpushsubscriptions", jwt: rootjwt }, parent);
                 if (subscriptions == null || subscriptions.length == 0) break;
                 const payload = JSON.stringify(data);
@@ -4618,12 +4619,12 @@ export class Message {
             case "getagentpods":
                 if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
                 var agent: iAgent = null;
-                if (!NoderedUtil.IsNullEmpty(msg.id)) {
+                if (!Util.IsNullEmpty(msg.id)) {
                     var agent = await Config.db.GetOne<iAgent>({ query: { _id: msg.id }, collectionname: "agents", jwt }, parent);
                     if (agent == null) throw new Error("Access denied");
                 }
                 var getstats = false;
-                if (!NoderedUtil.IsNullEmpty(msg.name)) getstats = true;
+                if (!Util.IsNullEmpty(msg.name)) getstats = true;
                 msg.result = await Logger.agentdriver.GetInstancePods(this.tuser, this.jwt, agent, getstats, parent);
                 break;
             case "deleteagent":
@@ -4673,12 +4674,12 @@ export class Message {
                     if (agent.arch != null && agent.arch != "") _agent.arch = agent.arch;
                     if (agent.username != null && agent.username != "") _agent.username = agent.username;
                     if (agent.version != null && agent.version != "") _agent.version = agent.version;
-                    if (!NoderedUtil.IsNullEmpty(agent.chrome)) _agent.chrome = agent.chrome;
-                    if (!NoderedUtil.IsNullEmpty(agent.chromium)) _agent.chromium = agent.chromium;
-                    if (!NoderedUtil.IsNullEmpty(agent.docker)) _agent.docker = agent.docker;
-                    if (!NoderedUtil.IsNullEmpty(agent.assistant)) _agent.assistant = agent.assistant;
-                    if (!NoderedUtil.IsNullEmpty(agent.daemon)) _agent.daemon = agent.daemon;
-                    if (!NoderedUtil.IsNullEmpty(agent.languages) && Array.isArray(agent.languages)) _agent.languages = agent.languages;
+                    if (!Util.IsNullEmpty(agent.chrome)) _agent.chrome = agent.chrome;
+                    if (!Util.IsNullEmpty(agent.chromium)) _agent.chromium = agent.chromium;
+                    if (!Util.IsNullEmpty(agent.docker)) _agent.docker = agent.docker;
+                    if (!Util.IsNullEmpty(agent.assistant)) _agent.assistant = agent.assistant;
+                    if (!Util.IsNullEmpty(agent.daemon)) _agent.daemon = agent.daemon;
+                    if (!Util.IsNullEmpty(agent.languages) && Array.isArray(agent.languages)) _agent.languages = agent.languages;
 
                     var agentuser = this.tuser;
                     if (_agent.runas != null && _agent.runas != "" && this.tuser._id != _agent.runas) {
@@ -4741,7 +4742,7 @@ export class Message {
                 await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);
                 break;
             case "createindex":
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) throw new Error("Access denied");
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 var name = msg.name || data.name;
@@ -4767,11 +4768,11 @@ export class Message {
                 }
                 if (data == null || data == "") throw new Error("No data found");
                 var domain = data.domain;
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
                     delete data.months;
                 }
                 var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
-                if (!this.tuser.HasRoleId(WellknownIds.admins)) {
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
                     if (exists == null) throw new Error("Access denied");
                 }
                 if (data.months == null || data.months == "") {
@@ -4885,6 +4886,9 @@ export class Message {
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 msg.result = await Billings.EnsureBilling(this.tuser, this.jwt, data, parent);
+                break;
+            case "removebilling":
+                msg.result = await Billings.RemoveBilling(this.tuser, this.jwt, msg.id, parent);
                 break;
             case "createresourceusage":
                 // @ts-ignore
