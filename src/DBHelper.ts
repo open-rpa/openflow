@@ -621,21 +621,25 @@ export class DBHelper {
                 const users_results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap({ "_id": Wellknown.users._id, "name": Wellknown.users.name }, span) });
 
                 user.roles = [];
-                results[0].roles.forEach(r => {
-                    const exists = user.roles.filter(x => x._id == r._id);
-                    if (exists.length == 0 && r._id != user._id) {
-                        user.roles.push(r);
-                        Logger.instanse.silly("adding (from roles) " + r.name + " " + r._id, span);
-                    }
-                });
-                if (users_results[0].roles.length > 0 && user.username != "guest") {
-                    users_results.forEach(r => {
+                if(results.length > 0) {
+                    results[0].roles.forEach(r => {
                         const exists = user.roles.filter(x => x._id == r._id);
                         if (exists.length == 0 && r._id != user._id) {
                             user.roles.push(r);
-                            Logger.instanse.silly("also adding (from users roles) " + r.name + " " + r._id, span);
+                            Logger.instanse.silly("adding (from roles) " + r.name + " " + r._id, span);
                         }
                     });
+                }
+                if(users_results.length > 0) {
+                    if (users_results[0].roles.length > 0 && user.username != "guest") {
+                        users_results.forEach(r => {
+                            const exists = user.roles.filter(x => x._id == r._id);
+                            if (exists.length == 0 && r._id != user._id) {
+                                user.roles.push(r);
+                                Logger.instanse.silly("also adding (from users roles) " + r.name + " " + r._id, span);
+                            }
+                        });
+                    }
                 }
                 let hasusers = user.roles.filter(x => x._id == Wellknown.users._id);
                 if (hasusers.length == 0 && user.username != "guest") {
