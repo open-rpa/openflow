@@ -1186,6 +1186,7 @@ export class LoginProvider {
             llmchat_queue: Config.llmchat_queue,
             enable_analytics: Config.enable_analytics,
             enable_gitserver: Config.enable_gitserver,
+            ofid: Logger.ofid(),
             loginproviders,
         }
         if (Config.otel_trace_url != null && Config.otel_trace_url != "") {
