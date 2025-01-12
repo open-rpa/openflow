@@ -266,6 +266,8 @@ export class Message {
                 if (!Util.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
                 let command: string = this.command;
                 try {
+                    if(isNaN(Config.socket_rate_limit_points)) Config.socket_rate_limit_points = 1000;
+                    if(isNaN(Config.socket_rate_limit_duration)) Config.socket_rate_limit_points = 1;
                     if (Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
                         Logger.instanse.info("Create new socket rate limitter", span, Logger.parsecli(cli));
                         WebSocketServer.BaseRateLimiter = new RateLimiterMemory({

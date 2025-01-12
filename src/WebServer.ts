@@ -44,6 +44,8 @@ const rateLimiter = async (req: express.Request, res: express.Response, next: ex
         return next();
     }
     try {
+        if(isNaN(Config.api_rate_limit_points)) Config.api_rate_limit_points = 1000;
+        if(isNaN(Config.api_rate_limit_duration)) Config.api_rate_limit_duration = 1;
         if (Config.api_rate_limit_duration != WebServer.BaseRateLimiter.duration || Config.api_rate_limit_points != WebServer.BaseRateLimiter.points) {
             Logger.instanse.info("Create new api rate limitter", span);
             WebServer.BaseRateLimiter = new RateLimiterMemory({
