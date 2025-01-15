@@ -827,23 +827,25 @@ export class WebServer {
         res.end();
     }
     static get_livenessprobe(req: any, res: any, next: any): void {
-        let span = Logger.otel.startSpanExpress("get_livenessprobe", req)
+        // let span = Logger.otel.startSpanExpress("get_livenessprobe", req)
         try {
-            const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
+            // const [traceId, spanId] = Logger.otel.GetTraceSpanId(span);
             if (Util.IsNullEmpty(_hostname)) _hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
-            res.end(JSON.stringify({ "success": "true", "hostname": _hostname, dt: new Date(), traceId, spanId }));
+            // res.end(JSON.stringify({ "success": "true", "hostname": _hostname, dt: new Date(), traceId, spanId }));
+            res.end(JSON.stringify({ "success": "true", "hostname": _hostname, dt: new Date() }));
             res.end();
             // @ts-ignore
             span.setStatus({ code: 200 });
         } catch (error) {
-            Logger.instanse.error(error, span);
-            span.setStatus({
-                // @ts-ignore
-                code: 500,
-                message: error instanceof Error ? error.message : undefined,
-            });
+            Logger.instanse.error(error, null);
+            // Logger.instanse.error(error, span);
+            // span.setStatus({
+            //     // @ts-ignore
+            //     code: 500,
+            //     message: error instanceof Error ? error.message : undefined,
+            // });
         } finally {
-            span.end();
+            // span.end();
         }
     }
 }
