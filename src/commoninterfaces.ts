@@ -148,6 +148,9 @@ export interface iAgent extends iBase {
     docker: boolean;
     assistant: boolean;
     daemon: boolean;
+    billingid: string;
+    resourceusageid: string;
+    productname: string;
 constructor();
 }
 export class Rights {
@@ -518,20 +521,21 @@ export class Billing extends Base {
     // supportplan: string;
     // supporthourplan: string;
 }
-export declare enum ResourceVariantType {
+export enum ResourceVariantType {
     single = "singlevariant",
     multiple = "multiplevariants"
 }
-export declare enum ResourceAssignedType {
+export enum ResourceAssignedType {
     single = "single",
     multiple = "multiple",
     metered = "metered",
 }
-export declare enum ResourceTargetType {
+export enum ResourceTargetType {
     customer = "customer",
     workspace = "workspace",
     user = "user",
     member = "member",
+    agent = "agent",
 }
 export class Resource extends Base {
     constructor() {
@@ -543,9 +547,11 @@ export class Resource extends Base {
     workspaceassign: ResourceVariantType;
     userassign: ResourceVariantType;
     memberassign: ResourceVariantType;
+    agentassign: ResourceVariantType;
     defaultmetadata: any;
     products: Product[];
     allowdirectassign: boolean;
+    deprecated: boolean;
     order: number;
 }
 export class Product {
@@ -556,11 +562,13 @@ export class Product {
     workspaceassign: ResourceAssignedType;
     userassign: ResourceAssignedType;
     memberassign: ResourceAssignedType;
+    agentassign: ResourceAssignedType;
     added_stripeprice: string;
     added_resourceid: string;
     added_quantity_multiplier: number;
     metadata: any;
     allowdirectassign: boolean;
+    deprecated: boolean;
     order: number;
 }
 export class ResourceUsage extends Base {
@@ -571,10 +579,11 @@ export class ResourceUsage extends Base {
     product: Product;
     resourceid: string;
     resource: string;
-    userid: string;
-    memberid: string;
+    userid: string | undefined;
+    memberid: string | undefined;
     customerid: string;
-    workspaceid: string;
+    workspaceid: string | undefined;
+    agentid: string;
     quantity: number;
     /** "subscription" */
     subid: string;

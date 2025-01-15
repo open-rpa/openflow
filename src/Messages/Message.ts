@@ -4892,6 +4892,10 @@ export class Message {
             case "removebilling":
                 msg.result = await Billings.RemoveBilling(this.tuser, this.jwt, msg.id, parent);
                 break;
+            case "createcommonresources":
+                if(!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
+                await Resources.CreateCommonResources(parent);
+                break;
             case "createresourceusage":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
