@@ -191,8 +191,8 @@ export class Message {
         result.clientversion = data.clientversion;
         result.data = data.data;
         result.jwt = data.jwt;
-        result.traceId = data.traceId;
-        result.spanId = data.spanId;
+        result.traceId = data.traceId || data.traceid;
+        result.spanId = data.spanId || data.spanid;
         return result;
     }
     public Reply(command: string = null): void {
