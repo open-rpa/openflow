@@ -437,6 +437,7 @@ export class Config {
         otel_err_log: false,
         otel_trace_url: "",
         otel_metric_url: "",
+        otel_log_url: "",
 
         otel_trace_interval: 5000,
         otel_metric_interval: 5000,
