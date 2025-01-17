@@ -113,72 +113,33 @@ export class Logger {
                 obj.cls = "Housekeeping";
             }
             if(Logger.otel && Logger.otel.logger) {
-                if(level.Information == obj.lvl) {
-                    let attributes = {...obj}
-                    delete attributes.message;
-                    delete attributes.lvl;
-                    Logger.otel.logger.emit({
-                        severityNumber: logsAPI.SeverityNumber.INFO,
-                        severityText: 'INFO',
-                        body: obj.message,
-                        attributes: attributes //{ 'log.type': 'LogRecord' },
-                    });
+                let severityNumber = logsAPI.SeverityNumber.INFO;
+                let severityText = 'INFO';
+                if(obj.lvl == level.Warning) { severityNumber = logsAPI.SeverityNumber.WARN; severityText = 'WARN'; }
+                if(obj.lvl == level.Error) { severityNumber = logsAPI.SeverityNumber.ERROR; severityText = 'ERROR'; }
+                if(obj.lvl == level.Debug) { severityNumber = logsAPI.SeverityNumber.DEBUG; severityText = 'DEBUG'; }
+                if(obj.lvl == level.Verbose) { severityNumber = logsAPI.SeverityNumber.TRACE; severityText = 'VERBOSE'; }
+                if(obj.lvl == level.Silly) { severityNumber = logsAPI.SeverityNumber.TRACE2; severityText = 'SILLY'; }
+                let attributes = {...obj}
+                let message = obj.message;
+                try {
+                    if (typeof message === 'string' || message instanceof String) {
+                    } else if (message?.message != null) {
+                        message = message.message
+                    } else {
+                        message = JSON.stringify(message);
+                    }
+                } catch (error) {
+                    
                 }
-                if(level.Warning == obj.lvl) {
-                    let attributes = {...obj}
-                    delete attributes.message;
-                    delete attributes.lvl;
-                    Logger.otel.logger.emit({
-                        severityNumber: logsAPI.SeverityNumber.WARN,
-                        severityText: 'WARN',
-                        body: obj.message,
-                        attributes: attributes //{ 'log.type': 'LogRecord' },
-                    });
-                }
-                if(level.Error == obj.lvl) {
-                    let attributes = {...obj}
-                    delete attributes.message;
-                    delete attributes.lvl;
-                    Logger.otel.logger.emit({
-                        severityNumber: logsAPI.SeverityNumber.ERROR,
-                        severityText: 'ERROR',
-                        body: obj.message,
-                        attributes: attributes //{ 'log.type': 'LogRecord' },
-                    });
-                }
-                if(level.Debug == obj.lvl) {
-                    let attributes = {...obj}
-                    delete attributes.message;
-                    delete attributes.lvl;
-                    Logger.otel.logger.emit({
-                        severityNumber: logsAPI.SeverityNumber.DEBUG,
-                        severityText: 'DEBUG',
-                        body: obj.message,
-                        attributes: attributes //{ 'log.type': 'LogRecord' },
-                    });
-                }
-                if(level.Verbose == obj.lvl) {
-                    let attributes = {...obj}
-                    delete attributes.message;
-                    delete attributes.lvl;
-                    Logger.otel.logger.emit({
-                        severityNumber: logsAPI.SeverityNumber.TRACE,
-                        severityText: 'VERBOSE',
-                        body: obj.message,
-                        attributes: attributes //{ 'log.type': 'LogRecord' },
-                    });
-                }
-                if(level.Silly == obj.lvl) {
-                    let attributes = {...obj}
-                    delete attributes.message;
-                    delete attributes.lvl;
-                    Logger.otel.logger.emit({
-                        severityNumber: logsAPI.SeverityNumber.TRACE2,
-                        severityText: 'SILLY',
-                        body: obj.message,
-                        attributes: attributes //{ 'log.type': 'LogRecord' },
-                    });
-                }
+                delete attributes.message;
+                delete attributes.lvl;
+                Logger.otel.logger.emit({
+                    severityNumber,
+                    severityText,
+                    body: message,
+                    attributes,
+                });
             }
 
             const { cls, func, message, lvl } = obj;
