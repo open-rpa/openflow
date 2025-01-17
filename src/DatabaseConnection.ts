@@ -1753,7 +1753,9 @@ export class DatabaseConnection extends events.EventEmitter {
             item = this.encryptentity(item) as T;
 
             if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-                (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
+                if((item as any).newpassword != "") {
+                    (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
+                }
                 delete (item as any).newpassword;
             }
             if (collectionname == "mq") {
@@ -2256,7 +2258,9 @@ export class DatabaseConnection extends events.EventEmitter {
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-                    user2.passwordhash = await Crypt.hash((item as any).newpassword);
+                    if((item as any).newpassword != "") {
+                        user2.passwordhash = await Crypt.hash((item as any).newpassword);
+                    }
                     delete (item as any).newpassword;
                 }
                 if (collectionname === "users" && item._type === "role") {
@@ -2819,7 +2823,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
-                (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+                if((q.item as any).newpassword != "") {
+                    (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+                }
                 delete (q.item as any).newpassword;
             }
             if (q.collectionname === "config" && q.item._type === "oauthclient") {
@@ -3056,7 +3062,9 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
-                (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+                if((q.item as any).newpassword != "") {
+                    (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
+                }
                 delete (q.item as any).newpassword;
             }
             let json: string = q.item as any;
