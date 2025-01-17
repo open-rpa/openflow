@@ -836,7 +836,7 @@ export class WebServer {
             res.end(JSON.stringify({ "success": "true", "hostname": _hostname, dt: new Date() }));
             res.end();
             // @ts-ignore
-            span.setStatus({ code: 200 });
+            // span.setStatus({ code: 200 });
         } catch (error) {
             Logger.instanse.error(error, null);
             // Logger.instanse.error(error, span);
