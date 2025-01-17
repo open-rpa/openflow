@@ -1,5 +1,6 @@
 import { Ace } from "@openiap/nodeapi";
 import { Histogram, HrTime, Meter, Span } from "@opentelemetry/api";
+import * as logsAPI from '@opentelemetry/api-logs';
 import express from "express";
 import { Wellknown } from "./Util.js";
 
@@ -65,6 +66,7 @@ export interface i_otel {
     default_boundaries: number[];
     meter: Meter;
     defaultlabels: any;
+    logger: logsAPI.Logger;
     GetTraceSpanId(span: Span): [string, string]
     startSpan(name: string, traceId: string, spanId: string): Span;
     startSpanExpress(name: string, req: express.Request): Span;

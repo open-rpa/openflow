@@ -681,6 +681,7 @@ export class WebServer {
                     res.config.enable_analytics = Config.enable_analytics;
                     res.config.otel_trace_url = Config.otel_trace_url;
                     res.config.otel_metric_url = Config.otel_metric_url;
+                    res.config.otel_log_url = Config.otel_log_url;                    
                     res.config.otel_trace_interval = Config.otel_trace_interval;
                     res.config.otel_metric_interval = Config.otel_metric_interval;
                     res.config = JSON.stringify(res.config);

@@ -1195,6 +1195,9 @@ export class LoginProvider {
         if (Config.otel_metric_url != null && Config.otel_metric_url != "") {
             res2["otel_metric_url"] = Config.otel_metric_url;
         }
+        if (Config.otel_log_url != null && Config.otel_log_url != "") {
+            res2["otel_log_url"] = Config.otel_log_url;
+        }        
         return res2;
     }
     static async get_config(req: any, res: any, next: any): Promise<void> {

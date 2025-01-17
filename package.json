@@ -39,11 +39,13 @@
   "dependencies": {
     "@kubernetes/client-node": "0.21.0",
     "@node-saml/passport-saml": "4.0.1",
-    "@openiap/cloud-git-mongodb": "^1.0.39",
+    "@openiap/cloud-git-mongodb": "1.0.39",
     "@openiap/nodeapi": "0.0.38",
     "@openiap/openflow-api": "2.1.12",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "0.43.0",
-    "@opentelemetry/sdk-node": "0.43.0",
+    "@opentelemetry/api-logs": "0.57.1",
+    "@opentelemetry/exporter-logs-otlp-grpc": "0.57.1",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "0.57.1",
+    "@opentelemetry/sdk-node": "0.57.1",
     "@testdeck/mocha": "0.3.3",
     "amqplib": "0.10.4",
     "bcryptjs": "2.4.3",
@@ -99,6 +101,6 @@
     "gulp-shell": "0.8.0",
     "mocha": "10.5.2",
     "nyc": "17.0.0",
-    "wtfnode": "^0.10.0"
+    "wtfnode": "0.10.0"
   }
 }

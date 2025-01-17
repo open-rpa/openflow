@@ -1,4 +1,5 @@
 import { Span } from "@opentelemetry/api";
+import * as logsAPI from '@opentelemetry/api-logs';
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
@@ -110,6 +111,74 @@ export class Logger {
             if (Config.unittesting) return;
             if (obj.func == "_Housekeeping") {
                 obj.cls = "Housekeeping";
+            }
+            if(Logger.otel && Logger.otel.logger) {
+                if(level.Information == obj.lvl) {
+                    let attributes = {...obj}
+                    delete attributes.message;
+                    delete attributes.lvl;
+                    Logger.otel.logger.emit({
+                        severityNumber: logsAPI.SeverityNumber.INFO,
+                        severityText: 'INFO',
+                        body: obj.message,
+                        attributes: attributes //{ 'log.type': 'LogRecord' },
+                    });
+                }
+                if(level.Warning == obj.lvl) {
+                    let attributes = {...obj}
+                    delete attributes.message;
+                    delete attributes.lvl;
+                    Logger.otel.logger.emit({
+                        severityNumber: logsAPI.SeverityNumber.WARN,
+                        severityText: 'WARN',
+                        body: obj.message,
+                        attributes: attributes //{ 'log.type': 'LogRecord' },
+                    });
+                }
+                if(level.Error == obj.lvl) {
+                    let attributes = {...obj}
+                    delete attributes.message;
+                    delete attributes.lvl;
+                    Logger.otel.logger.emit({
+                        severityNumber: logsAPI.SeverityNumber.ERROR,
+                        severityText: 'ERROR',
+                        body: obj.message,
+                        attributes: attributes //{ 'log.type': 'LogRecord' },
+                    });
+                }
+                if(level.Debug == obj.lvl) {
+                    let attributes = {...obj}
+                    delete attributes.message;
+                    delete attributes.lvl;
+                    Logger.otel.logger.emit({
+                        severityNumber: logsAPI.SeverityNumber.DEBUG,
+                        severityText: 'DEBUG',
+                        body: obj.message,
+                        attributes: attributes //{ 'log.type': 'LogRecord' },
+                    });
+                }
+                if(level.Verbose == obj.lvl) {
+                    let attributes = {...obj}
+                    delete attributes.message;
+                    delete attributes.lvl;
+                    Logger.otel.logger.emit({
+                        severityNumber: logsAPI.SeverityNumber.TRACE,
+                        severityText: 'VERBOSE',
+                        body: obj.message,
+                        attributes: attributes //{ 'log.type': 'LogRecord' },
+                    });
+                }
+                if(level.Silly == obj.lvl) {
+                    let attributes = {...obj}
+                    delete attributes.message;
+                    delete attributes.lvl;
+                    Logger.otel.logger.emit({
+                        severityNumber: logsAPI.SeverityNumber.TRACE2,
+                        severityText: 'SILLY',
+                        body: obj.message,
+                        attributes: attributes //{ 'log.type': 'LogRecord' },
+                    });
+                }
             }
 
             const { cls, func, message, lvl } = obj;

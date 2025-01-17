@@ -745,6 +745,7 @@ export class Config {
     public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log"));
     public static otel_err_log: boolean = Config.parseBoolean(Config.getEnv("otel_err_log"));
     public static otel_trace_url: string = Config.getEnv("otel_trace_url");
+    public static otel_log_url: string = Config.getEnv("otel_log_url");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url");
     public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval"));
     public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval"));

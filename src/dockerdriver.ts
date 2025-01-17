@@ -180,6 +180,7 @@ export class dockerdriver implements i_agent_driver {
                 "enable_detailed_analytic=" + Config.enable_detailed_analytic.toString(),
                 "otel_trace_url=" + Config.otel_trace_url,
                 "otel_metric_url=" + Config.otel_metric_url,
+                "otel_log_url=" + Config.otel_log_url,                
                 "TZ=" + agent.tz,
                 "log_with_colors=true",
                 "oidc_config=" + oidc_config,

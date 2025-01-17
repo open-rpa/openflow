@@ -2021,6 +2021,7 @@ export class Message {
             msg.openflow_uniqueid = Config.openflow_uniqueid;
             if (!Util.IsNullEmpty(Config.otel_trace_url)) msg.otel_trace_url = Config.otel_trace_url;
             if (!Util.IsNullEmpty(Config.otel_metric_url)) msg.otel_metric_url = Config.otel_metric_url;
+            if (!Util.IsNullEmpty(Config.otel_log_url)) (msg as any).otel_log_url = Config.otel_log_url;            
             if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
             if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
             msg.enable_analytics = Config.enable_analytics;
