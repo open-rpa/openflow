@@ -141,6 +141,12 @@ export class Logger {
                     attributes,
                 });
             }
+            if(obj.lvl == level.Silly && !Config.log_silly) {
+                return;
+            }
+            if(obj.lvl == level.Verbose && !Config.log_verbose) {
+                return;
+            }
 
             const { cls, func, message, lvl } = obj;
             if (!Util.IsNullEmpty(func) && span != null && span.isRecording()) {
@@ -326,7 +332,6 @@ export class Logger {
     }
     public verbose(message: string, span: Span, options?: any) {
         try {
-            if (!Config.log_verbose) return;
             var s = Logger.getStackInfo(0);
             if (s.method == "") s = Logger.getStackInfo(1);
             if (s.method == "") s = Logger.getStackInfo(2);
@@ -357,7 +362,6 @@ export class Logger {
     }
     public silly(message: string, span: Span, options?: any) {
         try {
-            if (!Config.log_silly) return;
             var s = Logger.getStackInfo(0);
             if (s.method == "") s = Logger.getStackInfo(1);
             if (s.method == "") s = Logger.getStackInfo(2);
