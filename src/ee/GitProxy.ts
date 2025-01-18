@@ -57,14 +57,14 @@ export class GitProxy {
           const main = arr[0];
           if (!DatabaseConnection.hasAuthorization(req.user, main as any, right)) {
             res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
-            Logger.instanse.error("Access denied to update " + repo.repoName + " (for " + (req.user as any).name + ")", null, { cls: "GitProxy" });
+            Logger.instanse.error("Access denied to update " + repo.repoName + " (for " + (req.user as any).name + ")", null, { cls: "GitProxy", func: "authorize" });
             return res.status(401).send("Access denied to update " + repo.repoName + " (for " + (req.user as any).name + ")")
           }
         } else {
           if (parts[parts.length - 1] == "git-receive-pack") {
             if ((req.user as any).username == "guest" && Config.enable_gitserver_guest_create == false) {
               res.set("WWW-AuthehasRolenticate", `Basic realm="${Config.domain}"`)
-              Logger.instanse.error("Access denied to create " + repo.repoName + " for guest", null, { cls: "GitProxy" });
+              Logger.instanse.error("Access denied to create " + repo.repoName + " for guest", null, { cls: "GitProxy", func: "authorize" });
               return res.status(401).send("Access denied to create " + repo.repoName + " for guest")
             }
             if (ownername == (req.user as any).username) {
@@ -72,7 +72,7 @@ export class GitProxy {
             } else if (req.user != null && req.user.HasRoleName != null && req.user.HasRoleName(Wellknown.admins.name)) {
             } else {
               res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
-              Logger.instanse.error("Access denied to create " + repo.repoName + " for " + (req.user as any).name, null, { cls: "GitProxy" });
+              Logger.instanse.error("Access denied to create " + repo.repoName + " for " + (req.user as any).name, null, { cls: "GitProxy", func: "authorize" });
               return res.status(401).send("Access denied to create " + repo.repoName + " for " + (req.user as any).name)
             }
           }
@@ -103,7 +103,7 @@ export class GitProxy {
             msg += " " + JSON.stringify(arg);
           }
         }
-        Logger.instanse.debug(msg.trim(), null, { cls: "GitProxy" });
+        Logger.instanse.debug(msg.trim(), null, { cls: "GitProxy", func: "debug" });
       }
     });
 
@@ -112,7 +112,7 @@ export class GitProxy {
       const urlPath = req.path.substring(4);
       const method = req.method.toUpperCase();
       const remoteip = WebServer.remoteip(req as any);
-      Logger.instanse.debug("[" + method + "] " + urlPath + " from " + remoteip, null, { cls: "GitProxy" });
+      Logger.instanse.debug("[" + method + "] " + urlPath + " from " + remoteip, null, { cls: "GitProxy", func: "all" });
       try {
         var jwt = await GitProxy.GetToken(req);
         if ((jwt == null || jwt == "")) {
@@ -311,7 +311,7 @@ export class GitProxy {
 
               if ((req.user as any).username == "guest" && Config.enable_gitserver_guest_create == false) {
                 res.set("WWW-AuthehasRolenticate", `Basic realm="${Config.domain}"`)
-                Logger.instanse.error("Access denied to create " + req.body.reponame + " for guest", null, { cls: "GitProxy" });
+                Logger.instanse.error("Access denied to create " + req.body.reponame + " for guest", null, { cls: "GitProxy", func: "create" });
                 return res.status(500).send("Access denied to create for guest")
               }
               if (ownername == (req.user as any).username) {
@@ -319,7 +319,7 @@ export class GitProxy {
               } else if (req.user != null && (req.user as any).HasRoleName != null && (req.user as any).HasRoleName(Wellknown.admins.name)) {
               } else {
                 res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
-                Logger.instanse.error("Access denied to create " + req.body.reponame + " for " + (req.user as any).name, null, { cls: "GitProxy" });
+                Logger.instanse.error("Access denied to create " + req.body.reponame + " for " + (req.user as any).name, null, { cls: "GitProxy", func: "create" });
                 return res.status(500).send("Access denied to create (for " + (req.user as any).name + ")")
               }
               await Config.db.InsertOne<any>(newbranch, "git", 1, true, Crypt.rootToken(), parent);
@@ -672,7 +672,7 @@ git push -u origin main</pre></p>`
           res.status(200).send(`${result.message.split(`\n`).join(`<br />`)}<p><a href="/git/${reponame}">back</p>`);
           return next();
         } else {
-          Logger.instanse.info(`Not Found ${url}`, null, { cls: "GitProxy" });
+          Logger.instanse.info(`Not Found ${url}`, null, { cls: "GitProxy", func: "Get" });
           res.status(404).send("Not Found");
           next();
         }
@@ -981,10 +981,10 @@ git push -u origin main</pre></p>`
               if (entries.length != 2) throw new Error("Invalid entries in " + collection + " " + id + " expected 2 found " + entries.length);
               if (treeobject.subtree.find(x => x.name == entries[0].name) == null) treeobject.subtree.push(entries[0]);
               if (treeobject.subtree.find(x => x.name == entries[1].name) == null) treeobject.subtree.push(entries[1]);
-              Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists`, null, { cls: "GitProxy" });
+              Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists`, null, { cls: "GitProxy", func: "snapshot" });
               return;
             } else {
-              Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists changed, old sha ${existingFile.sha}, new sha ${metasha}`, null, { cls: "GitProxy" });
+              Logger.instanse.debug(`File ${metadata.filename} #${id} in ${collection} already exists changed, old sha ${existingFile.sha}, new sha ${metasha}`, null, { cls: "GitProxy", func: "snapshot" });
             }
           }
           const bucketName = collection.substring(0, collection.length - 6);
@@ -1118,7 +1118,7 @@ git push -u origin main</pre></p>`
       if (!updated) {
         const ms = (Date.now() - startTime)
         const msbyobjct = Math.round(ms / objectcounter);
-        Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " discarded after " + (Date.now() - startTime) / 1000 + " seconds, due to no new/changed items", null, { cls: "GitProxy" });
+        Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " discarded after " + (Date.now() - startTime) / 1000 + " seconds, due to no new/changed items", null, { cls: "GitProxy", func: "snapshot" });
 
         if (msbyobjct == Infinity) {
           console.timeLog("snapshot", "completed with " + objectcounter + " objects discarded due to no new/changed items");
@@ -1185,7 +1185,7 @@ git push -u origin main</pre></p>`
 
       const ms = (Date.now() - startTime)
       const msbyobjct = Math.round(ms / objectcounter);
-      Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " completed in " + (Date.now() - startTime) / 1000 + " seconds", null, { cls: "GitProxy" });
+      Logger.instanse.info("Snapshot with " + objectcounter + " objects created by " + username + " completed in " + (Date.now() - startTime) / 1000 + " seconds", null, { cls: "GitProxy", func: "snapshot" });
 
       if (msbyobjct == Infinity) {
         console.timeLog("snapshot", "completed with " + objectcounter + " objects");

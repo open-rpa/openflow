@@ -40,27 +40,27 @@ var _hostname = "";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
     if (req.originalUrl.indexOf("/oidc") > -1) {
-        Logger.instanse.verbose("SKip validate for " + req.originalUrl, null);
+        Logger.instanse.verbose("SKip validate for " + req.originalUrl, null, { cls: "WebServer", func: "rateLimiter" });
         return next();
     }
     try {
         if(isNaN(Config.api_rate_limit_points)) Config.api_rate_limit_points = 1000;
         if(isNaN(Config.api_rate_limit_duration)) Config.api_rate_limit_duration = 1;
         if (Config.api_rate_limit_duration != WebServer.BaseRateLimiter.duration || Config.api_rate_limit_points != WebServer.BaseRateLimiter.points) {
-            Logger.instanse.info("Create new api rate limitter", span);
+            Logger.instanse.info("Create new api rate limitter", span, { cls: "WebServer", func: "rateLimiter" });
             WebServer.BaseRateLimiter = new RateLimiterMemory({
                 points: Config.api_rate_limit_points,
                 duration: Config.api_rate_limit_duration,
             });
         }
 
-        Logger.instanse.verbose("Validate for " + req.originalUrl, null);
+        Logger.instanse.verbose("Validate for " + req.originalUrl, null, { cls: "WebServer", func: "rateLimiter" });
         var e = await WebServer.BaseRateLimiter.consume(WebServer.remoteip(req))
-        Logger.instanse.verbose("consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints, null);
+        Logger.instanse.verbose("consumedPoints: " + e.consumedPoints + " remainingPoints: " + e.remainingPoints, null, { cls: "WebServer", func: "rateLimiter" });
         next();
     } catch (error) {
         var span = Logger.otel.startSpanExpress("rateLimiter", req);
-        Logger.instanse.warn("API_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span);
+        Logger.instanse.warn("API_RATE_LIMIT consumedPoints: " + error.consumedPoints + " remainingPoints: " + error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span, { cls: "WebServer", func: "rateLimiter" });
         span.end();
         res.status(429).json({ response: "RATE_LIMIT" });
     } finally {
@@ -104,7 +104,7 @@ export class WebServer {
                                     }
                                 }
                             } catch (error) {
-                                Logger.instanse.error(error, null);
+                                Logger.instanse.error(error, null, { cls: "WebServer", func: "isIPBlocked" });
                             }
                         }
                     }
@@ -121,7 +121,7 @@ export class WebServer {
                 return this.isIPBlocked(remoteip);
             }
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "WebServer", func: "isBlocked" });
         }
         return false;
     }
@@ -140,7 +140,7 @@ export class WebServer {
             this.app.use(async (req, res, next) => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = WebSocketServerClient.remoteip(req);
-                    if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null);
+                    if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null, { cls: "WebServer", func: "configure" });
                     try {
                         res.status(429).json({ "message": "ip blocked" });
                     } catch (error) {
@@ -163,7 +163,7 @@ export class WebServer {
             } else if (fs.existsSync(path.join(__dirname, "../public.template"))) {
                 WebServer.webapp_file_path = path.join(__dirname, "../public.template");
             } else {
-                Logger.instanse.error("Cannot find public folder", span);
+                Logger.instanse.error("Cannot find public folder", span, { cls: "WebServer", func: "configure" });
             }
 
             this.app.use(compression());
@@ -184,7 +184,7 @@ export class WebServer {
             this.app.get("/ipblock", async (req: any, res: any, next: any): Promise<void> => {
                 if (await WebServer.isBlocked(req)) {
                     var remoteip = LoginProvider.remoteip(req);
-                    if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null);
+                    if (Config.log_blocked_ips) Logger.instanse.error(remoteip + " is blocked", null, { cls: "WebServer", func: "ipblock" });
                     res.statusCode = 401;
                     res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);
                     res.end("Unauthorized");
@@ -194,7 +194,7 @@ export class WebServer {
             });
 
             this.app.use(function (req, res, next) {
-                Logger.instanse.verbose("add for " + req.originalUrl, null);
+                Logger.instanse.verbose("add for " + req.originalUrl, null, { cls: "WebServer", func: "configure" });
                 // Website you wish to allow to connect
                 res.setHeader("Access-Control-Allow-Origin", "*");
 
@@ -239,13 +239,13 @@ export class WebServer {
                         const subscription = req.body;
                         span?.setAttribute("subscription", JSON.stringify(subscription));
                         if (Util.IsNullUndefinded(subscription) && Util.IsNullEmpty(subscription.jwt)) {
-                            Logger.instanse.error("Received invalid subscription request", null);
+                            Logger.instanse.error("Received invalid subscription request", null, { cls: "WebServer", func: "webpushsubscribe" });
                             return res.status(500).json({ "error": "no subscription" });
                         }
                         const jwt = subscription.jwt;
                         const tuser: User = await Auth.Token2User(jwt, span);
                         if (Util.IsNullUndefinded(tuser)) {
-                            Logger.instanse.error("jwt is invalid", null);
+                            Logger.instanse.error("jwt is invalid", null, { cls: "WebServer", func: "webpushsubscribe" });
                             return res.status(500).json({ "error": "no subscription" });
                         }
                         delete subscription.jwt;
@@ -253,10 +253,10 @@ export class WebServer {
                         subscription.userid = tuser._id;
                         subscription.name = tuser.name + " " + subscription._type + " " + subscription.host;
                         await Config.db.InsertOrUpdateOne(subscription, "webpushsubscriptions", "userid,_type,host,endpoint", 1, true, jwt, span);
-                        Logger.instanse.info("Registered webpush subscription for " + tuser.name, span);
+                        Logger.instanse.info("Registered webpush subscription for " + tuser.name, span, { cls: "WebServer", func: "webpushsubscribe" });
                         res.status(201).json({})
                     } catch (error) {
-                        Logger.instanse.error(error, subspan);
+                        Logger.instanse.error(error, subspan, { cls: "WebServer", func: "webpushsubscribe" });
                         try {
                             return res.status(500).json({ "error": error.message ? error.message : error });
                         } catch (error) {
@@ -315,7 +315,7 @@ export class WebServer {
 
             return WebServer.server;
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "WebServer", func: "configure" });
             process.exit(404);
             return null;
         } finally {
@@ -354,7 +354,7 @@ export class WebServer {
     }
     public static Listen() {
         WebServer.server.listen(Config.port).on("error", function (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "WebServer", func: "Listen" });
             if (Config.NODE_ENV == "production") {
                 WebServer.server.close();
                 process.exit(404);
@@ -379,10 +379,10 @@ export class WebServer {
         servers.push(protowrap.serve("grpc", this.onClientConnected, config.defaultgrpcport, null, WebServer.wss, WebServer.app, WebServer.server, flowclient));
         servers.push(protowrap.serve("rest", this.onClientConnected, Config.port, "/api/v2", WebServer.wss, WebServer.app, WebServer.server, flowclient));
         config.DoDumpToConsole = false;
-        Logger.instanse.info("Listening on " + Config.baseurl(), null);
-        Logger.instanse.info("grpc listening on grpc://" + Config.domain + ":" + config.defaultgrpcport, null);
+        Logger.instanse.info("Listening on " + Config.baseurl(), null, { cls: "WebServer", func: "Listen" });
+        Logger.instanse.info("grpc listening on grpc://" + Config.domain + ":" + config.defaultgrpcport, null, { cls: "WebServer", func: "Listen" });
         WebServer.addWebserverRoutes().catch((error) => {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "WebServer", func: "Listen" });
         });
     }
     public static async ReceiveFileContent(client: flowclient, rid: string, msg: any) {
@@ -401,7 +401,7 @@ export class WebServer {
                         metadata = Object.assign(metadata, JSON.parse(msg.metadata));
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, null);
+                    Logger.instanse.error(error, null, { cls: "WebServer", func: "ReceiveFileContent" });
                 }
             }
             if (metadata.name == null || metadata.name == "") metadata.name = msg.filename;
@@ -838,8 +838,8 @@ export class WebServer {
             // @ts-ignore
             // span.setStatus({ code: 200 });
         } catch (error) {
-            Logger.instanse.error(error, null);
-            // Logger.instanse.error(error, span);
+            Logger.instanse.error(error, null, { cls: "WebServer", func: "get_livenessprobe" });
+            // Logger.instanse.error(error, span, { cls: "WebServer", func: "get_livenessprobe" });
             // span.setStatus({
             //     // @ts-ignore
             //     code: 500,

@@ -37,7 +37,7 @@ export class Audit {
             log.clientversion = clientversion;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "LoginSuccess" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -64,7 +64,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "ImpersonateSuccess" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -90,7 +90,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "ImpersonateFailed" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -113,7 +113,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "LoginFailed" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -134,7 +134,7 @@ export class Audit {
             log.wiq = wiq.name;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditWorkitemPurge" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -166,7 +166,7 @@ export class Audit {
             if (!Util.IsNullEmpty(instancename) && Util.IsNullEmpty(log.name)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "NoderedAction" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -196,7 +196,7 @@ export class Audit {
             log.userid = userid;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "IssueLicense" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -215,7 +215,7 @@ export class Audit {
             log.username = user?.username;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditCollectionAction" });
         }
         finally {
             Logger.otel.endSpan(span);

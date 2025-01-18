@@ -53,12 +53,12 @@ export class WebSocketServer {
                         await sock.Initialize(socketObject, req);
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, null);
+                    Logger.instanse.error(error, null, { cls: "WebSocketServer", func: "configure" });
                 }
             });
             if (WebServer.wss.on) {
                 WebServer.wss.on("error", (error: Error): void => {
-                    Logger.instanse.error(error, null);
+                    Logger.instanse.error(error, null, { cls: "WebSocketServer", func: "configure" });
                 });
             }
             if (!Util.IsNullUndefinded(Logger.otel) && !Util.IsNullUndefinded(Logger.otel.meter)) {
@@ -84,7 +84,7 @@ export class WebSocketServer {
                                 }
                             }
                         } catch (error) {
-                            Logger.instanse.error(error, null);
+                            Logger.instanse.error(error, null, { cls: "WebSocketServer", func: "configure" });
                         }
                     }
                     keys = Object.keys(p_all);
@@ -158,7 +158,7 @@ export class WebSocketServer {
             }
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "WebSocketServer", func: "configure" });
             return;
         } finally {
             Logger.otel.endSpan(span);
@@ -248,7 +248,7 @@ export class WebSocketServer {
             } else {
             }
         } catch (error) {
-            Logger.instanse.error(error, parent);
+            Logger.instanse.error(error, parent, { cls: "WebSocketServer", func: "DumpClients" });
         }
     }
     public static NotifyClients(message: any, parent: Span): void {
@@ -259,7 +259,7 @@ export class WebSocketServer {
                 this._remoteclients.push(cli);
             }
         } catch (error) {
-            Logger.instanse.error(error, parent);
+            Logger.instanse.error(error, parent, { cls: "WebSocketServer", func: "NotifyClients" });
         } finally {
         }
     }
@@ -276,7 +276,7 @@ export class WebSocketServer {
                             const payload = Crypt.decryptToken(cli.jwt);
                             const clockTimestamp = Math.floor(Date.now() / 1000);
                             if ((payload.exp - clockTimestamp) < 60) {
-                                Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client", span);
+                                Logger.instanse.debug("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client", span, { cls: "WebSocketServer", func: "pingClients" });
                                 if (await cli.RefreshToken(span)) {
                                     span?.addEvent("Token for " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " expires in less than 1 minute, send new jwt to client");
                                 } else {
@@ -285,7 +285,7 @@ export class WebSocketServer {
                             }
                         } catch (error) {
                             try {
-                                Logger.instanse.debug(cli.id + "/" + cli.user?.name + "/" + cli.clientagent + "/" + cli.remoteip + " ERROR: " + (error.message || error), span);
+                                Logger.instanse.debug(cli.id + "/" + cli.user?.name + "/" + cli.clientagent + "/" + cli.remoteip + " ERROR: " + (error.message || error), span, { cls: "WebSocketServer", func: "pingClients" });
                                 if (cli != null) cli.Close(span);
                             } catch (error) {
                             }
@@ -296,18 +296,18 @@ export class WebSocketServer {
                         // if (seconds >= Config.client_signin_timeout) {
                         //     if (cli.user != null) {
                         //         span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
-                        //         Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
+                        //         Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span, { cls: "WebSocketServer", func: "pingClients" });
                         //     } else {
                         //         if(cli.remoteip != "::1" && cli.remoteip != "127.0.0.1") {
                         //             span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection");
-                        //             Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span);
+                        //             Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " did not signin in after " + seconds + " seconds, close connection", span, { cls: "WebSocketServer", func: "pingClients" });
                         //         }
                         //     }
                         //     cli.Close(span);
                         // }
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "WebSocketServer", func: "pingClients" });
                     cli.Close(span);
                 }
                 const now = new Date();
@@ -316,10 +316,10 @@ export class WebSocketServer {
                 if (seconds >= Config.client_heartbeat_timeout) {
                     if (cli.user != null) {
                         span?.addEvent("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down");
-                        Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down", span);
+                        Logger.instanse.debug("client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down", span, { cls: "WebSocketServer", func: "pingClients" });
                     } else {
                         span?.addEvent("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down");
-                        Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down", span);
+                        Logger.instanse.debug("client not signed/" + cli.id + "/" + cli.clientagent + "/" + cli.remoteip + " timeout, close down", span, { cls: "WebSocketServer", func: "pingClients" });
                     }
                     cli.Close(span);
                 }
@@ -331,10 +331,10 @@ export class WebSocketServer {
                 }
                 if (!connected && cli.queuecount() == 0) {
                     if (cli.user != null) {
-                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip, span);
+                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip, span, { cls: "WebSocketServer", func: "pingClients" });
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.user.name + "/" + cli.clientagent + "/" + cli.remoteip);
                     } else {
-                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip, span);
+                        Logger.instanse.debug("removing disconnected client " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip, span, { cls: "WebSocketServer", func: "pingClients" });
                         span?.addEvent("removing disconnected client " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip);
                     }
                     try {
@@ -342,15 +342,15 @@ export class WebSocketServer {
                         if (cli._socketObject == null || cli._socketObject.readyState === cli._socketObject.CLOSED) {
                             WebSocketServer._clients.splice(i, 1);
                         } else {
-                            Logger.instanse.silly("Not ready to remove client yet " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip, span);
+                            Logger.instanse.silly("Not ready to remove client yet " + cli.id + "/" + cli.clientagent + "/" + cli.remoteip, span, { cls: "WebSocketServer", func: "pingClients" });
                         }
                     } catch (error) {
-                        Logger.instanse.error(error, span);
+                        Logger.instanse.error(error, span, { cls: "WebSocketServer", func: "pingClients" });
                     }
                 }
             }
             if (count !== WebSocketServer._clients.length) {
-                Logger.instanse.debug("new client count: " + WebSocketServer._clients.length, span);
+                Logger.instanse.debug("new client count: " + WebSocketServer._clients.length, span, { cls: "WebSocketServer", func: "pingClients" });
                 span?.setAttribute("clientcount", WebSocketServer._clients.length)
             }
             const p_all = {};
@@ -376,7 +376,7 @@ export class WebSocketServer {
                         }
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "WebSocketServer", func: "pingClients" });
                 }
             }
 
@@ -394,7 +394,7 @@ export class WebSocketServer {
                 Logger.instanse.debug("updating " + bulkUpdates.length + " online users took " + ms + "ms", span, { cls: "DatabaseConnection", func: "pingClients", collection: "users", ms });
             }
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "WebSocketServer", func: "pingClients" });
         } finally {
             Logger.otel.endSpan(span);
             setTimeout(this.pingClients.bind(this), Config.ping_clients_interval);

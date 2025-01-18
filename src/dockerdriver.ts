@@ -15,7 +15,7 @@ export class dockerdriver implements i_agent_driver {
             await docker.listContainers();
             return true;
         } catch (error) {
-            Logger.instanse.info("Docker not detected: " + error.message, null);
+            Logger.instanse.info("Docker not detected: " + error.message, null, { cls: "dockerdriver", func: "detect" });
         }
         return false;
     }
@@ -37,7 +37,7 @@ export class dockerdriver implements i_agent_driver {
         }
 
         if (pull) {
-            Logger.instanse.info("Pull image " + imagename, span);
+            Logger.instanse.info("Pull image " + imagename, span, { cls: "dockerdriver", func: "_pullImage" });
             await docker.pull(imagename)
         }
     }
@@ -46,7 +46,7 @@ export class dockerdriver implements i_agent_driver {
     }
     public async EnsureInstance(user: User, jwt: string, agent: iAgent, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
-        Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span);
+        Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span, { cls: "dockerdriver", func: "EnsureInstance" });
 
         var agent_grpc_apihost = "api";
         if (Config.agent_grpc_apihost != null && Config.agent_grpc_apihost != "") {
@@ -226,7 +226,7 @@ export class dockerdriver implements i_agent_driver {
     public async RemoveInstance(user: User, jwt: string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstance", parent);
         try {
-            Logger.instanse.debug("[" + agent.slug + "] RemoveInstance", span);
+            Logger.instanse.debug("[" + agent.slug + "] RemoveInstance", span, { cls: "dockerdriver", func: "RemoveInstance" });
 
             span?.addEvent("init Docker()");
             const docker: Docker = new Docker();
@@ -311,12 +311,12 @@ export class dockerdriver implements i_agent_driver {
                 const a: number = (date as any) - (Created as any);
                 const diffhours = a / (1000 * 60 * 60);
                 if (billed != "true" && diffhours > runtime) {
-                    Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed agent instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent);
+                    Logger.instanse.warn("[" + item.metadata.name + "] Remove un billed agent instance " + item.metadata.name + " that has been running for " + diffhours + " hours", parent, { cls: "dockerdriver", func: "InstanceCleanup" });
                     var agent = await Config.db.GetOne<iAgent>({ query: { slug: item.metadata.name }, collectionname: "agents", jwt: rootjwt }, parent);
                     if (agent != null) {
                         await this.RemoveInstance(rootuser, rootjwt, agent, false, parent);
                     } else {
-                        Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name, parent, { user: item.metadata.name });
+                        Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name, parent, { cls: "dockerdriver", func: "InstanceCleanup",  user: item.metadata.name });
                     }
                 }
             }
@@ -396,7 +396,7 @@ export class dockerdriver implements i_agent_driver {
     public async RemoveInstancePod(user: User, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("message.RemoveInstancePod", parent);
         try {
-            Logger.instanse.debug("[" + agent.slug + "] RemoveInstancePod", span);
+            Logger.instanse.debug("[" + agent.slug + "] RemoveInstancePod", span, { cls: "dockerdriver", func: "RemoveInstancePod" });
 
             span?.addEvent("init Docker()");
             const docker: Docker = new Docker();

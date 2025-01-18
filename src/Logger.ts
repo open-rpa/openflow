@@ -114,12 +114,11 @@ export class Logger {
             }
             if(Logger.otel && Logger.otel.logger) {
                 let severityNumber = logsAPI.SeverityNumber.INFO;
-                let severityText = 'INFO';
-                if(obj.lvl == level.Warning) { severityNumber = logsAPI.SeverityNumber.WARN; severityText = 'WARN'; }
-                if(obj.lvl == level.Error) { severityNumber = logsAPI.SeverityNumber.ERROR; severityText = 'ERROR'; }
-                if(obj.lvl == level.Debug) { severityNumber = logsAPI.SeverityNumber.DEBUG; severityText = 'DEBUG'; }
-                if(obj.lvl == level.Verbose) { severityNumber = logsAPI.SeverityNumber.TRACE; severityText = 'VERBOSE'; }
-                if(obj.lvl == level.Silly) { severityNumber = logsAPI.SeverityNumber.TRACE2; severityText = 'SILLY'; }
+                if(obj.lvl == level.Warning) { severityNumber = logsAPI.SeverityNumber.WARN; }
+                if(obj.lvl == level.Error) { severityNumber = logsAPI.SeverityNumber.ERROR; }
+                if(obj.lvl == level.Debug) { severityNumber = logsAPI.SeverityNumber.DEBUG; }
+                if(obj.lvl == level.Verbose) { severityNumber = logsAPI.SeverityNumber.TRACE2; }
+                if(obj.lvl == level.Silly) { severityNumber = logsAPI.SeverityNumber.TRACE; }
                 let attributes = {...obj}
                 let message = obj.message;
                 try {
@@ -136,7 +135,7 @@ export class Logger {
                 delete attributes.lvl;
                 Logger.otel.logger.emit({
                     severityNumber,
-                    severityText,
+                    // severityText,
                     body: message,
                     attributes,
                 });
@@ -214,28 +213,32 @@ export class Logger {
         }
     }
     public error(message: string | Error | unknown, span: Span, options?: any) {
+        var obj = { cls: "", func: "", message, lvl: level.Error };
+        if (options != null) obj = { ...obj, ...options };
         try {
-            var s = Logger.getStackInfo(0);
-            if (s.method == "") s = Logger.getStackInfo(1);
-            if (s.method == "") s = Logger.getStackInfo(2);
-            var obj = { cls: "", func: "", message, lvl: level.Error };
-            if (options != null) obj = { ...obj, ...options };
-            if (s.method.indexOf(".") > 1 && s.method.indexOf("<anonymous>") == -1) {
-                obj.func = s.method.substring(s.method.indexOf(".") + 1);
-                obj.cls = s.method.substring(0, s.method.indexOf("."));
-            } else {
-                obj.func = s.method;
-                obj.cls = "";
-                if (s.file != "") obj.cls = s.file.replace(".js", "");
-            }
-            if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
-                obj.func = "anonymous";
-            }
-            if (options?.cls != null && options?.cls != "") {
-                obj.cls = options.cls;
-            }
-            if (options?.func != null && options?.func != "") {
-                obj.func = options.func;
+            if(Util.IsNullEmpty(obj.cls) && Util.IsNullEmpty(obj.func)) {
+                var s = Logger.getStackInfo(0);
+                if (s.method == "") s = Logger.getStackInfo(1);
+                if (s.method == "") s = Logger.getStackInfo(2);
+                var obj = { cls: "", func: "", message, lvl: level.Error };
+                if (options != null) obj = { ...obj, ...options };
+                if (s.method.indexOf(".") > 1 && s.method.indexOf("<anonymous>") == -1) {
+                    obj.func = s.method.substring(s.method.indexOf(".") + 1);
+                    obj.cls = s.method.substring(0, s.method.indexOf("."));
+                } else {
+                    obj.func = s.method;
+                    obj.cls = "";
+                    if (s.file != "") obj.cls = s.file.replace(".js", "");
+                }
+                if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+                    obj.func = "anonymous";
+                }
+                if (options?.cls != null && options?.cls != "") {
+                    obj.cls = options.cls;
+                }
+                if (options?.func != null && options?.func != "") {
+                    obj.func = options.func;
+                }
             }
             this.json(obj, span);
         } catch (error) {
@@ -243,29 +246,31 @@ export class Logger {
         }
     }
     public info(message: string, span: Span, options?: any) {
+        var obj = { cls: "", func: "", message, lvl: level.Information };
+        if (options != null) obj = { ...obj, ...options };
         try {
-            var s = Logger.getStackInfo(0);
-            if (s.method == "") s = Logger.getStackInfo(1);
-            if (s.method == "") s = Logger.getStackInfo(2);
-            var obj = { cls: "", func: "", message, lvl: level.Information };
-            if (options != null) obj = { ...obj, ...options };
-            if (s.method.indexOf(".") > 1) {
-                obj.func = s.method.substring(s.method.indexOf(".") + 1);
-                obj.cls = s.method.substring(0, s.method.indexOf("."));
-                if (s.file != "") obj.cls = s.file.replace(".js", "");
-            } else {
-                obj.func = s.method;
-                obj.cls = "";
-                if (s.file != "") obj.cls = s.file.replace(".js", "");
-            }
-            if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
-                obj.func = "anonymous";
-            }
-            if (options?.cls != null && options?.cls != "") {
-                obj.cls = options.cls;
-            }
-            if (options?.func != null && options?.func != "") {
-                obj.func = options.func;
+            if(Util.IsNullEmpty(obj.cls) && Util.IsNullEmpty(obj.func)) {
+                var s = Logger.getStackInfo(0);
+                if (s.method == "") s = Logger.getStackInfo(1);
+                if (s.method == "") s = Logger.getStackInfo(2);
+                if (s.method.indexOf(".") > 1) {
+                    obj.func = s.method.substring(s.method.indexOf(".") + 1);
+                    obj.cls = s.method.substring(0, s.method.indexOf("."));
+                    if (s.file != "") obj.cls = s.file.replace(".js", "");
+                } else {
+                    obj.func = s.method;
+                    obj.cls = "";
+                    if (s.file != "") obj.cls = s.file.replace(".js", "");
+                }
+                if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+                    obj.func = "anonymous";
+                }
+                if (options?.cls != null && options?.cls != "") {
+                    obj.cls = options.cls;
+                }
+                if (options?.func != null && options?.func != "") {
+                    obj.func = options.func;
+                }
             }
             this.json(obj, span);
         } catch (error) {
@@ -273,28 +278,30 @@ export class Logger {
         }
     }
     public warn(message: string, span: Span, options?: any) {
+        var obj = { cls: "", func: "", message, lvl: level.Warning };
+        if (options != null) obj = { ...obj, ...options };
         try {
-            var s = Logger.getStackInfo(0);
-            if (s.method == "") s = Logger.getStackInfo(1);
-            if (s.method == "") s = Logger.getStackInfo(2);
-            var obj = { cls: "", func: "", message, lvl: level.Warning };
-            if (options != null) obj = { ...obj, ...options };
-            if (s.method.indexOf(".") > 1) {
-                obj.func = s.method.substring(s.method.indexOf(".") + 1);
-                obj.cls = s.method.substring(0, s.method.indexOf("."));
-            } else {
-                obj.func = s.method;
-                obj.cls = "";
-                if (s.file != "") obj.cls = s.file.replace(".js", "");
-            }
-            if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
-                obj.func = "anonymous";
-            }
-            if (options?.cls != null && options?.cls != "") {
-                obj.cls = options.cls;
-            }
-            if (options?.func != null && options?.func != "") {
-                obj.func = options.func;
+            if(Util.IsNullEmpty(obj.cls) && Util.IsNullEmpty(obj.func)) {
+                var s = Logger.getStackInfo(0);
+                if (s.method == "") s = Logger.getStackInfo(1);
+                if (s.method == "") s = Logger.getStackInfo(2);
+                if (s.method.indexOf(".") > 1) {
+                    obj.func = s.method.substring(s.method.indexOf(".") + 1);
+                    obj.cls = s.method.substring(0, s.method.indexOf("."));
+                } else {
+                    obj.func = s.method;
+                    obj.cls = "";
+                    if (s.file != "") obj.cls = s.file.replace(".js", "");
+                }
+                if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+                    obj.func = "anonymous";
+                }
+                if (options?.cls != null && options?.cls != "") {
+                    obj.cls = options.cls;
+                }
+                if (options?.func != null && options?.func != "") {
+                    obj.func = options.func;
+                }
             }
             this.json(obj, span);
         } catch (error) {
@@ -302,28 +309,30 @@ export class Logger {
         }
     }
     public debug(message: string, span: Span, options?: any) {
+        var obj = { cls: "", func: "", message, lvl: level.Debug };
+        if (options != null) obj = { ...obj, ...options };
         try {
-            var s = Logger.getStackInfo(0);
-            if (s.method == "") s = Logger.getStackInfo(1);
-            if (s.method == "") s = Logger.getStackInfo(2);
-            var obj = { cls: "", func: "", message, lvl: level.Debug };
-            if (options != null) obj = { ...obj, ...options };
-            if (s.method.indexOf(".") > 1) {
-                obj.func = s.method.substring(s.method.indexOf(".") + 1);
-                obj.cls = s.method.substring(0, s.method.indexOf("."));
-            } else {
-                obj.func = s.method;
-                obj.cls = "";
-                if (s.file != "") obj.cls = s.file.replace(".js", "");
-            }
-            if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
-                obj.func = "anonymous";
-            }
-            if (options?.cls != null && options?.cls != "") {
-                obj.cls = options.cls;
-            }
-            if (options?.func != null && options?.func != "") {
-                obj.func = options.func;
+            if(Util.IsNullEmpty(obj.cls) && Util.IsNullEmpty(obj.func)) {
+                var s = Logger.getStackInfo(0);
+                if (s.method == "") s = Logger.getStackInfo(1);
+                if (s.method == "") s = Logger.getStackInfo(2);
+                if (s.method.indexOf(".") > 1) {
+                    obj.func = s.method.substring(s.method.indexOf(".") + 1);
+                    obj.cls = s.method.substring(0, s.method.indexOf("."));
+                } else {
+                    obj.func = s.method;
+                    obj.cls = "";
+                    if (s.file != "") obj.cls = s.file.replace(".js", "");
+                }
+                if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+                    obj.func = "anonymous";
+                }
+                if (options?.cls != null && options?.cls != "") {
+                    obj.cls = options.cls;
+                }
+                if (options?.func != null && options?.func != "") {
+                    obj.func = options.func;
+                }
             }
             this.json(obj, span);
         } catch (error) {
@@ -331,28 +340,30 @@ export class Logger {
         }
     }
     public verbose(message: string, span: Span, options?: any) {
+        var obj = { cls: "", func: "", message, lvl: level.Verbose };
+        if (options != null) obj = { ...obj, ...options };
         try {
-            var s = Logger.getStackInfo(0);
-            if (s.method == "") s = Logger.getStackInfo(1);
-            if (s.method == "") s = Logger.getStackInfo(2);
-            var obj = { cls: "", func: "", message, lvl: level.Verbose };
-            if (options != null) obj = { ...obj, ...options };
-            if (s.method.indexOf(".") > 1) {
-                obj.func = s.method.substring(s.method.indexOf(".") + 1);
-                obj.cls = s.method.substring(0, s.method.indexOf("."));
-            } else {
-                obj.func = s.method;
-                obj.cls = "";
-                if (s.file != "") obj.cls = s.file.replace(".js", "");
-            }
-            if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
-                obj.func = "anonymous";
-            }
-            if (options?.cls != null && options?.cls != "") {
-                obj.cls = options.cls;
-            }
-            if (options?.func != null && options?.func != "") {
-                obj.func = options.func;
+            if(Util.IsNullEmpty(obj.cls) && Util.IsNullEmpty(obj.func)) {
+                var s = Logger.getStackInfo(0);
+                if (s.method == "") s = Logger.getStackInfo(1);
+                if (s.method == "") s = Logger.getStackInfo(2);
+                if (s.method.indexOf(".") > 1) {
+                    obj.func = s.method.substring(s.method.indexOf(".") + 1);
+                    obj.cls = s.method.substring(0, s.method.indexOf("."));
+                } else {
+                    obj.func = s.method;
+                    obj.cls = "";
+                    if (s.file != "") obj.cls = s.file.replace(".js", "");
+                }
+                if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+                    obj.func = "anonymous";
+                }
+                if (options?.cls != null && options?.cls != "") {
+                    obj.cls = options.cls;
+                }
+                if (options?.func != null && options?.func != "") {
+                    obj.func = options.func;
+                }
             }
             this.json(obj, span);
         } catch (error) {
@@ -361,28 +372,30 @@ export class Logger {
 
     }
     public silly(message: string, span: Span, options?: any) {
+        var obj = { cls: "", func: "", message, lvl: level.Silly };
+        if (options != null) obj = { ...obj, ...options };
         try {
-            var s = Logger.getStackInfo(0);
-            if (s.method == "") s = Logger.getStackInfo(1);
-            if (s.method == "") s = Logger.getStackInfo(2);
-            var obj = { cls: "", func: "", message, lvl: level.Silly };
-            if (options != null) obj = { ...obj, ...options };
-            if (s.method.indexOf(".") > 1) {
-                obj.func = s.method.substring(s.method.indexOf(".") + 1);
-                obj.cls = s.method.substring(0, s.method.indexOf("."));
-            } else {
-                obj.func = s.method;
-                obj.cls = "";
-                if (s.file != "") obj.cls = s.file.replace(".js", "");
-            }
-            if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
-                obj.func = "anonymous";
-            }
-            if (options?.cls != null && options?.cls != "") {
-                obj.cls = options.cls;
-            }
-            if (options?.func != null && options?.func != "") {
-                obj.func = options.func;
+            if(Util.IsNullEmpty(obj.cls) && Util.IsNullEmpty(obj.func)) {
+                var s = Logger.getStackInfo(0);
+                if (s.method == "") s = Logger.getStackInfo(1);
+                if (s.method == "") s = Logger.getStackInfo(2);
+                if (s.method.indexOf(".") > 1) {
+                    obj.func = s.method.substring(s.method.indexOf(".") + 1);
+                    obj.cls = s.method.substring(0, s.method.indexOf("."));
+                } else {
+                    obj.func = s.method;
+                    obj.cls = "";
+                    if (s.file != "") obj.cls = s.file.replace(".js", "");
+                }
+                if (obj.func.indexOf("anonymous") > -1 || obj.func.indexOf("<") > -1 || obj.func.indexOf("[") > -1) {
+                    obj.func = "anonymous";
+                }
+                if (options?.cls != null && options?.cls != "") {
+                    obj.cls = options.cls;
+                }
+                if (options?.func != null && options?.func != "") {
+                    obj.func = options.func;
+                }
             }
             this.json(obj, span);
         } catch (error) {

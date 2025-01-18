@@ -126,7 +126,7 @@ export class FormioEP {
                     });
                 } catch (error) {
                     span?.recordException(error);
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "delete" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -189,7 +189,7 @@ export class FormioEP {
                     downloadStream.pipe(res);
                     return;
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -222,7 +222,7 @@ export class FormioEP {
                         LoginProvider.redirect(res, req.headers.referer);
                     });
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "post" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -260,11 +260,11 @@ export class FormioEP {
 
                         }
                     } catch (error) {
-                        Logger.instanse.error(error, span);
+                        Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     }
                     res.status(404).send({ message: "unknown url" });
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -317,7 +317,7 @@ export class FormioEP {
                     }
                     return res.send(resource);
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -372,7 +372,7 @@ export class FormioEP {
                             ors.push(m);
                         });
                         resource.aggregates.unshift({ "$match": { "$or": ors } });
-                        Logger.instanse.debug("searching using " + logfields.join(", ") + " fields", span);
+                        Logger.instanse.debug("searching using " + logfields.join(", ") + " fields", span, { cls: "FormioEP", func: "get" });
                     }
 
                     if (!Util.IsNullEmpty(query)) {
@@ -385,7 +385,7 @@ export class FormioEP {
                             orderby[s] = 1;
                         });
                         resource.aggregates.push({ "$sort": orderby });
-                        Logger.instanse.debug("sort using " + sorts.join(", ") + " fields", span);
+                        Logger.instanse.debug("sort using " + sorts.join(", ") + " fields", span, { cls: "FormioEP", func: "get" });
                     }
                     if (!Util.IsNullEmpty(skip) && !isNaN(skip) && skip > 0) {
                         resource.aggregates.push({ "$skip": +skip });
@@ -398,17 +398,17 @@ export class FormioEP {
                     dbresults.forEach(result => {
                         results.push({ "data": result, label: result.name, id: result._id });
                     });
-                    Logger.instanse.info("Return " + dbresults.length + " items based of resource " + resource.name, span);
+                    Logger.instanse.info("Return " + dbresults.length + " items based of resource " + resource.name, span, { cls: "FormioEP", func: "get" });
                     return res.send(results);
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
                 }
             });
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "FormioEP", func: "configure" });
         }
     }
     static expandobject(o) {

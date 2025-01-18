@@ -111,12 +111,12 @@ export class amqpwrapper extends events.EventEmitter {
     }
     conn_error(error) {
         if (error.code != 404) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "amqpwrapper", func: "conn_error" });
         }
     }
     conn_close() {
         this.of_logger_ready = false;
-        Logger.instanse.info("Connection closed", null);
+        Logger.instanse.info("Connection closed", null, { cls: "amqpwrapper", func: "conn_close" });
         this.conn = null;
         if (this.timeout != null) {
             clearTimeout(this.timeout);
@@ -127,7 +127,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     channel_error(error) {
         if (error.code != 404) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "amqpwrapper", func: "channel_error" });
         }
     }
     async connect(parent: Span): Promise<void> {
@@ -139,9 +139,9 @@ export class amqpwrapper extends events.EventEmitter {
             }
             if (this.conn == null) {
                 span?.addEvent("connect");
-                Logger.instanse.info("Connecting to rabbitmq", span);
+                Logger.instanse.info("Connecting to rabbitmq", span, { cls: "amqpwrapper", func: "connect" });
                 this.conn = await amqplib.connect(this.connectionstring);
-                Logger.instanse.info("Connected to rabbitmq", span);
+                Logger.instanse.info("Connected to rabbitmq", span, { cls: "amqpwrapper", func: "connect" });
                 this.conn.on("error", this.conn_error);
                 this.conn.on("close", this.conn_close);
             }
@@ -150,9 +150,9 @@ export class amqpwrapper extends events.EventEmitter {
                 await this.AddReplyQueue(span);
                 this.channel.on("error", this.channel_error);
             } catch (error) {
-                Logger.instanse.error(error, span);
+                Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "connect" });
                 if (Config.NODE_ENV == "production") {
-                    Logger.instanse.error("Exit, when we cannot create reply queue", span);
+                    Logger.instanse.error("Exit, when we cannot create reply queue", span, { cls: "amqpwrapper", func: "connect" });
                     process.exit(405);
                 }
             }
@@ -162,9 +162,9 @@ export class amqpwrapper extends events.EventEmitter {
                 await this.AddOFLogExchange(span);
             } catch (error) {
                 this.of_logger_ready = false;
-                Logger.instanse.error(error, span);
+                Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "connect" });
                 if (Config.NODE_ENV == "production") {
-                    Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange", span);
+                    Logger.instanse.error("Exit, when we cannot create dead letter exchange and/or Openflow exchange", span, { cls: "amqpwrapper", func: "connect" });
                     process.exit(406);
                 }
             }
@@ -173,7 +173,7 @@ export class amqpwrapper extends events.EventEmitter {
             this.connected = true;
         } catch (error) {
             this.of_logger_ready = false;
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "connect" });
             if (this.timeout != null) {
                 clearTimeout(this.timeout);
                 this.timeout = null;
@@ -181,7 +181,7 @@ export class amqpwrapper extends events.EventEmitter {
             if (error.message.startsWith("Expected amqp: or amqps:")) {
                 throw error;
             }
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "connect" });
             this.timeout = setTimeout(this.connect.bind(this), 1000);
         } finally {
             Logger.otel.endSpan(span);
@@ -221,7 +221,7 @@ export class amqpwrapper extends events.EventEmitter {
                 }
             }
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "amqpwrapper", func: "reply_queue_message" });
         }
         done();
     }
@@ -260,7 +260,7 @@ export class amqpwrapper extends events.EventEmitter {
                 } else {
                     msg.command = "timeout";
                 }
-                Logger.instanse.debug("[" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey, null)
+                Logger.instanse.debug("[" + routingKey + "] notify " + replyTo + " " + errormsg + " to " + routingKey, null, { cls: "amqpwrapper", func: "reply_queue_return" });
                 await amqpwrapper.Instance().send("", replyTo, msg, 20000, correlationId, "", null);
             }
         } catch (error) {
@@ -268,7 +268,7 @@ export class amqpwrapper extends events.EventEmitter {
     }
     async reply_queue_close(msg) {
         this.of_logger_ready = false;
-        Logger.instanse.error("Exit, reply channel was closed " + msg, null);
+        Logger.instanse.error("Exit, reply channel was closed " + msg, null, { cls: "amqpwrapper", func: "reply_queue_close" });
         process.exit(406);
     }
     async AddReplyQueue(parent: Span): Promise<void> {
@@ -290,13 +290,13 @@ export class amqpwrapper extends events.EventEmitter {
         try {
             if (Util.IsNullUndefinded(queue)) throw new Error("queue is mandatory");
             if (queue != null) {
-                Logger.instanse.debug("[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag, span);
+                Logger.instanse.debug("[" + user?.username + "] Remove queue consumer " + queue.queue + "/" + queue.consumerTag, span, { cls: "amqpwrapper", func: "RemoveQueueConsumer" });
                 var exc = this.exchanges.filter(x => x.queue?.consumerTag == queue.consumerTag);
                 if (exc.length > 0) {
                     try {
                         await this.channel.unbindQueue(exc[0].queue.queue, exc[0].exchange, exc[0].routingkey);
                     } catch (error) {
-                        Logger.instanse.error(error, span);
+                        Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "RemoveQueueConsumer" });
                     }
                     if (this.channel != null) {
                         if (exc[0].queue) await this.channel.cancel(exc[0].queue.consumerTag);
@@ -336,7 +336,7 @@ export class amqpwrapper extends events.EventEmitter {
                     this.OnMessage(q, msg, q.callback);
                 }, { noAck: false });
                 q.consumerTag = consumeresult.consumerTag;
-                Logger.instanse.debug("[" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag, span);
+                Logger.instanse.debug("[" + user?.username + "] Added queue consumer " + q.queue + "/" + q.consumerTag, span, { cls: "amqpwrapper", func: "AddQueueConsumer" });
             } else {
                 throw new Error("Failed asserting Queue " + queue);
             }
@@ -422,7 +422,7 @@ export class amqpwrapper extends events.EventEmitter {
                     if (amqpwrapper.bad_queues.indexOf(q.queue.queue) != -1) {
                         amqpwrapper.bad_queues.splice(amqpwrapper.bad_queues.indexOf(q.queue.queue), 1);
                     }
-                    Logger.instanse.debug("[" + user?.username + "] Added exchange consumer " + q.exchange + " to queue " + q.queue.queue, span);
+                    Logger.instanse.debug("[" + user?.username + "] Added exchange consumer " + q.exchange + " to queue " + q.queue.queue, span, { cls: "amqpwrapper", func: "AddExchangeConsumer" });
                 }
             }
             this.exchanges.push(q);
@@ -463,12 +463,12 @@ export class amqpwrapper extends events.EventEmitter {
                     }
                     this.channel.ack(msg);
                 } catch (error) {
-                    Logger.instanse.error(error, null);
+                    Logger.instanse.error(error, null, { cls: "amqpwrapper", func: "OnMessage" });
                 }
             }, (result) => {
             });
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "amqpwrapper", func: "OnMessage" });
         }
     }
     async sendWithReply(exchange: string, queue: string, data: any, expiration: number, correlationId: string, routingkey: string, span: Span): Promise<string> {
@@ -502,10 +502,10 @@ export class amqpwrapper extends events.EventEmitter {
         }
         // PRECONDITION_FAILED - message size 155339741 is larger than configured max size 134217728
         if (data.length > 130000000) {
-            Logger.instanse.error("send to queue: " + queue + " exchange: " + exchange + " PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000", span);
+            Logger.instanse.error("send to queue: " + queue + " exchange: " + exchange + " PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000", span, { cls: "amqpwrapper", func: "sendWithReplyTo" });
             throw new Error("PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000")
         }
-        Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId, span);
+        Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange + " with reply to " + replyTo + " correlationId: " + correlationId, span, { cls: "amqpwrapper", func: "sendWithReplyTo" });
         const options: any = { mandatory: true };
         options.replyTo = replyTo;
         if (Util.IsNullEmpty(correlationId)) correlationId = Util.GetUniqueIdentifier();
@@ -546,11 +546,11 @@ export class amqpwrapper extends events.EventEmitter {
             data = JSON.stringify(data);
         }
         if (data.length > 130000000) {
-            Logger.instanse.error("send to queue: " + queue + " exchange: " + exchange + " PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000", span);
+            Logger.instanse.error("send to queue: " + queue + " exchange: " + exchange + " PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000", span, { cls: "amqpwrapper", func: "send" });
             throw new Error("PRECONDITION_FAILED - message size " + data.length + " is larger than configured max size 130000000")
         }
         if (Util.IsNullEmpty(correlationId)) correlationId = Util.GetUniqueIdentifier();
-        if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange, span);
+        if (exchange != "openflow_logs") Logger.instanse.silly("send to queue: " + queue + " exchange: " + exchange, span, { cls: "amqpwrapper", func: "send" });
         const options: any = { mandatory: true };
         if (!Util.IsNullEmpty(correlationId)) options.correlationId = correlationId;
         if (expiration < 1) expiration = Config.amqp_default_expiration;
@@ -587,16 +587,16 @@ export class amqpwrapper extends events.EventEmitter {
                 }
                 if (ismine) {
                     // Resend message, this time to the reply queue for the correct node (replyTo)
-                    Logger.instanse.warn("[" + options.exchangename + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId, span);
+                    Logger.instanse.warn("[" + options.exchangename + "] Send timeout to " + options.replyTo + " correlationId: " + options.correlationId, span, { cls: "amqpwrapper", func: "Adddlx" });
                     await amqpwrapper.Instance().send("", options.replyTo, msg, 20000, options.correlationId, "", span);
                 } else {
                     if (!msg.hasOwnProperty("cls")) {
-                        Logger.instanse.debug("[" + options.exchangename + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId, span);
+                        Logger.instanse.debug("[" + options.exchangename + "] Received timeout, (not handled by me) to " + options.replyTo + " correlationId: " + options.correlationId, span, { cls: "amqpwrapper", func: "Adddlx" });
                     }
                 }
             } catch (error) {
-                Logger.instanse.error("Failed sending deadletter message to " + options.replyTo, span);
-                Logger.instanse.error(error, span);
+                Logger.instanse.error("Failed sending deadletter message to " + options.replyTo, span, { cls: "amqpwrapper", func: "Adddlx" });
+                Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "Adddlx" });
             }
             done();
         }, span);
@@ -635,7 +635,7 @@ export class amqpwrapper extends events.EventEmitter {
                     span = Logger.otel.startSpan("Openflow Exchange " + msg.command, msg.traceId, msg.spanId);
 
                     if (typeof msg !== "string") {
-                        Logger.instanse.debug("[" + options.exchangename + "] Received command " + msg.command, span);
+                        Logger.instanse.debug("[" + options.exchangename + "] Received command " + msg.command, span, { cls: "amqpwrapper", func: "AddOFExchange" });
                         switch (msg.command) {
                             case "clearcache":
                                 if (Util.IsNullEmpty(msg.key)) {
@@ -646,7 +646,7 @@ export class amqpwrapper extends events.EventEmitter {
                                 break;
                             case "housekeeping":
                                 if (msg.lastrun) {
-                                    Logger.instanse.debug("[" + options.exchangename + "] " + msg.lastrun, span)
+                                    Logger.instanse.debug("[" + options.exchangename + "] " + msg.lastrun, span, { cls: "amqpwrapper", func: "AddOFExchange" });
                                     HouseKeeping.lastHouseKeeping = new Date(msg.lastrun);
                                 } else {
                                     if (HouseKeeping.lastHouseKeeping != null) {
@@ -669,7 +669,7 @@ export class amqpwrapper extends events.EventEmitter {
                                     await Logger.License.shutdown()
                                     process.exit(0);
                                 } catch (error) {
-                                    Logger.instanse.error(error, span);
+                                    Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "AddOFExchange" });
                                 }
                                 process.exit(404);
                                 break;
@@ -683,20 +683,20 @@ export class amqpwrapper extends events.EventEmitter {
                                 for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                                     const cli: WebSocketServerClient = WebSocketServer._clients[i];
                                     if (cli.id == msg.id) {
-                                        Logger.instanse.warn("Killing websocket client " + msg.id, span);
+                                        Logger.instanse.warn("Killing websocket client " + msg.id, span, { cls: "amqpwrapper", func: "AddOFExchange" });
                                         cli.Close(span);
                                     }
                                 }
                                 break;
                             default:
-                                Logger.instanse.error(new Error("[OF] Received unknown command: " + msg.command), span);
+                                Logger.instanse.error(new Error("[OF] Received unknown command: " + msg.command), span, { cls: "amqpwrapper", func: "AddOFExchange" });
                                 break;
                         }
                     } else {
-                        Logger.instanse.verbose("Received string message: " + JSON.stringify(msg), span);
+                        Logger.instanse.verbose("Received string message: " + JSON.stringify(msg), span, { cls: "amqpwrapper", func: "AddOFExchange" });
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "amqpwrapper", func: "AddOFExchange" });
                 } finally {
                     span?.end();
                 }

@@ -354,7 +354,7 @@ export class OAuthProvider {
                                 const tuserimpostor = tuser;
                                 _user = User.assign(items[0] as User);
                                 tuser = _user;
-                                Logger.instanse.info(tuser.username + " successfully impersonated", span);
+                                Logger.instanse.info(tuser.username + " successfully impersonated", span, { cls: "OAuthProvider", func: "oidccb" });
                                 await Audit.ImpersonateSuccess(tuser, tuserimpostor, "browser", Config.version, span);
                             }
                         }
@@ -401,7 +401,7 @@ export class OAuthProvider {
                 }
             });
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "OAuthProvider", func: "LoadClients" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -416,11 +416,11 @@ export class OAuthProvider {
             instance.app = app;
             // @ts-ignore
             this.LoadClients().catch(error => {
-                Logger.instanse.error(error, span);
+                Logger.instanse.error(error, span, { cls: "OAuthProvider", func: "configure" });
             });
             return instance;
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "OAuthProvider", func: "configure" });
             return OAuthProvider.instance;
         } finally {
             Logger.otel.endSpan(span);
@@ -487,10 +487,10 @@ export class Account {
         try {
             let role = client.defaultrole;
             const keys: string[] = Object.keys(client.rolemappings);
-            Logger.instanse.debug("[" + tuser.username + "] Lookup roles for " + tuser.username, null);
+            Logger.instanse.debug("[" + tuser.username + "] Lookup roles for " + tuser.username, null, { cls: "OAuthProvider", func: "AddAccount" });
             for (let i = 0; i < keys.length; i++) {
                 if (tuser.HasRoleName(keys[i])) {
-                    Logger.instanse.debug("[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]], null);
+                    Logger.instanse.debug("[" + tuser.username + "] User has role " + keys[i] + " set role " + client.rolemappings[keys[i]], null, { cls: "OAuthProvider", func: "AddAccount" });
                     role = client.rolemappings[keys[i]];
                 }
             }
@@ -500,7 +500,7 @@ export class Account {
             var res = new Account(tuser._id, tuser);
             return res;
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "OAuthProvider", func: "AddAccount" });
         }
         return undefined;
     }

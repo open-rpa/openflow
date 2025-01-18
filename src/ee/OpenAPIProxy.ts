@@ -29,12 +29,12 @@ try {
     const json = fs.readFileSync("./public.template/swagger.json", "utf8");
     schema2 = JSON.parse(json);
   } else {
-    Logger.instanse.warn("swagger.json not found", null, { cls: "OpenAPIProxy" });
+    Logger.instanse.warn("swagger.json not found", null, { cls: "OpenAPIProxy", func: "configure" });
     console.warn("swagger.json not found");
 
   }
 } catch (error) {
-  Logger.instanse.error(error, null, { cls: "OpenAPIProxy" });
+  Logger.instanse.error(error, null, { cls: "OpenAPIProxy", func: "configure" });
 }
 
 import { NextFunction } from "express";
@@ -66,7 +66,7 @@ export class OpenAPIProxy {
       try {
         var promise = OpenAPIProxy.amqp_promises.find(x => x.correlationId == options.correlationId);
         if (promise != null) {
-          Logger.instanse.debug("[" + options.correlationId + "] " + data, null, { cls: "OpenAPIProxy" });
+          Logger.instanse.debug("[" + options.correlationId + "] " + data, null, { cls: "OpenAPIProxy", func: "configure" });
 
           if (typeof data === "string" || (data instanceof String)) {
             data = hjson.parse(data as any);
@@ -84,10 +84,10 @@ export class OpenAPIProxy {
           }
 
         } else {
-          Logger.instanse.warn("[" + options.correlationId + "] No promise found for correlationId: " + options.correlationId, null, { cls: "OpenAPIProxy" });
+          Logger.instanse.warn("[" + options.correlationId + "] No promise found for correlationId: " + options.correlationId, null, { cls: "OpenAPIProxy", func: "configure" });
         }
       } catch (error) {
-        Logger.instanse.error(error, null, { cls: "OpenAPIProxy" });
+        Logger.instanse.error(error, null, { cls: "OpenAPIProxy", func: "configure" });
       }
       ack();
     }, null);
@@ -97,7 +97,7 @@ export class OpenAPIProxy {
       const urlPath = req.path;
       const method = req.method.toUpperCase();
       const remoteip = WebServer.remoteip(req as any);
-      Logger.instanse.debug("[" + method + "] " + urlPath + " from " + remoteip, null, { cls: "OpenAPIProxy" });
+      Logger.instanse.debug("[" + method + "] " + urlPath + " from " + remoteip, null, { cls: "OpenAPIProxy" , func: "configure"});
       next();
     });
 
@@ -139,7 +139,7 @@ export class OpenAPIProxy {
       if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       const urlPath = req.path;
       const method = req.method.toUpperCase();
-      Logger.instanse.debug("[" + method + "] " + urlPath, null, { cls: "OpenAPIProxy" });
+      Logger.instanse.debug("[" + method + "] " + urlPath, null, { cls: "OpenAPIProxy", func: "configure" });
 
       if (urlPath == "/rest/v1/InvokeOpenRPA") {
         let body = req.body;
@@ -193,7 +193,7 @@ export class OpenAPIProxy {
           } else if (body.rpc == true) {
             body.userid = robotuser._id;
             const { correlationId, promise } = OpenAPIProxy.createPromise();
-            Logger.instanse.debug("Send message to openrpa with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
+            Logger.instanse.debug("Send message to openrpa with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy", func: "configure" });
             try {
               await amqpwrapper.Instance().sendWithReplyTo("", body.userid, "openapi", rpacommand, 5000, correlationId, "", null);
               result.reply = await promise;
@@ -208,15 +208,15 @@ export class OpenAPIProxy {
 
           } else {
             const correlationId = Util.GetUniqueIdentifier();
-            Logger.instanse.debug("Send message to openrpa with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
+            Logger.instanse.debug("Send message to openrpa with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy", func: "configure" });
             await amqpwrapper.Instance().send("", body.userid, rpacommand, 5000, correlationId, "", null);
           }
-          Logger.instanse.debug("Returned " + JSON.stringify(result) + " for body: " + JSON.stringify(body), null, { cls: "OpenAPIProxy" });
+          Logger.instanse.debug("Returned " + JSON.stringify(result) + " for body: " + JSON.stringify(body), null, { cls: "OpenAPIProxy", func: "configure" });
           res.json(result);
 
         } catch (error) {
-          Logger.instanse.error(error, null, { cls: "OpenAPIProxy" });
-          Logger.instanse.debug(JSON.stringify(body), null, { cls: "OpenAPIProxy" });
+          Logger.instanse.error(error, null, { cls: "OpenAPIProxy", func: "configure" });
+          Logger.instanse.debug(JSON.stringify(body), null, { cls: "OpenAPIProxy", func: "configure" });
           res.status(500).json({ error: error.message });
         }
       } else {
@@ -226,7 +226,7 @@ export class OpenAPIProxy {
           let result = await WebServer.ProcessMessage(req, tuser, jwt);
           res.json(result.data);
         } catch (error) {
-          Logger.instanse.error(error, null, { cls: "OpenAPIProxy" });
+          Logger.instanse.error(error, null, { cls: "OpenAPIProxy", func: "configure" });
           res.status(500).json({ error: error.message });
         }
       }
@@ -240,7 +240,7 @@ export class OpenAPIProxy {
     if (url.endsWith("/")) {
       url = url.substring(0, url.length - 1)
     }
-    Logger.instanse.debug("Updating servers to " + url, null, { cls: "OpenAPIProxy" });
+    Logger.instanse.debug("Updating servers to " + url, null, { cls: "OpenAPIProxy", func: "configure" });
     schema2["servers"] = [{ url }]
     // @ts-ignore
     let components: any = schema2?.components;
@@ -253,7 +253,7 @@ export class OpenAPIProxy {
 
     app.use("/docs", swaggerUi.serve, async (_req: any, res: any) => {
       if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
-      Logger.instanse.debug("Serving /docs", null, { cls: "OpenAPIProxy" });
+      Logger.instanse.debug("Serving /docs", null, { cls: "OpenAPIProxy", func: "configure" });
       return res.send(
         swaggerUi.generateHTML(schema2)
       );
@@ -261,13 +261,13 @@ export class OpenAPIProxy {
     app.get("/openapi.json", (req, res) => {
       if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       // #swagger.ignore = true
-      Logger.instanse.debug("[GET] /openapi.json", null, { cls: "OpenAPIProxy" });
+      Logger.instanse.debug("[GET] /openapi.json", null, { cls: "OpenAPIProxy", func: "configure" });
       res.json(schema2);
     });
     app.get("/swagger_output.json", (req, res) => {
       if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
       // #swagger.ignore = true
-      Logger.instanse.debug("[GET] /swagger_output.json", null, { cls: "OpenAPIProxy" });
+      Logger.instanse.debug("[GET] /swagger_output.json", null, { cls: "OpenAPIProxy", func: "configure" });
       res.json(schema2);
     });
 

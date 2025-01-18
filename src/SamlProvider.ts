@@ -89,10 +89,10 @@ export class SamlProvider {
                         const remoteip = SamlProvider.remoteip(req);
                         span?.setAttribute("remoteip", remoteip);
                         Audit.LoginSuccess(tuser, "tokenissued", "saml", remoteip, "unknown", "unknown", span).catch((e) => {
-                            Logger.instanse.error(e, span);
+                            Logger.instanse.error(e, span, {cls: "SamlProvider", func: "getUserFromRequest"});
                         });
                     } catch (error) {
-                        Logger.instanse.error(error, span);
+                        Logger.instanse.error(error, span, {cls: "SamlProvider", func: "getUserFromRequest"});
                     } finally {
                         Logger.otel.endSpan(span);
                     }
@@ -116,7 +116,7 @@ export class SamlProvider {
                         } catch (error) {
                             res.body(error.message ? error.message : error);
                             res.end();
-                            Logger.instanse.error(error, null);
+                            Logger.instanse.error(error, null, {cls: "SamlProvider", func: "app.get(/issue/)"});
                         }
                     } else {
                         // continue with issuing token using samlp
@@ -135,7 +135,7 @@ export class SamlProvider {
                     cert: cert,
                 }));
             } catch (error) {
-                Logger.instanse.error(error, null);
+                Logger.instanse.error(error, null, {cls: "SamlProvider", func: "app.get(/issue/)"});
             }
             // TODO: FIX !!!!
             app.get("/wssignout", async (req: any, res: any, next: any) => {
@@ -153,7 +153,7 @@ export class SamlProvider {
                 res.send(html);
             });
         } else {
-            Logger.instanse.warn("SAML signing certificate is not configured, saml not possible", null);
+            Logger.instanse.warn("SAML signing certificate is not configured, saml not possible", null, {cls: "SamlProvider", func: "configure"});
         }
         app.get("/logout", async (req: any, res: any, next: any) => {
             const referer: string = req.headers.referer;

@@ -174,13 +174,13 @@ export class dbConfig extends Base {
                     }
                 }
             } catch (error) {
-                Logger.instanse.error("Error setting config " + keys + " to " + value, null);
+                Logger.instanse.error("Error setting config " + keys + " to " + value, null, {cls: "Config", func: "cleanAndApply"});
             }
         }
         conf._encrypt = ["mongodb_url", "amqp_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
         if (Config._version != conf._version) {
             Config._version = conf._version;
-            Logger.instanse.info("Loaded config version " + conf._version, parent);
+            Logger.instanse.info("Loaded config version " + conf._version, parent, {cls: "Config", func: "cleanAndApply"});
         }
 
         return updated;

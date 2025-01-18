@@ -32,17 +32,17 @@ import { Util, Wellknown } from "../Util.js";
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
         if (cli == null) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Message", func: "handleError" });
             return;
         }
         if (!Util.IsNullUndefinded(WebSocketServer.websocket_errors))
             WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
-        Logger.instanse.error(error, span, Logger.parsecli(cli));
+        Logger.instanse.error(error, span, {...Logger.parsecli(cli), cls: "Message", func: "handleError" });
     } catch (error) {
         if (error.consumedPoints) {
             Logger.instanse.warn("SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " +
-                error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span, Logger.parsecli(cli));
+                error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span, {...Logger.parsecli(cli), cls: "Message", func: "handleError" });
             cli.devnull = true;
             cli.Close(span);
         }
@@ -138,11 +138,11 @@ export class Message {
                         break;
                 }
             } else {
-                Logger.instanse.debug("Discard " + this.command + " due to missing jwt", span);
+                Logger.instanse.debug("Discard " + this.command + " due to missing jwt", span, { cls: "Message", func: "QueueProcess" });
             }
             if (!Util.IsNullUndefinded(WebSocketServer.websocket_messages)) Logger.otel.endTimer(ot_end, WebSocketServer.websocket_messages, { command: this.command });
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Message", func: "QueueProcess" });
             this.command = "error";
             this.data = JSON.stringify(error, Object.getOwnPropertyNames(error))
         } finally {
@@ -228,7 +228,7 @@ export class Message {
                     return false;
                 }
             } catch (error) {
-                if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, Logger.parsecli(cli));
+                if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, {...Logger.parsecli(cli), cls: "Message", func: "EnsureJWT" });
                 if (this.command == "signin") {
                     try {
                         var msg = SigninMessage.assign(this.data);
@@ -269,7 +269,7 @@ export class Message {
                     if(isNaN(Config.socket_rate_limit_points)) Config.socket_rate_limit_points = 1000;
                     if(isNaN(Config.socket_rate_limit_duration)) Config.socket_rate_limit_points = 1;
                     if (Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
-                        Logger.instanse.info("Create new socket rate limitter", span, Logger.parsecli(cli));
+                        Logger.instanse.info("Create new socket rate limitter", span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
                         WebSocketServer.BaseRateLimiter = new RateLimiterMemory({
                             points: Config.socket_rate_limit_points,
                             duration: Config.socket_rate_limit_duration,
@@ -317,7 +317,7 @@ export class Message {
                 let process: boolean = true;
                 if (command != "signin" && command != "refreshtoken" && command != "error") {
                     if (!await this.EnsureJWT(cli, true)) {
-                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, Logger.parsecli(cli));
+                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
                         process = false;
                         if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
 
@@ -337,7 +337,7 @@ export class Message {
                     if (!await this.EnsureJWT(cli, false)) {
                         this.parseSignAgent(cli, span);
                         if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
-                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, Logger.parsecli(cli));
+                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
                         process = false;
 
                         if (this.replyto == null || this.replyto == "") {
@@ -630,7 +630,7 @@ export class Message {
                             break;
                         case "watchevent":
                             // why is a client sending a server watchevent ?
-                            Logger.instanse.verbose("recevied unknown WatchEvent from client", span, Logger.parsecli(cli));
+                            Logger.instanse.verbose("recevied unknown WatchEvent from client", span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
                             break;
                         default:
                             if (command != "error") {
@@ -651,9 +651,9 @@ export class Message {
                 }
                 this.data = JSON.stringify({ "message": error.message });
                 if (error.message.indexOf("Not signed in, and missing jwt") > -1) {
-                    Logger.instanse.error(error.message, span, Logger.parsecli(cli));
+                    Logger.instanse.error(error.message, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
                 } else {
-                    Logger.instanse.error(error, span, Logger.parsecli(cli));
+                    Logger.instanse.error(error, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
                 }
                 delete this.jwt;
                 delete this.tuser;
@@ -917,10 +917,10 @@ export class Message {
                         msg.queuename = name + msg.queuename;
                         if (msg.queuename.length == 24) { msg.queuename += "1"; }
                     } else {
-                        Logger.instanse.debug("skipped force prefix for " + msg.queuename, span);
+                        Logger.instanse.debug("skipped force prefix for " + msg.queuename, span, { cls: "Message", func: "RegisterQueue" });
                     }
                 } else {
-                    Logger.instanse.debug("[SKIP] skipped force prefix for " + msg.queuename, span);
+                    Logger.instanse.debug("[SKIP] skipped force prefix for " + msg.queuename, span, { cls: "Message", func: "RegisterQueue" });
                 }
             } else {
                 let name = tuser.username.split("@").join("").split(".").join("");
@@ -1171,11 +1171,11 @@ export class Message {
     }
     private UnknownCommand(): void {
         if (Util.IsNullEmpty(this.command)) {
-            Logger.instanse.error(new Error("Received message with no command"), null);
+            Logger.instanse.error(new Error("Received message with no command"), null, { cls: "Message", func: "UnknownCommand" });
             return;
         }
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
-        Logger.instanse.error(`UnknownCommand ${this.command}`, null);
+        Logger.instanse.error(`UnknownCommand ${this.command}`, null, { cls: "Message", func: "UnknownCommand" });
         this.Reply("error");
     }
     private static collectionCache: any = {};
@@ -1628,21 +1628,21 @@ export class Message {
             }
             if (!validated) {
                 if (cli.clientagent != "nodered" && Util.IsNullEmpty((tuser as any).impostor)) {
-                    Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, Logger.parsecli(cli));
+                    Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, {...Logger.parsecli(cli), cls: "message", func: "DoSignin"});
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     tuser = null;
                 }
             }
         }
         if (tuser != null && cli.user != null && cli.user.disabled) {
-            Logger.instanse.error(new Error(tuser.username + " failed logging in, user is disabled"), span, Logger.parsecli(cli));
+            Logger.instanse.error(new Error(tuser.username + " failed logging in, user is disabled"), span, {...Logger.parsecli(cli), cls: "message", func: "DoSignin"});
             await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
             tuser = null;
             if (Config.client_disconnect_signin_error) cli.Close(span);
         } else if (cli.user?.dblocked == true) {
-            Logger.instanse.warn(tuser.username + " successfully signed in, but user is locked", span);
+            Logger.instanse.warn(tuser.username + " successfully signed in, but user is locked", span, { cls: "message", func: "DoSignin" });
         } else if (tuser != null) {
-            Logger.instanse.debug(tuser.username + " successfully signed in", span);
+            Logger.instanse.debug(tuser.username + " successfully signed in", span, { cls: "message", func: "DoSignin" });
         }
         return tuser;
     }
@@ -1705,7 +1705,7 @@ export class Message {
                     tuser = await Auth.Token2User(msg.jwt, span);
                     if (tuser == null) {
                         tuser = User.assign(await Crypt.verityToken(msg.jwt, cli, true));
-                        Logger.instanse.warn("[" + tuser.username + "] validated with expired token!", span);
+                        Logger.instanse.warn("[" + tuser.username + "] validated with expired token!", span, { cls: "message", func: "Signin" });
                     }
                 } catch (error) {
                     if (Config.client_disconnect_signin_error) cli.Close(span);
@@ -1855,7 +1855,7 @@ export class Message {
                     msg.impersonate = undefined;
                     impostor = undefined;
                 }
-                Logger.instanse.debug(tuser.username + " successfully signed in", span);
+                Logger.instanse.debug(tuser.username + " successfully signed in", span, { cls: "message", func: "Signin" });
                 span?.setAttribute("name", tuser.name);
                 span?.setAttribute("username", tuser.username);
                 if (cli?.clientagent == "openrpa" && user?.dblocked == true) {
@@ -1942,7 +1942,7 @@ export class Message {
                         msg.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, span);
                     }
                     msg.user = TokenUser.From(tuser);
-                    Logger.instanse.debug(tuser.username + " successfully impersonated", span);
+                    Logger.instanse.debug(tuser.username + " successfully impersonated", span, { cls: "message", func: "Signin" });
                     await Audit.ImpersonateSuccess(tuser, tuserimpostor, cli?.clientagent, cli?.clientversion, span);
                 }
                 if (msg.firebasetoken != null && msg.firebasetoken != undefined && msg.firebasetoken != "") {
@@ -1967,12 +1967,12 @@ export class Message {
                         // @ts-ignore
                         cli.doping = msg.ping;
                     }
-                    Logger.instanse.debug(tuser.username + " signed in using " + tokentype + " " + cli?.id + "/" + cli?.clientagent, span);
+                    Logger.instanse.debug(tuser.username + " signed in using " + tokentype + " " + cli?.id + "/" + cli?.clientagent, span, { cls: "message", func: "Signin" });
                     if (cli) cli.jwt = msg.jwt;
                     if (cli) cli.user = user;
                     if (!Util.IsNullUndefinded(cli) && !Util.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
                 } else {
-                    Logger.instanse.debug(tuser.username + " was validated in using " + tokentype, span);
+                    Logger.instanse.debug(tuser.username + " was validated in using " + tokentype, span, { cls: "message", func: "Signin" });
                 }
                 msg.supports_watch = true;
                 var keys = Object.keys(UpdateDoc.$set);
@@ -2131,7 +2131,7 @@ export class Message {
                 var data = Buffer.from(file as string, "base64")
                 result = pako.inflate(data);
             } catch (error) {
-                Logger.instanse.error(error, null);
+                Logger.instanse.error(error, null, { cls: "message", func: "_addFile" });
             }
             readable._read = () => { }; // _read is required but you can noop it
             readable.push(result);
@@ -3365,7 +3365,7 @@ export class Message {
                     msg.customer.subscriptionid = null;
                     if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span);
+                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span, { cls: "warning", func: "EnsureCustomer" });
                         for (let usage of total_usage) {
                             // @ts-ignore
                             if (usage.mode != "one_time") {// null = recurring. recurring or one_time
@@ -3394,7 +3394,7 @@ export class Message {
                         let sub = msg.stripecustomer.subscriptions.data[0];
                         msg.customer.subscriptionid = sub.id;
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] Updating all " + total_usage.length + " unmapped purchases to an assigned plan.", span);
+                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] Updating all " + total_usage.length + " unmapped purchases to an assigned plan.", span, { cls: "warning", func: "EnsureCustomer" });
 
                         for (let usage of total_usage) {
                             const items = sub.items.data.filter(x => ((x.price && x.price.id == usage.product.stripeprice) || (x.plan && x.plan.id == usage.product.stripeprice)));
@@ -3414,7 +3414,7 @@ export class Message {
                         if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                             msg.customer.subscriptionid = null;
                             const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                            Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span);
+                            Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span, { cls: "warning", func: "EnsureCustomer" });
                             for (let usage of total_usage) {
                                 // @ts-ignore
                                 if (usage.mode != "one_time") {// null = recurring. recurring or one_time
@@ -3429,7 +3429,7 @@ export class Message {
                 if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                     msg.customer.subscriptionid = null;
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                    Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span);
+                    Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span, { cls: "warning", func: "EnsureCustomer" });
                     for (let usage of total_usage) {
                         // @ts-ignore
                         if (usage.mode != "one_time") {// null = recurring. recurring or one_time
@@ -3692,7 +3692,7 @@ export class Message {
                             var data = Buffer.from(file.file, "base64")
                             result = pako.inflate(data);
                         } catch (error) {
-                            Logger.instanse.error(msg.error, parent);
+                            Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitem" });
                         }
                         readable.push(result);
                         readable.push(null);
@@ -3721,7 +3721,7 @@ export class Message {
                     wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                 } catch (err) {
-                    Logger.instanse.error(msg.error, parent);
+                    Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitem" });
                 }
             }
         }
@@ -3901,7 +3901,7 @@ export class Message {
                                 var data = Buffer.from(file.file, "base64")
                                 result = pako.inflate(data);
                             } catch (error) {
-                                Logger.instanse.error(msg.error, parent);
+                                Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitems" });
                             }
                             readable.push(result);
                             readable.push(null);
@@ -3930,7 +3930,7 @@ export class Message {
                         wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                     } catch (err) {
-                        Logger.instanse.error(msg.error, parent);
+                        Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitems" });
                     }
                 }
             }
@@ -4071,7 +4071,7 @@ export class Message {
                         try {
                             await Config.db.DeleteOne(exists[0]._id, "fs.files", false, rootjwt, parent);
                         } catch (error) {
-                            Logger.instanse.error(msg.error, parent);
+                            Logger.instanse.error(msg.error, parent, { cls: "error", func: "UpdateWorkitem" });
                         }
                         wi.files = wi.files.filter(x => x.name != file.filename);
                     }
@@ -4090,7 +4090,7 @@ export class Message {
                             var data = Buffer.from(file.file, "base64")
                             result = pako.inflate(data);
                         } catch (error) {
-                            Logger.instanse.error(msg.error, parent);
+                            Logger.instanse.error(msg.error, parent, { cls: "error", func: "UpdateWorkitem" });
                         }
                         readable.push(result);
                         readable.push(null);
@@ -4118,7 +4118,7 @@ export class Message {
                     wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                 } catch (err) {
-                    Logger.instanse.error(msg.error, parent);
+                    Logger.instanse.error(msg.error, parent, { cls: "error", func: "UpdateWorkitem" });
                 }
             }
         }
@@ -4237,7 +4237,7 @@ export class Message {
 
                     msg.result = _wi;
                 } catch (error) {
-                    Logger.instanse.warn((error.message ? error.message : error), parent);
+                    Logger.instanse.warn((error.message ? error.message : error), parent, { cls: "warn", func: "PopWorkitem" });
                 }
             }
         } while (workitems.length > 0 && msg.result == null);
@@ -4527,7 +4527,7 @@ export class Message {
                     for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
                         if (cli.id == msg.id) {
-                            Logger.instanse.warn("Killing websocket client " + msg.id, parent);
+                            Logger.instanse.warn("Killing websocket client " + msg.id, parent, { cls: "warn", func: "CustomCommand" });
                             cli.Close(parent);
                         }
                     }
@@ -4577,8 +4577,8 @@ export class Message {
                 for (var i = 0; i < subscriptions.length; i++) {
                     var subscription = subscriptions[i];
                     webpush.sendNotification(subscription, payload)
-                        .then(() => Logger.instanse.info("send wep push message to " + wpuser.name + " with payload " + payload, parent))
-                        .catch(err => Logger.instanse.error(err, parent));
+                        .then(() => Logger.instanse.info("send wep push message to " + wpuser.name + " with payload " + payload, parent, { cls: "info", func: "CustomCommand" }))
+                        .catch(err => Logger.instanse.error(err, parent, { cls: "error", func: "CustomCommand" }));
                 }
                 break;
             case "startagent":
@@ -4801,7 +4801,7 @@ export class Message {
                 if (arr != null && arr.length > 0) {
                     const main = arr[0];
                     if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.update)) {
-                        Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
+                        Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy", func: "snapshotcreate" });
                         branchref = ""
                         throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
                     }
@@ -4836,7 +4836,7 @@ export class Message {
                     if (arr != null && arr.length > 0) {
                         const main = arr[0];
                         if (!DatabaseConnection.hasAuthorization(this.tuser, main as any, Rights.read)) {
-                            Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy" });
+                            Logger.instanse.debug(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`, parent, { cls: "GitProxy", func: "snapshotrestore" });
                             branchref = ""
                             throw new Error(`"Access denied to ${repo.repoName} (for ${this.tuser.name})`);
                         }

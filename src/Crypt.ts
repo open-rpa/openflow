@@ -24,7 +24,7 @@ export class Crypt {
         result.emailvalidated = true;
         result._type = "user"; result.name = Wellknown.guest.name; result.username = Wellknown.guest.name; result._id = Wellknown.guest._id;
         result.roles = [];
-        Logger.instanse.verbose(`Decorating guest user with roles`, null);
+        Logger.instanse.verbose(`Decorating guest user with roles`, null, { cls: "Crypt", func: "guestUser" });
         result = await Logger.DBHelper.DecorateWithRoles(result, null);
         return result;
     }

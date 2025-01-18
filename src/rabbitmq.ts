@@ -65,7 +65,7 @@ export class rabbitmq {
                 return hasConsumers;
             }, 10, 1000);
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "rabbitmq", func: "checkQueueConsumerCount" });
         }
         if (result == true) {
             return result;

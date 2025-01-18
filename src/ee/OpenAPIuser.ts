@@ -522,13 +522,13 @@ export class RunOpenRPAWorkflowController extends Controller {
 
       if (requestBody.rpc) {
         const { correlationId, promise } = OpenAPIProxy.createPromise();
-        Logger.instanse.debug("RPC a message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
+        Logger.instanse.debug("RPC a message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy", func: "RunOpenRPAWorkflow" });
         await amqpwrapper.Instance().sendWithReplyTo("", robotuser._id, "openapi", rpacommand, 5000, correlationId, "", null);
         var result = await promise;
         return result as any;
       } else {
         const correlationId = Util.GetUniqueIdentifier();
-        Logger.instanse.debug("Send message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
+        Logger.instanse.debug("Send message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy", func: "RunOpenRPAWorkflow" });
         await amqpwrapper.Instance().send("", robotuser._id, rpacommand, 5000, correlationId, "", null);
         return { correlationId };
       }
@@ -558,13 +558,13 @@ export class QueueMessageController extends Controller {
 
       if (requestBody.rpc) {
         const { correlationId, promise } = OpenAPIProxy.createPromise();
-        Logger.instanse.debug("RPC a message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy" });
+        Logger.instanse.debug("RPC a message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy", func: "QueueMessage" });
         await amqpwrapper.Instance().sendWithReplyTo("", queuename, "openapi", payload, 5000, correlationId, "", null);
         var result = await promise;
         return result as any;
       } else {
         const correlationId = Util.GetUniqueIdentifier();
-        Logger.instanse.debug("Send message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy" });
+        Logger.instanse.debug("Send message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy", func: "QueueMessage" });
         await amqpwrapper.Instance().send("", queuename, payload, 5000, correlationId, "", null);
         return { correlationId };
       }

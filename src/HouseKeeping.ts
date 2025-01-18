@@ -15,7 +15,7 @@ export class HouseKeeping {
     }
     const date = new Date();
     const diffminutes = calculateDateDifferenceInMinutes(date, HouseKeeping.lastHouseKeeping);
-    Logger.instanse.silly(`${diffminutes} minutes since last housekeeping`, null, { cls: "Housekeeping" });
+    Logger.instanse.silly(`${diffminutes} minutes since last housekeeping`, null, { cls: "Housekeeping", func: "ReadyForHousekeeping" });
     return diffminutes >= 60;
   }
   public static async DoHouseKeeping(skipAgentCleanup: boolean, skipCalculateSize: boolean, skipUpdateUserSize: boolean, parent: Span): Promise<void> {
@@ -23,10 +23,10 @@ export class HouseKeeping {
     let rootuser: User = User.assign(Crypt.rootUser());
     const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
     try {
-      Logger.instanse.debug("Ensure Indexes", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Ensure Indexes", span, { cls: "Housekeeping", func: "DoHouseKeeping" });
       await Config.db.ensureindexes(span);
       if (Config.auto_hourly_housekeeping == false) {
-        Logger.instanse.debug("HouseKeeping disabled, quit.", span, { cls: "Housekeeping" });
+        Logger.instanse.debug("HouseKeeping disabled, quit.", span, { cls: "Housekeeping", func: "DoHouseKeeping" });
         return;
       }
       await HouseKeeping.runInstanceCleanup(skipAgentCleanup, rootuser, span);
@@ -40,7 +40,7 @@ export class HouseKeeping {
       await HouseKeeping.updateCustomerSizeAndUsage(skipUpdateUserSize, span);
       await HouseKeeping.ensureBuiltInUsersAndRoles(span);
     } catch (error) {
-      Logger.instanse.error(error, span, { cls: "Housekeeping" });
+      Logger.instanse.error(error, span, { cls: "Housekeeping", func: "DoHouseKeeping" });
     } finally {
       Logger.otel.endSpan(span);
       if (Config.auto_hourly_housekeeping == true) {
@@ -52,43 +52,43 @@ export class HouseKeeping {
     try {
       if (Logger.agentdriver != null && skipAgentCleanup == false) {
         try {
-          Logger.instanse.debug("HouseKeeping Run InstanceCleanup", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("HouseKeeping Run InstanceCleanup", span, { cls: "Housekeeping", func: "runInstanceCleanup" });
           await Logger.agentdriver.InstanceCleanup(span);
         } catch (error) {
-          Logger.instanse.error(error, span, { cls: "Housekeeping" });
+          Logger.instanse.error(error, span, { cls: "Housekeeping", func: "runInstanceCleanup" });
         }
         const jwt: string = Crypt.rootToken();
         var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true }, jwt }, span);
-        Logger.instanse.debug("HouseKeeping ensure " + agents.length + " agents", span, { cls: "Housekeeping" });
+        Logger.instanse.debug("HouseKeeping ensure " + agents.length + " agents", span, { cls: "Housekeeping", func: "runInstanceCleanup" });
 
         for (let i = 0; i < agents.length; i++) {
           const agent = agents[i];
           var pods = await Logger.agentdriver.GetInstancePods(rootuser, jwt, agent, false, span);
           if (pods == null || pods.length == 0) {
             if (agent.name != agent.slug) {
-              Logger.instanse.debug("HouseKeeping ensure " + agent.name + " (" + agent.slug + ")", span, { cls: "Housekeeping" });
+              Logger.instanse.debug("HouseKeeping ensure " + agent.name + " (" + agent.slug + ")", span, { cls: "Housekeeping", func: "runInstanceCleanup" });
             } else {
-              Logger.instanse.debug("HouseKeeping ensure " + agent.name, span, { cls: "Housekeeping" });
+              Logger.instanse.debug("HouseKeeping ensure " + agent.name, span, { cls: "Housekeeping", func: "runInstanceCleanup" });
             }
             try {
               await Logger.agentdriver.EnsureInstance(rootuser, jwt, agent, span);
             } catch (error) {
-              Logger.instanse.error(error, span, { cls: "Housekeeping" });
+              Logger.instanse.error(error, span, { cls: "Housekeeping", func: "runInstanceCleanup" });
             }
           }
         }
         logMemoryUsage("runInstanceCleanup", span);
       } else {
-        Logger.instanse.warn("agentdriver is null, skip agent check", span, { cls: "Housekeeping" });
+        Logger.instanse.warn("agentdriver is null, skip agent check", span, { cls: "Housekeeping", func: "runInstanceCleanup" });
       }
     } catch (error) {
-      Logger.instanse.error(error, span, { cls: "Housekeeping" });
+      Logger.instanse.error(error, span, { cls: "Housekeeping", func: "runInstanceCleanup" });
     }
   }
   private static async validateBuiltinRoles(span: Span) {
     try {
       const jwt: string = Crypt.rootToken();
-      Logger.instanse.debug("Begin validating builtin roles", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Begin validating builtin roles", span, { cls: "Housekeeping", func: "validateBuiltinRoles" });
       for (var i = 0; i < DatabaseConnection.WellknownIdsArray.length; i++) {
         const item: Role = await Config.db.GetOne<Role>({
           query: {
@@ -97,18 +97,18 @@ export class HouseKeeping {
           }, collectionname: "users", jwt
         }, span);
         if (item != null) {
-          Logger.instanse.verbose("Save/validate " + item.name, span, { cls: "Housekeeping" });
+          Logger.instanse.verbose("Save/validate " + item.name, span, { cls: "Housekeeping", func: "validateBuiltinRoles" });
           await Logger.DBHelper.Save(item, jwt, span);
         }
       }
       logMemoryUsage("validateBuiltinRoles", span);
     } catch (error) {
-      Logger.instanse.error(error, span, { cls: "Housekeeping" });
+      Logger.instanse.error(error, span, { cls: "Housekeeping", func: "validateBuiltinRoles" });
     }
   }
   private static async removeUnvalidatedUsers(span: Span) {
     if (Config.housekeeping_remove_unvalidated_user_days > 0) {
-      Logger.instanse.debug("Begin removing unvalidated users older than " + Config.housekeeping_remove_unvalidated_user_days + " days", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Begin removing unvalidated users older than " + Config.housekeeping_remove_unvalidated_user_days + " days", span, { cls: "Housekeeping", func: "removeUnvalidatedUsers" });
       let todate = new Date();
       todate.setDate(todate.getDate() - 1);
       let fromdate = new Date();
@@ -119,26 +119,26 @@ export class HouseKeeping {
       query["_modified"] = { "$lt": todate.toISOString(), "$gt": fromdate.toISOString() }
       let count = await Config.db.DeleteMany(query, null, "users", "", false, jwt, span);
       if (count > 0) {
-        Logger.instanse.verbose("Removed " + count + " unvalidated users", span, { cls: "Housekeeping" });
+        Logger.instanse.verbose("Removed " + count + " unvalidated users", span, { cls: "Housekeeping", func: "removeUnvalidatedUsers" });
       }
       logMemoryUsage("removeUnvalidatedUsers", span);
     }
   }
   private static async cleanupOpenRPAInstances(span: Span) {
     if (Config.housekeeping_cleanup_openrpa_instances == true) {
-      Logger.instanse.debug("Begin cleaning up openrpa instances", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Begin cleaning up openrpa instances", span, { cls: "Housekeeping", func: "cleanupOpenRPAInstances" });
       let result = await Config.db.UpdateDocument({ "state": { "$in": ["idle", "running"] } }, 
         { "$set": { "state": "completed" }, "$unset": { "xml": "" } }, "openrpa_instances", 1, true, Crypt.rootToken(), span);
       if (result.nModified > 0) {
-        Logger.instanse.verbose("Updated " + result.nModified + " openrpa instances", span, { cls: "Housekeeping" });
+        Logger.instanse.verbose("Updated " + result.nModified + " openrpa instances", span, { cls: "Housekeeping", func: "cleanupOpenRPAInstances" });
       } else if (result.modifiedCount > 0) {
-        Logger.instanse.verbose("Updated " + result.modifiedCount + " openrpa instances", span, { cls: "Housekeeping" });
+        Logger.instanse.verbose("Updated " + result.modifiedCount + " openrpa instances", span, { cls: "Housekeeping", func: "cleanupOpenRPAInstances" });
       }
     }
     logMemoryUsage("cleanupOpenRPAInstances", span);
   }
   private static async migrateToTimeseries(rootuser: User, span: Span) {
-    Logger.instanse.debug("Begin validating prefered timeseries collections", span, { cls: "Housekeeping" });
+    Logger.instanse.debug("Begin validating prefered timeseries collections", span, { cls: "Housekeeping", func: "migrateToTimeseries" });
     let collections = await DatabaseConnection.toArray(Config.db.db.listCollections());
     try {
       let audit = collections.find(x => x.name == "audit");
@@ -188,7 +188,7 @@ export class HouseKeeping {
 
       }
     } catch (error) {
-      Logger.instanse.error(error, span, { cls: "Housekeeping" });
+      Logger.instanse.error(error, span, { cls: "Housekeeping", func: "migrateToTimeseries" });
     }
 
 
@@ -250,19 +250,19 @@ export class HouseKeeping {
 
       }
     } catch (error) {
-      Logger.instanse.error(error, span, { cls: "Housekeeping" });
+      Logger.instanse.error(error, span, { cls: "Housekeeping", func: "migrateToTimeseries" });
     }
     logMemoryUsage("migrateToTimeseries", span);
   }
   private static async ensureSearchNames(span: Span) {
-    Logger.instanse.debug("Begin ensuring searchnames", span, { cls: "Housekeeping" });
+    Logger.instanse.debug("Begin ensuring searchnames", span, { cls: "Housekeeping", func: "ensureSearchNames" });
     for (let i = 0; i < DatabaseConnection.collections_with_text_index.length; i++) {
       let collectionname = DatabaseConnection.collections_with_text_index[i];
       if (DatabaseConnection.timeseries_collections.indexOf(collectionname) > -1) continue;
       if (DatabaseConnection.usemetadata(collectionname)) {
         let exists = await Config.db.db.collection(collectionname).findOne({ "metadata._searchnames": { $exists: false } });
         if (!Util.IsNullUndefinded(exists)) {
-          Logger.instanse.debug("Start creating metadata._searchnames for collection " + collectionname, span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Start creating metadata._searchnames for collection " + collectionname, span, { cls: "Housekeeping", func: "ensureSearchNames" });
           await Config.db.db.collection(collectionname).updateMany({ "metadata._searchnames": { $exists: false } },
             [
               {
@@ -322,12 +322,12 @@ export class HouseKeeping {
               { "$set": { "metadata._searchnames": { $concatArrays: ["$metadata._searchnames", [{ $toLower: "$metadata.name" }]] } } }
             ]
           )
-          Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span, { cls: "Housekeeping", func: "ensureSearchNames" });
         }
       } else {
         let exists = await Config.db.db.collection(collectionname).findOne({ "_searchnames": { $exists: false } });
         if (!Util.IsNullUndefinded(exists)) {
-          Logger.instanse.debug("Start creating _searchnames for collection " + collectionname, span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Start creating _searchnames for collection " + collectionname, span, { cls: "Housekeeping", func: "ensureSearchNames" });
           await Config.db.db.collection(collectionname).updateMany({ "_searchnames": { $exists: false } },
             [
               {
@@ -387,7 +387,7 @@ export class HouseKeeping {
               { "$set": { "_searchnames": { $concatArrays: ["$_searchnames", [{ $toLower: "$name" }]] } } }
             ]
           )
-          Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Done creating _searchnames for collection " + collectionname, span, { cls: "Housekeeping", func: "ensureSearchNames" });
         }
       }
     }
@@ -395,7 +395,7 @@ export class HouseKeeping {
   }
   private static async caclulateSizeAndUsage(skipCalculateSize: boolean, span: Span) {
     if (!skipCalculateSize) {
-      Logger.instanse.debug("Begin calculating size and usage", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Begin calculating size and usage", span, { cls: "Housekeeping", func: "caclulateSizeAndUsage" });
       const timestamp = new Date(new Date().toISOString());
       timestamp.setUTCHours(0, 0, 0, 0);
 
@@ -414,7 +414,7 @@ export class HouseKeeping {
         var n: string = col.name;
         if (n.endsWith(".chunks")) continue;
         if (skip_collections.indexOf(col.name) > -1) {
-          Logger.instanse.debug("skipped " + col.name + " due to housekeeping_skip_collections setting", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("skipped " + col.name + " due to housekeeping_skip_collections setting", span, { cls: "Housekeeping", func: "caclulateSizeAndUsage" });
           continue;
         }
 
@@ -494,7 +494,7 @@ export class HouseKeeping {
             }
           }
         } catch (error) {
-          Logger.instanse.error(error, span, { cls: "Housekeeping" });
+          Logger.instanse.error(error, span, { cls: "Housekeeping", func: "caclulateSizeAndUsage" });
         }
         let usage = 0;
         let bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();
@@ -531,7 +531,7 @@ export class HouseKeeping {
             item.timestamp = new Date(timestamp.toISOString());
             bulkInsert.insert(item);
           } catch (error) {
-            Logger.instanse.error(error, span, { cls: "Housekeeping" });
+            Logger.instanse.error(error, span, { cls: "Housekeeping", func: "caclulateSizeAndUsage" });
           }
 
         }
@@ -543,18 +543,18 @@ export class HouseKeeping {
           if (insertCount > 0) {
             await bulkInsert.execute();
           }
-          if (usage > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] usage of " + formatBytes(usage), span, { cls: "Housekeeping" });
+          if (usage > 0) Logger.instanse.debug("[" + col.name + "][" + index + "/" + collections.length + "] usage of " + formatBytes(usage), span, { cls: "Housekeeping", func: "caclulateSizeAndUsage" });
         } catch (error) {
-          Logger.instanse.error(error, span, { cls: "Housekeeping" });
+          Logger.instanse.error(error, span, { cls: "Housekeeping", func: "caclulateSizeAndUsage" });
         }
       }
-      Logger.instanse.debug("Add stats from " + collections.length + " collections with a total usage of " + formatBytes(totalusage), span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Add stats from " + collections.length + " collections with a total usage of " + formatBytes(totalusage), span, { cls: "Housekeeping", func: "caclulateSizeAndUsage" });
       logMemoryUsage("caclulateSizeAndUsage", span);
     }
   }
   private static async updateUserSizeAndUsage(skipUpdateUserSize: boolean, span: Span) {
     if (!skipUpdateUserSize) {
-      Logger.instanse.debug("Begin updating all users dbusage field", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Begin updating all users dbusage field", span, { cls: "Housekeeping", func: "updateUserSizeAndUsage" });
       const timestamp = new Date(new Date().toISOString());
       timestamp.setUTCHours(0, 0, 0, 0);
       let index = 0;
@@ -564,7 +564,7 @@ export class HouseKeeping {
 
       const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "user", lastseen: { "$gte": fivedaysago } } }, { $count: "userCount" }]).toArray();
       if (usercount.length > 0) {
-        Logger.instanse.debug("Begin updating all users (" + usercount[0].userCount + ") dbusage field", span, { cls: "Housekeeping" });
+        Logger.instanse.debug("Begin updating all users (" + usercount[0].userCount + ") dbusage field", span, { cls: "Housekeeping", func: "updateUserSizeAndUsage" });
       }
       let cursor: FindCursor<any>;
       if (Config.NODE_ENV == "production") {
@@ -588,26 +588,26 @@ export class HouseKeeping {
         ]// "items": { "$push": "$$ROOT" }
         const items: any[] = await Config.db.db.collection("dbusage").aggregate(pipe).toArray();
         if (items.length > 0) {
-          Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + formatBytes(items[0].size) + " from " + items[0].count + " collections", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] " + u.name + " " + formatBytes(items[0].size) + " from " + items[0].count + " collections", span, { cls: "Housekeeping", func: "updateUserSizeAndUsage" });
           await Config.db.db.collection("users").updateOne({ _id: u._id }, { $set: { "dbusage": items[0].size } });
         }
         if (index % 100 == 0) {
-          Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span, { cls: "Housekeeping", func: "updateUserSizeAndUsage" });
           logMemoryUsage("updateUserSizeAndUsage", span);
         }
 
       }
-      Logger.instanse.debug("Completed updating all users dbusage field", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Completed updating all users dbusage field", span, { cls: "Housekeeping", func: "updateUserSizeAndUsage" });
       logMemoryUsage("updateUserSizeAndUsage", span);
     }
   }
   private static async updateCustomerSizeAndUsage(skipUpdateUserSize: boolean, span: Span) {
     if (Config.multi_tenant) {
       try {
-        Logger.instanse.debug("Begin updating all customers dbusage field", span, { cls: "Housekeeping" });
+        Logger.instanse.debug("Begin updating all customers dbusage field", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
         const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
         if (usercount.length > 0) {
-          Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
         }
         const pipe = [
           { "$match": { "_type": "customer" } },
@@ -656,7 +656,7 @@ export class HouseKeeping {
           let dbusage: number = 0;
           for (let u of c.users) dbusage += (u.dbusage ? u.dbusage : 0);
           await Config.db.db.collection("users").updateOne({ _id: c._id }, { $set: { "dbusage": dbusage } });
-          Logger.instanse.debug(c.name + " using " + formatBytes(dbusage), span, { cls: "Housekeeping" });
+          Logger.instanse.debug(c.name + " using " + formatBytes(dbusage), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
         }
         var sleep = (ms) => {
           return new Promise(resolve => { setTimeout(resolve, ms) })
@@ -664,17 +664,17 @@ export class HouseKeeping {
         await sleep(2000);
 
       } catch (error) {
-        Logger.instanse.error(error, span, { cls: "Housekeeping" });
+        Logger.instanse.error(error, span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
       }
       logMemoryUsage("updateCustomerSizeAndUsage - part 1", span);
     }
     if (Config.multi_tenant && !skipUpdateUserSize) {
-      Logger.instanse.debug("Begin updating all customers dbusage field", span, { cls: "Housekeeping" });
+      Logger.instanse.debug("Begin updating all customers dbusage field", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
       try {
         let index = 0;
         const usercount = await Config.db.db.collection("users").aggregate([{ "$match": { "_type": "customer" } }, { $count: "userCount" }]).toArray();
         if (usercount.length > 0) {
-          Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Begin updating all customers (" + usercount[0].userCount + ") dbusage field", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
         }
 
         const pipe = [
@@ -739,13 +739,13 @@ export class HouseKeeping {
               if (c.dbusage > resource.defaultmetadata.dbusage) {
                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                 if (!c.dblocked || c.dblocked) {
-                  Logger.instanse.debug("dbblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping" });
+                  Logger.instanse.debug("dbblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
                   await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
                 }
               } else if (c.dbusage <= resource.defaultmetadata.dbusage) {
                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                 if (c.dblocked || !c.dblocked) {
-                  Logger.instanse.debug("unblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping" });
+                  Logger.instanse.debug("unblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
                   await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                 }
               }
@@ -754,13 +754,13 @@ export class HouseKeeping {
               if (c.dbusage > quota) {
                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
                 if (!c.dblocked || c.dblocked) {
-                  Logger.instanse.debug("dbblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(quota), span, { cls: "Housekeeping" });
+                  Logger.instanse.debug("dbblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(quota), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
                   await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": true } as any });
                 }
               } else if (c.dbusage <= quota) {
                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
                 if (c.dblocked || !c.dblocked) {
-                  Logger.instanse.debug("unblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(quota), span, { cls: "Housekeeping" });
+                  Logger.instanse.debug("unblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(quota), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
                   await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                 }
               }
@@ -769,7 +769,7 @@ export class HouseKeeping {
               if (billabledbusage > 0) {
                 const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);
 
-                Logger.instanse.debug("Add usage_record for " + c.name + " using " + formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + formatBytes(config.product.metadata.dbusage), span, { cls: "Housekeeping" });
+                Logger.instanse.debug("Add usage_record for " + c.name + " using " + formatBytes(billabledbusage) + " equal to " + billablecount + " units of " + formatBytes(config.product.metadata.dbusage), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
                 const dt = parseInt((new Date().getTime() / 1000).toFixed(0))
                 const payload: any = { "quantity": billablecount, "timestamp": dt };
                 if (!Util.IsNullEmpty(config.siid) && !Util.IsNullEmpty(c.stripeid)) {
@@ -777,9 +777,9 @@ export class HouseKeeping {
                     await Message.Stripe("POST", "usage_records", config.siid, payload, c.stripeid);
                   } catch (error) {
                     if (error.response && error.response.body) {
-                      Logger.instanse.error("Update usage record error!" + error.response.body, span, { cls: "Housekeeping" });
+                      Logger.instanse.error("Update usage record error!" + error.response.body, span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
                     } else {
-                      Logger.instanse.error("Update usage record error!" + error, span, { cls: "Housekeeping" });
+                      Logger.instanse.error("Update usage record error!" + error, span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
                     }
                   }
                 }
@@ -790,11 +790,11 @@ export class HouseKeeping {
               }
             }
             if (index % 100 == 0) {
-              Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span, { cls: "Housekeeping" });
+              Logger.instanse.debug("[" + index + "/" + usercount[0].userCount + "] Processing", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
               logMemoryUsage("updateCustomerSizeAndUsage", span);
             }
           }
-          Logger.instanse.debug("Completed updating all customers dbusage field", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Completed updating all customers dbusage field", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
 
 
           const pipe2 = [
@@ -805,33 +805,33 @@ export class HouseKeeping {
             if (DatabaseConnection.WellknownIdsArray.indexOf(c._id) > -1) continue;
             if (c.dbusage == null) c.dbusage = 0;
             if (c.dbusage > resource.defaultmetadata.dbusage) {
-              Logger.instanse.debug("dbblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping" });
+              Logger.instanse.debug("dbblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
               await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
             } else {
               if (c.dblocked) {
                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": false } });
-                Logger.instanse.debug("unblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping" });
+                Logger.instanse.debug("unblocking " + c.name + " using " + formatBytes(c.dbusage) + " allowed is " + formatBytes(resource.defaultmetadata.dbusage), span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
               }
 
             }
           }
-          Logger.instanse.debug("Completed updating all users without a customer dbusage field", span, { cls: "Housekeeping" });
+          Logger.instanse.debug("Completed updating all users without a customer dbusage field", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
         }
         logMemoryUsage("Housekeeping end", span);
       } catch (error) {
         if (error.response && error.response.body) {
-          Logger.instanse.error(error.response.body, span, { cls: "Housekeeping" });
+          Logger.instanse.error(error.response.body, span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
         } else {
-          Logger.instanse.error(error, span, { cls: "Housekeeping" });
+          Logger.instanse.error(error, span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
         }
       } finally {
-        Logger.instanse.debug("Completed housekeeping", span, { cls: "Housekeeping" });
+        Logger.instanse.debug("Completed housekeeping", span, { cls: "Housekeeping", func: "updateCustomerSizeAndUsage" });
       }
       logMemoryUsage("updateCustomerSizeAndUsage - part 2", span);
     }
   }
   public static async ensureBuiltInUsersAndRoles(span: Span) {
-    Logger.instanse.debug("Begin validating built in users and roles", span, { cls: "Housekeeping" });
+    Logger.instanse.debug("Begin validating built in users and roles", span, { cls: "Housekeeping", func: "ensureBuiltInUsersAndRoles" });
     const jwt: string = Crypt.rootToken();
     const admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.admins.name, Wellknown.admins._id, span);
     const users: Role = await Logger.DBHelper.EnsureRole(Wellknown.users.name, Wellknown.users._id, span);
@@ -905,7 +905,7 @@ export class HouseKeeping {
         Base.removeRight(customer_admins, Wellknown.customer_admins._id, [Rights.full_control]);
         await Logger.DBHelper.Save(customer_admins, jwt, span);
       } catch (error) {
-        Logger.instanse.error(error, span);
+        Logger.instanse.error(error, span, { cls: "Housekeeping", func: "ensureBuiltInUsersAndRoles" });
       }
     }
 
@@ -919,7 +919,7 @@ export class HouseKeeping {
     Base.addRight(filestore_admins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
     Base.removeRight(filestore_admins, Wellknown.admins._id, [Rights.delete]);
     if (Config.multi_tenant) {
-      Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self", span);
+      Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_admins.name + " from self", span, { cls: "Housekeeping", func: "ensureBuiltInUsersAndRoles" });
       Base.removeRight(filestore_admins, filestore_admins._id, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(filestore_admins, jwt, span);
@@ -931,7 +931,7 @@ export class HouseKeeping {
     Base.addRight(filestore_users, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
     Base.removeRight(filestore_users, Wellknown.admins._id, [Rights.delete]);
     if (Config.multi_tenant) {
-      Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self", span);
+      Logger.instanse.silly("[root][users] Running in multi tenant mode, remove " + filestore_users.name + " from self", span, { cls: "Housekeeping", func: "ensureBuiltInUsersAndRoles" });
       Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
     } else if (Config.update_acl_based_on_groups) {
       Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
@@ -993,12 +993,12 @@ export const initMemoryUsage = () => {
 }
 export const logMemoryUsage = (label, span) => {
   const memoryUsage = process.memoryUsage();
-  Logger.instanse.debug(`Memory usage after ${label}:`, span, { cls: "Housekeeping" });
-  Logger.instanse.debug(`RSS: ${formatBytes(memoryUsage.rss - rss)} now ${formatBytes(memoryUsage.rss)}`, span, { cls: "Housekeeping" });
-  Logger.instanse.debug(`Heap Total: ${formatBytes(memoryUsage.heapTotal - heapTotal)} now ${formatBytes(memoryUsage.heapTotal)}`, span, { cls: "Housekeeping" });
-  Logger.instanse.debug(`Heap Used: ${formatBytes(memoryUsage.heapUsed - heapUsed)} now ${formatBytes(memoryUsage.heapUsed)}`, span, { cls: "Housekeeping" });
-  Logger.instanse.debug(`External: ${formatBytes(memoryUsage.external - external)} now ${formatBytes(memoryUsage.external)}`, span, { cls: "Housekeeping" });
-  Logger.instanse.debug(`Array Buffers: ${formatBytes(memoryUsage.arrayBuffers - arrayBuffers)} now ${formatBytes(memoryUsage.arrayBuffers)}`, span, { cls: "Housekeeping" });
+  Logger.instanse.debug(`Memory usage after ${label}:`, span, { cls: "Housekeeping", func: "logMemoryUsage" });
+  Logger.instanse.debug(`RSS: ${formatBytes(memoryUsage.rss - rss)} now ${formatBytes(memoryUsage.rss)}`, span, { cls: "Housekeeping", func: "logMemoryUsage" });
+  Logger.instanse.debug(`Heap Total: ${formatBytes(memoryUsage.heapTotal - heapTotal)} now ${formatBytes(memoryUsage.heapTotal)}`, span, { cls: "Housekeeping", func: "logMemoryUsage" });
+  Logger.instanse.debug(`Heap Used: ${formatBytes(memoryUsage.heapUsed - heapUsed)} now ${formatBytes(memoryUsage.heapUsed)}`, span, { cls: "Housekeeping", func: "logMemoryUsage" });
+  Logger.instanse.debug(`External: ${formatBytes(memoryUsage.external - external)} now ${formatBytes(memoryUsage.external)}`, span, { cls: "Housekeeping", func: "logMemoryUsage" });
+  Logger.instanse.debug(`Array Buffers: ${formatBytes(memoryUsage.arrayBuffers - arrayBuffers)} now ${formatBytes(memoryUsage.arrayBuffers)}`, span, { cls: "Housekeeping", func: "logMemoryUsage" });
   rss = memoryUsage.rss;
   heapTotal = memoryUsage.heapTotal;
   heapUsed = memoryUsage.heapUsed;

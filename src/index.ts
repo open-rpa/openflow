@@ -32,7 +32,7 @@ async function initamqp(parent: Span) {
         amqpwrapper.SetInstance(amqp);
         await amqp.connect(span);
     } catch (error) {
-        Logger.instanse.error(error, span);
+        Logger.instanse.error(error, span, { cls: "index", func: "initamqp" });
         return false;
     } finally {
         Logger.otel.endSpan(span);
@@ -44,11 +44,11 @@ async function ValidateUserForm(parent: Span) {
         try {
             var forms = await Config.db.query<Base>({ query: { _id: Config.validate_user_form, _type: "form" }, top: 1, collectionname: "forms", jwt: Crypt.rootToken() }, null);
             if (forms.length == 0) {
-                Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!", span);
+                Logger.instanse.info("validate_user_form " + Config.validate_user_form + " does not exists!", span, { cls: "index", func: "ValidateUserForm" });
                 Config.validate_user_form = "";
             }
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "index", func: "ValidateUserForm" });
             return false;
         } finally {
             Logger.otel.endSpan(span);
@@ -67,16 +67,16 @@ function doHouseKeeping(span: Span) {
     if (Config.housekeeping_skip_calculate_size) housekeeping_skip_calculate_size = true;
     if (Config.housekeeping_skip_update_user_size) housekeeping_skip_update_user_size = true;
     if (Config.NODE_ENV == "production") {
-        HouseKeeping.DoHouseKeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null));
+        HouseKeeping.DoHouseKeeping(false, housekeeping_skip_calculate_size, housekeeping_skip_update_user_size, null).catch((error) => Logger.instanse.error(error, null, { cls: "index", func: "doHouseKeeping" }));
     } else {
         // While debugging, always do all calculations
-        HouseKeeping.DoHouseKeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null));
+        HouseKeeping.DoHouseKeeping(false, false, false, null).catch((error) => Logger.instanse.error(error, null, { cls: "index", func: "doHouseKeeping" }));
     }
 }
 function initHouseKeeping(span: Span) {
     const randomNum = crypto.randomInt(1, 100);
     // Every 15 minutes, give and take a few minutes, send out a message to do house keeping, if ready
-    Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds", span);
+    Logger.instanse.verbose("Housekeeping every 15 minutes plus " + randomNum + " seconds", span, { cls: "index", func: "initHouseKeeping" });
     housekeeping = setInterval(async () => {
         if (Config.enable_openflow_amqp) {
             if (!HouseKeeping.ReadyForHousekeeping()) {
@@ -87,7 +87,7 @@ function initHouseKeeping(span: Span) {
             if (HouseKeeping.ReadyForHousekeeping()) {
                 doHouseKeeping(span);
             } else {
-                Logger.instanse.verbose("SKIP housekeeping", span);
+                Logger.instanse.verbose("SKIP housekeeping", span, { cls: "index", func: "initHouseKeeping" });
             }
         } else {
             doHouseKeeping(span);
@@ -95,7 +95,7 @@ function initHouseKeeping(span: Span) {
     }, (15 * 60 * 1000) + (randomNum * 1000));
     // If I'm first and noone else has run it, lets trigger it now
     const randomNum2 = crypto.randomInt(1, 10);
-    Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds", span);
+    Logger.instanse.info("Trigger first Housekeeping in " + randomNum2 + " seconds", span, { cls: "index", func: "initHouseKeeping" });
     setTimeout(async () => {
         if (Config.enable_openflow_amqp) {
             if (!HouseKeeping.ReadyForHousekeeping()) {
@@ -106,7 +106,7 @@ function initHouseKeeping(span: Span) {
             if (HouseKeeping.ReadyForHousekeeping()) {
                 doHouseKeeping(span);
             } else {
-                Logger.instanse.verbose("SKIP housekeeping", span);
+                Logger.instanse.verbose("SKIP housekeeping", span, { cls: "index", func: "initHouseKeeping" });
             }
         } else {
             doHouseKeeping(span);
@@ -137,7 +137,7 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         return true;
     } catch (error) {
-        Logger.instanse.error(error, span);
+        Logger.instanse.error(error, span, { cls: "index", func: "initDatabase" });
         return false;
     } finally {
         Logger.otel.endSpan(span);
@@ -151,29 +151,29 @@ async function PreRegisterExchanges(span: Span) {
     }
 }
 process.on("beforeExit", (code) => {
-    Logger.instanse.error(code as any, null);
+    Logger.instanse.error(code as any, null, { cls: "index", func: "beforeExit" });
 });
 process.on("exit", (code) => {
-    Logger.instanse.error(code as any, null);
+    Logger.instanse.error(code as any, null, { cls: "index", func: "exit" });
 });
 const unhandledRejections = new Map();
 process.on("unhandledRejection", (reason, promise) => {
-    Logger.instanse.error(reason as any, null);
+    Logger.instanse.error(reason as any, null, { cls: "index", func: "unhandledRejection" });
     unhandledRejections.set(promise, reason);
 });
 process.on("rejectionHandled", (promise) => {
     unhandledRejections.delete(promise);
 });
 process.on("uncaughtException", (err, origin) => {
-    Logger.instanse.error(err, null);
+    Logger.instanse.error(err, null, { cls: "index", func: "uncaughtException" });
 });
 function onerror(err, origin) {
-    Logger.instanse.error(err, null);
+    Logger.instanse.error(err, null, { cls: "index", func: "onerror" });
 }
 process.on("uncaughtExceptionMonitor", onerror);
 function onWarning(warning) {
     try {
-        Logger.instanse.warn(warning.name + ": " + warning.message, null);
+        Logger.instanse.warn(warning.name + ": " + warning.message, null, { cls: "index", func: "onWarning" });
     } catch (error) {
     }
 }
@@ -187,7 +187,7 @@ var signals = {
 };
 var housekeeping = null;
 async function handle(signal, value) {
-    Logger.instanse.info(`process received a ${signal} signal with value ${value}`, null);
+    Logger.instanse.info(`process received a ${signal} signal with value ${value}`, null, { cls: "index", func: "handle" });
     try {
         if (Config.heapdump_onstop) {
             await Logger.otel.createheapdump(null);
@@ -206,14 +206,14 @@ async function handle(signal, value) {
         }, 1000);
         if (server != null && server.close) {
             server.close((err) => {
-                Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
-                Logger.instanse.error(err, null);
+                Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null, { cls: "index", func: "handle" });
+                Logger.instanse.error(err, null, { cls: "index", func: "handle" });
                 process.exit(128 + value);
             })
         }
     } catch (error) {
-        Logger.instanse.error(error, null);
-        Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null);
+        Logger.instanse.error(error, null, { cls: "index", func: "handle" });
+        Logger.instanse.info(`server stopped by ${signal} with value ${value}`, null, { cls: "index", func: "handle" });
         process.exit(128 + value);
     }
 }

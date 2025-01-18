@@ -149,7 +149,7 @@ export class flowclient extends client {
             var paylad = { "command": "watchevent", "data": data }
             protowrap.sendMesssag(this, paylad, null, true);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "client", func: "SendWatch" });
         } finally {
         }
     }
@@ -185,7 +185,7 @@ export class flowclient extends client {
                 }
                 var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
                 if (exists.length > 0) {
-                    Logger.instanse.warn(qname + " already exists, removing before re-creating", span);
+                    Logger.instanse.warn(qname + " already exists, removing before re-creating", span, { cls: "client", func: "CreateConsumer" });
                     for (let i = 0; i < exists.length; i++) {
                         await amqpwrapper.Instance().RemoveQueueConsumer(this.user, exists[i], span);
                     }
@@ -197,14 +197,14 @@ export class flowclient extends client {
                         var o = msg;
                         if (typeof o === "string") o = JSON.parse(o);
                         span = Logger.otel.startSpan("OpenFlow Queue Process Message", o.traceId, o.spanId);
-                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
+                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span, { cls: "client", func: "CreateConsumer" });
                         _data = await this.Queue(msg, qname, options, span);;
                         ack();
-                        Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
+                        Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span, { cls: "client", func: "CreateConsumer" });
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error), span)
+                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error), span, { cls: "client", func: "CreateConsumer" });
                         }, Config.amqp_requeue_time);
                     } finally {
                         Logger.otel.endSpan(span);
@@ -267,8 +267,8 @@ export class flowclient extends client {
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            Logger.instanse.error(exchange + " failed message queue message, nack and re queue message: ", span, Logger.parsecli(this as any));
-                            Logger.instanse.error(error, span, Logger.parsecli(this as any));
+                            Logger.instanse.error(exchange + " failed message queue message, nack and re queue message: ", span, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "RegisterExchange" });
+                            Logger.instanse.error(error, span, { ...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "RegisterExchange" });
                         }, Config.amqp_requeue_time);
                     } finally {
                         span?.end()
@@ -287,7 +287,7 @@ export class flowclient extends client {
                     this._queuescurrentstr = this._queuescurrent.toString();
                 }
             } catch (error) {
-                Logger.instanse.error(error, span, Logger.parsecli(this as any));
+                Logger.instanse.error(error, span, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "RegisterExchange" });
             }
             if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
@@ -305,13 +305,13 @@ export class flowclient extends client {
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
                         amqpwrapper.Instance().RemoveQueueConsumer(user, this._queues[i], span).catch((err) => {
-                            Logger.instanse.error(err, span, Logger.parsecli(this as any));
+                            Logger.instanse.error(err, span, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "CloseConsumer" });
                         });
                         this._queues.splice(i, 1);
                         this._queuescurrent--;
                         this._queuescurrentstr = this._queuescurrent.toString();
                     } catch (error) {
-                        Logger.instanse.error(error, span, Logger.parsecli(this as any));
+                        Logger.instanse.error(error, span, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "CloseConsumer" });
                     }
                 }
             }
@@ -320,11 +320,11 @@ export class flowclient extends client {
                 if (e && (e.queue != null && e.queue?.queue == queuename || e.queue?.queuename == queuename)) {
                     try {
                         amqpwrapper.Instance().RemoveQueueConsumer(user, this._exchanges[i].queue, span).catch((err) => {
-                            Logger.instanse.error(err, span, Logger.parsecli(this as any));
+                            Logger.instanse.error(err, span, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "CloseConsumer"});
                         });
                         this._exchanges.splice(i, 1);
                     } catch (error) {
-                        Logger.instanse.error(error, span, Logger.parsecli(this as any));
+                        Logger.instanse.error(error, span, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "CloseConsumer" });
                     }
                 }
             }
@@ -342,7 +342,7 @@ export class flowclient extends client {
                 this._queuescurrent--;
                 this._queuescurrentstr = this._queuescurrent.toString();
             } catch (error) {
-                Logger.instanse.error(error, parent, Logger.parsecli(this as any));
+                Logger.instanse.error(error, parent, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "CloseConsumers" });
             }
         }
         for (let i = this._exchanges.length - 1; i >= 0; i--) {
@@ -352,7 +352,7 @@ export class flowclient extends client {
                     await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._exchanges[i].queue, parent);
                     this._exchanges.splice(i, 1);
                 } catch (error) {
-                    Logger.instanse.error(error, parent, Logger.parsecli(this as any));
+                    Logger.instanse.error(error, parent, {...Logger.parsecli(this as any), cls: "WebSocketServerClient", func: "CloseConsumers" });
                 }
             }
         }

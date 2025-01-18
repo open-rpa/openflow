@@ -26,19 +26,19 @@ export class EntityRestriction extends Base {
         for (let path of this.paths) {
             if (!Util.IsNullEmpty(path)) {
                 var json = { a: object };
-                Logger.instanse.verbose(path, null);
+                Logger.instanse.verbose(path, null, { cls: "EntityRestriction", func: "IsMatch" });
                 Logger.instanse.silly(JSON.stringify(json, null, 2), null);
                 try {
                     const result = JSONPath({ path, json });
                     if (result && result.length > 0) {
-                        Logger.instanse.verbose("true", null);
+                        Logger.instanse.verbose("true", null, { cls: "EntityRestriction", func: "IsMatch" });
                         return true;
                     }
                 } catch (error) {
                 }
             }
         }
-        Logger.instanse.verbose("false", null);
+        Logger.instanse.verbose("false", null, { cls: "EntityRestriction", func: "IsMatch" });
         return false;
     }
     public IsAuthorized(user: TokenUser | User): boolean {
