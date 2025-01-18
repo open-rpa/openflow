@@ -275,7 +275,7 @@ export class WebServer {
                 let FormioEPProxy: any = await import("./ee/FormioEP.js");
                 await FormioEPProxy.FormioEP.configure(this.app, baseurl);
             } catch (error) {
-                console.error(error.message);
+                Logger.instanse.error(error, span, { cls: "WebServer", func: "configure" });
             }
             span?.addEvent("Configure SamlProvider");
             await SamlProvider.configure(this.app, baseurl);

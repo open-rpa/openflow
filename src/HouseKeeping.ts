@@ -171,7 +171,7 @@ export class HouseKeeping {
           var insertCount = bulkInsert.length;
           if (counter % x === 0) {
             if (insertCount > 0) {
-              console.log("migrated " + counter + " of " + count + " audit records " + ((100 * counter) / count).toFixed(2) + "%");
+              Logger.instanse.info("migrated " + counter + " of " + count + " audit records " + ((100 * counter) / count).toFixed(2) + "%", span, { cls: "Housekeeping", func: "migrateToTimeseries" });
               bulkInsert.execute()
               bulkRemove.execute()
               bulkInsert = Config.db.db.collection("audit").initializeUnorderedBulkOp();
@@ -233,7 +233,7 @@ export class HouseKeeping {
           var insertCount = bulkInsert.length;
           if (counter % x === 0) {
             if (insertCount > 0) {
-              console.log("migrated " + counter + " of " + count + " dbusage records " + ((100 * counter) / count).toFixed(2) + "%");
+              Logger.instanse.info("migrated " + counter + " of " + count + " dbusage records " + ((100 * counter) / count).toFixed(2) + "%", span, { cls: "Housekeeping", func: "migrateToTimeseries" });
               bulkInsert.execute()
               bulkRemove.execute()
               bulkInsert = Config.db.db.collection("dbusage").initializeUnorderedBulkOp();

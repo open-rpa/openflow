@@ -156,7 +156,6 @@ export class Auth {
                         }, []);
                         const valid = JSON.parse(json)
                         if (valid.active == true && valid.sub != null && valid.email != null && valid.email != "") {
-                            console.log(valid.name, "->", valid.email, "->", valid.company);
                             let _user = await Logger.DBHelper.FindByUsernameOrFederationid(valid.sub, valid.iss, parent);
                             if (_user == null) {
                                 _user = await Logger.DBHelper.FindByUsernameOrFederationid(valid.email, valid.client_id, parent);
@@ -186,7 +185,7 @@ export class Auth {
 
                         }
                     } catch (error) {
-                        console.error(error)
+                        Logger.instanse.error("Auth.Token2User", error)
                     }
                 }
             }

@@ -677,7 +677,7 @@ git push -u origin main</pre></p>`
           next();
         }
       } catch (error) {
-        console.error("error", url, error.message);
+        Logger.instanse.error(`Internal Server Error ${error.message}`, error, { cls: "GitProxy", func: "Get" });
         res.status(500).send(`Internal Server Error: ${error.message}`);
         next();
       }
@@ -869,7 +869,7 @@ git push -u origin main</pre></p>`
         message: result
       }
     } catch (error) {
-      console.error("error", error.message);
+      Logger.instanse.error(`Snapshot restore failed with ${error.message}`, error, { cls: "GitProxy", func: "restoresnapshot" });
       return {
         sha: null,
         objectcounter: 0,
@@ -1012,7 +1012,6 @@ git push -u origin main</pre></p>`
           if (content == null) throw new Error(`${id} in ${collection} not found`);
           object["data"] = Buffer.from(formatcontent(content));
           if (content._type == "package" && content.fileid != null && content.fileid != "") {
-            console.log("Adding package file", content.fileid, "for package", content.name);
             await handleObject("fs.files", content.fileid, null);
           }
         } else if (collection == "workitems") {
@@ -1021,7 +1020,6 @@ git push -u origin main</pre></p>`
           object["data"] = Buffer.from(formatcontent(content));
           if (content.files != null && Array.isArray(content.files)) {
             for (let i = 0; i < content.files.length; i++) {
-              console.log("Adding package file", content.files[i]._id, content.files[i].filename, "for workitem", content.name);
               await handleObject("fs.files", content.files[i]._id, null);
             }
           }
@@ -1035,7 +1033,6 @@ git push -u origin main</pre></p>`
             if (matches != null) {
               for (let i = 0; i < matches.length; i++) {
                 const fileid = matches[i].substring(7, 31);
-                console.log("Adding image file", fileid, "for workflow", content.name);
                 await handleObject("fs.files", fileid, null);
               }
             }
@@ -1152,8 +1149,6 @@ git push -u origin main</pre></p>`
           if (subtreeobj.sha != branchtree[k].sha) {
             await repo.storeObject(subtreeobj);
             branchtree[k].sha = subtreeobj.sha;
-          } else {
-            console.log("No change in subtree " + branchtree[k].name);
           }
         }
       }

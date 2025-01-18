@@ -672,7 +672,6 @@ export class Message {
         }
         msg = JSON.parse(JSON.stringify(msg));
         try {
-            console.log(this.data);
             if (Logger.agentdriver == null) throw new Error("No agentdriver is loaded")
             var agent = null;
             if ((msg.agentid == null || msg.agentid == "")) {
@@ -790,7 +789,7 @@ export class Message {
                 let _lic_require: any = await import("../ee/license-file.js");
                 Logger.License = new _lic_require.LicenseFile();
             } catch (error) {
-                console.error(error.message);
+                Logger.instanse.error(error.message, parent, { cls: "Message", func: "IssueLicense" });
             }
             // @ts-ignore
             var data = msg.data;
@@ -1670,7 +1669,7 @@ export class Message {
                 }
             }
         } catch (error) {
-            console.error(error);
+            Logger.instanse.error(error, parent, { cls: "message", func: "parseSignAgent" });
         }
     }
     public async Signin(cli: WebSocketServerClient, parent: Span): Promise<void> {
@@ -2721,7 +2720,7 @@ export class Message {
                 error = new Error(msg.error);
             } catch (error) {
             }
-            console.error(error);
+            Logger.instanse.error(error, null, { cls: "message", func: "GetNextInvoice" });
             throw error
         } finally {
             Logger.otel.endSpan(span);
@@ -2797,9 +2796,6 @@ export class Message {
             }
             const resource: Resource = await Config.db.getbyid(resourceid, "config", jwt, true, span);
             if (resource == null) throw new Error("Unknown resource or Access Denied");
-            console.log("stripeprice", stripeprice);
-            console.log("resource", resource.products.map(x => x.stripeprice));
-            console.log("count", resource.products.filter(x => x.stripeprice == stripeprice).length);
             if (resource.products.filter(x => x.stripeprice == stripeprice).length != 1) throw new Error("Unknown resource product");
             const product: Product = resource.products.filter(x => x.stripeprice == stripeprice)[0];
 
@@ -2991,7 +2987,6 @@ export class Message {
                             }
                             payload.line_items.push(line_item);
                         }
-                        console.log(JSON.stringify(payload, null, 2));
                         if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
                             checkout = await Message.Stripe("POST", "checkout.sessions", null, payload, null);
                             // @ts-ignore
@@ -3365,7 +3360,7 @@ export class Message {
                     msg.customer.subscriptionid = null;
                     if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span, { cls: "warning", func: "EnsureCustomer" });
+                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no stripe customer, deleting all " + total_usage.length + " assigned plans.", span, { cls: "Message", func: "EnsureCustomer" });
                         for (let usage of total_usage) {
                             // @ts-ignore
                             if (usage.mode != "one_time") {// null = recurring. recurring or one_time
@@ -3394,7 +3389,7 @@ export class Message {
                         let sub = msg.stripecustomer.subscriptions.data[0];
                         msg.customer.subscriptionid = sub.id;
                         const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }] }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] Updating all " + total_usage.length + " unmapped purchases to an assigned plan.", span, { cls: "warning", func: "EnsureCustomer" });
+                        Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] Updating all " + total_usage.length + " unmapped purchases to an assigned plan.", span, { cls: "Message", func: "EnsureCustomer" });
 
                         for (let usage of total_usage) {
                             const items = sub.items.data.filter(x => ((x.price && x.price.id == usage.product.stripeprice) || (x.plan && x.plan.id == usage.product.stripeprice)));
@@ -3414,7 +3409,7 @@ export class Message {
                         if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                             msg.customer.subscriptionid = null;
                             const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                            Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span, { cls: "warning", func: "EnsureCustomer" });
+                            Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has no subscriptions, deleting all " + total_usage.length + " assigned plans.", span, { cls: "Message", func: "EnsureCustomer" });
                             for (let usage of total_usage) {
                                 // @ts-ignore
                                 if (usage.mode != "one_time") {// null = recurring. recurring or one_time
@@ -3429,7 +3424,7 @@ export class Message {
                 if (!Util.IsNullEmpty(msg.customer.stripeid)) {
                     msg.customer.subscriptionid = null;
                     const total_usage = await Config.db.query<ResourceUsage>({ query: { "_type": "resourceusage", "customerid": msg.customer._id }, top: 1000, collectionname: "config", jwt: msg.jwt }, span);
-                    Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span, { cls: "warning", func: "EnsureCustomer" });
+                    Logger.instanse.warn("[" + user.username + "][" + msg.customer.name + "] has stripe customer, but no active subscription deleting all " + total_usage.length + " assigned plans.", span, { cls: "Message", func: "EnsureCustomer" });
                     for (let usage of total_usage) {
                         // @ts-ignore
                         if (usage.mode != "one_time") {// null = recurring. recurring or one_time
@@ -3692,7 +3687,7 @@ export class Message {
                             var data = Buffer.from(file.file, "base64")
                             result = pako.inflate(data);
                         } catch (error) {
-                            Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitem" });
+                            Logger.instanse.error(msg.error, parent, { cls: "Message", func: "AddWorkitem" });
                         }
                         readable.push(result);
                         readable.push(null);
@@ -3721,7 +3716,7 @@ export class Message {
                     wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                 } catch (err) {
-                    Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitem" });
+                    Logger.instanse.error(msg.error, parent, { cls: "Message", func: "AddWorkitem" });
                 }
             }
         }
@@ -3901,7 +3896,7 @@ export class Message {
                                 var data = Buffer.from(file.file, "base64")
                                 result = pako.inflate(data);
                             } catch (error) {
-                                Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitems" });
+                                Logger.instanse.error(msg.error, parent, { cls: "Message", func: "AddWorkitems" });
                             }
                             readable.push(result);
                             readable.push(null);
@@ -3930,7 +3925,7 @@ export class Message {
                         wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                     } catch (err) {
-                        Logger.instanse.error(msg.error, parent, { cls: "error", func: "AddWorkitems" });
+                        Logger.instanse.error(msg.error, parent, { cls: "Message", func: "AddWorkitems" });
                     }
                 }
             }
@@ -4071,7 +4066,7 @@ export class Message {
                         try {
                             await Config.db.DeleteOne(exists[0]._id, "fs.files", false, rootjwt, parent);
                         } catch (error) {
-                            Logger.instanse.error(msg.error, parent, { cls: "error", func: "UpdateWorkitem" });
+                            Logger.instanse.error(msg.error, parent, { cls: "Message", func: "UpdateWorkitem" });
                         }
                         wi.files = wi.files.filter(x => x.name != file.filename);
                     }
@@ -4090,7 +4085,7 @@ export class Message {
                             var data = Buffer.from(file.file, "base64")
                             result = pako.inflate(data);
                         } catch (error) {
-                            Logger.instanse.error(msg.error, parent, { cls: "error", func: "UpdateWorkitem" });
+                            Logger.instanse.error(msg.error, parent, { cls: "Message", func: "UpdateWorkitem" });
                         }
                         readable.push(result);
                         readable.push(null);
@@ -4118,7 +4113,7 @@ export class Message {
                     wi.files.push({ "name": file.filename, "filename": path.basename(file.filename), _id: fileid });
 
                 } catch (err) {
-                    Logger.instanse.error(msg.error, parent, { cls: "error", func: "UpdateWorkitem" });
+                    Logger.instanse.error(msg.error, parent, { cls: "Message", func: "UpdateWorkitem" });
                 }
             }
         }
@@ -4142,7 +4137,7 @@ export class Message {
                     Config.db.queuemonitoringlastrun = new Date();
                 }
             } catch (error) {
-                console.log("Trick queuemonitoringlastrun error " + error.message)
+                Logger.instanse.error("Trick queuemonitoringlastrun error " + error.message, parent, { cls: "Message", func: "UpdateWorkitem" });
             }
         }
         wi = await Config.db.UpdateOne(wi, "workitems", 1, true, rootjwt, parent);
@@ -4237,7 +4232,7 @@ export class Message {
 
                     msg.result = _wi;
                 } catch (error) {
-                    Logger.instanse.warn((error.message ? error.message : error), parent, { cls: "warn", func: "PopWorkitem" });
+                    Logger.instanse.warn((error.message ? error.message : error), parent, { cls: "Message", func: "PopWorkitem" });
                 }
             }
         } while (workitems.length > 0 && msg.result == null);
@@ -4527,7 +4522,7 @@ export class Message {
                     for (let i = WebSocketServer._clients.length - 1; i >= 0; i--) {
                         const cli: WebSocketServerClient = WebSocketServer._clients[i];
                         if (cli.id == msg.id) {
-                            Logger.instanse.warn("Killing websocket client " + msg.id, parent, { cls: "warn", func: "CustomCommand" });
+                            Logger.instanse.warn("Killing websocket client " + msg.id, parent, { cls: "Message", func: "CustomCommand" });
                             cli.Close(parent);
                         }
                     }
@@ -4577,8 +4572,8 @@ export class Message {
                 for (var i = 0; i < subscriptions.length; i++) {
                     var subscription = subscriptions[i];
                     webpush.sendNotification(subscription, payload)
-                        .then(() => Logger.instanse.info("send wep push message to " + wpuser.name + " with payload " + payload, parent, { cls: "info", func: "CustomCommand" }))
-                        .catch(err => Logger.instanse.error(err, parent, { cls: "error", func: "CustomCommand" }));
+                        .then(() => Logger.instanse.info("send wep push message to " + wpuser.name + " with payload " + payload, parent, { cls: "Message", func: "CustomCommand" }))
+                        .catch(err => Logger.instanse.error(err, parent, { cls: "Message", func: "CustomCommand" }));
                 }
                 break;
             case "startagent":

@@ -199,7 +199,7 @@ export class UsersController extends Controller {
       var res = await Config.db.GetOne<User>({ collectionname: "users", query: { _id: id }, jwt }, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in GetUser", error, { cls: "UsersController", func: "GetUser" });
       throw error;
     }
   }
@@ -257,7 +257,7 @@ export class openrpaworkflowsController extends Controller {
       var res = await Config.db.GetOne<Workflow>({ collectionname: "openrpa", query: { _id: id, "_type": "workflow" }, jwt }, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in GetOpenRPAWorkflow", error, { cls: "openrpaworkflowsController", func: "GetOpenRPAWorkflow" });
       throw error;
     }
   }
@@ -312,7 +312,7 @@ export class collectionsController extends Controller {
       var collections = await Config.db.ListCollections(true, Crypt.rootToken());
       return collections.find(x => x.name == collectionname);
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in GetCollection", error, { cls: "collectionsController", func: "GetCollection" });
       throw error;
     }
   }
@@ -396,7 +396,7 @@ export class QueryController extends Controller {
       var res = await Config.db.query<any>(options, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Query", error, { cls: "QueryController", func: "Query" });
       throw error;
     }
   }
@@ -420,7 +420,7 @@ export class CountController extends Controller {
       var res = await Config.db.count(options, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Count", error, { cls: "CountController", func: "Count" });
       throw error;
     }
   }
@@ -444,7 +444,7 @@ export class DistinctController extends Controller {
       var res = await Config.db.distinct(options, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Distinct", error, { cls: "DistinctController", func: "Distinct" });
       throw error;
     }
   }
@@ -467,7 +467,7 @@ export class AggregateController extends Controller {
       var res = await Config.db.aggregate<any>(requestBody.pipeline, collectionname, jwt, null, requestBody.queryas, requestBody.explain, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Aggregate", error, { cls: "AggregateController", func: "Aggregate" });
       throw error;
     }
   }
@@ -533,7 +533,7 @@ export class RunOpenRPAWorkflowController extends Controller {
         return { correlationId };
       }
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in RunOpenRPAWorkflow", error, { cls: "RunOpenRPAWorkflowController", func: "RunOpenRPAWorkflow" });
       throw error;
     }
   }
@@ -569,7 +569,7 @@ export class QueueMessageController extends Controller {
         return { correlationId };
       }
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in QueueMessage", error, { cls: "QueueMessageController", func: "QueueMessage" });
       throw error;
     }
   }

@@ -587,9 +587,6 @@ export class LoginProvider {
                 }
                 passport.authenticate("local", function (err, user, info) {
                     let originalUrl: any = req.cookies.originalUrl;
-                    if (info && info.message) {
-                        console.log(info.message);
-                    }
                     if (err) {
                         Logger.instanse.error(err, null, { cls: "LoginProvider", func: "Localauthenticate" });
                     }
@@ -1411,7 +1408,7 @@ export class LoginProvider {
                 } else if (fs.existsSync(localfile)) {
                     res.sendFile(localfile);
                 } else {
-                    console.log("file not found " + localfile);
+                    Logger.instanse.debug("file not found " + localfile, span, { cls: "LoginProvider", func: "getlogin" });
                     res.status(404).send("Not found");
                 }
             }
@@ -1443,7 +1440,7 @@ export class LoginProvider {
                 } else if (fs.existsSync(localfile)) {
                     res.sendFile(localfile);
                 } else {
-                    console.log("file not found " + localfile);
+                    Logger.instanse.debug("file not found " + localfile, span, { cls: "LoginProvider", func: "getlogin" });
                     res.status(404).send("Not found");
                 }
             }
@@ -1465,7 +1462,7 @@ export class LoginProvider {
             } else if (fs.existsSync(basepath + "/index.htm")) {
                 res.sendFile(basepath + "/index.html");
             } else {
-                console.log("file not found ");
+                Logger.instanse.debug("file not found index.html", span, { cls: "LoginProvider", func: "getlogin" });
                 res.status(404).send("Not found");
             }
 

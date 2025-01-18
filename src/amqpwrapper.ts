@@ -355,13 +355,13 @@ export class amqpwrapper extends events.EventEmitter {
 
                 // If no error is thrown, exchange exists, so delete it
                 await channel.deleteExchange(exchangeName);
-                // console.log(`Exchange '${exchangeName}' deleted.`);
+                Logger.instanse.debug(`Exchange '${exchangeName}' deleted.`,null, { cls: "amqpwrapper", func: "checkAndDeleteExchange" });
             } catch (err) {
                 // Error means exchange does not exist
-                console.log(`Exchange '${exchangeName}' does not exist or there was an error checking it.`);
+                Logger.instanse.error(err, null, { cls: "amqpwrapper", func: "checkAndDeleteExchange" });
             }
         } catch (error) {
-            console.error("Error connecting to RabbitMQ:", error);
+            Logger.instanse.error("Error connecting to RabbitMQ:", error, { cls: "amqpwrapper", func: "checkAndDeleteExchange" });
         } finally {
             conn.close();
         }
@@ -375,11 +375,11 @@ export class amqpwrapper extends events.EventEmitter {
                 return true;
             } catch (err) {
                 // Error means exchange does not exist
-                console.log(`Exchange '${exchangeName}' has wrong config`);
+                Logger.instanse.error(err, null, { cls: "amqpwrapper", func: "PreAssertExchange" });
                 return false;
             }
         } catch (error) {
-            console.error("Error connecting to RabbitMQ:", error);
+            Logger.instanse.error("Error connecting to RabbitMQ:", error, { cls: "amqpwrapper", func: "PreAssertExchange" });
         } finally {
             conn.close();
         }

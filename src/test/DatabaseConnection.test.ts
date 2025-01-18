@@ -14,17 +14,6 @@ import { testConfig } from "./testConfig.js";
     async after() {
         await testConfig.cleanup();
     }
-    // @timeout(50000)
-    // @test async "dbconstructor"() {
-    //     try {
-    //         var db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db, false);
-    //         await db.connect(null);
-    //         // db.shutdown();
-    //     } catch (error) {
-    //         console.error(error);            
-    //     }
-    //     console.log("completed");
-    // }
     @timeout(5000)
     @test async "indextest"() {
         // await Config.db.ensureindexes(null)

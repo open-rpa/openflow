@@ -1126,7 +1126,6 @@ export class DatabaseConnection extends events.EventEmitter {
         let findoptions: FindOptions = {};
         // @ts-ignore
         if (options.explain === true) {
-            console.log("explain quey");
             // @ts-ignore
             findoptions.explain = options.explain;
         }
@@ -1559,7 +1558,6 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         const options: AggregateOptions = {};
         if (explain === true) {
-            console.log("explain aggregate")
             // @ts-ignore
             options.explain = explain;
         }
@@ -4372,11 +4370,11 @@ export class DatabaseConnection extends events.EventEmitter {
         if (item != null) roughObjSize2 = JSON.stringify(item).length;
         try {
             if (roughObjSize1 > Config.history_obj_max_kb_size * 1024) {
-                console.error("SaveDiff1: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize1);
+                Logger.instanse.error("SaveDiff1: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize1, span, { cls: "DatabaseConnection", func: "SaveDiff" });
                 return item._version;
             }
             if (roughObjSize2 > Config.history_obj_max_kb_size * 1024) {
-                console.error("SaveDiff2: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize2);
+                Logger.instanse.error("SaveDiff2: object too large, skipping diff for " + collectionname + " " + item._id + " " + roughObjSize2, span, { cls: "DatabaseConnection", func: "SaveDiff" });
                 return item._version;
             }
         } catch (error) {

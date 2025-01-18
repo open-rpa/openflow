@@ -301,7 +301,6 @@ export class OAuthProvider {
             });
 
             instance.app.use("/oidc/*", async (req, res, next) => {
-                console.log(req);
                 next();
             });
 

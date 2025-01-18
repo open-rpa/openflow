@@ -251,21 +251,21 @@ var server: http.Server = null;
             Logger.instanse.debug("Configure grafana", span, { cls: "index", func: "init" });
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
         } catch (error) {
-            console.error(error.message);
+            cerror(error.message);
         }
         try {
             let OpenAPIProxy: any = await import("./ee/OpenAPIProxy.js");
             Logger.instanse.debug("Configure open api", span, { cls: "index", func: "init" });
             const OpenAI = await OpenAPIProxy.OpenAPIProxy.configure(WebServer.app, span);
         } catch (error) {
-            console.error(error.message);
+            cerror(error.message);
         }
         try {
             let GitProxy: any = await import("./ee/GitProxy.js");
             Logger.instanse.debug("Configure git server", span, { cls: "index", func: "init" });
             const Git = await GitProxy.GitProxy.configure(WebServer.app, span);
         } catch (error) {
-            console.error(error.message);
+            cerror(error.message);
         }
         Logger.instanse.debug("Configure oauth provider", span, { cls: "index", func: "init" });
         OAuthProvider.configure(WebServer.app, span);

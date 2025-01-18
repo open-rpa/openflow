@@ -61,7 +61,7 @@ export class dbConfig extends Base {
             var _a = JSON.stringify(a);
             var _b = JSON.stringify(b);
         } catch (error) {
-            console.error("areEqual failed to stringify")
+            Logger.instanse.error("areEqual failed to stringify", null, {cls: "Config", func: "areEqual"});
             return false;
         }
         if (_a !== _b) return false;
