@@ -413,7 +413,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 if (collectionname === "config" && _type === "config") {
                     discardspan = false;
                     await dbConfig.Reload(Crypt.rootToken(), true, span);
-
+                    try {
+                        await Logger.configure(false, false);
+                    } catch (error) {
+                        Logger.instanse.error(error, span, { cls: "DatabaseConnection", func: "GlobalWatchCallback" });
+                    }
                 }
             }
             span.updateName("Watch " + collectionname + " " + next.operationType + " " + _type);

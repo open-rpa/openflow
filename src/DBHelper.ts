@@ -884,7 +884,7 @@ export class DBHelper {
         if (!Util.IsNullEmpty(wiqid)) await this.DeleteKey("pendingworkitems_" + wiqid, watch, false, span);
     }
     public GetPushableQueuesWrap(span: Span) {
-        Logger.instanse.debug("Add pushable queues", span, {cls: "DBHelper", func: "GetPushableQueuesWrap"});
+        Logger.instanse.silly("Add pushable queues", span, {cls: "DBHelper", func: "GetPushableQueuesWrap"});
         return Config.db.query<WorkitemQueue>({
             query: {
                 "$or": [
