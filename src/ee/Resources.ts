@@ -353,17 +353,22 @@ export class Resources {
 
         if(target._type == "user") {
             if(resource.target != target._type) throw new Error(Logger.enricherror(tuser, target, "Resource is " + resource.target + " and cannot be assigned to a " + target._type));
+            if(resourceusage.userid != target._id) throw new Error(Logger.enricherror(tuser, target, "ResourceUsage is not assigned to this user"));
         } else if(target._type == "member") {
             if(resource.target != target._type) throw new Error(Logger.enricherror(tuser, target, "Resource is " + resource.target + " and cannot be assigned to a " + target._type));
+            if(resourceusage.memberid != target._id) throw new Error(Logger.enricherror(tuser, target, "ResourceUsage is not assigned to this member"));
         } else if(target._type == "customer") {
             if(resource.target != target._type) throw new Error(Logger.enricherror(tuser, target, "Resource is " + resource.target + " and cannot be assigned to a " + target._type));
+            if(resourceusage.customerid != target._id) throw new Error(Logger.enricherror(tuser, target, "ResourceUsage is not assigned to this customer"));
         } else if(target._type == "workspace") {
             if(resource.target != target._type) throw new Error(Logger.enricherror(tuser, target, "Resource is " + resource.target + " and cannot be assigned to a " + target._type));
+            if(resourceusage.workspaceid != target._id) throw new Error(Logger.enricherror(tuser, target, "ResourceUsage is not assigned to this workspace"));
             (target as Workspace).resourceusageid = null;
             (target as Workspace).productname = "Free tier";
             await Config.db.UpdateOne(target, "users", 1, true, rootjwt, parent);
         } else if(target._type == "agent") {
             if(resource.target != target._type) throw new Error(Logger.enricherror(tuser, target, "Resource is " + resource.target + " and cannot be assigned to a " + target._type));
+            if(resourceusage.agentid != target._id) throw new Error(Logger.enricherror(tuser, target, "ResourceUsage is not assigned to this agent"));
             (target as iAgent).stripeprice = undefined;
             (target as iAgent).billingid = undefined;
             (target as iAgent).resourceusageid = undefined;
