@@ -127,8 +127,9 @@ async function initDatabase(parent: Span): Promise<boolean> {
         }
         try {
             await Logger.configure(false, true);
+            amqpwrapper.Instance().setPrefetch(Config.amqp_prefetch, span);
         } catch (error) {
-            cerror(error);
+            Logger.instanse.error(error, span, { cls: "index", func: "initDatabase" });
             process.exit(404);
         }
         const users = await Config.db.query<User>({ query: { _type: "role" }, top: 4, collectionname: "users", projection: { "name": 1 }, jwt: jwt }, span);
@@ -251,21 +252,21 @@ var server: http.Server = null;
             Logger.instanse.debug("Configure grafana", span, { cls: "index", func: "init" });
             const grafana = await GrafanaProxy.GrafanaProxy.configure(WebServer.app, span);
         } catch (error) {
-            cerror(error.message);
+            Logger.instanse.error(error, span, { cls: "index", func: "init" });
         }
         try {
             let OpenAPIProxy: any = await import("./ee/OpenAPIProxy.js");
             Logger.instanse.debug("Configure open api", span, { cls: "index", func: "init" });
             const OpenAI = await OpenAPIProxy.OpenAPIProxy.configure(WebServer.app, span);
         } catch (error) {
-            cerror(error.message);
+            Logger.instanse.error(error, span, { cls: "index", func: "initDatabase" });
         }
         try {
             let GitProxy: any = await import("./ee/GitProxy.js");
             Logger.instanse.debug("Configure git server", span, { cls: "index", func: "init" });
             const Git = await GitProxy.GitProxy.configure(WebServer.app, span);
         } catch (error) {
-            cerror(error.message);
+            Logger.instanse.error(error, span, { cls: "index", func: "initDatabase" });
         }
         Logger.instanse.debug("Configure oauth provider", span, { cls: "index", func: "init" });
         OAuthProvider.configure(WebServer.app, span);
