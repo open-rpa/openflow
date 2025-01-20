@@ -16,9 +16,9 @@ import { testConfig } from "./testConfig.js";
         await testConfig.cleanup();
     }
     @test async "FindByUsername"() {
-        var user = await Logger.DBHelper.FindByUsername("testuser", Crypt.rootToken(), null);
+        var user = await Logger.DBHelper.FindByUsername(testConfig.testUser.username, Crypt.rootToken(), null);
         assert.notStrictEqual(user, null, "Failed locating test user as root")
-        user = await Logger.DBHelper.FindByUsername("testuser", testConfig.userToken, null);
+        user = await Logger.DBHelper.FindByUsername(testConfig.testUser.username, testConfig.userToken, null);
         assert.notStrictEqual(user, null, "Failed locating test user as self")
         user = await Logger.DBHelper.FindByUsername(null, Crypt.rootToken(), null);
         assert.strictEqual(user, null, "Returned user with null as username")

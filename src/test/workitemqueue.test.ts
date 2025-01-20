@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
         if (!this.socket) this.socket = new WebSocketClient(null, "ws://localhost:" + Config.port, true);
         this.socket.agent = "test-cli";
         await this.socket.Connect();
-        await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser" });
+        await NoderedUtil.SigninWithUsername({ username: testConfig.testUser.username, password: testConfig.testPassword });
     }
     @timeout(5000)
     async after() {

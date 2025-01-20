@@ -14,11 +14,11 @@ import { testConfig } from "./testConfig.js";
     }
     @test async "reload"() {
         await Audit.LoginSuccess(testConfig.testUser, "local", "local", "127.0.0.1", "test", Config.version, null);
-        await Audit.LoginFailed("testuser", "local", "local", "127.0.0.1", "test", Config.version, null);
+        await Audit.LoginFailed(testConfig.testUser.username, "local", "local", "127.0.0.1", "test", Config.version, null);
         await Audit.ImpersonateSuccess(testConfig.testUser, Crypt.rootUser(), "test", Config.version, null);
         await Audit.ImpersonateFailed(testConfig.testUser, Crypt.rootUser(), "test", Config.version, null);
-        await Audit.NoderedAction(testConfig.testUser, true, "testuser", "createdeployment", "openiap/nodered", "testuser", null);
-        await Audit.NoderedAction(testConfig.testUser, true, "testuser", "deletedeployment", "openiap/nodered:latest", "testuser", null);
+        await Audit.NoderedAction(testConfig.testUser, true, testConfig.testUser.username, "createdeployment", "openiap/nodered", testConfig.testUser.username, null);
+        await Audit.NoderedAction(testConfig.testUser, true, testConfig.testUser.username, "deletedeployment", "openiap/nodered:latest", testConfig.testUser.username, null);
         await new Promise(resolve => { setTimeout(resolve, 1000) })
     }
 }

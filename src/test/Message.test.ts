@@ -38,7 +38,7 @@ import { testConfig } from "./testConfig.js";
         await msg.SelectCustomer(null);
     }
     // @test async "signin with username and password"() {
-    //     var q = new SigninMessage(); q.username = "testuser"; q.password = "testuser"
+    //     var q = new SigninMessage(); q.username = testConfig.testUser.username; q.password = testConfig.testUserPassword
     //     var msg = new Message();
     //     await msg.Signin(null, null);
     //     q = JSON.parse(msg.data);

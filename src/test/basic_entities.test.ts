@@ -13,7 +13,7 @@ import { testConfig } from "./testConfig.js";
         this.socket.agent = "test-cli";
         try {
             await this.socket.Connect();
-            await NoderedUtil.SigninWithUsername({ username: "testuser", password: "testuser" });
+            await NoderedUtil.SigninWithUsername({ username: testConfig.testUser.username, password: testConfig.testPassword });
         } catch (error) {
             if (error == null) error = new Error("Failed connecting to ws://localhost:" + Config.port)
             throw error;
