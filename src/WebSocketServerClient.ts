@@ -629,7 +629,13 @@ export class WebSocketServerClient {
     }
     public chunkString(str: string, length: number): string[] | null {
         if (Util.IsNullEmpty(str)) { return null; }
-        return str.match(new RegExp(".{1," + length + "}", "g"));
+        const chunks: string[] = [];
+        for (let i = 0; i < str.length; i += length) {
+            chunks.push(str.substring(i, i + length));
+        }
+        return chunks;
+        // if (Util.IsNullEmpty(str)) { return null; }
+        // return str.match(new RegExp(".{1," + length + "}", "g"));
     }
     async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<any[]> {
         const d: any = JSON.parse(data);
