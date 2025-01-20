@@ -58,7 +58,14 @@ export class HouseKeeping {
           Logger.instanse.error(error, span, { cls: "Housekeeping", func: "runInstanceCleanup" });
         }
         const jwt: string = Crypt.rootToken();
-        var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: { _type: "agent", "autostart": true }, jwt }, span);
+
+        const resource: Resource = await Config.db.GetResource("Agent Instance", span);
+        let agentquery = { _type: "agent", "autostart": true };
+        if(resource != null) {
+          agentquery["stripeprice"] = {"$exists": true, "$ne": ""};
+        }
+
+        var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: agentquery, jwt }, span);
         Logger.instanse.debug("HouseKeeping ensure " + agents.length + " agents", span, { cls: "Housekeeping", func: "runInstanceCleanup" });
 
         for (let i = 0; i < agents.length; i++) {
