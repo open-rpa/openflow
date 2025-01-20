@@ -89,8 +89,9 @@ export class WebSocketServer {
                     }
                     keys = Object.keys(p_all);
                     keys.forEach(key => {
-                        if (p_all[key] > 0) {
-                            res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
+                        res.observe(p_all[key], { ...Logger.otel.defaultlabels, agent: key })
+                        if (p_all[key] == 0) {
+                            delete p_all[key];
                         }
                     });
                 });
