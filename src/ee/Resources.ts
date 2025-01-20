@@ -88,7 +88,7 @@ export class Resources {
                 await Resources.CreateResource("Database Usage", ResourceTargetType.customer, null, null, ResourceVariantType.single, null, { dbusage: (1048576 * 25) },
                 [
                     Resources.CreateProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", null, null, ResourceAssignedType.multiple, null, null, { dbusage: (1048576 * 50) }, true, true, 1),
-                    Resources.CreateProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", null, null, ResourceAssignedType.multiple, null, null, { dbusage: (1048576 * 50) }, true, true, 0),
+                    Resources.CreateProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", null, null, ResourceAssignedType.metered, null, null, { dbusage: (1048576 * 50) }, true, true, 0),
                 ], true, true, 1, parent);
 
                 await Resources.CreateResource("Support Agreement", ResourceTargetType.customer, null, null, ResourceVariantType.single, null, {  },
@@ -129,7 +129,7 @@ export class Resources {
                 await Resources.CreateResource("Database Usage", ResourceTargetType.customer, null, null, ResourceVariantType.single, null, { dbusage: (1048576 * 25) },
                 [
                     Resources.CreateProduct("50Mb quota", "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", null, null, ResourceAssignedType.multiple, null, null, { dbusage: (1048576 * 50) }, true, true, 1),
-                    Resources.CreateProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1Jkl6HC2vUMc6gvhXe4asJXW", null, null, ResourceAssignedType.multiple, null, null, { dbusage: (1048576 * 50) }, true, true, 0),
+                    Resources.CreateProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1Jkl6HC2vUMc6gvhXe4asJXW", null, null, ResourceAssignedType.metered, null, null, { dbusage: (1048576 * 50) }, true, true, 0),
                 ], true, true, 1, parent);
                 await Resources.CreateResource("Support Hours", ResourceTargetType.customer, null, null, ResourceVariantType.multiple, null, { },
                 [
@@ -151,7 +151,7 @@ export class Resources {
             await Resources.CreateResource("Database Usage", ResourceTargetType.customer, null, null, ResourceVariantType.single, null, { dbusage: (1048576 * 25) },
                 [
                     Resources.CreateProduct("50Mb quota", "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", null, null, ResourceAssignedType.multiple, null, null, { dbusage: (1048576 * 50) }, true, true, 1),
-                    Resources.CreateProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", null, null, ResourceAssignedType.multiple, null, null, { dbusage: (1048576 * 50) }, true, true, 0),
+                    Resources.CreateProduct("Metered Monthly", "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", null, null, ResourceAssignedType.metered, null, null, { dbusage: (1048576 * 50) }, true, true, 0),
                 ], true, true, 1, parent);
         }
 
