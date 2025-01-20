@@ -271,11 +271,15 @@ export class amqpwrapper extends events.EventEmitter {
         Logger.instanse.error("Exit, reply channel was closed " + msg, null, { cls: "amqpwrapper", func: "reply_queue_close" });
         process.exit(406);
     }
+    setPrefetch(prefetch: number, parent: Span) {
+        Logger.instanse.verbose("Setting prefetch to " + prefetch, parent, { cls: "amqpwrapper", func: "setPrefetch" });
+        this.channel.prefetch(prefetch);
+    }
     async AddReplyQueue(parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("AddReplyQueue", parent);
         try {
             this.channel = await this.conn.createConfirmChannel();
-            this.channel.prefetch(Config.amqp_prefetch);
+            this.setPrefetch(Config.amqp_prefetch, span);
             this.replyqueue = await this.AddQueueConsumer(Crypt.rootUser(), "", null, null, this.reply_queue_message.bind(this), undefined);
             // We don't want to recreate this
             this.queues = this.queues.filter(q => q.consumerTag != this.replyqueue.consumerTag);

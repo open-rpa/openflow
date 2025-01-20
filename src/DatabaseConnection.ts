@@ -414,6 +414,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     discardspan = false;
                     await dbConfig.Reload(Crypt.rootToken(), true, span);
                     try {
+                        amqpwrapper.Instance().setPrefetch(Config.amqp_prefetch, span);
                         await Logger.configure(false, false);
                     } catch (error) {
                         Logger.instanse.error(error, span, { cls: "DatabaseConnection", func: "GlobalWatchCallback" });
@@ -604,7 +605,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            if (!user.HasRoleName(Wellknown.admins.name) && user.username != "testuser") throw new Error("Access denied, droppping collection " + collectionname);
+            if (!user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied, droppping collection " + collectionname);
             if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, dropping reserved collection " + collectionname);
             await this.db.dropCollection(collectionname);
             Audit.AuditCollectionAction(user, "drop", collectionname, true, span);
@@ -634,7 +635,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user == null) throw new Error("Access denied");
             span?.setAttribute("collection", collectionname);
             span?.setAttribute("username", user.username);
-            if (!user.HasRoleName(Wellknown.admins.name) && user.username != "testuser") throw new Error("Access denied, creating collection " + collectionname);
+            if (!user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied, creating collection " + collectionname);
             if (DatabaseConnection.reserved_collection_names.indexOf(collectionname.toLocaleLowerCase()) > -1) throw new Error("Access denied, creating reserved collection " + collectionname);
             delete options.jwt;
             delete options.priority;
