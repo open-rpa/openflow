@@ -4,5 +4,6 @@
             "--proto_path=messages"
         ]
     },
-    "compile-hero.disable-compile-files-on-did-save-code": true
+    "compile-hero.disable-compile-files-on-did-save-code": true,
+    "cmake.ignoreCMakeListsMissing": true
 }
