@@ -6,6 +6,7 @@ export class Wellknown {
     static users = {_id: "5a17f157c4815318c8536c21", name: "users"};
     static robots = {_id: "5ac0850ca538fee1ebdb996c", name: "robots"};
     static customer_admins = {_id: "5a1702fa245d9013697656fc", name: "customer admins"};
+    static workspace_admins = {_id: "5a1702fa245d9013697656fe", name: "workspace admins"};
     static resellers = {_id: "5a1702fa245d9013697656fd", name: "resellers"};
     static nodered_users = {_id: "5a23f18a2e8987292ddbe061", name: "nodered users"};
     static nodered_admins = {_id: "5a17f157c4815318c8536c20", name: "nodered admins"};
