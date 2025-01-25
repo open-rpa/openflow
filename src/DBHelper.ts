@@ -609,13 +609,15 @@ export class DBHelper {
                                 Logger.instanse.silly("also adding (from users roles) " + r.name + " " + r._id, span, {cls: "DBHelper", func: "DecorateWithRoles"});
                             }
                         });
-                        users_results[0].roles2.forEach(r => {
-                            const exists = user.roles.filter(x => x._id == r._id);
-                            if (exists.length == 0) {
-                                user.roles.push(r);
-                                Logger.instanse.silly("also adding (from users roles2) " + r.name + " " + r._id, span, {cls: "DBHelper", func: "DecorateWithRoles"});
-                            }
-                        });
+                        if(users_results[0].roles2 != null) {
+                            users_results[0].roles2.forEach(r => {
+                                const exists = user.roles.filter(x => x._id == r._id);
+                                if (exists.length == 0) {
+                                    user.roles.push(r);
+                                    Logger.instanse.silly("also adding (from users roles2) " + r.name + " " + r._id, span, {cls: "DBHelper", func: "DecorateWithRoles"});
+                                }
+                            });
+                        }
                     }
                 }
                 let hasusers = user.roles.filter(x => x._id == Wellknown.users._id);
