@@ -1627,6 +1627,7 @@ export class LoginProvider {
                                 throw new Error("email is mandatory.");
                             }
                         } else {
+                            UpdateDoc.$set["emailvalidated"] = true;
                             UpdateDoc.$set["validated"] = true;
                             tuser.validated = true;
                         }
