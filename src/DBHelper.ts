@@ -513,41 +513,6 @@ export class DBHelper {
 
     }
     DecorateWithRolesWrap(user, span: Span) {
-        const pipe = [
-            // 1) Limit pipeline to the single user document (by that user’s _id).
-            {
-              $match: {
-                _id: user._id  // Must match exactly (type + value)
-              }
-            },
-            // 2) Recursively find all roles that contain this user, or contain a role that contains this user, etc.
-            {
-              $graphLookup: {
-                from: "users",
-                startWith: "$_id",            // Start searching from the user’s _id
-                connectFromField: "_id",      // Once at a doc, take that doc’s _id
-                connectToField: "members._id",// Find docs that have that _id in their 'members._id'
-                as: "roles",
-                maxDepth: Config.max_recursive_group_depth,
-                restrictSearchWithMatch: {
-                  _type: "role"              // Only follow role docs
-                }
-              }
-            },
-            // 3) (Optional) filter out the user doc’s own fields if you only want roles
-            //    For example, keep user’s name or username, but main focus is the “roles” array
-            {
-              $project: {
-                name: 1,
-                username: 1,
-                "roles._id": 1,
-                "roles.name": 1
-              }
-            }
-          ];
-          return Config.db.aggregate<User>(pipe, "users", Crypt.rootToken(), null, null, false, span);
-    }
-    DecorateWithRolesWrap_old(user, span: Span) {
         Logger.instanse.debug("Add userroles to cache : " + user._id + " " + user.name, span, {cls: "DBHelper", func: "DecorateWithRolesWrap"});
         const pipe: any = [{ "$match": { "_id": user._id } },
         {
@@ -619,85 +584,6 @@ export class DBHelper {
                 const results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap(user, span) });
                 var key = ("userroles_" + Wellknown.users._id).toString().toLowerCase();
                 const users_results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap({ "_id": Wellknown.users._id, "name": Wellknown.users.name }, span) });
-
-                user.roles = [];
-                if(results.length > 0) {
-                    results[0].roles.forEach(r => {
-                        const exists = user.roles.filter(x => x._id == r._id);
-                        if (exists.length == 0 && r._id != user._id) {
-                            user.roles.push(r);
-                            Logger.instanse.silly("adding (from roles) " + r.name + " " + r._id, span, {cls: "DBHelper", func: "DecorateWithRoles"});
-                        }
-                    });
-                }
-                if(users_results.length > 0) {
-                    if (users_results[0].roles.length > 0 && user.username != "guest") {
-                        users_results.forEach(r => {
-                            const exists = user.roles.filter(x => x._id == r._id);
-                            if (exists.length == 0 && r._id != user._id) {
-                                user.roles.push(r);
-                                Logger.instanse.silly("also adding (from users roles) " + r.name + " " + r._id, span, {cls: "DBHelper", func: "DecorateWithRoles"});
-                            }
-                        });
-                    }
-                }
-                let hasusers = user.roles.filter(x => x._id == Wellknown.users._id);
-                if (hasusers.length == 0 && user.username != "guest") {
-                    user.roles.push(new Rolemember(Wellknown.users.name, Wellknown.users._id));
-                    Logger.instanse.verbose("also adding user to users " + Wellknown.users._id, span, {cls: "DBHelper", func: "DecorateWithRoles"});
-                }
-                return user;
-            }
-            let cached_roles = await this.memoryCache.wrap("allroles", () => { return this.DecorateWithRolesAllRolesWrap(span) });
-            if (cached_roles.length === 0 && user.username !== Wellknown.root.name) {
-                throw new Error("System has no roles !!!!!!");
-            }
-            user.roles = [];
-            for (let role of cached_roles) {
-                let isMember: number = -1;
-                if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
-                if (isMember > -1) {
-                    user.roles.push(new Rolemember(role.name, role._id));
-                }
-            }
-            let hasusers = user.roles.filter(x => x._id == Wellknown.users._id);
-            if (hasusers.length == 0 && user.username != Wellknown.guest.name) {
-                user.roles.push(new Rolemember(Wellknown.users.name, Wellknown.users._id));
-            }
-            let updated: boolean = false;
-            do {
-                updated = false;
-                for (let userrole of user.roles) {
-                    for (let role of cached_roles) {
-                        let isMember: number = -1;
-                        if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
-                        if (isMember > -1) {
-                            const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
-                            if (beenAdded === -1) {
-                                user.roles.push(new Rolemember(role.name, role._id));
-                                updated = true;
-                            }
-                        }
-                    }
-                }
-            } while (updated)
-            user.roles.sort((a, b) => a.name.localeCompare(b.name));
-        } finally {
-            Logger.otel.endSpan(span);
-        }
-        return user as any;
-    }
-    public async DecorateWithRoles_old<T extends TokenUser | User>(user: T, parent: Span): Promise<T> {
-        await this.init();
-        const span: Span = Logger.otel.startSubSpan("dbhelper.DecorateWithRoles", parent);
-        try {
-            if (Util.IsNullUndefinded(user)) return null;
-            if (!Config.decorate_roles_fetching_all_roles) {
-                if (!user.roles) user.roles = [];
-                var key = ("userroles_" + user._id).toString().toLowerCase();
-                const results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap_old(user, span) });
-                var key = ("userroles_" + Wellknown.users._id).toString().toLowerCase();
-                const users_results = await this.memoryCache.wrap(key, () => { return this.DecorateWithRolesWrap_old({ "_id": Wellknown.users._id, "name": Wellknown.users.name }, span) });
 
                 if (results.length > 0) {
                     user.roles = [];
