@@ -291,7 +291,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                         if (payload != null) {
-                            Logger.instanse.debug("Send workitem payload '" + payload.name + "' to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null, 
+                            Logger.instanse.debug("Send workitem payload '" + payload.name + "' to client " + (client.username + "/" + client.clientagent + "/" + client.id).trim(), null,
                                 { workflowid: wiq.workflowid, wi: payload._id, name: payload.name, cls: "DatabaseConnection", func: "queuemonitoring" });
                             try {
                                 for (let _y = 0; _y < queueids.length; _y++) {
@@ -440,7 +440,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
             if (Util.IsNullEmpty(item)) item = await this.GetLatestDocumentVersion({ collectionname, id: _id, jwt: Crypt.rootToken() }, null);
             if (Util.IsNullEmpty(item)) {
-                Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname, span, { collection: collectionname, cls: "DatabaseConnection", func: "GlobalWatchCallback" });                return;
+                Logger.instanse.error("Missing fullDocument and could not find historic version for " + _id + " in " + collectionname, span, { collection: collectionname, cls: "DatabaseConnection", func: "GlobalWatchCallback" }); return;
             } else {
                 Logger.instanse.verbose("[" + next.operationType + "] " + _id + " " + item.name, span, { collectionname, cls: "DatabaseConnection", func: "GlobalWatchCallback" });
             }
@@ -818,7 +818,7 @@ export class DatabaseConnection extends events.EventEmitter {
         )
         if (item.members.length != precount) {
             let diff = precount - item.members.length;
-            Logger.instanse.warn("Removed " + diff + " doublicate members from " + item.name, span, { count: diff , cls: "DatabaseConnection", func: "Cleanmembers" });
+            Logger.instanse.warn("Removed " + diff + " doublicate members from " + item.name, span, { count: diff, cls: "DatabaseConnection", func: "Cleanmembers" });
         }
 
         let doadd: boolean = true;
@@ -830,8 +830,8 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         }
         const multi_tenant_skip: string[] = [Wellknown.users._id, Wellknown.filestore_users._id,
-            Wellknown.nodered_api_users._id, Wellknown.nodered_users._id, Wellknown.personal_nodered_users._id,
-            Wellknown.robot_users._id, Wellknown.robots._id, Wellknown.customer_admins._id, Wellknown.resellers._id];
+        Wellknown.nodered_api_users._id, Wellknown.nodered_users._id, Wellknown.personal_nodered_users._id,
+        Wellknown.robot_users._id, Wellknown.robots._id, Wellknown.customer_admins._id, Wellknown.resellers._id];
         if (item._id === Wellknown.users._id && Config.multi_tenant) {
             doadd = false;
         }
@@ -1154,7 +1154,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 arr.push(c as any);
             }
-            if(size > 0) {
+            if (size > 0) {
                 Logger.instanse.debug("Query gave " + arr.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, count: arr.length, cls: "DatabaseConnection", func: "query" });
             }
         } finally {
@@ -1179,7 +1179,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
             Logger.instanse.debug(JSON.stringify(query), span, { collection: collectionname, user: user?.username, ms, count: arr.length, cls: "DatabaseConnection", func: "query" });
         } else {
-            if(arr.length > 0) {
+            if (arr.length > 0) {
                 Logger.instanse.verbose("query gave " + arr.length + " results ", span, { collection: collectionname, user: user?.username, ms, count: arr.length, cls: "DatabaseConnection", func: "query" });
             } else {
                 Logger.instanse.silly("query gave " + arr.length + " results ", span, { collection: collectionname, user: user?.username, ms, count: arr.length, cls: "DatabaseConnection", func: "query" });
@@ -1276,7 +1276,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
             Logger.instanse.debug("Count: " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: result, cls: "DatabaseConnection", func: "count" });
         } else {
-            if(result > 0) {
+            if (result > 0) {
                 Logger.instanse.verbose("count gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result, cls: "DatabaseConnection", func: "count" });
             } else {
                 Logger.instanse.silly("count gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result, cls: "DatabaseConnection", func: "count" });
@@ -1362,7 +1362,7 @@ export class DatabaseConnection extends events.EventEmitter {
         if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
             Logger.instanse.debug("distinct gave " + result.length + " results for query " + JSON.stringify(_query), span, { collection: collectionname, user: user?.username, ms, count: result, cls: "DatabaseConnection", func: "distinct" });
         } else {
-            if(result.length > 0) {
+            if (result.length > 0) {
                 Logger.instanse.verbose("distinct gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result, cls: "DatabaseConnection", func: "distinct" });
             } else {
                 Logger.instanse.silly("distinct gave " + result + " results ", span, { collection: collectionname, user: user?.username, ms, count: result, cls: "DatabaseConnection", func: "distinct" });
@@ -1583,8 +1583,8 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     items.push(c as any);
                 }
-                if(size > 0) {
-                    Logger.instanse.debug("Aggregate gave " + items.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, count: items.length , cls: "DatabaseConnection", func: "aggregate" });
+                if (size > 0) {
+                    Logger.instanse.debug("Aggregate gave " + items.length + " results using " + formatBytes(size) + " memory", span, { collection: collectionname, user: user?.username, count: items.length, cls: "DatabaseConnection", func: "aggregate" });
                 }
             } finally {
                 ms = Logger.otel.endTimer(ot_end, DatabaseConnection.mongodb_aggregate, DatabaseConnection.otel_label(collectionname, user, "aggregate"));
@@ -1596,7 +1596,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (Config.log_database_queries && ms >= Config.log_database_queries_ms) {
                 Logger.instanse.debug(aggregatesjson, span, { collection: collectionname, user: user?.username, ms, count: items.length, cls: "DatabaseConnection", func: "aggregate" });
             } else {
-                if(items.length > 0) {
+                if (items.length > 0) {
                     Logger.instanse.verbose(items.length + " results ", span, { collection: collectionname, user: user?.username, ms, count: items.length, cls: "DatabaseConnection", func: "aggregate" });
                 } else {
                     Logger.instanse.silly(items.length + " results ", span, { collection: collectionname, user: user?.username, ms, count: items.length, cls: "DatabaseConnection", func: "aggregate" });
@@ -1776,7 +1776,7 @@ export class DatabaseConnection extends events.EventEmitter {
             item = this.encryptentity(item) as T;
 
             if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-                if((item as any).newpassword != "") {
+                if ((item as any).newpassword != "") {
                     (item as any).passwordhash = await Crypt.hash((item as any).newpassword);
                 }
                 delete (item as any).newpassword;
@@ -2281,7 +2281,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
-                    if((item as any).newpassword != "") {
+                    if ((item as any).newpassword != "") {
                         user2.passwordhash = await Crypt.hash((item as any).newpassword);
                     }
                     delete (item as any).newpassword;
@@ -2846,7 +2846,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             }
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
-                if((q.item as any).newpassword != "") {
+                if ((q.item as any).newpassword != "") {
                     (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
                 }
                 delete (q.item as any).newpassword;
@@ -3085,7 +3085,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (user.dblocked && !user.HasRoleName(Wellknown.admins.name)) throw new Error("Access denied (db locked) could be due to hitting quota limit for " + user.username);
 
             if (q.collectionname === "users" && q.item._type === "user" && q.item.hasOwnProperty("newpassword")) {
-                if((q.item as any).newpassword != "") {
+                if ((q.item as any).newpassword != "") {
                     (q.item as any).passwordhash = await Crypt.hash((q.item as any).newpassword);
                 }
                 delete (q.item as any).newpassword;
@@ -3394,7 +3394,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (errors.length > 0) {
                 throw errors[0];
             }
-            Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + insert.length + " items and updated " + update.length + " items in database", span, { collection: collectionname, user: user?.username, count: insert.length + update.length , cls: "DatabaseConnection", func: "InsertOrUpdateMany" });
+            Logger.instanse.debug("[" + user.username + "][" + collectionname + "] inserted " + insert.length + " items and updated " + update.length + " items in database", span, { collection: collectionname, user: user?.username, count: insert.length + update.length, cls: "DatabaseConnection", func: "InsertOrUpdateMany" });
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -3604,7 +3604,7 @@ export class DatabaseConnection extends events.EventEmitter {
                             var res = await this.DeleteMany({ "$or": [{ "_createdbyid": doc._id }, { "_modifiedbyid": doc._id }] }, null, collection.name, doc._id, false, jwt, span);
                             // @ts-ignore
                             var timeDiff = ((new Date()) - startTime); //in ms
-                            Logger.instanse.info("Deleted " + res + " items from " + collection.name + " cleaning up after user " + doc.name + " (" + timeDiff + "ms)", span, { collection: collectionname, user: user?.username, count: res , cls: "DatabaseConnection", func: "DeleteOne" });
+                            Logger.instanse.info("Deleted " + res + " items from " + collection.name + " cleaning up after user " + doc.name + " (" + timeDiff + "ms)", span, { collection: collectionname, user: user?.username, count: res, cls: "DatabaseConnection", func: "DeleteOne" });
                         }
 
                     }
@@ -3995,7 +3995,7 @@ export class DatabaseConnection extends events.EventEmitter {
             return this.getbasequery(user, bits, collectionname);
         } else if (user._type == "customer") {
             let customer = user as any as Customer;
-            if(user.roles == null) user.roles = [];
+            if (user.roles == null) user.roles = [];
             user.roles.push(new Rolemember(user.name + " users", customer.users))
             user.roles.push(new Rolemember(user.name + " admins", customer.admins))
             let users = await Logger.DBHelper.FindRoleById(customer.users, Crypt.rootToken(), parent);
@@ -4008,7 +4008,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             for (let i = 0; i < admins.members.length; i++) {
                 const exists = user.roles.filter(x => x._id == admins.members[i]._id);
-                if (exists.length == 0) {
+                if (exists.length == 0 && admins.members[i]._id != Wellknown.customer_admins._id) {
                     user.roles.push(new Rolemember(admins.members[i].name, admins.members[i]._id))
                 }
             }
@@ -4016,7 +4016,7 @@ export class DatabaseConnection extends events.EventEmitter {
 
         } else if (user._type == "workspace") {
             let workspace = user as any as Workspace;
-            if(user.roles == null) user.roles = [];
+            if (user.roles == null) user.roles = [];
             user.roles.push(new Rolemember(user.name + " users", workspace.users))
             user.roles.push(new Rolemember(user.name + " admins", workspace.admins))
             let users = await Logger.DBHelper.FindRoleById(workspace.users, Crypt.rootToken(), parent);
@@ -4029,7 +4029,7 @@ export class DatabaseConnection extends events.EventEmitter {
             }
             for (let i = 0; i < admins.members.length; i++) {
                 const exists = user.roles.filter(x => x._id == admins.members[i]._id);
-                if (exists.length == 0) {
+                if (exists.length == 0 && admins.members[i]._id != Wellknown.workspace_admins._id) {
                     user.roles.push(new Rolemember(admins.members[i].name, admins.members[i]._id))
                 }
 
@@ -4185,8 +4185,12 @@ export class DatabaseConnection extends events.EventEmitter {
             }
         }
         if (item._id === user._id) {
-            if (action === Rights.delete) { Logger.instanse.error("hasAuthorization, cannot delete self!", null, { user: user?.username, 
-                cls: "DatabaseConnection", func: "hasAuthorization" }); return false; };
+            if (action === Rights.delete) {
+                Logger.instanse.error("hasAuthorization, cannot delete self!", null, {
+                    user: user?.username,
+                    cls: "DatabaseConnection", func: "hasAuthorization"
+                }); return false;
+            };
             return true;
         }
 
@@ -4674,6 +4678,24 @@ export class DatabaseConnection extends events.EventEmitter {
                     span?.addEvent("Get indexes for " + collection.name);
                     const indexes = await this.db.collection(collection.name).indexes();
                     const indexnames = indexes.map(x => x.name);
+                    if (DatabaseConnection.collections_with_text_index.indexOf(collection.name) > -1) {
+                        if (DatabaseConnection.usemetadata(collection.name)) {
+                            if (indexnames.indexOf("metadata_searchnames_1") === -1) {
+                                await this.createIndex(collection.name, "metadata_searchnames_1", { "metadata._searchnames": 1 }, null, span)
+                            }
+                            if (indexnames.indexOf("metadata_searchname_1") === -1) {
+                                await this.createIndex(collection.name, "metadata_searchname_1", { "metadata._searchname": 1 }, null, span)
+                            }
+                            //
+                        } else {
+                            if (indexnames.indexOf("_searchnames_1") === -1) {
+                                await this.createIndex(collection.name, "_searchnames_1", { "_searchnames": 1 }, null, span)
+                            }
+                            if (indexnames.indexOf("_searchname_1") === -1) {
+                                await this.createIndex(collection.name, "_searchname_1", { "_searchname": 1 }, null, span)
+                            }
+                        }
+                    }
                     if (collection.name.endsWith("_hist")) {
                         if (indexnames.indexOf("id_1__version_-1") === -1) {
                             await this.createIndex(collection.name, "id_1__version_-1", { "id": 1, "_version": -1 }, null, span)
@@ -4776,8 +4798,11 @@ export class DatabaseConnection extends events.EventEmitter {
                                 if (indexnames.indexOf("_type_1_state_1_wiqid_1_priority_1") === -1) {
                                     await this.createIndex(collection.name, "_type_1_state_1_wiqid_1_priority_1", { "_type": 1, "state": 1, "wiqid": 1, "priority": 1 }, null, span)
                                 }
+                                if (indexnames.indexOf("_type_1_state_1_wiq_1_lastrun_") > -1) {
+                                    await this.deleteIndex(collection.name, "_type_1_state_1_wiq_1_lastrun_", span);
+                                }
                                 if (indexnames.indexOf("_type_1_state_1_wiq_1_lastrun_-1") === -1) {
-                                    await this.createIndex(collection.name, "_type_1_state_1_wiq_1_lastrun_", { "_type": 1, "state": 1, "wiq": 1, "lastrun": -1 }, null, span)
+                                    await this.createIndex(collection.name, "_type_1_state_1_wiq_1_lastrun_-1", { "_type": 1, "state": 1, "wiq": 1, "lastrun": -1 }, null, span)
                                 }
                                 if (indexnames.indexOf("_type_1__created_-1") === -1) {
                                     await this.createIndex(collection.name, "_type_1__created_-1", { "_type": 1, "_created": -1 }, null, span)
