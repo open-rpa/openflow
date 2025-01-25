@@ -18,6 +18,7 @@ export class Workspaces {
         const rootjwt = Crypt.rootToken();
         let workspaceadmins: Role = null;
         let workspaceusers: Role = null;
+        let global_workspaceadmins: Role = null;
         workspace._type = "workspace";
         if (workspace._id != null && workspace._id != "") {
             const _workspace = await Config.db.GetOne<Workspace>({ query: { _id: workspace._id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
@@ -26,6 +27,9 @@ export class Workspaces {
 
         workspaceadmins = await Logger.DBHelper.EnsureUniqueRole(workspace.name + " admins", workspace.admins, parent);
         workspaceusers = await Logger.DBHelper.EnsureUniqueRole(workspace.name + " users", workspace.users, parent);
+        global_workspaceadmins = await Logger.DBHelper.EnsureRole(Wellknown.workspace_admins.name, Wellknown.workspace_admins._id, parent);
+        Base.addRight(workspaceadmins, global_workspaceadmins._id, global_workspaceadmins.name, [Rights.full_control]);
+        workspaceadmins.AddMember(global_workspaceadmins);
         if (workspace._id != null && workspace._id != "") {
             if (!tuser.HasRoleName(Wellknown.admins.name)) {
                 if (!workspaceadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace admins"));
@@ -55,14 +59,14 @@ export class Workspaces {
         Base.addRight(workspace, workspaceusers._id, workspaceusers.name, [Rights.read]);
         workspace.admins = workspaceadmins._id;
         workspace.users = workspaceusers._id;
-        if(workspace.resourceusageid == null || workspace.resourceusageid == "") {
-            if(workspace.productname == null || workspace.productname == "") {
+        if (workspace.resourceusageid == null || workspace.resourceusageid == "") {
+            if (workspace.productname == null || workspace.productname == "") {
                 workspace.productname = "Free tier";
             }
         } else {
-            if(workspace.productname == null || workspace.productname == "") {
+            if (workspace.productname == null || workspace.productname == "") {
                 const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace.resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
-                if(resourceusage != null) {
+                if (resourceusage != null) {
                     workspace.productname = resourceusage.product.name;
                 } else {
                     workspace.resourceusageid = "";
@@ -118,7 +122,7 @@ export class Workspaces {
                 if (!_workspaceadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, _workspace, "User is not a member of the workspace admins"));
             }
         }
-        if(_workspace.resourceusageid != null && _workspace.resourceusageid != "") {
+        if (_workspace.resourceusageid != null && _workspace.resourceusageid != "") {
             throw new Error(Logger.enricherror(tuser, _workspace, "You cannot delete a workspace with a resource usage"));
         }
         await Config.db.DeleteOne(id, "users", false, rootjwt, parent);

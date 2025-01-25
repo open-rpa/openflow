@@ -23,7 +23,7 @@ export class HouseKeeping {
     let rootuser: User = User.assign(Crypt.rootUser());
     const span: Span = Logger.otel.startSubSpan("message.QueueMessage", parent);
     try {
-      Logger.instanse.debug("Ensure Indexes", span, { cls: "Housekeeping", func: "DoHouseKeeping" });
+      await HouseKeeping.ensureBuiltInUsersAndRoles(span);
       await Config.db.ensureindexes(span);
       if (Config.auto_hourly_housekeeping == false) {
         Logger.instanse.debug("HouseKeeping disabled, quit.", span, { cls: "Housekeeping", func: "DoHouseKeeping" });
@@ -34,11 +34,10 @@ export class HouseKeeping {
       await HouseKeeping.removeUnvalidatedUsers(span);
       await HouseKeeping.cleanupOpenRPAInstances(span);
       await HouseKeeping.migrateToTimeseries(rootuser, span);
-      await HouseKeeping.ensureSearchNames(span);
       await HouseKeeping.caclulateSizeAndUsage(skipCalculateSize, span);
       await HouseKeeping.updateUserSizeAndUsage(skipUpdateUserSize, span);
       await HouseKeeping.updateCustomerSizeAndUsage(skipUpdateUserSize, span);
-      await HouseKeeping.ensureBuiltInUsersAndRoles(span);
+      await HouseKeeping.ensureSearchNames(span);
     } catch (error) {
       Logger.instanse.error(error, span, { cls: "Housekeeping", func: "DoHouseKeeping" });
     } finally {
@@ -61,8 +60,8 @@ export class HouseKeeping {
 
         const resource: Resource = await Config.db.GetResource("Agent Instance", span);
         let agentquery = { _type: "agent", "autostart": true };
-        if(resource != null) {
-          agentquery["stripeprice"] = {"$exists": true, "$ne": ""};
+        if (resource != null) {
+          agentquery["stripeprice"] = { "$exists": true, "$ne": "" };
         }
 
         var agents = await Config.db.query<iAgent>({ collectionname: "agents", query: agentquery, jwt }, span);
@@ -134,7 +133,7 @@ export class HouseKeeping {
   private static async cleanupOpenRPAInstances(span: Span) {
     if (Config.housekeeping_cleanup_openrpa_instances == true) {
       Logger.instanse.debug("Begin cleaning up openrpa instances", span, { cls: "Housekeeping", func: "cleanupOpenRPAInstances" });
-      let result = await Config.db.UpdateDocument({ "state": { "$in": ["idle", "running"] } }, 
+      let result = await Config.db.UpdateDocument({ "state": { "$in": ["idle", "running"] } },
         { "$set": { "state": "completed" }, "$unset": { "xml": "" } }, "openrpa_instances", 1, true, Crypt.rootToken(), span);
       if (result.nModified > 0) {
         Logger.instanse.verbose("Updated " + result.nModified + " openrpa instances", span, { cls: "Housekeeping", func: "cleanupOpenRPAInstances" });
@@ -262,6 +261,10 @@ export class HouseKeeping {
     logMemoryUsage("migrateToTimeseries", span);
   }
   private static async ensureSearchNames(span: Span) {
+    if (!Config.ensure_indexes) {
+      Logger.instanse.debug("ensure_indexes is false, skip ensureSearchNames", span, { cls: "Housekeeping", func: "ensureSearchNames" });
+      return;
+    }
     Logger.instanse.debug("Begin ensuring searchnames", span, { cls: "Housekeeping", func: "ensureSearchNames" });
     for (let i = 0; i < DatabaseConnection.collections_with_text_index.length; i++) {
       let collectionname = DatabaseConnection.collections_with_text_index[i];
@@ -942,7 +945,7 @@ export class HouseKeeping {
       Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
     } else if (Config.update_acl_based_on_groups) {
       Base.removeRight(filestore_users, filestore_users._id, [Rights.full_control]);
-      Base.addRight(filestore_users, filestore_users._id,  filestore_users.name, [Rights.read]);
+      Base.addRight(filestore_users, filestore_users._id, filestore_users.name, [Rights.read]);
     }
     await Logger.DBHelper.Save(filestore_users, jwt, span);
 
@@ -964,6 +967,17 @@ export class HouseKeeping {
       Base.removeRight(workitem_queue_users, Wellknown.admins._id, [Rights.full_control]);
     }
     await Logger.DBHelper.Save(workitem_queue_users, jwt, span);
+
+    if (Config.workspace_enabled) {
+      const workspace_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.workspace_admins.name, Wellknown.workspace_admins._id, span);
+      // @ts-ignore
+      workspace_admins.hidemembers = true;
+      Base.addRight(workspace_admins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+      Base.removeRight(workspace_admins, Wellknown.admins._id, [Rights.delete]);
+      Base.removeRight(workspace_admins, Wellknown.workspace_admins._id, [Rights.full_control]);
+      await Logger.DBHelper.Save(workspace_admins, jwt, span);
+
+    }
   }
 }
 const formatBytes = (bytes, decimals = 2) => {
