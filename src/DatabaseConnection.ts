@@ -3545,6 +3545,10 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
                     }
                 }
+                if (collectionname == "agents" && doc._type == "agent") {
+                    const count = await Resources.GetAgentResourcesCount(doc._id, span);
+                    if (count > 0) throw new Error("Access Denied, cannot delete agent with active resourceusage");
+                }
 
                 const _skip_array: string[] = Config.skip_history_collections.split(",");
                 const skip_array: string[] = [];
