@@ -1,12 +1,13 @@
 import { Rights } from "@openiap/nodeapi";
 import { stripe_customer } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Base, Billing, User } from '../commoninterfaces.js';
+import { Base, Billing, Resource, User } from '../commoninterfaces.js';
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { Message } from "../Messages/Message.js";
 import { Wellknown } from "../Util.js";
+import { Resources } from "./Resources.js";
 
 export class Billings {
     public static async EnsureBilling(tuser: User, jwt: string, billing: Billing, parent: Span): Promise<Billing> {
@@ -57,14 +58,8 @@ export class Billings {
             if (!billingadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, billing, "User is not a member of the billing admins"));
         }
         const rootjwt = Crypt.rootToken();
-        let paidworkspace = await Config.db.GetOne({
-            collectionname: "users", query: {
-                _type: "workspace", billing: billingid,
-                productname: { $ne: "Free tier" }
-            }, jwt
-        }, parent);
-        if (paidworkspace != null) throw new Error(Logger.enricherror(tuser, paidworkspace, "There are paid workspaces using this Billing account"));
-
+        const count = await Resources.GetCustomerResourcesCount(billingid, parent);
+        if(count > 0) throw new Error(Logger.enricherror(tuser, billing, "There are resources using this Billing account"));
         await Config.db.DeleteOne(billingadmins._id, "users", false, rootjwt, parent);
         await Config.db.DeleteOne(billingid, "users", false, rootjwt, parent);
     }
