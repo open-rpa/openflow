@@ -112,6 +112,25 @@ export class Logger {
             if (obj.func == "_Housekeeping") {
                 obj.cls = "Housekeeping";
             }
+            const cache = new WeakSet();
+            const circularcheck = (key, value) => {
+                if (typeof value === "object" && value !== null) {
+                    if (cache.has(value)) {
+                        // Circular reference found, skip this value
+                        return;
+                    }
+                    cache.add(value);
+                }
+                return value; // Keep everything else
+            };
+            const stringifyError = function (err, filter, space) {
+                var plainObject = {};
+                Object.getOwnPropertyNames(err).forEach(function (key) {
+                    plainObject[key] = err[key];
+                });
+                return JSON.stringify(plainObject, filter, space);
+            };
+
             if(Logger.otel && Logger.otel.logger) {
                 let severityNumber = logsAPI.SeverityNumber.INFO;
                 if(obj.lvl == level.Warning) { severityNumber = logsAPI.SeverityNumber.WARN; }
@@ -124,9 +143,13 @@ export class Logger {
                 try {
                     if (typeof message === 'string' || message instanceof String) {
                     } else if (message?.message != null) {
-                        message = message.message
+                        delete message.request;
+                        delete message.timings;
+                        message = JSON.parse(stringifyError(message, circularcheck, 2));
                     } else {
-                        message = JSON.stringify(message);
+                        delete message.request;
+                        delete message.timings;
+                        message = JSON.parse(stringifyError(message, circularcheck, 2));
                     }
                 } catch (error) {
                     
@@ -149,14 +172,7 @@ export class Logger {
 
             const { cls, func, message, lvl } = obj;
             if (!Util.IsNullEmpty(func) && span != null && span.isRecording()) {
-                var stringifyError = function (err, filter, space) {
-                    var plainObject = {};
-                    Object.getOwnPropertyNames(err).forEach(function (key) {
-                        plainObject[key] = err[key];
-                    });
-                    return JSON.stringify(plainObject, filter, space);
-                };
-                if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
+                if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, circularcheck, 2));
                 if (lvl == level.Error) {
                     span.setStatus({ code: 2, message: obj.message });
                     span.recordException(message)
@@ -194,17 +210,10 @@ export class Logger {
             } else {
                 console.log(this.prefix(lvl, cls, func, message, obj.collection, obj.user, obj.ms));
             }
-            var stringifyError = function (err, filter, space) {
-                var plainObject = {};
-                Object.getOwnPropertyNames(err).forEach(function (key) {
-                    plainObject[key] = err[key];
-                });
-                return JSON.stringify(plainObject, filter, space);
-            };
             if (Config.log_to_exchange && !Config.unittesting) {
                 if (Util.IsNullEmpty(Logger._hostname)) Logger._hostname = (process.env.HOSTNAME || os.hostname()) || "unknown";
                 if (amqpwrapper.Instance() && amqpwrapper.Instance().connected && amqpwrapper.Instance().of_logger_ready) {
-                    if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, null, 2));
+                    if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, circularcheck, 2));
                     amqpwrapper.Instance().send("openflow_logs", "", { ...obj, host: Logger._hostname }, 500, null, "", span, 1);
                 }
             }
