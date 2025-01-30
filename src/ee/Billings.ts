@@ -8,13 +8,14 @@ import { Logger } from "../Logger.js";
 import { Message } from "../Messages/Message.js";
 import { Wellknown } from "../Util.js";
 import { Resources } from "./Resources.js";
+import { Payments } from "./Payments.js";
 
 export class Billings {
     public static async EnsureBilling(tuser: User, jwt: string, billing: Billing, parent: Span): Promise<Billing> {
         let result: Billing = new Billing();
         if (billing == null) throw new Error("Billing is required");
         if (billing._id != null && billing._id != "") {
-            result = await Config.db.GetOne({ collectionname: "users", query: { _id: tuser._id, _type: "customer" }, jwt }, parent);
+            result = await Config.db.GetOne({ collectionname: "users", query: { _id: billing._id, _type: "customer" }, jwt }, parent);
             if (result == null) throw new Error(Logger.enricherror(tuser, billing, "Billing object not found"));
         }
         const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", result.admins, parent);
@@ -36,16 +37,9 @@ export class Billings {
         result.name = billing.name;
         result.admins = billingadmins._id;
         if (billing.email != null && billing.email != "") result.email = billing.email;
-        if (Config.stripe_api_secret != null && Config.stripe_api_secret != "") {
-            const payload: any = { name: result.name, email: result.email };
-            if (result.stripeid != null && result.stripeid != "") {
-                const stripecustomer = await Message.Stripe<stripe_customer>("PUT", "customers", result.stripeid, payload, null);
-                result.stripeid = stripecustomer.id;
-            } else {
-                const stripecustomer = await Message.Stripe<stripe_customer>("POST", "customers", result.stripeid, payload, null);
-                result.stripeid = stripecustomer.id;
-            }
-        }
+        if (result.email == null || result.email == "") result.email = tuser.email;
+        if (result.email == null || result.email == "") result.email = tuser.username;
+        result.stripeid = await Payments.EnsureCustomer(tuser, result.stripeid, result.name, result.email, parent);
         result = await Config.db.InsertOrUpdateOne(result, "users", "_id", 1, true, rootjwt, parent);
         return result;
     }
@@ -62,6 +56,13 @@ export class Billings {
         if(count > 0) throw new Error(Logger.enricherror(tuser, billing, "There are resources using this Billing account"));
         await Config.db.DeleteOne(billingadmins._id, "users", false, rootjwt, parent);
         await Config.db.DeleteOne(billingid, "users", false, rootjwt, parent);
+    }
+    public static async GetBillingPortalLink(tuser: User, jwt: string, billingid: string, parent: Span): Promise<string> {
+        const billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: billingid, _type: "customer" }, jwt }, parent);
+        if (billing == null) throw new Error(Logger.enricherror(tuser, billing, "Billing object not found"));
+        const session = await Payments.CreateBillingPortalSession(tuser, billing.stripeid, parent);
+        if(session == null) throw new Error(Logger.enricherror(tuser, billing, "Error creating billing portal session"));
+        return session.url;
     }
 
 }

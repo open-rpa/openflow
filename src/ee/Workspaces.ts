@@ -5,6 +5,7 @@ import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { Wellknown } from "../Util.js";
+import { Resources } from "./Resources.js";
 export class Workspaces {
     public static async EnsureWorkspace(tuser: User, jwt: string, workspace: Workspace, parent: Span): Promise<Workspace> {
         if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
@@ -34,6 +35,21 @@ export class Workspaces {
             if (!tuser.HasRoleName(Wellknown.admins.name)) {
                 if (!workspaceadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace admins"));
             }
+            if(workspace._billingid == null || workspace._billingid == "") {
+                const current = await Config.db.GetOne<Workspace>({ query: { _id: workspace._id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+                const resourcecount = await Resources.GetWorkspaceResourcesCount2(current._billingid, workspace._id, parent);
+                if (resourcecount > 0) {
+                    throw new Error(Logger.enricherror(tuser, workspace, "You cannot remove the billing id of a workspace with resources"));
+                }
+            } else {
+                const current = await Config.db.GetOne<Workspace>({ query: { _id: workspace._id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+                if(current._billingid != workspace._billingid) {
+                    const resourcecount = await Resources.GetWorkspaceResourcesCount2(workspace._billingid, workspace._id, parent);
+                    if (resourcecount > 0) {
+                        throw new Error(Logger.enricherror(tuser, workspace, "You cannot change the billing id of a workspace with resources"));
+                    }
+                }
+            }
         } else {
             Base.addRight(workspaceadmins, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
             Base.addRight(workspaceadmins, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
@@ -59,18 +75,18 @@ export class Workspaces {
         Base.addRight(workspace, workspaceusers._id, workspaceusers.name, [Rights.read]);
         workspace.admins = workspaceadmins._id;
         workspace.users = workspaceusers._id;
-        if (workspace.resourceusageid == null || workspace.resourceusageid == "") {
-            if (workspace.productname == null || workspace.productname == "") {
-                workspace.productname = "Free tier";
+        if (workspace._resourceusageid == null || workspace._resourceusageid == "") {
+            if (workspace._productname == null || workspace._productname == "") {
+                workspace._productname = "Free tier";
             }
         } else {
-            if (workspace.productname == null || workspace.productname == "") {
-                const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace.resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
+            if (workspace._productname == null || workspace._productname == "") {
+                const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace._resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
                 if (resourceusage != null) {
-                    workspace.productname = resourceusage.product.name;
+                    workspace._productname = resourceusage.product.name;
                 } else {
-                    workspace.resourceusageid = "";
-                    workspace.productname = "Free tier";
+                    workspace._resourceusageid = "";
+                    workspace._productname = "Free tier";
                     // throw new Error("Resource usage not found");
                 }
             }
@@ -122,8 +138,12 @@ export class Workspaces {
                 if (!_workspaceadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, _workspace, "User is not a member of the workspace admins"));
             }
         }
-        if (_workspace.resourceusageid != null && _workspace.resourceusageid != "") {
-            throw new Error(Logger.enricherror(tuser, _workspace, "You cannot delete a workspace with a resource usage"));
+        // if (_workspace._resourceusageid != null && _workspace._resourceusageid != "") {
+        //     throw new Error(Logger.enricherror(tuser, _workspace, "You cannot delete a workspace with a resource usage"));
+        // }
+        const usagecount = await Resources.GetWorkspaceResourcesCount2(_workspace._billingid, _workspace._id, parent);
+        if (usagecount > 0) {
+            throw new Error(Logger.enricherror(tuser, _workspace, "You cannot delete a workspace with resources"));
         }
         await Config.db.DeleteOne(id, "users", false, rootjwt, parent);
         await Config.db.DeleteOne(_workspace.admins, "users", false, rootjwt, parent);

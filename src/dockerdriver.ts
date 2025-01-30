@@ -213,12 +213,12 @@ export class dockerdriver implements i_agent_driver {
                 Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
             })
             await instance.start();
-            Audit.NoderedAction(user, true, "Created agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
+            Audit.CloudAgentAction(user, true, "Created agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
         } else {
             const container = docker.getContainer(instance.Id);
             if (instance.State != "running") {
                 container.start();
-                Audit.NoderedAction(user, true, "Updated agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
+                Audit.CloudAgentAction(user, true, "Updated agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
             }
 
         }
@@ -240,7 +240,7 @@ export class dockerdriver implements i_agent_driver {
                     if (item.State == "running") await container.stop({ t: 0 });
                     span?.addEvent("remove()");
                     await container.remove();
-                    Audit.NoderedAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
+                    Audit.CloudAgentAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
                 }
             }
         } finally {
@@ -274,7 +274,7 @@ export class dockerdriver implements i_agent_driver {
                 const container = docker.getContainer(instance.Id);
                 var s = await container.logs((logOpts as any) as Docker.ContainerLogsOptions);
                 result = s.toString();
-                Audit.NoderedAction(user, true, "Get agentlog " + agent.name, "getagentlog", agent.image, agent.slug, parent);
+                Audit.CloudAgentAction(user, true, "Get agentlog " + agent.name, "getagentlog", agent.image, agent.slug, parent);
             }
             if (result == null) result = "";
             return result;
@@ -410,7 +410,7 @@ export class dockerdriver implements i_agent_driver {
                     if (item.State == "running") await container.stop({ t: 0 });
                     span?.addEvent("remove()");
                     await container.remove();
-                    Audit.NoderedAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
+                    Audit.CloudAgentAction(user, true, "Removed agent " + agent.name, "removeagent", agent.image, agent.slug, parent);
                 }
             }
         } finally {

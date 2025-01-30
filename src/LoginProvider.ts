@@ -23,6 +23,7 @@ import { TokenRequest } from "./TokenRequest.js";
 import { WebServer } from "./WebServer.js";
 import { Util, Wellknown } from "./Util.js";
 import { Base, FederationId, Role, User } from "./commoninterfaces.js";
+import { Payments } from "./ee/Payments.js";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -180,6 +181,8 @@ export class LoginProvider {
         app.post("/forgotpassword", LoginProvider.post_forgotpassword.bind(this));
         app.get("/loginproviders", LoginProvider.get_loginproviders.bind(this));
         app.get("/download/:id", LoginProvider.get_download.bind(this));
+        app.get("/striperefresh", LoginProvider.get_stripe_refresh.bind(this));
+        app.get("/striperefresh/:id", LoginProvider.get_stripe_refresh.bind(this));
     }
     static async RegisterProviders(app: express.Express, baseurl: string, parent: Span) {
         const span: Span = Logger.otel.startSubSpan("LoginProvider.RegisterProviders", parent);
@@ -1834,6 +1837,29 @@ export class LoginProvider {
             return res.status(500).send({ message: error.message ? error.message : error });
         } finally {
             Logger.otel.endSpan(span);
+        }
+    }
+    static async get_stripe_refresh(req: any, res: any, next: any) {
+        var span = Logger.otel.startSpanExpress("get_stripe_refresh", req);
+        try {
+            if (req == null || (req as any).user == null) {
+                Logger.instanse.error("user is required", span, { cls: "WebServer", func: "get_stripe_refresh" });
+                return res.status(500).json({ "error": "user is required" });
+            }
+            if(req.params == null || req.params.id == null) {
+                Logger.instanse.error("id is required", span, { cls: "WebServer", func: "get_stripe_refresh" });
+                return res.status(500).json({ "error": "id is required" });
+            }
+            const id = req.params.id;
+            var tuser: User = (req as any).user;
+            await Payments.RefreshStripeCustomer(tuser, id, span);
+            res.redirect("/")
+            return next();
+        } catch (error) {
+            Logger.instanse.error(error, span, { cls: "WebServer", func: "get_stripe_refresh" });
+            return res.status(500).json({ "error": error.message ? error.message : error });
+        } finally {
+            span?.end();
         }
     }
 }

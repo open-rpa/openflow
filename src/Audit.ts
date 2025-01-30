@@ -140,10 +140,10 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
-    public static async NoderedAction(user: User, success: boolean, name: string, type: string, image: string, instancename: string, parent: Span): Promise<void> {
-        const span: Span = Logger.otel.startSubSpan("Audit.NoderedAction", parent);
+    public static async CloudAgentAction(user: User, success: boolean, name: string, type: string, image: string, instancename: string, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CloudAgentAction", parent);
         try {
-            const log: Nodered = new Nodered();
+            const log: Agent = new Agent();
             Base.addRight(log, user._id, user.name, [Rights.read]);
             log.success = success;
             log.type = type;
@@ -166,7 +166,7 @@ export class Audit {
             if (!Util.IsNullEmpty(instancename) && Util.IsNullEmpty(log.name)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span, { cls: "Audit", func: "NoderedAction" });
+            Logger.instanse.error(error, span, { cls: "Audit", func: "CloudAgentAction" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -257,7 +257,7 @@ export class Singin extends Base {
         this._type = "signin";
     }
 }
-export class Nodered extends Base {
+export class Agent extends Base {
     public success: boolean;
     public type: string;
     public userid: string;
@@ -268,7 +268,7 @@ export class Nodered extends Base {
     public instancename: string;
     constructor() {
         super();
-        this._type = "nodered";
+        this._type = "agent";
     }
 }
 export class LicenseKey extends Base {

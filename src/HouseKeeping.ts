@@ -759,7 +759,7 @@ export class HouseKeeping {
                   await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                 }
               }
-            } else if (config.product.customerassign != "metered") {
+            } else if (config.product.assign != "metered") {
               let quota: number = resource.defaultmetadata.dbusage + (config.quantity * config.product.metadata.dbusage);
               if (c.dbusage > quota) {
                 await Config.db.db.collection("users").updateOne({ "_id": c._id }, { $set: { "dblocked": true } });
@@ -774,7 +774,7 @@ export class HouseKeeping {
                   await Config.db.db.collection("users").updateMany({ customerid: c._id, "_type": "user" }, { $set: { "dblocked": false } as any });
                 }
               }
-            } else if (config.product.customerassign == "metered") {
+            } else if (config.product.assign == "metered") {
               let billabledbusage: number = c.dbusage - resource.defaultmetadata.dbusage;
               if (billabledbusage > 0) {
                 const billablecount = Math.ceil(billabledbusage / config.product.metadata.dbusage);

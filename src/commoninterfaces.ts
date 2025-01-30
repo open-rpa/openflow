@@ -150,9 +150,10 @@ export interface iAgent extends iBase {
     docker: boolean;
     assistant: boolean;
     daemon: boolean;
-    billingid: string;
-    resourceusageid: string;
-    productname: string;
+    _billingid: string;
+    _resourceusageid: string;
+    _productname: string;
+    _workspaceid: string;
 constructor();
 }
 export class Rights {
@@ -460,11 +461,11 @@ export class Member extends Base {
     public rejectedon: Date;
 }
 export class Workspace extends Base {
-    public billingid: string;
     public admins: string;
     public users: string;
-    public resourceusageid: string;
-    public productname: string;
+    public _billingid: string;
+    public _resourceusageid: string;
+    public _productname: string;
 }
 export  class Customer extends Base {
     constructor() {
@@ -508,7 +509,8 @@ export class Billing extends Base {
     public billing: string;
     public admins: string;
     public stripeid: string;
-    public workspaceplan: string;
+    public subid: string;
+    public currency: "" | "usd" | "eur" | "dkk";
     // userid: string;
     // email: string;
     // address: string;
@@ -545,11 +547,7 @@ export class Resource extends Base {
         this._type = "resource";
     }
     target: ResourceTargetType;
-    customerassign: ResourceVariantType;
-    workspaceassign: ResourceVariantType;
-    userassign: ResourceVariantType;
-    memberassign: ResourceVariantType;
-    agentassign: ResourceVariantType;
+    assign: ResourceVariantType;
     defaultmetadata: any;
     products: Product[];
     allowdirectassign: boolean;
@@ -560,11 +558,8 @@ export class Product {
     name: string;
     stripeproduct: string;
     stripeprice: string;
-    customerassign: ResourceAssignedType;
-    workspaceassign: ResourceAssignedType;
-    userassign: ResourceAssignedType;
-    memberassign: ResourceAssignedType;
-    agentassign: ResourceAssignedType;
+    lookup_key: string;
+    assign: ResourceAssignedType;
     added_stripeprice: string;
     added_resourceid: string;
     added_quantity_multiplier: number;
@@ -589,7 +584,6 @@ export class ResourceUsage extends Base {
     quantity: number;
     /** "subscription" */
     subid: string;
-    "subscription": any;
     /** "subscription_item" */
     siid: string;
 }
