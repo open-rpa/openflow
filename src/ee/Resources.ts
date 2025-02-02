@@ -1,12 +1,11 @@
+import { Rights } from "@openiap/nodeapi";
+import { stripe_customer, stripe_price, stripe_subscription } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
+import { Base, Billing, Customer, iAgent, Member, Product, Resource, ResourceAssignedType, ResourceTargetType, ResourceUsage, ResourceVariantType, User, Workspace } from '../commoninterfaces.js';
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
-import { Rights } from "@openiap/nodeapi";
-import { Member, Workspace, User, Customer, Billing, Resource, ResourceUsage, ResourceTargetType, ResourceVariantType, Product, Base, iAgent, ResourceAssignedType } from '../commoninterfaces.js';
 import { Util, Wellknown } from "../Util.js";
-import { Message } from "../Messages/Message.js";
-import { stripe_customer, stripe_list, stripe_price, stripe_subscription, stripe_subscription_item } from "@openiap/openflow-api";
 import { Payments } from "./Payments.js";
 
 export class Resources {
@@ -56,6 +55,45 @@ export class Resources {
         model.deprecated = deprecated;
         return model;
     }
+    public static async GetResourceTarget(tuser: User, jwt: string, resourceusage: ResourceUsage, parent: Span): Promise<User | Customer | Member | Workspace | iAgent> {
+        let target: User | Customer | Member | Workspace | iAgent;
+        if (!Util.IsNullEmpty(resourceusage.memberid)) {
+            target = await Config.db.GetOne<Member>({ collectionname: "users", query: { _id: resourceusage.memberid, _type: "member" }, jwt }, parent);
+        } else if (!Util.IsNullEmpty(resourceusage.agentid)) {
+            target = await Config.db.GetOne<iAgent>({ collectionname: "agents", query: { _id: resourceusage.agentid, _type: "agent" }, jwt }, parent);
+        } else if (!Util.IsNullEmpty(resourceusage.userid)) {
+            target = await Config.db.GetOne<User>({ collectionname: "users", query: { _id: resourceusage.userid, _type: "user" }, jwt }, parent);
+        } else if (!Util.IsNullEmpty(resourceusage.workspaceid)) {
+            target = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: resourceusage.workspaceid, _type: "workspace" }, jwt }, parent);
+        } else if (!Util.IsNullEmpty(resourceusage.customerid)) {
+            target = await Config.db.GetOne<iAgent>({ collectionname: "users", query: { _id: resourceusage.customerid, _type: "customer" }, jwt }, parent);
+        }
+        if (target == null) {
+            const rootjwt = Crypt.rootToken();
+            let _id = "unknown";
+            if (!Util.IsNullEmpty(resourceusage.memberid)) {
+                target = await Config.db.GetOne<Member>({ collectionname: "users", query: { _id: resourceusage.memberid, _type: "member" }, jwt: rootjwt }, parent);
+                _id = resourceusage.memberid;
+            } else if (!Util.IsNullEmpty(resourceusage.agentid)) {
+                target = await Config.db.GetOne<iAgent>({ collectionname: "agents", query: { _id: resourceusage.agentid, _type: "agent" }, jwt: rootjwt }, parent);
+                _id = resourceusage.agentid;
+            } else if (!Util.IsNullEmpty(resourceusage.userid)) {
+                target = await Config.db.GetOne<User>({ collectionname: "users", query: { _id: resourceusage.userid, _type: "user" }, jwt: rootjwt }, parent);
+                _id = resourceusage.userid;
+            } else if (!Util.IsNullEmpty(resourceusage.workspaceid)) {
+                target = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: resourceusage.workspaceid, _type: "workspace" }, jwt: rootjwt }, parent);
+                _id = resourceusage.workspaceid;
+            } else if (!Util.IsNullEmpty(resourceusage.customerid)) {
+                target = await Config.db.GetOne<iAgent>({ collectionname: "users", query: { _id: resourceusage.customerid, _type: "customer" }, jwt: rootjwt }, parent);
+                _id = resourceusage.customerid;
+            }
+            if (target != null) throw new Error("Access denied to target");
+            Logger.instanse.warn(resourceusage._id + " ResourceUsage exists, but target " + _id + " does not, so deleting it", parent, { resourceusageid: resourceusage._id, cls: "Resources", func: "GetResourceTarget" });
+            await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
+            await Payments.SyncBillingAccount(tuser, jwt, resourceusage.customerid, parent);
+        }
+        return target;
+    }
     public static async CreateCommonResources(parent: Span) {
         if (Config.stripe_api_key == "pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99") {
             await Resources.CreateResource("Agent Instance", ResourceTargetType.agent, ResourceVariantType.single,
@@ -72,10 +110,10 @@ export class Resources {
                 },
                 [
                     Resources.CreateProduct("Basic (256Mi ram)", "prod_ReVjqIUfPNOX0W", "price_1QlCiKC2vUMc6gvhz97QpaAD", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 0),
-                    Resources.CreateProduct("Basic (256Mi ram) old", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 0),
-                    Resources.CreateProduct("Plus (512Mi ram)", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 1),
-                    Resources.CreateProduct("Premium (1Gi ram)", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 2),
-                    Resources.CreateProduct("Advanced (2Gi ram)", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 3),
+                    Resources.CreateProduct("Basic (256Mi ram) old", "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 1),
+                    Resources.CreateProduct("Plus (512Mi ram)", "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 2),
+                    Resources.CreateProduct("Premium (1Gi ram)", "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 3),
+                    Resources.CreateProduct("Advanced (2Gi ram)", "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 4),
                 ], true, false, 0, parent);
             await Resources.CreateResource("Database Usage", ResourceTargetType.customer, ResourceVariantType.single, { dbusage: (1048576 * 25) },
                 [
@@ -86,23 +124,24 @@ export class Resources {
             await Resources.CreateResource("Support Agreement", ResourceTargetType.customer, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Basic Support", "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "", ResourceAssignedType.single, {}, true, true, 0),
-                ], true, false, 1, parent);
+                ], true, false, 2, parent);
 
             await Resources.CreateResource("Support Hours", ResourceTargetType.customer, ResourceVariantType.multiple, {},
                 [
-                    Resources.CreateProduct("Premium Hours", "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "", ResourceAssignedType.metered, { "supportplan": true }, true, false, 1),
-                    Resources.CreateProduct("Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "", ResourceAssignedType.metered, { "supportplan": true }, true, true, 0),
-                ], true, false, 1, parent);
+                    Resources.CreateProduct("Premium Hours", "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "supporthours_premium_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 1),
+                    Resources.CreateProduct("Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "supporthours_basic_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 2),
+                    Resources.CreateProduct("Old Basic Hours", "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "", ResourceAssignedType.metered, { "supportplan": true }, true, true, 3),
+                ], true, false, 3, parent);
             await Resources.CreateResource("OpenCore License", ResourceTargetType.customer, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Premium License", "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "", ResourceAssignedType.multiple, {}, true, false, 1),
                     Resources.CreateProduct("Premium License Legacy", "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "", ResourceAssignedType.multiple, {}, true, true, 1),
-                ], true, false, 1, parent);
+                ], true, false, 4, parent);
             await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Basic tier", "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
                     Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, true, 1),
-                ], true, false, 1, parent);
+                ], true, false, 5, parent);
 
         } else if (Config.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
             await Resources.CreateResource("Agent Instance", ResourceTargetType.agent, ResourceVariantType.single,
@@ -118,31 +157,32 @@ export class Resources {
                     "agentcount": 1
                 },
                 [
-                    Resources.CreateProduct("Basic (256Mi ram)", "prod_RG5CJC2X3xuVil", "price_1QNZ1mC2vUMc6gvhWxYwPvsN", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 0),
-                    Resources.CreateProduct("Basic (256Mi ram) - Legacy", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 4),
-                    Resources.CreateProduct("Plus (512Mi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 1),
-                    Resources.CreateProduct("Premium (1Gi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 2),
-                    Resources.CreateProduct("Advanced (2Gi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 3),
+                    Resources.CreateProduct("Basic (256Mi ram)", "prod_RG5CJC2X3xuVil", "price_1QNZ1mC2vUMc6gvhWxYwPvsN", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 1),
+                    Resources.CreateProduct("Basic (256Mi ram) - Legacy", "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 2),
+                    Resources.CreateProduct("Plus (512Mi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 3),
+                    Resources.CreateProduct("Premium (1Gi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 4),
+                    Resources.CreateProduct("Advanced (2Gi ram)", "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 5),
                 ], true, false, 0, parent);
             await Resources.CreateResource("Database Usage", ResourceTargetType.customer, ResourceVariantType.single, { dbusage: (1048576 * 25) },
                 [
                     Resources.CreateProduct("50Mb quota", "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", "", ResourceAssignedType.multiple, { dbusage: (1048576 * 50) }, true, true, 1),
-                    Resources.CreateProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1Jkl6HC2vUMc6gvhXe4asJXW", "", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 0),
+                    Resources.CreateProduct("Metered Monthly", "prod_JffpwKLldz2QWN", "price_1Jkl6HC2vUMc6gvhXe4asJXW", "", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 2),
                 ], true, true, 1, parent);
             await Resources.CreateResource("Support Hours", ResourceTargetType.customer, ResourceVariantType.multiple, {},
                 [
-                    Resources.CreateProduct("Premium Hours", "prod_JccNQXT636UNhG", "plan_HFkbfsAs1Yvcly", "", ResourceAssignedType.metered, { "supportplan": true }, false, false, 1)
-                ], false, false, 1, parent);
+                    Resources.CreateProduct("Premium Hours", "prod_JccNQXT636UNhG", "plan_HFkbfsAs1Yvcly", "supporthours_premium_monthly", ResourceAssignedType.metered, { "supportplan": true }, false, false, 1),
+                    Resources.CreateProduct("Basic Hours", "prod_HG1vTqU4c7EaV5", "plan_HG1wBF6yq1O15C", "supporthours_basic_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 2),
+                ], false, false, 2, parent);
             await Resources.CreateResource("OpenCore License", ResourceTargetType.customer, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Premium License", "prod_JccNQXT636UNhG", "to_be_created_premium_license", "", ResourceAssignedType.multiple, {}, true, false, 1),
-                    Resources.CreateProduct("Premium License Legacy", "prod_HFkZ8lKn7GtFQU", "price_1J2KcMC2vUMc6gvhmmsAGo35", "", ResourceAssignedType.multiple, {}, true, false, 1),
-                ], true, false, 1, parent);
+                    Resources.CreateProduct("Premium License Legacy", "prod_HFkZ8lKn7GtFQU", "price_1J2KcMC2vUMc6gvhmmsAGo35", "", ResourceAssignedType.multiple, {}, true, false, 2),
+                ], true, false, 3, parent);
             await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Basic tier", "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, true, 1),
-                ], true, false, 1, parent);
+                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, true, 2),
+                ], true, false, 4, parent);
 
         } else {
             await Resources.CreateResource("Agent Instance", ResourceTargetType.agent, ResourceVariantType.single, { "runtime_hours": 8, "agentcount": 1, "resources": { "limits": { "memory": "225Mi" } } },
@@ -209,7 +249,9 @@ export class Resources {
         if (product == null) throw new Error(Logger.enricherror(tuser, target, "Product is required"));
         if (product.stripeprice == null || product.stripeprice == "") throw new Error(Logger.enricherror(tuser, target, "Product stripeprice is required"));
 
-
+        const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
+        if (billingadmins == null) throw new Error(Logger.enricherror(tuser, target, "Billing admins not found"));
+        if (!tuser.HasRoleName("admins") && !billingadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, target, "User is not a billing admin"));
 
         let remove_usage: ResourceUsage = null;
         const stripecustomer: stripe_customer = await Payments.GetCustomer(tuser, billing.stripeid, parent);
@@ -217,8 +259,8 @@ export class Resources {
         let stripeprice: stripe_price = null;
         const rootjwt = Crypt.rootToken();
         if (Config.stripe_api_secret != null && Config.stripe_api_secret != "") {
+            await Payments.CleanupPendingBillingAcountUsage(billingid, parent);
             if (stripecustomer == null) throw new Error(Logger.enricherror(tuser, target, "Stripe customer associated with billing not found"));
-            await Payments.CleanupPendingUsage(billingid, parent);
             if (stripesubscription != null && (stripesubscription as any).status != "active") {
                 throw new Error(Logger.enricherror(tuser, target, "Stripe subscription " + billing.subid + " is not active"));
             }
@@ -395,15 +437,12 @@ export class Resources {
         }
         let link = "";
         if (Config.stripe_api_secret != null && Config.stripe_api_secret != "") {
-            if (stripesubscription == null) {
-                // const paymentmethods = await Payments.GetPaymentMethods(tuser, stripecustomer.id, parent);
-                // if(paymentmethods == null || paymentmethods.length == 0) {               
-                //     const checkout = await Payments.CreateCheckoutSession(tuser, billingid, stripecustomer.id, result, parent);
-                //     link = checkout.url;
-                //     return { result, link };
-                // } else {
-                //     await Payments.CreateSubscription(tuser, stripecustomer.id, result, parent);
-                // }
+            const methods = await Payments.GetPaymentMethods(tuser, stripecustomer.id, parent);
+            let haspaymentmethod = false;
+            if(methods.length > 0 || (stripecustomer as any)?.invoice_settings?.default_payment_method != null) {
+                haspaymentmethod = true;
+            }
+            if (stripesubscription == null || haspaymentmethod == false) {
                 if ((stripecustomer as any)?.invoice_settings?.default_payment_method == null) {
                     const checkout = await Payments.CreateCheckoutSession(tuser, billingid, stripecustomer.id, result, parent);
                     link = checkout.url;
@@ -412,11 +451,6 @@ export class Resources {
                     await Payments.CreateSubscription(tuser, stripecustomer.id, result, parent);
                 }
             } else {
-                // await Payments.UpdateSubscriptionLines(tuser, stripecustomer.id, stripesubscription.id, result, parent);
-                // if (remove_usage != null) {
-                //     await Payments.RemoveSubscriptionLine(tuser, stripecustomer.id, stripesubscription.id, remove_usage.siid, parent);
-                //     await Config.db.DeleteOne(remove_usage._id, "config", false, rootjwt, parent);
-                // }
                 if (remove_usage != null) {
                     remove_usage.quantity--;
                     if (remove_usage.quantity == 0) {
@@ -442,6 +476,29 @@ export class Resources {
         }
         return { result, link };
     }
+    public static async ReportResourceUsage(tuser: User, jwt: string,
+        resourceusageid: string,
+        quantity: number,
+        parent: Span): Promise<void> {
+        if (resourceusageid == null || resourceusageid == "") throw new Error("ResourceUsageid is required");
+        if (quantity == 0) return;
+        let resourceusage = await Config.db.GetOne<ResourceUsage>({ collectionname: "config", query: { _id: resourceusageid, _type: "resourceusage" }, jwt }, parent);
+        if (resourceusage == null) throw new Error(Logger.enricherror(tuser, null, "ResourceUsage not found or access denied"));
+        const billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: resourceusage.customerid, _type: "customer" }, jwt }, parent);
+        if (billing == null) throw new Error(Logger.enricherror(tuser, null, "Billing not found"));
+
+        let target = await this.GetResourceTarget(tuser, jwt, resourceusage, parent);
+        if(target == null) return;
+
+        const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
+        if (billingadmins == null) throw new Error(Logger.enricherror(tuser, target, "Billing admins not found"));
+        if (!tuser.HasRoleName("admins") && !billingadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, target, "User is not a billing admin"));
+
+        await Payments.ReportMeterUsage(tuser, jwt, resourceusage, quantity, parent);        
+        const timestamp = parseInt((new Date().getTime() / 1000).toFixed(0))
+        const payload: any = { quantity, timestamp, resourceusageid, customerid: billing._id, resourcename: resourceusage.name, resourceid: resourceusage.resourceid, productname: resourceusage.product.name, stripeprice: resourceusage.product.stripeprice, target: target._id, targettype: target._type };
+        await Config.db.InsertOne(payload, "resourceusage", 1, true, jwt, parent);
+    }
     public static async RemoveResourceUsage(tuser: User, jwt: string,
         resourceusageid: string, parent: Span): Promise<ResourceUsage> {
         if (resourceusageid == null || resourceusageid == "") throw new Error("ResourceUsageid is required");
@@ -449,19 +506,8 @@ export class Resources {
         let resourceusage = await Config.db.GetOne<ResourceUsage>({ collectionname: "config", query: { _id: resourceusageid, _type: "resourceusage" }, jwt }, parent);
         if (resourceusage == null) throw new Error(Logger.enricherror(tuser, null, "ResourceUsage not found or access denied"));
 
-        let target: User | Customer | Member | Workspace | iAgent;
-        if (!Util.IsNullEmpty(resourceusage.memberid)) {
-            target = await Config.db.GetOne<Member>({ collectionname: "users", query: { _id: resourceusage.memberid, _type: "member" }, jwt }, parent);
-        } else if (!Util.IsNullEmpty(resourceusage.agentid)) {
-            target = await Config.db.GetOne<iAgent>({ collectionname: "agents", query: { _id: resourceusage.agentid, _type: "agent" }, jwt }, parent);
-        } else if (!Util.IsNullEmpty(resourceusage.userid)) {
-            target = await Config.db.GetOne<User>({ collectionname: "users", query: { _id: resourceusage.userid, _type: "user" }, jwt }, parent);
-        } else if (!Util.IsNullEmpty(resourceusage.workspaceid)) {
-            target = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: resourceusage.workspaceid, _type: "workspace" }, jwt }, parent);
-        } else if (!Util.IsNullEmpty(resourceusage.customerid)) {
-            target = await Config.db.GetOne<iAgent>({ collectionname: "users", query: { _id: resourceusage.customerid, _type: "customer" }, jwt }, parent);
-        }
-        if (target == null) throw new Error("Target is required");
+        let target = await this.GetResourceTarget(tuser, jwt, resourceusage, parent);
+        if(target == null) return resourceusage;
 
         if (resourceusage.quantity > 0) resourceusage.quantity -= 1;
         let resource = await Config.db.GetOne<Resource>({ collectionname: "config", query: { _id: resourceusage.resourceid, _type: "resource" }, jwt }, parent);
@@ -493,11 +539,6 @@ export class Resources {
         } else {
             throw new Error(Logger.enricherror(tuser, target, "Target " + target._type + " is not supported"));
         }
-
-        // if (!Util.IsNullEmpty(resourceusage.siid)) {
-        //     const billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: resourceusage.customerid, _type: "customer" }, jwt }, parent);
-        //     await Payments.RemoveSubscriptionLine(tuser, billing.stripeid, resourceusage.subid, resourceusage.siid, parent);
-        // }
         if (resourceusage.quantity < 1) {
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
         } else {
@@ -509,87 +550,67 @@ export class Resources {
         return resourceusage;
     }
     public static async GetUserResources(userid: string, parent: Span) {
+        await Payments.CleanupPendingUserUsage(userid, parent);
         const jwt = Crypt.rootToken();
         const result = Config.db.query<ResourceUsage>({ collectionname: "config", query: { userid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetUserResourcesCount(userid: string, parent: Span) {
+        await Payments.CleanupPendingUserUsage(userid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { userid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
-    public static async RemoveUserResources(userid: string, parent: Span) {
-        const jwt = Crypt.rootToken();
-        const result = await Config.db.DeleteMany({ userid, _type: "resourceusage" }, null, "config", null, false, jwt, parent);
-        return result;
-    }
     public static async GetCustomerResources(customerid: string, parent: Span) {
-        await Payments.CleanupPendingUsage(customerid, parent);
+        await Payments.CleanupPendingBillingAcountUsage(customerid, parent);
         const jwt = Crypt.rootToken();
         const result = Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetCustomerResourcesCount(customerid: string, parent: Span) {
-        await Payments.CleanupPendingUsage(customerid, parent);
+        await Payments.CleanupPendingBillingAcountUsage(customerid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { customerid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetWorkspaceResources(workspaceid: string, parent: Span) {
-        const workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt: Crypt.rootToken() }, parent);
-        if (workspace == null) return [];
-        return this.GetWorkspaceResources2(workspace._billingid, workspaceid, parent);
-    }
-    public static async GetWorkspaceResources2(billingid: string, workspaceid: string, parent: Span) {
-        await Payments.CleanupPendingUsage(billingid, parent);
+        await Payments.CleanupPendingWorkspaceUsage(workspaceid, parent);
         const jwt = Crypt.rootToken();
         let query = { workspaceid, _type: "resourceusage", quantity: { "$gt": 0 } };
         const result = Config.db.query<ResourceUsage>({ collectionname: "config", query, jwt }, parent);
         return result;
     }
     public static async GetWorkspaceResourcesCount(workspaceid: string, parent: Span) {
-        const workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt: Crypt.rootToken() }, parent);
-        if (workspace == null) return 0;
-        return this.GetWorkspaceResourcesCount2(workspace._billingid, workspaceid, parent);
-    }
-    public static async GetWorkspaceResourcesCount2(billingid: string, workspaceid: string, parent: Span) {
-        await Payments.CleanupPendingUsage(billingid, parent);
+        await Payments.CleanupPendingWorkspaceUsage(workspaceid, parent);
         const jwt = Crypt.rootToken();
         let query = { workspaceid, _type: "resourceusage", quantity: { "$gt": 0 } };
         const result = await Config.db.count({ collectionname: "config", query, jwt }, parent);
         return result;
     }
     public static async GetAgentResourcesCount(agentid: string, parent: Span) {
+        await Payments.CleanupPendingAgentUsage(agentid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { agentid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetAgentResources(agentid: string, parent: Span) {
+        await Payments.CleanupPendingAgentUsage(agentid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { agentid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
-    public static async RemoveCustomerResources(customerid: string, parent: Span) {
-        const jwt = Crypt.rootToken();
-        const result = await Config.db.DeleteMany({ customerid, _type: "resourceusage" }, null, "config", null, false, jwt, parent);
-        return result;
-    }
     public static async GetMemberResources(memberid: string, parent: Span) {
+        await Payments.CleanupPendingMemberUsage(memberid, parent);
         const jwt = Crypt.rootToken();
         const result = Config.db.query<ResourceUsage>({ collectionname: "config", query: { memberid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetMemberResourcesCount(memberid: string, parent: Span) {
+        await Payments.CleanupPendingMemberUsage(memberid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { memberid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
-    public static async RemoveMemberResources(memberid: string, parent: Span) {
-        const jwt = Crypt.rootToken();
-        const result = await Config.db.DeleteMany({ memberid, _type: "resourceusage" }, null, "config", null, false, jwt, parent);
-        return result;
-    }
-
     public async GetResource(resourcename: string, parent: Span): Promise<Resource> {
         let _resources: Resource[] = await Logger.DBHelper.GetResources(parent);
         _resources = _resources.filter(x => x.name == resourcename);

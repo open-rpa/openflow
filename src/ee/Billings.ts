@@ -1,14 +1,12 @@
 import { Rights } from "@openiap/nodeapi";
-import { stripe_customer } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Base, Billing, Resource, User } from '../commoninterfaces.js';
+import { Base, Billing, User } from '../commoninterfaces.js';
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
-import { Message } from "../Messages/Message.js";
-import { Wellknown } from "../Util.js";
-import { Resources } from "./Resources.js";
+import { Util, Wellknown } from "../Util.js";
 import { Payments } from "./Payments.js";
+import { Resources } from "./Resources.js";
 
 export class Billings {
     public static async EnsureBilling(tuser: User, jwt: string, billing: Billing, parent: Span): Promise<Billing> {
@@ -39,7 +37,13 @@ export class Billings {
         if (billing.email != null && billing.email != "") result.email = billing.email;
         if (result.email == null || result.email == "") result.email = tuser.email;
         if (result.email == null || result.email == "") result.email = tuser.username;
-        result.stripeid = await Payments.EnsureCustomer(tuser, result.stripeid, result.name, result.email, parent);
+        const stripe_customer = await Payments.EnsureCustomer(tuser, result.stripeid, result.name, result.email, billing.currency, parent);
+        if (stripe_customer != null) {
+            result.stripeid = stripe_customer.id;
+            if (!Util.IsNullEmpty((stripe_customer as any).currency))
+                result.currency = (stripe_customer as any).currency;
+        }
+
         result = await Config.db.InsertOrUpdateOne(result, "users", "_id", 1, true, rootjwt, parent);
         return result;
     }
@@ -53,7 +57,7 @@ export class Billings {
         }
         const rootjwt = Crypt.rootToken();
         const count = await Resources.GetCustomerResourcesCount(billingid, parent);
-        if(count > 0) throw new Error(Logger.enricherror(tuser, billing, "There are resources using this Billing account"));
+        if (count > 0) throw new Error(Logger.enricherror(tuser, billing, "There are resources using this Billing account"));
         await Config.db.DeleteOne(billingadmins._id, "users", false, rootjwt, parent);
         await Config.db.DeleteOne(billingid, "users", false, rootjwt, parent);
     }
@@ -61,7 +65,7 @@ export class Billings {
         const billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: billingid, _type: "customer" }, jwt }, parent);
         if (billing == null) throw new Error(Logger.enricherror(tuser, billing, "Billing object not found"));
         const session = await Payments.CreateBillingPortalSession(tuser, billing.stripeid, parent);
-        if(session == null) throw new Error(Logger.enricherror(tuser, billing, "Error creating billing portal session"));
+        if (session == null) throw new Error(Logger.enricherror(tuser, billing, "Error creating billing portal session"));
         return session.url;
     }
 

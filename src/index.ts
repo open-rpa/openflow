@@ -23,6 +23,7 @@ import { WebServer } from "./WebServer.js";
 import { WebSocketServer } from "./WebSocketServer.js";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { Base, User } from "./commoninterfaces.js";
+import { Payments } from "./ee/Payments.js";
 clog("Done loading imports");
 let amqp: amqpwrapper = null;
 async function initamqp(parent: Span) {
@@ -268,6 +269,7 @@ var server: http.Server = null;
         } catch (error) {
             Logger.instanse.error(error, span, { cls: "index", func: "initDatabase" });
         }
+        Payments.configure(WebServer.app, span);
         Logger.instanse.debug("Configure oauth provider", span, { cls: "index", func: "init" });
         OAuthProvider.configure(WebServer.app, span);
         Logger.instanse.debug("Configure websocket server", span, { cls: "index", func: "init" });

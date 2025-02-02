@@ -15,20 +15,20 @@ import { Base, Customer, iAgent, Product, Resource, ResourceUsage, Rights, Role,
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
+import { Billings } from "../ee/Billings.js";
 import { GitProxy } from "../ee/GitProxy.js";
+import { Payments } from "../ee/Payments.js";
+import { Resources } from "../ee/Resources.js";
+import { Workspaces } from "../ee/Workspaces.js";
 import { HouseKeeping } from "../HouseKeeping.js";
 import { Logger } from "../Logger.js";
 import { LoginProvider } from "../LoginProvider.js";
 import { OAuthProvider } from "../OAuthProvider.js";
 import { QueueClient } from "../QueueClient.js";
 import { SocketMessage } from "../SocketMessage.js";
+import { Util, Wellknown } from "../Util.js";
 import { WebSocketServer } from "../WebSocketServer.js";
 import { WebSocketServerClient } from "../WebSocketServerClient.js";
-import { Workspaces } from "../ee/Workspaces.js";
-import { Resources } from "../ee/Resources.js";
-import { Billings } from "../ee/Billings.js";
-import { Util, Wellknown } from "../Util.js";
-import { Payments } from "../ee/Payments.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -39,11 +39,11 @@ async function handleError(cli: WebSocketServerClient, error: Error, span: Span)
         if (!Util.IsNullUndefinded(WebSocketServer.websocket_errors))
             WebSocketServer.websocket_errors.add(1, { ...Logger.otel.defaultlabels });
         if (Config.socket_rate_limit) await WebSocketServer.ErrorRateLimiter.consume(cli.id);
-        Logger.instanse.error(error, span, {...Logger.parsecli(cli), cls: "Message", func: "handleError" });
+        Logger.instanse.error(error, span, { ...Logger.parsecli(cli), cls: "Message", func: "handleError" });
     } catch (error) {
         if (error.consumedPoints) {
             Logger.instanse.warn("SOCKET_ERROR_RATE_LIMIT: Disconnecing client ! consumedPoints: " + error.consumedPoints + " remainingPoints: " +
-                error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span, {...Logger.parsecli(cli), cls: "Message", func: "handleError" });
+                error.remainingPoints + " msBeforeNext: " + error.msBeforeNext, span, { ...Logger.parsecli(cli), cls: "Message", func: "handleError" });
             cli.devnull = true;
             cli.Close(span);
         }
@@ -229,7 +229,7 @@ export class Message {
                     return false;
                 }
             } catch (error) {
-                if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, {...Logger.parsecli(cli), cls: "Message", func: "EnsureJWT" });
+                if (Config.log_blocked_ips) Logger.instanse.error((error.message ? error.message : error), null, { ...Logger.parsecli(cli), cls: "Message", func: "EnsureJWT" });
                 if (this.command == "signin") {
                     try {
                         var msg = SigninMessage.assign(this.data);
@@ -267,10 +267,10 @@ export class Message {
                 if (!Util.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
                 let command: string = this.command;
                 try {
-                    if(isNaN(Config.socket_rate_limit_points)) Config.socket_rate_limit_points = 1000;
-                    if(isNaN(Config.socket_rate_limit_duration)) Config.socket_rate_limit_points = 1;
+                    if (isNaN(Config.socket_rate_limit_points)) Config.socket_rate_limit_points = 1000;
+                    if (isNaN(Config.socket_rate_limit_duration)) Config.socket_rate_limit_points = 1;
                     if (Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
-                        Logger.instanse.info("Create new socket rate limitter", span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
+                        Logger.instanse.info("Create new socket rate limitter", span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
                         WebSocketServer.BaseRateLimiter = new RateLimiterMemory({
                             points: Config.socket_rate_limit_points,
                             duration: Config.socket_rate_limit_duration,
@@ -318,7 +318,7 @@ export class Message {
                 let process: boolean = true;
                 if (command != "signin" && command != "refreshtoken" && command != "error") {
                     if (!await this.EnsureJWT(cli, true)) {
-                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
+                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
                         process = false;
                         if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
 
@@ -338,7 +338,7 @@ export class Message {
                     if (!await this.EnsureJWT(cli, false)) {
                         this.parseSignAgent(cli, span);
                         if (Config.client_disconnect_signin_error) setTimeout(() => { cli.Close(span); }, 500);
-                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
+                        Logger.instanse.debug("Discard " + command + " due to missing jwt, and respond with error, for client at " + cli.remoteip + " " + cli.clientagent + " " + cli.clientversion, span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
                         process = false;
 
                         if (this.replyto == null || this.replyto == "") {
@@ -631,7 +631,7 @@ export class Message {
                             break;
                         case "watchevent":
                             // why is a client sending a server watchevent ?
-                            Logger.instanse.verbose("recevied unknown WatchEvent from client", span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
+                            Logger.instanse.verbose("recevied unknown WatchEvent from client", span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
                             break;
                         default:
                             if (command != "error") {
@@ -652,9 +652,9 @@ export class Message {
                 }
                 this.data = JSON.stringify({ "message": error.message });
                 if (error.message.indexOf("Not signed in, and missing jwt") > -1) {
-                    Logger.instanse.error(error.message, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
+                    Logger.instanse.error(error.message, span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
                 } else {
-                    Logger.instanse.error(error, span, {...Logger.parsecli(cli), cls: "Message", func: "Process"});
+                    Logger.instanse.error(error, span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
                 }
                 delete this.jwt;
                 delete this.tuser;
@@ -1628,14 +1628,14 @@ export class Message {
             }
             if (!validated) {
                 if (cli.clientagent != "nodered" && Util.IsNullEmpty((tuser as any).impostor)) {
-                    Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, {...Logger.parsecli(cli), cls: "message", func: "DoSignin"});
+                    Logger.instanse.error(new Error(tuser.username + " failed logging in, not validated"), span, { ...Logger.parsecli(cli), cls: "message", func: "DoSignin" });
                     await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
                     tuser = null;
                 }
             }
         }
         if (tuser != null && cli.user != null && cli.user.disabled) {
-            Logger.instanse.error(new Error(tuser.username + " failed logging in, user is disabled"), span, {...Logger.parsecli(cli), cls: "message", func: "DoSignin"});
+            Logger.instanse.error(new Error(tuser.username + " failed logging in, user is disabled"), span, { ...Logger.parsecli(cli), cls: "message", func: "DoSignin" });
             await Audit.LoginFailed(tuser.username, type, "websocket", cli.remoteip, cli.clientagent, cli.clientversion, span);
             tuser = null;
             if (Config.client_disconnect_signin_error) cli.Close(span);
@@ -3078,7 +3078,7 @@ export class Message {
                 url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_record_summaries";
             }
             if (object == "prices" && method == "GET") {
-                if(payload != null && payload.lookup_keys && payload.lookup_keys.length > 0) {
+                if (payload != null && payload.lookup_keys && payload.lookup_keys.length > 0) {
                     url = "https://api.stripe.com/v1/prices?lookup_keys[]=" + payload.lookup_keys.join(",");
                 }
             }
@@ -3088,7 +3088,6 @@ export class Message {
                 if (!Util.IsNullEmpty(id)) {
                     url = "https://api.stripe.com/v1/customers/" + customerid + "/sources/" + id;
                 }
-
             }
             if (object == "invoices_upcoming") {
                 if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
@@ -3146,7 +3145,7 @@ export class Message {
             }
 
             if (method == "GET" && payload != null && payload.customer != null) {
-                if(url.indexOf("?") == -1) {
+                if (url.indexOf("?") == -1) {
                     url += "?customer=" + payload.customer;
                 } else {
                     url += "&customer=" + payload.customer;
@@ -3195,11 +3194,22 @@ export class Message {
             }
             return payload;
         } catch (error) {
-            if(error.response && error.response.body) {
-                throw new Error(error.response.body);
+            if (error.response && error.response.body) {
+                let errorbody = error.response.body;
+                Logger.instanse.error(errorbody, null, { cls: "Message", func: "Stripe", method, object, id, payload, customerid });
+                try {
+                    const errorobj = JSON.parse(errorbody);
+                    if (errorobj.message) {
+                        errorbody = errorobj.message;
+                    } else if (errorobj.error && errorobj.error.message) {
+                        errorbody = errorobj.error.message;
+                    }
+                } catch (error) {
+                }
+                throw new Error(errorbody);
             } else {
                 throw error;
-            }            
+            }
         }
     }
     async StripeMessage(cli: WebSocketServerClient) {
@@ -4091,6 +4101,17 @@ export class Message {
                         }
                         wi.files = wi.files.filter(x => x.name != file.filename);
                     }
+                } else {
+                    // const updatedoc = { "$set": {} };
+                    // updatedoc.$set["metadata.wi"] = wi._id;
+                    // updatedoc.$set["metadata.wiq"] = wiq.name;
+                    // updatedoc.$set["metadata.wiqid"] = wiq._id;
+                    // updatedoc.$set["metadata.uniquename"] = wiq._id;
+                    // (metadata as any).wi = wi._id;
+                    // (metadata as any).wiq = wiq.name;
+                    // (metadata as any).wiqid = wiq._id;
+                    // (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(file.filename);
+
                 }
                 if (Util.IsNullUndefinded(file.file) || file.file.length == 0) continue;
                 try {
@@ -4910,13 +4931,13 @@ export class Message {
                 msg.result = await Billings.RemoveBilling(this.tuser, this.jwt, msg.id, parent);
                 break;
             case "createcommonresources":
-                if(!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
+                if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
                 await Resources.CreateCommonResources(parent);
                 break;
             case "createresourceusage":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
-                msg.result = await Resources.CreateResourceUsage(this.tuser, this.jwt, 
+                msg.result = await Resources.CreateResourceUsage(this.tuser, this.jwt,
                     data.target, data.billingid, data.workspaceid, data.resourceid, data.productname, data.allowreplace, parent);
                 break;
             case "removeresourceusage":
@@ -4934,6 +4955,12 @@ export class Message {
                 break;
             case "syncbillingaccount":
                 msg.result = await Payments.SyncBillingAccount(this.tuser, this.jwt, msg.id, parent);
+                break;
+            case "reportresourceusage":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                const quantity = parseInt(data.quantity);
+                msg.result = await Resources.ReportResourceUsage(this.tuser, this.jwt, msg.id, quantity, parent);
                 break;
             case "getbillingportallink":
                 msg.result = await Billings.GetBillingPortalLink(this.tuser, this.jwt, msg.id, parent);

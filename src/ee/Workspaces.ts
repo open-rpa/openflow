@@ -1,6 +1,6 @@
 import { Base, Rights } from "@openiap/nodeapi";
-import { Member, Customer, Workspace, Role, User, ResourceUsage } from "../commoninterfaces.js";
 import { Span } from "@opentelemetry/api";
+import { Customer, Member, Role, User, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
@@ -35,16 +35,18 @@ export class Workspaces {
             if (!tuser.HasRoleName(Wellknown.admins.name)) {
                 if (!workspaceadmins.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace admins"));
             }
-            if(workspace._billingid == null || workspace._billingid == "") {
+            if (workspace._billingid == null || workspace._billingid == "") {
                 const current = await Config.db.GetOne<Workspace>({ query: { _id: workspace._id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
-                const resourcecount = await Resources.GetWorkspaceResourcesCount2(current._billingid, workspace._id, parent);
-                if (resourcecount > 0) {
-                    throw new Error(Logger.enricherror(tuser, workspace, "You cannot remove the billing id of a workspace with resources"));
+                if (current != null && current._billingid != null && current._billingid != "") {
+                    const resourcecount = await Resources.GetWorkspaceResourcesCount(workspace._id, parent);
+                    if (resourcecount > 0) {
+                        throw new Error(Logger.enricherror(tuser, workspace, "You cannot remove the billing id of a workspace with resources"));
+                    }
                 }
             } else {
                 const current = await Config.db.GetOne<Workspace>({ query: { _id: workspace._id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
-                if(current._billingid != workspace._billingid) {
-                    const resourcecount = await Resources.GetWorkspaceResourcesCount2(workspace._billingid, workspace._id, parent);
+                if (current._billingid != workspace._billingid) {
+                    const resourcecount = await Resources.GetWorkspaceResourcesCount(workspace._id, parent);
                     if (resourcecount > 0) {
                         throw new Error(Logger.enricherror(tuser, workspace, "You cannot change the billing id of a workspace with resources"));
                     }
@@ -75,20 +77,23 @@ export class Workspaces {
         Base.addRight(workspace, workspaceusers._id, workspaceusers.name, [Rights.read]);
         workspace.admins = workspaceadmins._id;
         workspace.users = workspaceusers._id;
-        if (workspace._resourceusageid == null || workspace._resourceusageid == "") {
-            if (workspace._productname == null || workspace._productname == "") {
-                workspace._productname = "Free tier";
+        const usage = await Resources.GetWorkspaceResources(workspace._id, parent);
+        if (usage.length > 0) {
+            const resourceusage = usage[0];
+            if (workspace._productname != resourceusage.product.name || workspace._resourceusageid != resourceusage._id) {
+                Logger.instanse.warn("Updating workspace " + workspace.name + " (" + workspace._id + ") with correct product (" + resourceusage.product.name + ") and resourceusageid", parent, { cls: "Workspaces", func: "EnsureWorkspace" });
+                workspace._resourceusageid = resourceusage._id;
+                workspace._productname = resourceusage.product.name;
+            }
+            if (workspace._billingid != resourceusage.customerid) {
+                Logger.instanse.warn("Updating workspace " + workspace.name + " (" + workspace._id + ") with correct billingid (" + resourceusage.customerid + ")", parent, { cls: "Workspaces", func: "EnsureWorkspace" });
+                workspace._billingid != resourceusage.customerid
             }
         } else {
-            if (workspace._productname == null || workspace._productname == "") {
-                const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace._resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
-                if (resourceusage != null) {
-                    workspace._productname = resourceusage.product.name;
-                } else {
-                    workspace._resourceusageid = "";
-                    workspace._productname = "Free tier";
-                    // throw new Error("Resource usage not found");
-                }
+            if (workspace._productname != "Free tier" || workspace._resourceusageid != "") {
+                Logger.instanse.warn("Workspace " + workspace._id + " had resourceusageid " + workspace._resourceusageid + " that no longer exists, downgrade to basic tier ", parent, { cls: "Workspaces", func: "EnsureWorkspace" });
+                workspace._resourceusageid = "";
+                workspace._productname = "Free tier";
             }
         }
         const result = await Config.db.InsertOrUpdateOne(workspace, "users", "_id", 1, true, rootjwt, parent);
@@ -141,7 +146,7 @@ export class Workspaces {
         // if (_workspace._resourceusageid != null && _workspace._resourceusageid != "") {
         //     throw new Error(Logger.enricherror(tuser, _workspace, "You cannot delete a workspace with a resource usage"));
         // }
-        const usagecount = await Resources.GetWorkspaceResourcesCount2(_workspace._billingid, _workspace._id, parent);
+        const usagecount = await Resources.GetWorkspaceResourcesCount(_workspace._id, parent);
         if (usagecount > 0) {
             throw new Error(Logger.enricherror(tuser, _workspace, "You cannot delete a workspace with resources"));
         }

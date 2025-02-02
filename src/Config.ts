@@ -286,6 +286,7 @@ export class Config {
         stripe_force_vat: false,
         stripe_force_checkout: false,
         stripe_allow_promotion_codes: true,
+        stripe_log_eventhook: true,
 
         ensure_indexes: true,
         text_index_name_fields: ["name", "_names"],
@@ -584,6 +585,7 @@ export class Config {
     public static stripe_force_vat: boolean = Config.parseBoolean(Config.getEnv("stripe_force_vat"));
     public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout"));
     public static stripe_allow_promotion_codes: boolean = Config.parseBoolean(Config.getEnv("stripe_allow_promotion_codes"));
+    public static stripe_log_eventhook: boolean = Config.parseBoolean(Config.getEnv("stripe_log_eventhook"));
 
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes"));
     public static text_index_name_fields: string[] = Config.parseArray(Config.getEnv("text_index_name_fields"));
