@@ -4954,7 +4954,7 @@ export class Message {
                 msg.result = await Resources.GetWorkspaceResources(msg.id, parent);
                 break;
             case "syncbillingaccount":
-                msg.result = await Payments.SyncBillingAccount(this.tuser, this.jwt, msg.id, parent);
+                msg.result = await Payments.PushBillingAccount(this.tuser, this.jwt, msg.id, parent);
                 break;
             case "reportresourceusage":
                 // @ts-ignore

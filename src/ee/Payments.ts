@@ -179,27 +179,39 @@ export class Payments {
             throw new Error(Logger.enricherror(tuser, null, "Failed get stripe payment methods (" + error.message + ")"));
         }
     }
+    public static async GetSubscriptions(tuser: User, stripeid: string, parent: Span): Promise<stripe_subscription[]> {
+        if (Util.IsNullEmpty(Config.stripe_api_secret)) return [];
+        if (Util.IsNullEmpty(stripeid)) return [];
+        try {
+            const result: stripe_subscription[] = [];
+            const stripesubscription = await Message.Stripe<stripe_list<stripe_subscription>>("GET", "subscriptions", null, { customer: stripeid }, stripeid);
+            if (stripesubscription.total_count == 0) return null;
+            for (let i = 0; i < stripesubscription.data.length; i++) {
+                const sub: any = stripesubscription.data[i];
+                if (sub.customer == stripeid) {
+                    if (sub.status == "active") result.push(sub);
+                }
+            }
+            return result;
+        } catch (error) {
+            Logger.instanse.error(error, parent, { cls: "Payments", func: "GetSubscriptions", stripeid });
+            throw new Error(Logger.enricherror(tuser, null, "Stripe customer " + stripeid + " not found (" + error.message  + ")"));
+        }
+    }
     public static async GetSubscription(tuser: User, stripeid: string, subscriptionid: string, parent: Span): Promise<stripe_subscription> {
         if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
-        // if (Util.IsNullEmpty(subscriptionid)) return null;
         if (Util.IsNullEmpty(stripeid)) return null;
         try {
             if (!Util.IsNullEmpty(subscriptionid)) {
                 const stripesubscription = await Message.Stripe<stripe_subscription>("GET", "subscriptions", subscriptionid, null, stripeid);
                 return stripesubscription;
             } else {
-                const stripesubscription = await Message.Stripe<stripe_list<stripe_subscription>>("GET", "subscriptions", null, { customer: stripeid }, stripeid);
-                if (stripesubscription.total_count == 0) return null;
-                for (let i = 0; i < stripesubscription.data.length; i++) {
-                    const sub: any = stripesubscription.data[i];
-                    if (sub.customer == stripeid) {
-                        if (sub.status == "active") return sub;
-                    }
-                }
+                const stripesubscriptions = await this.GetSubscriptions(tuser, stripeid, parent);
+                if(stripesubscriptions.length > 0) return stripesubscriptions[0];
                 return null;
             }
         } catch (error) {
-            Logger.instanse.error(error, parent, { cls: "Payments", func: "GetSubscription", stripe_subscription: subscriptionid, stripe_customer: stripeid });
+            Logger.instanse.error(error, parent, { cls: "Payments", func: "GetSubscription", subscriptionid, stripeid });
             throw new Error(Logger.enricherror(tuser, null, "Stripe subscription " + subscriptionid + " not found"));
         }
     }
@@ -463,7 +475,7 @@ export class Payments {
             throw new Error(Logger.enricherror(tuser, null, "Pull stripe billing account failed (" + error.message + ")"));
         }
     }
-    public static async SyncBillingAccount(tuser: User, jwt: string, billingid: string, parent: Span): Promise<void> {
+    public static async PushBillingAccount(tuser: User, jwt: string, billingid: string, parent: Span): Promise<void> {
         if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
         try {
             const rootjwt = Crypt.rootToken();

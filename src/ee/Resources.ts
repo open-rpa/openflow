@@ -90,7 +90,7 @@ export class Resources {
             if (target != null) throw new Error("Access denied to target");
             Logger.instanse.warn(resourceusage._id + " ResourceUsage exists, but target " + _id + " does not, so deleting it", parent, { resourceusageid: resourceusage._id, cls: "Resources", func: "GetResourceTarget" });
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
-            await Payments.SyncBillingAccount(tuser, jwt, resourceusage.customerid, parent);
+            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
         }
         return target;
     }
@@ -140,7 +140,7 @@ export class Resources {
             await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Basic tier", "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, true, 1),
+                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, false, 1),
                 ], true, false, 5, parent);
 
         } else if (Config.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
@@ -181,7 +181,7 @@ export class Resources {
             await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Basic tier", "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, true, 2),
+                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, false, 2),
                 ], true, false, 4, parent);
 
         } else {
@@ -200,7 +200,7 @@ export class Resources {
             await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
                 [
                     Resources.CreateProduct("Basic tier", "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, true, 1),
+                    Resources.CreateProduct("Enterprise tier", "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, false, 1),
                 ], true, false, 1, parent);
         }
         const usages = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { _type: "resourceusage" }, jwt: Crypt.rootToken() }, parent);
@@ -255,15 +255,11 @@ export class Resources {
 
         let remove_usage: ResourceUsage = null;
         const stripecustomer: stripe_customer = await Payments.GetCustomer(tuser, billing.stripeid, parent);
-        const stripesubscription: stripe_subscription = await Payments.GetSubscription(tuser, stripecustomer?.id, billing.subid, parent);
         let stripeprice: stripe_price = null;
         const rootjwt = Crypt.rootToken();
         if (Config.stripe_api_secret != null && Config.stripe_api_secret != "") {
             await Payments.CleanupPendingBillingAcountUsage(billingid, parent);
             if (stripecustomer == null) throw new Error(Logger.enricherror(tuser, target, "Stripe customer associated with billing not found"));
-            if (stripesubscription != null && (stripesubscription as any).status != "active") {
-                throw new Error(Logger.enricherror(tuser, target, "Stripe subscription " + billing.subid + " is not active"));
-            }
             stripeprice = await Payments.GetPrice(tuser, product.lookup_key, product.stripeprice, parent);
             if (stripeprice == null) throw new Error(Logger.enricherror(tuser, target, "Stripe price " + product.stripeprice + " not found"));
             if (stripeprice.active == false) throw new Error(Logger.enricherror(tuser, target, "Stripe price " + product.stripeprice + " is not active"));
@@ -370,25 +366,34 @@ export class Resources {
         } else {
             model.quantity++;
         }
+
+        let stripesubscription: stripe_subscription = null;
+        const stripesubscriptions = await Payments.GetSubscriptions(tuser, stripecustomer?.id, parent);
         // match price with subscription item, incase something was delete in our database and we are re-adding it
-        if (stripesubscription != null) {
-            model.subid = stripesubscription.id;
-            for (let i = 0; i < stripesubscription.items.data.length; i++) {
-                let item = stripesubscription.items.data[i];
-                if (item.price.id == product.stripeprice) {
+        for(let i = 0; i < stripesubscriptions.length; i++) {
+            let sub = stripesubscriptions[i];
+            for(let j = 0; j < sub.items.data.length; j++) {
+                let item = sub.items.data[j];
+                if(item.price.id == product.stripeprice) {
+                    stripesubscription = sub;
                     model.siid = item.id;
                     break;
                 }
             }
         }
+        if(stripesubscription == null && stripesubscriptions.length > 0) {
+            // if we have subscriptions, but none with a matching item, use the first active subscription ( by default there should never be more than one )
+            stripesubscription = stripesubscriptions[0];
+        }
         Base.addRight(model, billing._id, billing.name + " billing admins", [Rights.read]);
         if (workspaceid != null && workspaceid != "") {
-            let workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt }, parent);
-            if (workspace == null) throw new Error(Logger.enricherror(tuser, target, "Workspace not found or access denied"));
-            model.workspaceid = workspace._id;
-            Base.addRight(model, workspace.admins, workspace.name + " admins", [Rights.read]);
+            if(resource.target != "customer") {
+                let workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt }, parent);
+                if (workspace == null) throw new Error(Logger.enricherror(tuser, target, "Workspace not found or access denied"));
+                model.workspaceid = workspace._id;
+                Base.addRight(model, workspace.admins, workspace.name + " admins", [Rights.read]);
+            }
         }
-
         if (target._type == "user") {
             Base.addRight(model, target._id, target.name, [Rights.read]);
             model.userid = target._id;
@@ -459,7 +464,7 @@ export class Resources {
                         await Config.db.UpdateOne(remove_usage, "config", 1, true, rootjwt, parent);
                     }
                 }
-                await Payments.SyncBillingAccount(tuser, jwt, billingid, parent);
+                await Payments.PushBillingAccount(tuser, jwt, billingid, parent);
             }
         }
         if (target._type == "workspace") {
@@ -545,7 +550,7 @@ export class Resources {
             resourceusage = await Config.db.UpdateOne(resourceusage, "config", 1, true, rootjwt, parent);
         }
         if (!Util.IsNullEmpty(resourceusage.siid)) {
-            await Payments.SyncBillingAccount(tuser, jwt, resourceusage.customerid, parent);
+            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
         }
         return resourceusage;
     }
