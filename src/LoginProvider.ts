@@ -1852,7 +1852,9 @@ export class LoginProvider {
             }
             const id = req.params.id;
             var tuser: User = (req as any).user;
-            await Payments.RefreshStripeCustomer(tuser, id, span);
+            var jwt = await Auth.User2Token(tuser, Config.longtoken_expires_in, span);
+            // await Payments.RefreshStripeCustomer(tuser, id, span);
+            await Payments.PullBillingAccount(tuser, jwt, id, span);
             res.redirect("/")
             return next();
         } catch (error) {

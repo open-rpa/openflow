@@ -37,7 +37,7 @@ export class Billings {
         if (billing.email != null && billing.email != "") result.email = billing.email;
         if (result.email == null || result.email == "") result.email = tuser.email;
         if (result.email == null || result.email == "") result.email = tuser.username;
-        const stripe_customer = await Payments.EnsureCustomer(tuser, result.stripeid, result.name, result.email, billing.currency, parent);
+        const stripe_customer = await Payments.EnsureCustomer(tuser, jwt, result, parent);
         if (stripe_customer != null) {
             result.stripeid = stripe_customer.id;
             if (!Util.IsNullEmpty((stripe_customer as any).currency))

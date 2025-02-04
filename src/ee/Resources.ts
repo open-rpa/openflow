@@ -1,5 +1,5 @@
 import { Rights } from "@openiap/nodeapi";
-import { stripe_customer, stripe_price, stripe_subscription } from "@openiap/openflow-api";
+import { stripe_customer, stripe_list, stripe_price, stripe_subscription } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Base, Billing, Customer, iAgent, Member, Product, Resource, ResourceAssignedType, ResourceTargetType, ResourceUsage, ResourceVariantType, User, Workspace } from '../commoninterfaces.js';
 import { Config } from "../Config.js";
@@ -7,6 +7,7 @@ import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { Util, Wellknown } from "../Util.js";
 import { Payments } from "./Payments.js";
+import { Message } from "../Messages/Message.js";
 
 export class Resources {
     public static async CreateResource(name: string,
@@ -91,6 +92,56 @@ export class Resources {
             Logger.instanse.warn(resourceusage._id + " ResourceUsage exists, but target " + _id + " does not, so deleting it", parent, { resourceusageid: resourceusage._id, cls: "Resources", func: "GetResourceTarget" });
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
             await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
+        }
+        return target;
+    }
+    public static async UpdateResourceTarget<T extends User | Customer | Member | Workspace | iAgent>(tuser: User, jwt: string, resourceusage: ResourceUsage, target: T, removed: boolean, parent: Span): Promise<T> {
+        if (target == null) throw new Error("Target is required");
+        if (resourceusage == null) throw new Error("ResourceUsage is required");
+        const rootjwt = Crypt.rootToken();
+        if (!Util.IsNullEmpty(Config.stripe_api_secret)) {
+            if(resourceusage.siid == null || resourceusage.siid == "") {
+                removed = true;
+            }
+        }
+        if (removed === true) {
+            if (target._type == "workspace") {
+                const workspace = target as Workspace;
+                if(workspace._billingid != "" || workspace._resourceusageid != "" || workspace._productname != "Free tier") {
+                    workspace._billingid = "";
+                    workspace._resourceusageid = "";
+                    workspace._productname = "Free tier";
+                    await Config.db.UpdateOne(target, "users", 1, true, rootjwt, parent);
+                }
+            } else if (target._type == "agent") {
+                const agent = target as iAgent;
+                if( agent._billingid != "" || agent._resourceusageid != "" || agent._productname != "Free tier") {
+                    agent.stripeprice = "";
+                    agent._billingid = "";
+                    agent._resourceusageid = "";
+                    agent._productname = "Free tier";
+                    await Config.db.UpdateOne(target, "agents", 1, true, rootjwt, parent);
+                }
+            }
+        } else {
+            if (target._type == "workspace") {
+                const workspace = target as Workspace;
+                if(workspace._billingid != resourceusage.customerid || workspace._resourceusageid != resourceusage._id || workspace._productname != resourceusage.product.name) {
+                    workspace._billingid = resourceusage.customerid;
+                    workspace._resourceusageid = resourceusage._id;
+                    workspace._productname = resourceusage.product.name;
+                    await Config.db.UpdateOne(target, "users", 1, true, rootjwt, parent);
+                }
+            } else if (target._type == "agent") {
+                const agent = target as iAgent;
+                if( agent._billingid != resourceusage.customerid || agent._resourceusageid != resourceusage._id || agent._productname != resourceusage.product.name) {
+                    agent.stripeprice = resourceusage.product.stripeprice;
+                    agent._billingid = resourceusage.customerid;
+                    agent._resourceusageid = resourceusage._id;
+                    agent._productname = resourceusage.product.name;
+                    await Config.db.UpdateOne(target, "agents", 1, true, rootjwt, parent);
+                }
+            }
         }
         return target;
     }
@@ -467,18 +518,7 @@ export class Resources {
                 await Payments.PushBillingAccount(tuser, jwt, billingid, parent);
             }
         }
-        if (target._type == "workspace") {
-            (target as Workspace)._billingid = billing._id;
-            (target as Workspace)._resourceusageid = resourceusage._id;
-            (target as Workspace)._productname = product.name;
-            await Config.db.UpdateOne(target, "users", 1, true, rootjwt, parent);
-        } else if (target._type == "agent") {
-            (target as iAgent).stripeprice = product.stripeprice;
-            (target as iAgent)._billingid = billing._id;
-            (target as iAgent)._resourceusageid = resourceusage._id;
-            (target as iAgent)._productname = product.name;
-            await Config.db.UpdateOne(target, "agents", 1, true, rootjwt, parent);
-        }
+        await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, false, parent);
         return { result, link };
     }
     public static async ReportResourceUsage(tuser: User, jwt: string,
@@ -503,6 +543,55 @@ export class Resources {
         const timestamp = parseInt((new Date().getTime() / 1000).toFixed(0))
         const payload: any = { quantity, timestamp, resourceusageid, customerid: billing._id, resourcename: resourceusage.name, resourceid: resourceusage.resourceid, productname: resourceusage.product.name, stripeprice: resourceusage.product.stripeprice, target: target._id, targettype: target._type };
         await Config.db.InsertOne(payload, "resourceusage", 1, true, jwt, parent);
+    }
+    public static async GetMeteredResourceUsage(tuser: User, jwt: string,
+        resourceusageid: string,
+        parent: Span): Promise<any> {
+        if (resourceusageid == null || resourceusageid == "") throw new Error("ResourceUsageid is required");
+        let resourceusage = await Config.db.GetOne<ResourceUsage>({ collectionname: "config", query: { _id: resourceusageid, _type: "resourceusage" }, jwt }, parent);
+        if (resourceusage == null) throw new Error(Logger.enricherror(tuser, null, "ResourceUsage not found or access denied"));
+        if (Util.IsNullEmpty(Config.stripe_api_secret)) {
+            const startofcurrentmonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            const timestamp = parseInt((startofcurrentmonth.getTime() / 1000).toFixed(0));
+            const result = await Config.db.query<any>({ collectionname: "resourceusage", query: { resourceusageid, timestamp: { "$gte": timestamp } }, jwt }, parent);
+            let quantity = 0;
+            for (let i = 0; i < result.length; i++) {
+                quantity += result[i].quantity;
+            }
+            return { quantity, result };
+        } else {
+            const price = await Payments.GetPrice(tuser, resourceusage.product.lookup_key, resourceusage.product.stripeprice, parent);
+            if (price == null) throw new Error(Logger.enricherror(tuser, null, "Price not found"));
+            // @ts-ignore
+            const meterid = price.recurring?.meter;
+            if(!Util.IsNullEmpty(meterid)) {
+                const customer = await Config.db.GetOne<Customer>({ collectionname: "users", query: { _id: resourceusage.customerid, _type: "customer" }, jwt }, parent);
+                const subscription = await Payments.GetSubscription(tuser, customer.stripeid, resourceusage.subid, parent);
+                let start_time = (subscription as any)?.current_period_start ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000;
+                let end_time = (subscription as any)?.current_period_end ?? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).getTime() / 1000;
+                // now fix error start_time 1738494596 should be aligned with daily boundaries (expected 1738454400) because the `value_grouping_window` is day."
+                start_time = Math.floor(start_time / 86400) * 86400;
+                end_time = Math.floor(end_time / 86400) * 86400;
+                const summary = await Message.Stripe<stripe_list<any>>("GET", `billing/meters/${meterid}/event_summaries?customer=` + customer.stripeid +
+                    "&start_time=" + start_time + "&end_time=" + end_time + "&value_grouping_window=day", null, null, null);
+                if(summary != null && summary.data.length > 0) {
+                    let quantity = 0;
+                    for(let i = 0; i < summary.data.length; i++) {
+                        if(summary.data[i].aggregated_value != null) {
+                            quantity += summary.data[i].aggregated_value;
+                        }                        
+                    }
+                    return { quantity: quantity, result: summary.data} 
+                }
+                return { quantity: 0, result: null };
+            } else {
+                const summary = await Message.Stripe<stripe_list<any>>("GET", `subscription_items/${resourceusage.siid}/usage_record_summaries`, meterid, null, null);
+                if(summary != null && summary.data.length > 0) {
+                    return { quantity: summary.data[0].total_usage, result: summary.data} 
+                }
+                return { quantity: 0, result: [] };
+            }
+        }
     }
     public static async RemoveResourceUsage(tuser: User, jwt: string,
         resourceusageid: string, parent: Span): Promise<ResourceUsage> {
@@ -530,55 +619,53 @@ export class Resources {
         } else if (target._type == "workspace") {
             if (resource.target != target._type) throw new Error(Logger.enricherror(tuser, target, "Resource is " + resource.target + " and cannot be assigned to a " + target._type));
             if (resourceusage.workspaceid != target._id) throw new Error(Logger.enricherror(tuser, target, "ResourceUsage is not assigned to this workspace"));
-            (target as Workspace)._resourceusageid = null;
-            (target as Workspace)._productname = "Free tier";
-            await Config.db.UpdateOne(target, "users", 1, true, rootjwt, parent);
         } else if (target._type == "agent") {
             if (resource.target != target._type) throw new Error(Logger.enricherror(tuser, target, "Resource is " + resource.target + " and cannot be assigned to a " + target._type));
             if (resourceusage.agentid != target._id) throw new Error(Logger.enricherror(tuser, target, "ResourceUsage is not assigned to this agent"));
-            (target as iAgent).stripeprice = undefined;
-            (target as iAgent)._billingid = undefined;
-            (target as iAgent)._resourceusageid = undefined;
-            (target as iAgent)._productname = "Free tier";
-            await Config.db.UpdateOne(target, "agents", 1, true, rootjwt, parent);
         } else {
             throw new Error(Logger.enricherror(tuser, target, "Target " + target._type + " is not supported"));
+        }        
+        if (!Util.IsNullEmpty(resourceusage.siid)) {
+            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
         }
+        await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, true, parent);
         if (resourceusage.quantity < 1) {
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
         } else {
             resourceusage = await Config.db.UpdateOne(resourceusage, "config", 1, true, rootjwt, parent);
         }
-        if (!Util.IsNullEmpty(resourceusage.siid)) {
-            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
-        }
         return resourceusage;
     }
     public static async GetUserResources(userid: string, parent: Span) {
+        if (userid == null || userid == "") return [];
         await Payments.CleanupPendingUserUsage(userid, parent);
         const jwt = Crypt.rootToken();
         const result = Config.db.query<ResourceUsage>({ collectionname: "config", query: { userid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetUserResourcesCount(userid: string, parent: Span) {
+        if (userid == null || userid == "") return 0;
         await Payments.CleanupPendingUserUsage(userid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { userid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetCustomerResources(customerid: string, parent: Span) {
+        if (customerid == null || customerid == "") throw new Error("Customerid is required");
         await Payments.CleanupPendingBillingAcountUsage(customerid, parent);
         const jwt = Crypt.rootToken();
         const result = Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetCustomerResourcesCount(customerid: string, parent: Span) {
+        if (customerid == null || customerid == "") return 0;
         await Payments.CleanupPendingBillingAcountUsage(customerid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { customerid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetWorkspaceResources(workspaceid: string, parent: Span) {
+        if (workspaceid == null || workspaceid == "") return [];
         await Payments.CleanupPendingWorkspaceUsage(workspaceid, parent);
         const jwt = Crypt.rootToken();
         let query = { workspaceid, _type: "resourceusage", quantity: { "$gt": 0 } };
@@ -586,6 +673,7 @@ export class Resources {
         return result;
     }
     public static async GetWorkspaceResourcesCount(workspaceid: string, parent: Span) {
+        if (workspaceid == null || workspaceid == "") return 0;
         await Payments.CleanupPendingWorkspaceUsage(workspaceid, parent);
         const jwt = Crypt.rootToken();
         let query = { workspaceid, _type: "resourceusage", quantity: { "$gt": 0 } };
@@ -593,30 +681,35 @@ export class Resources {
         return result;
     }
     public static async GetAgentResourcesCount(agentid: string, parent: Span) {
+        if (agentid == null || agentid == "") return 0;
         await Payments.CleanupPendingAgentUsage(agentid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { agentid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetAgentResources(agentid: string, parent: Span) {
+        if (agentid == null || agentid == "") return [];
         await Payments.CleanupPendingAgentUsage(agentid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { agentid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetMemberResources(memberid: string, parent: Span) {
+        if (memberid == null || memberid == "") return [];
         await Payments.CleanupPendingMemberUsage(memberid, parent);
         const jwt = Crypt.rootToken();
         const result = Config.db.query<ResourceUsage>({ collectionname: "config", query: { memberid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public static async GetMemberResourcesCount(memberid: string, parent: Span) {
+        if (memberid == null || memberid == "") return 0;
         await Payments.CleanupPendingMemberUsage(memberid, parent);
         const jwt = Crypt.rootToken();
         const result = await Config.db.count({ collectionname: "config", query: { memberid, _type: "resourceusage", quantity: { "$gt": 0 } }, jwt }, parent);
         return result;
     }
     public async GetResource(resourcename: string, parent: Span): Promise<Resource> {
+        if (resourcename == null || resourcename == "") return null;
         let _resources: Resource[] = await Logger.DBHelper.GetResources(parent);
         _resources = _resources.filter(x => x.name == resourcename);
         if (_resources.length == 0) return null;

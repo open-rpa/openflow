@@ -3184,6 +3184,18 @@ export class Message {
                 payload = JSON.parse(response.body);
             }
             if (method == "DELETE") {
+                if(payload != null) {
+                    if(url.indexOf("?") == -1) {
+                        url += "?";
+                    }
+                    var keys = Object.keys(payload);
+                    for (var i = 0; i < keys.length; i++) {
+                        url += keys[i] + "=" + payload[keys[i]];
+                        if(i < keys.length - 1) {
+                            url += "&";
+                        }
+                    }
+                }
                 const response = await got.delete(url, options);
                 payload = JSON.parse(response.body);
             }
@@ -4961,6 +4973,9 @@ export class Message {
                 var data = JSON.parse(msg.data);
                 const quantity = parseInt(data.quantity);
                 msg.result = await Resources.ReportResourceUsage(this.tuser, this.jwt, msg.id, quantity, parent);
+                break;
+            case "getmeteredresourceusage":
+                msg.result = await Resources.GetMeteredResourceUsage(this.tuser, this.jwt, msg.id, parent);
                 break;
             case "getbillingportallink":
                 msg.result = await Billings.GetBillingPortalLink(this.tuser, this.jwt, msg.id, parent);
