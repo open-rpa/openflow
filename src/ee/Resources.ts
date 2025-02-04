@@ -108,7 +108,6 @@ export class Resources {
             if (target._type == "workspace") {
                 const workspace = target as Workspace;
                 if(workspace._billingid != "" || workspace._resourceusageid != "" || workspace._productname != "Free tier") {
-                    workspace._billingid = "";
                     workspace._resourceusageid = "";
                     workspace._productname = "Free tier";
                     await Config.db.UpdateOne(target, "users", 1, true, rootjwt, parent);
