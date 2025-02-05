@@ -29,6 +29,31 @@ export class Payments {
         "payment_intent.payment_failed",
         "payment_intent.canceled",
     ];
+    private static stripeevents: {stripeid:string, type:string}[] = [];
+    private static stripeeventtimer = null;
+    private static async StipeCallbackDebounce() {
+        do {
+            try {
+                let event = Payments.stripeevents.pop();
+                if(event == null) continue;
+                let billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { stripeid: event.stripeid, _type: "customer" }, jwt: Crypt.rootToken() }, null);
+                if (billing == null && Config.stripe_api_key.indexOf("_test") > -1) { // ugly hack to allow testing using stripe cli
+                    billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: "679f732f6a6ac0523dac2874", _type: "customer" }, jwt: Crypt.rootToken() }, null);
+                    if (billing != null) {
+                        billing.stripeid = event.stripeid;
+                        await Config.db.UpdateOne(billing, "users", 1, true, Crypt.rootToken(), null);
+                    }
+                }
+                if (billing == null) throw new Error("Billing account not found");
+                // await Payments.SyncBillingAccount(Crypt.rootUser(), Crypt.rootToken(), billing._id, parent);
+                Logger.instanse.verbose("Pulling billing account " + billing._id + " for event " + event.type, null, { cls: "Payments", func: "StipeCallbackDebounch" });
+                await Payments.PullBillingAccount(Crypt.rootUser(), Crypt.rootToken(), billing._id, null);
+            } catch (error) {
+                Logger.instanse.error(error, null, { cls: "Payments", func: "StipeCallbackDebounch" });                
+            }
+        } while (Payments.stripeevents.length > 0);
+    }
+
     static async configure(app: express.Express, parent: Span): Promise<void> {
         app.post("/stripeevent/v1", async (req, res, next) => {
             if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
@@ -41,11 +66,14 @@ export class Payments {
                 type = req.body?.type;
                 const object = req.body?.data?.object;
                 if (object == null) throw new Error("No object in stripe event");
+                if(Payments.stripeeventtimer != null) {
+                    clearTimeout(Payments.stripeeventtimer);
+                }
                 stripeid = object.customer;
                 if (!Util.IsNullEmpty(object.description)) name = object.description;
                 if (!Util.IsNullEmpty(object.nickname)) name = object.nickname;
                 if (!Util.IsNullEmpty(object.name)) name = object.name;
-                if (!Util.IsNullEmpty(object.account_name)) name = object.account_name;
+                if (!Util.IsNullEmpty(object.customer_name)) name = object.customer_name;
                 if (type == "payment_method.attached") name = object.customer;
                 if (type == "customer.subscription.created") name = object.customer;
                 if (type == "price.created") name = object.id;
@@ -59,25 +87,22 @@ export class Payments {
                     await Config.db.InsertOne({ ...req.body, name: type + " " + name, _type: "stripeevent", stripeid }, "stripeevent", 1, false, Crypt.rootToken(), parent);
                 }
                 Logger.instanse.debug(JSON.stringify({ ...req.body, name: type + " " + name, _type: "stripeevent", stripeid }), parent, { cls: "Payments", func: "stripeevent", stripeid, type });
-                if (stripeid != null) {
-                    let billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { stripeid, _type: "customer" }, jwt: Crypt.rootToken() }, parent);
-                    if (billing == null && Config.stripe_api_key.indexOf("_test") > -1) {
-                        billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: "679f732f6a6ac0523dac2874", _type: "customer" }, jwt: Crypt.rootToken() }, parent);
-                        if (billing != null) {
-                            billing.stripeid = stripeid;
-                            await Config.db.UpdateOne(billing, "users", 1, true, Crypt.rootToken(), parent);
-                        }
+                if (stripeid != null && stripeid != "") {
+                    if(Payments.stripeevents.find(x => x.stripeid == stripeid) == null) {
+                        Payments.stripeevents.push({ stripeid, type });
                     }
-                    if (billing == null) throw new Error("Billing account not found");
-                    // await Payments.SyncBillingAccount(Crypt.rootUser(), Crypt.rootToken(), billing._id, parent);
-                    await Payments.PullBillingAccount(Crypt.rootUser(), Crypt.rootToken(), billing._id, parent);
+                    if(Payments.stripeeventtimer == null) {
+                        clearTimeout(Payments.stripeeventtimer);
+                    }
+                    Payments.stripeeventtimer = setTimeout(async () => {
+                        Payments.StipeCallbackDebounce();
+                    }, 5000);
                 }
                 res.status(200).send("OK");
             } catch (error) {
                 Logger.instanse.error(error, parent, { cls: "Payments", func: "stripeevent", stripeid, type });
                 res.status(500).send(error.message);
             }
-            console.log(req.body);
         });
     }
     public static async ReportMeterUsage(tuser: User, jwt: string, usage: ResourceUsage, quantity: number, parent: Span): Promise<void> {
@@ -505,9 +530,6 @@ export class Payments {
             for (let i = 0; i < usage.length; i++) {
                 const u = usage[i];
                 const p = products[u.product.stripeprice];
-                if (u.product.stripeprice == "price_1IzISoC2vUMc6gvhMtqTq2Ef") {
-                    var b = true;
-                }
                 if (!Util.IsNullEmpty(u.subid)) {
                     const exists = stripe_subscriptions.find(x => x.id == u.subid);
                     if (exists == null) u.subid = null;
@@ -559,10 +581,16 @@ export class Payments {
                 if (result != null) {
                     for (let i = 0; i < usage.length; i++) {
                         const u = usage[i];
-                        if (u.product.stripeprice == stripe_price && Util.IsNullEmpty(u.siid)) {
+                        if (u.product.stripeprice == stripe_price && Util.IsNullEmpty(u.siid)) {                            
                             u.siid = result.id;
                             u.subid = subscription.id;
-                            await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
+                            if(Util.IsNullEmpty(u.siid) || Util.IsNullEmpty(u.subid)) {
+                                const target = await Resources.GetResourceTarget(tuser, jwt, u, parent);
+                                if (target != null) {
+                                    await Resources.UpdateResourceTarget(tuser, jwt, u, target, false, parent);
+                                    await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
+                                }                        
+                            }
                         }
                     }
                 }

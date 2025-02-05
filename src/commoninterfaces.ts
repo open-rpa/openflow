@@ -132,6 +132,7 @@ export interface iAgent extends iBase {
     webserver: boolean;
     sleep: boolean;
     stripeprice: string;
+    _stripeprice: string;
     runas: string;
     runasname: string;
     environment: any;
@@ -150,7 +151,6 @@ export interface iAgent extends iBase {
     docker: boolean;
     assistant: boolean;
     daemon: boolean;
-    _billingid: string;
     _resourceusageid: string;
     _productname: string;
     _workspaceid: string;

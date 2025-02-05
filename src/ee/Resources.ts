@@ -114,9 +114,9 @@ export class Resources {
                 }
             } else if (target._type == "agent") {
                 const agent = target as iAgent;
-                if( agent._billingid != "" || agent._resourceusageid != "" || agent._productname != "Free tier") {
-                    agent.stripeprice = "";
-                    agent._billingid = "";
+                if( agent._resourceusageid != "" || agent._productname != "Free tier") {
+                    delete agent.stripeprice;
+                    agent._stripeprice = "";
                     agent._resourceusageid = "";
                     agent._productname = "Free tier";
                     await Config.db.UpdateOne(target, "agents", 1, true, rootjwt, parent);
@@ -133,9 +133,9 @@ export class Resources {
                 }
             } else if (target._type == "agent") {
                 const agent = target as iAgent;
-                if( agent._billingid != resourceusage.customerid || agent._resourceusageid != resourceusage._id || agent._productname != resourceusage.product.name) {
-                    agent.stripeprice = resourceusage.product.stripeprice;
-                    agent._billingid = resourceusage.customerid;
+                if( agent._resourceusageid != resourceusage._id || agent._productname != resourceusage.product.name) {
+                    delete agent.stripeprice;
+                    agent._stripeprice = resourceusage.product.stripeprice;
                     agent._resourceusageid = resourceusage._id;
                     agent._productname = resourceusage.product.name;
                     await Config.db.UpdateOne(target, "agents", 1, true, rootjwt, parent);
@@ -287,8 +287,9 @@ export class Resources {
         allowreplace: boolean,
         parent: Span): Promise<{ result: ResourceUsage[], link: string }> {
         if (allowreplace !== true) allowreplace = false;
+        allowreplace = false;
         if (target == null) throw new Error("Target is required");
-        if (billingid == null || billingid == "") throw new Error(Logger.enricherror(tuser, target, "Billing is required"));
+        if (billingid == null || billingid == "") throw new Error(Logger.enricherror(tuser, target, "Billingid is required"));
         let billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: billingid, _type: "customer" }, jwt }, parent);
         if (billing == null) throw new Error(Logger.enricherror(tuser, billing, "Billing not found"));
         if (resourceid == null || resourceid == "") throw new Error(Logger.enricherror(tuser, target, "Resourceid is required"));
@@ -624,14 +625,14 @@ export class Resources {
         } else {
             throw new Error(Logger.enricherror(tuser, target, "Target " + target._type + " is not supported"));
         }        
-        if (!Util.IsNullEmpty(resourceusage.siid)) {
-            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
-        }
         await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, true, parent);
         if (resourceusage.quantity < 1) {
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
         } else {
             resourceusage = await Config.db.UpdateOne(resourceusage, "config", 1, true, rootjwt, parent);
+        }
+        if (!Util.IsNullEmpty(resourceusage.siid)) {
+            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
         }
         return resourceusage;
     }

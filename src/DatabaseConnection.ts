@@ -1852,7 +1852,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
                 if (item._type == "agent") {
                     // @ts-ignore
-                    if (item.autostart == true && Util.IsNullEmpty(item.stripeprice)) {
+                    if (item.autostart == true && Util.IsNullEmpty(item._stripeprice) && Util.IsNullEmpty(item.stripeprice)) {
                         if (!user.HasRoleName(Wellknown.admins.name)) {
                             throw new Error("Access denied");
                         }
@@ -2250,7 +2250,7 @@ export class DatabaseConnection extends events.EventEmitter {
                         }
 
                         // @ts-ignore
-                        if (item.autostart == true && Util.IsNullEmpty(item.stripeprice)) {
+                        if (item.autostart == true && Util.IsNullEmpty(item._stripeprice) && Util.IsNullEmpty(item.stripeprice)) {
                             if (!user.HasRoleName(Wellknown.admins.name)) {
                                 throw new Error("Access denied");
                             }
@@ -2586,7 +2586,7 @@ export class DatabaseConnection extends events.EventEmitter {
                     }
                     if (q.item._type == "agent") {
                         // @ts-ignore
-                        if (original.autostart != q.item.autostart && q.item.autostart == true && Util.IsNullEmpty(q.item.stripeprice)) {
+                        if (original.autostart != q.item.autostart && q.item.autostart == true && Util.IsNullEmpty(q.item._stripeprice)&& Util.IsNullEmpty(q.item.stripeprice)) {
                             if (!user.HasRoleName(Wellknown.admins.name)) {
                                 throw new Error("Access denied");
                             }
