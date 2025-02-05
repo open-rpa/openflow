@@ -355,14 +355,24 @@ export class Payments {
             Logger.instanse.error(error, parent, { cls: "Payments", func: "CreateSubscription", stripeid });
             throw new Error(Logger.enricherror(tuser, null, "Create stripe subscription failed"));
         }
+    }    
+    public static async CleanupPendingLicenseUsage(licenseid: string, parent: Span): Promise<void> {
+        if (Util.IsNullEmpty(licenseid)) return;
+        if (Config.stripe_api_secret == null || Config.stripe_api_secret == "") return;
+        const rootjwt = Crypt.rootToken();
+        const count = await Config.db.DeleteMany({ licenseid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
+        if (count > 0) {
+            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { licenseid, cls: "Payments", func: "CleanupPendingWorkspaceUsage" });
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
     }
     public static async CleanupPendingUserUsage(userid: string, parent: Span): Promise<void> {
         if (Util.IsNullEmpty(userid)) return;
         if (Config.stripe_api_secret == null || Config.stripe_api_secret == "") return;
         const rootjwt = Crypt.rootToken();
-        const count = await Config.db.DeleteMany({ "userid": userid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
+        const count = await Config.db.DeleteMany({ userid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
         if (count > 0) {
-            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { userid: userid, cls: "Payments", func: "CleanupPendingUserUsage" });
+            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { userid, cls: "Payments", func: "CleanupPendingUserUsage" });
             await new Promise(resolve => setTimeout(resolve, 500));
         }
     }
@@ -372,7 +382,7 @@ export class Payments {
         const rootjwt = Crypt.rootToken();
         const count = await Config.db.DeleteMany({ "customerid": billingid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
         if (count > 0) {
-            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { billingid: billingid, cls: "Payments", func: "CleanupPendingBillingAcountUsage" });
+            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { billingid, cls: "Payments", func: "CleanupPendingBillingAcountUsage" });
             await new Promise(resolve => setTimeout(resolve, 500));
         }
     }
@@ -380,9 +390,9 @@ export class Payments {
         if (Util.IsNullEmpty(workspaceid)) return;
         if (Config.stripe_api_secret == null || Config.stripe_api_secret == "") return;
         const rootjwt = Crypt.rootToken();
-        const count = await Config.db.DeleteMany({ "workspaceid": workspaceid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
+        const count = await Config.db.DeleteMany({  workspaceid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
         if (count > 0) {
-            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { workspaceid: workspaceid, cls: "Payments", func: "CleanupPendingWorkspaceUsage" });
+            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { workspaceid, cls: "Payments", func: "CleanupPendingWorkspaceUsage" });
             await new Promise(resolve => setTimeout(resolve, 500));
         }
     }
@@ -390,9 +400,9 @@ export class Payments {
         if (Util.IsNullEmpty(agentid)) return;
         if (Config.stripe_api_secret == null || Config.stripe_api_secret == "") return;
         const rootjwt = Crypt.rootToken();
-        const count = await Config.db.DeleteMany({ "agentid": agentid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
+        const count = await Config.db.DeleteMany({ agentid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
         if (count > 0) {
-            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { agentid: agentid, cls: "Payments", func: "CleanupPendingAgentUsage" });
+            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { agentid, cls: "Payments", func: "CleanupPendingAgentUsage" });
             await new Promise(resolve => setTimeout(resolve, 500));
         }
     }
@@ -400,9 +410,9 @@ export class Payments {
         if (Util.IsNullEmpty(memberid)) return;
         if (Config.stripe_api_secret == null || Config.stripe_api_secret == "") return;
         const rootjwt = Crypt.rootToken();
-        const count = await Config.db.DeleteMany({ "memberid": memberid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
+        const count = await Config.db.DeleteMany({ memberid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
         if (count > 0) {
-            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { memberid: memberid, cls: "Payments", func: "CleanupPendingMemberUsage" });
+            Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { memberid, cls: "Payments", func: "CleanupPendingMemberUsage" });
             await new Promise(resolve => setTimeout(resolve, 500));
         }
     }
@@ -532,18 +542,16 @@ export class Payments {
                 const p = products[u.product.stripeprice];
                 if (!Util.IsNullEmpty(u.subid)) {
                     const exists = stripe_subscriptions.find(x => x.id == u.subid);
-                    if (exists == null) u.subid = null;
+                    if (exists == null) {
+                        u.subid = null;
+                        await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
+                    }
                 }
                 if (!Util.IsNullEmpty(u.siid)) {
                     const exists = stripe_subscriptions.find(x => x.items.data.find(d => d.id == u.siid));
-                    if (exists == null) u.siid = null;
-                    if (exists != null) {
-                        u.subid = exists.id;
-                        const target = await Resources.GetResourceTarget(tuser, jwt, u, parent);
-                        if (target != null) {
-                            await Resources.UpdateResourceTarget(tuser, jwt, u, target, false, parent);
-                            await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
-                        }                        
+                    if (exists == null) {
+                        u.siid = null;
+                        await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
                     }
                 }
                 if (p == null) {
@@ -581,16 +589,14 @@ export class Payments {
                 if (result != null) {
                     for (let i = 0; i < usage.length; i++) {
                         const u = usage[i];
-                        if (u.product.stripeprice == stripe_price && Util.IsNullEmpty(u.siid)) {                            
+                        if (u.product.stripeprice == stripe_price && (Util.IsNullEmpty(u.siid)|| Util.IsNullEmpty(u.subid))) {
                             u.siid = result.id;
                             u.subid = subscription.id;
-                            if(Util.IsNullEmpty(u.siid) || Util.IsNullEmpty(u.subid)) {
-                                const target = await Resources.GetResourceTarget(tuser, jwt, u, parent);
-                                if (target != null) {
-                                    await Resources.UpdateResourceTarget(tuser, jwt, u, target, false, parent);
-                                    await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
-                                }                        
-                            }
+                            const target = await Resources.GetResourceTarget(tuser, jwt, u, parent);
+                            if (target != null) {
+                                await Resources.UpdateResourceTarget(tuser, jwt, u, target, false, parent);
+                            }                        
+                            await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
                         }
                     }
                 }

@@ -525,6 +525,20 @@ export class Billing extends Base {
     // supportplan: string;
     // supporthourplan: string;
 }
+export class License extends Base {
+    constructor() {
+        super();
+        this._type = "license";
+    }
+    public _billingid: string;
+    public _resourceusageid: string;
+    public _productname: string;
+    public _stripeprice: string;
+    public connections: number;
+    public workspaces: number;
+    public gitrepos: number;
+    public openapi: boolean;
+}
 export enum ResourceVariantType {
     single = "singlevariant",
     multiple = "multiplevariants"
@@ -540,6 +554,7 @@ export enum ResourceTargetType {
     user = "user",
     member = "member",
     agent = "agent",
+    license = "license",
 }
 export class Resource extends Base {
     constructor() {
@@ -556,6 +571,7 @@ export class Resource extends Base {
 }
 export class Product {
     name: string;
+    valueadd: boolean;
     stripeproduct: string;
     stripeprice: string;
     lookup_key: string;
@@ -580,6 +596,7 @@ export class ResourceUsage extends Base {
     memberid: string | undefined;
     customerid: string;
     workspaceid: string | undefined;
+    licenseid: string | undefined;
     agentid: string;
     quantity: number;
     /** "subscription" */

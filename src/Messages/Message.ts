@@ -11,7 +11,7 @@ import webpush from "web-push";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper.js";
 import { Audit, clientType, tokenType } from "../Audit.js";
 import { Auth } from "../Auth.js";
-import { Base, Customer, iAgent, Product, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, User, WorkitemQueue } from "../commoninterfaces.js";
+import { Base, Billing, Customer, iAgent, License, Product, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, User, WorkitemQueue } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
@@ -4905,6 +4905,90 @@ export class Message {
                 break;
             case "deleteworkspace":
                 msg.result = await Workspaces.DeleteWorkspace(this.tuser, this.jwt, msg.id, parent);
+                break;
+            case "ensurelicense":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                if(data == null) throw new Error("License object is mandatory");
+                let license = data as License;
+                if(!Util.IsNullEmpty(data._id)) {
+                    let exists = await Config.db.GetOne<any>({ query: { _id: data._id, "_type": "license" }, collectionname: "config", jwt }, parent);
+                    if(exists == null) throw new Error("License not found, or access denied");
+                    license = exists as License;
+                    if(license.name != data.name || license._billingid != data._billingid) {
+                        let exists = await Config.db.GetOne<any>({ query: { name: data.name, "_type": "license" }, collectionname: "config", jwt: Crypt.rootToken() }, parent);
+                        if(exists != null && exists._id != license._id) throw new Error("License with name " + data.name + " already exists");
+                        // const count = await Resources.GetLicenseResourcesCount(license._id, parent);
+                        const usage = await Resources.GetLicenseResources(license._id, parent);
+                        if(usage.length > 0) {
+                            if(license.name != data.name) {
+                                throw new Error("License domain name cannot be changed, either remove the payed resource from this license object, or add a new license object");
+                            }
+                            if(license._billingid != data._billingid) {
+                                throw new Error("Billing account cannot be changed, either remove the payed resource from this license object, or add a new license object");
+                            }
+                            license._resourceusageid = usage[0]._id;
+                            license._productname = usage[0].product.name;
+                            license._stripeprice = usage[0].product.stripeprice;
+                            if(!Util.IsNullEmpty(license._billingid)) {
+                                const billing = await Config.db.GetOne<Billing>({ query: { _id: license._billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
+                                if(billing == null) throw new Error("Billing " + license._billingid + " not found, or access denied");
+                                const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
+                                if (billingadmins == null) throw new Error(Logger.enricherror(this.tuser, license, "Billing admins not found"));
+                                if (!this.tuser.HasRoleName("admins") && !billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, license, "User is not a billing admin"));
+                                Base.removeRight(license, billingadmins._id, [Rights.full_control], false);
+                                Base.addRight(license, billingadmins._id, billingadmins.name, [Rights.read], false);
+                            } else {
+                                Base.removeRight(license, this.tuser._id, [Rights.full_control], false);
+                                Base.addRight(license, this.tuser._id, this.tuser.name, [Rights.read], false);
+                            }
+                            license = await Config.db.UpdateOne<License>(license, "config", 1, true, Crypt.rootToken(), parent);
+                        } else {
+                            license.name = data.name;
+                            license._billingid = data._billingid;
+                            license = await Config.db.UpdateOne<License>(license, "config", 1, true, Crypt.rootToken(), parent);
+                        }
+                    }
+                } else {
+                    let resource = await Config.db.GetOne<Resource>({ collectionname: "config", query: { name: "OpenCore License", _type: "resource" }, jwt: this.jwt }, parent);
+                    if(resource == null) throw new Error("OpenCore License Resource not found");
+                    let exists = await Config.db.GetOne<any>({ query: { name: data.name, "_type": "license" }, collectionname: "config", jwt: Crypt.rootToken() }, parent);
+                    if(exists != null) throw new Error("License with name " + data.name + " already exists");
+                    license._type = "license";
+                    license._resourceusageid = "";
+                    license._productname = "Free tier";
+                    license.connections = resource.defaultmetadata.connections || 1;
+                    license.workspaces = resource.defaultmetadata.workspaces || 1;
+                    license.gitrepos = resource.defaultmetadata.gitrepos || 1;
+                    license.openapi = resource.defaultmetadata.openapi || true;
+                    if(!Util.IsNullEmpty(license._billingid)) {
+                        const billing = await Config.db.GetOne<Billing>({ query: { _id: license._billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
+                        if(billing == null) throw new Error("Billing " + license._billingid + " not found, or access denied");
+                        const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
+                        if (billingadmins == null) throw new Error(Logger.enricherror(this.tuser, license, "Billing admins not found"));
+                        if (!this.tuser.HasRoleName("admins") && !billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, license, "User is not a billing admin"));
+                        Base.addRight(license, billingadmins._id, billingadmins.name, [Rights.read], false);
+                    } else {
+                        Base.removeRight(license, this.tuser._id, [Rights.full_control], false);
+                        Base.addRight(license, this.tuser._id, this.tuser.name, [Rights.read], false);
+                    }
+                    license = await Config.db.InsertOne<License>(license, "config", 1, true, Crypt.rootToken(), parent);
+                }
+                msg.result = license;
+                break;
+            case "deletelicense":
+                const _license = await Config.db.GetOne<License>({ query: { _id: msg.id, "_type": "license" }, collectionname: "config", jwt }, parent);
+                if(_license == null) throw new Error("License not found, or access denied");
+                const count = await Resources.GetLicenseResourcesCount(_license._id, parent);
+                if(count > 0) throw new Error("License has resources, remove resources before deleting the license");
+                if(!Util.IsNullEmpty(_license._billingid)) {
+                    const billing = await Config.db.GetOne<Billing>({ query: { _id: _license._billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
+                    if(billing == null) throw new Error("Billing not found, or access denied");
+                    const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
+                    if (billingadmins == null) throw new Error(Logger.enricherror(this.tuser, _license, "Billing admins not found"));
+                    if (!this.tuser.HasRoleName("admins") && !billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, _license, "User is not a billing admin"));
+                }
+                await Config.db.DeleteOne(_license._id, "config", false, jwt, parent);
                 break;
             case "inviteuser":
                 // @ts-ignore

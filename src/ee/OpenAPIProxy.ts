@@ -94,6 +94,7 @@ export class OpenAPIProxy {
 
     app.all("/api/v1/*", async (req, res, next) => {
       if (Config.enable_openapi == false) return res.status(404).json({ error: "openapi not enabled" });
+      if (!Logger.License.validlicense) await Logger.License.validate();
       const urlPath = req.path;
       const method = req.method.toUpperCase();
       const remoteip = WebServer.remoteip(req as any);
