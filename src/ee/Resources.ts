@@ -209,15 +209,15 @@ export class Resources {
                     Resources.CreateProduct("Basic Hours", false, "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "supporthours_basic_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 2),
                     Resources.CreateProduct("Old Basic Hours", false, "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "", ResourceAssignedType.metered, { "supportplan": true }, true, true, 3),
                 ], true, false, 3, parent);
-            await Resources.CreateResource("OpenCore License", ResourceTargetType.license, ResourceVariantType.single, {},
+            await Resources.CreateResource("OpenCore License", ResourceTargetType.license, ResourceVariantType.single, {connections: 1, workspaces: 1},
                 [
-                    Resources.CreateProduct("Premium License", false, "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Premium License Legacy", false, "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "", ResourceAssignedType.single, {}, true, false, 1),
+                    Resources.CreateProduct("Premium License", false, "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "", ResourceAssignedType.single, {connections: 5, workspaces: 5}, true, false, 1),
+                    Resources.CreateProduct("Premium License Legacy", false, "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "", ResourceAssignedType.single, {connections: 5, workspaces: 5}, true, false, 1),
                 ], true, false, 4, parent);
-            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
+            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
                 [
-                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, false, 1),
+                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {members: 25}, true, false, 1),
+                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {members: 5000}, true, false, 1),
                 ], true, false, 5, parent);
 
         } else if (Config.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
@@ -250,15 +250,15 @@ export class Resources {
                     Resources.CreateProduct("Premium Hours", false, "prod_JccNQXT636UNhG", "plan_HFkbfsAs1Yvcly", "supporthours_premium_monthly", ResourceAssignedType.metered, { "supportplan": true }, false, false, 1),
                     Resources.CreateProduct("Basic Hours", false, "prod_HG1vTqU4c7EaV5", "plan_HG1wBF6yq1O15C", "supporthours_basic_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 2),
                 ], false, false, 2, parent);
-            await Resources.CreateResource("OpenCore License", ResourceTargetType.license, ResourceVariantType.single, {},
+            await Resources.CreateResource("OpenCore License", ResourceTargetType.license, ResourceVariantType.single, {connections: 1, workspaces: 1},
                 [
-                    Resources.CreateProduct("Premium License", false, "prod_JccNQXT636UNhG", "to_be_created_premium_license", "", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Premium License Legacy", false, "prod_HFkZ8lKn7GtFQU", "price_1J2KcMC2vUMc6gvhmmsAGo35", "", ResourceAssignedType.single, {}, true, true, 2),
+                    Resources.CreateProduct("Premium License", false, "prod_JccNQXT636UNhG", "to_be_created_premium_license", "", ResourceAssignedType.single, {connections: 1, workspaces: 1}, true, false, 1),
+                    Resources.CreateProduct("Premium License Legacy", false, "prod_HFkZ8lKn7GtFQU", "price_1J2KcMC2vUMc6gvhmmsAGo35", "", ResourceAssignedType.single, {connections: 5, workspaces: 5}, true, true, 2),
                 ], true, false, 3, parent);
-            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
+            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
                 [
-                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, false, 2),
+                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {members: 25}, true, false, 1),
+                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {members: 5000}, true, false, 2),
                 ], true, false, 4, parent);
 
         } else {
@@ -274,10 +274,10 @@ export class Resources {
                     Resources.CreateProduct("50Mb quota", false, "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "", ResourceAssignedType.multiple, { dbusage: (1048576 * 50) }, true, true, 1),
                     Resources.CreateProduct("Metered Monthly", false, "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 0),
                 ], true, true, 1, parent);
-            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {},
+            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
                 [
-                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {}, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {}, true, false, 1),
+                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {members: 25}, true, false, 1),
+                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {members: 5000}, true, false, 1),
                 ], true, false, 1, parent);
         }
         const usages = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { _type: "resourceusage" }, jwt: Crypt.rootToken() }, parent);
