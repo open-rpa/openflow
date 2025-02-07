@@ -1,5 +1,5 @@
 VERSION = 1.5.11.30
-
+HASH = $(shell git rev-parse --short HEAD)
 bump:
 	@echo "Bumping version to $(VERSION) recursively..."
 
@@ -12,9 +12,9 @@ initdocker:
 	@docker buildx create --name openiap --use
 	@docker buildx inspect --bootstrap
 compose:
-	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:edge --platform linux/amd64 --push .
+	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:$(HASH) -t openiap/openflow:edge --platform linux/amd64 --push .
 publish:
-	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:latest --platform linux/amd64,linux/arm64,linux/arm/v7 --push .
+	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:$(HASH) -t openiap/openflow:latest --platform linux/amd64,linux/arm64,linux/arm/v7 --push .
 copypublic:
 	@rm -rf public && cp -r ../core-web/build/ public
 copypublicold:
