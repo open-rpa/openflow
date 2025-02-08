@@ -426,7 +426,7 @@ export class Payments {
             if (Util.IsNullEmpty(billingaccount.stripeid)) {
                 const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid: billingid, _type: "resourceusage" }, jwt: rootjwt }, parent);
                 for(let i = 0; i < 0; i++) {
-                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, parent);
+                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "customerid": billingid, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
                 // if (count > 0) {
@@ -439,7 +439,7 @@ export class Payments {
             if (stripe_customer == null) {
                 const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid: billingid, _type: "resourceusage" }, jwt: rootjwt }, parent);
                 for(let i = 0; i < 0; i++) {
-                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, parent);
+                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "customerid": billingid, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
                 // if (count > 0) {
@@ -451,7 +451,7 @@ export class Payments {
             if (stripe_subscriptions.length == 0) {
                 const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid: billingid, _type: "resourceusage" }, jwt: rootjwt }, parent);
                 for(let i = 0; i < 0; i++) {
-                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, parent);
+                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "customerid": billingid, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
                 // if (count > 0) {
@@ -466,7 +466,7 @@ export class Payments {
                 if (status == "active") continue;
                 const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { "subid": sub.id, _type: "resourceusage"  }, jwt: rootjwt }, parent);
                 for(let i = 0; i < 0; i++) {
-                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, parent);
+                    await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "subid": sub.id, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
                 // if (count > 0) {

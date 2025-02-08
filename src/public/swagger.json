@@ -513,7 +513,7 @@
 	},
 	"info": {
 		"title": "@openiap/core",
-		"version": "1.5.10.51",
+		"version": "1.5.11.30",
 		"description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
 		"license": {
 			"name": "MPL-2.0"

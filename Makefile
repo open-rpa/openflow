@@ -1,11 +1,11 @@
-VERSION = 1.5.11.30
+VERSION = 1.5.11.31
 HASH = $(shell git rev-parse --short HEAD)
 bump:
 	@echo "Bumping version to $(VERSION) recursively..."
 
 	@sed -i 's/"version": "[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+"/"version": "$(VERSION)"/' package.json
 	@find public.template -name "swagger.json" -exec sed -i 's/"version": "[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+"/"version": "$(VERSION)"/' {} \;
-	@find src/public.template -name "swagger.json" -exec sed -i 's/"version": "[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+"/"version": "$(VERSION)"/' {} \;
+	@find src/public -name "swagger.json" -exec sed -i 's/"version": "[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+"/"version": "$(VERSION)"/' {} \;
 build:
 	@npm run build
 initdocker:

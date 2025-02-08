@@ -5034,10 +5034,12 @@ export class Message {
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 msg.result = await Resources.CreateResourceUsage(this.tuser, this.jwt,
-                    data.target, data.billingid, data.workspaceid, data.resourceid, data.productname, data.allowreplace, parent);
+                    data.target, data.billingid, data.workspaceid, data.resourceid, data.productname, data.quantity, data.allowreplace, parent);
                 break;
             case "removeresourceusage":
-                msg.result = await Resources.RemoveResourceUsage(this.tuser, this.jwt, msg.id, parent);
+                // @ts-ignore
+                var data = Util.IsNullEmpty(msg.data) ? {} : JSON.parse(msg.data);
+                msg.result = await Resources.RemoveResourceUsage(this.tuser, this.jwt, msg.id, data.quantity, parent);
                 break;
             case "getcustomerresources":
                 const customer = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "customer" }, collectionname: "users", jwt }, parent);
