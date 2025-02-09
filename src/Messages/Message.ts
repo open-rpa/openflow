@@ -620,9 +620,6 @@ export class Message {
                         case "deletepackage":
                             await this.DeletePackage(span);
                             break;
-                        case "issuelicense":
-                            await this.IssueLicense(cli, span);
-                            break;
                         case "invokeopenrpa":
                             await this.InvokeOpenRPA(cli, span);
                             break;
@@ -774,43 +771,6 @@ export class Message {
                 }
             }
             await Config.db.DeleteOne(pack._id, "agents", false, this.jwt, parent);
-        } finally {
-            this.data = JSON.stringify(msg);
-        }
-    }
-    async IssueLicense(cli: WebSocketServerClient, parent: Span) {
-        this.Reply();
-        let msg: any = this.data
-        if (typeof this.data == "string") {
-            msg = JSON.stringify(this.data)
-        }
-        try {
-            try {
-                // @ts-ignore
-                let _lic_require: any = await import("../ee/license-file.js");
-                Logger.License = new _lic_require.LicenseFile();
-            } catch (error) {
-                Logger.instanse.error(error.message, parent, { cls: "Message", func: "IssueLicense" });
-            }
-            // @ts-ignore
-            var data = msg.data;
-            try {
-                data = JSON.parse(data);
-            } catch (error) {
-            }
-            if (data == null || data == "") throw new Error("No data found");
-            var domain = data.domain;
-            if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
-                delete data.months;
-            }
-            var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage" }, collectionname: "config", jwt: this.jwt }, parent);
-            if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
-                if (exists == null) throw new Error("Access denied");
-            }
-            if (data.months == null || data.months == "") {
-                if (exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
-            }
-            msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
         } finally {
             this.data = JSON.stringify(msg);
         }
@@ -4819,18 +4779,6 @@ export class Message {
                 } catch (error) {
                 }
                 if (data == null || data == "") throw new Error("No data found");
-                var domain = data.domain;
-                if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
-                    delete data.months;
-                }
-                var exists = await Config.db.GetOne<any>({ query: { domains: domain, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
-                if (!this.tuser.HasRoleId(Wellknown.admins._id)) {
-                    if (exists == null) throw new Error("Access denied");
-                }
-                if (data.months == null || data.months == "") {
-                    if (exists != null && exists.issuemonths != null) data.months = parseInt(exists.issuemonths);
-                }
-                //  throw new Error("Access denied");
                 msg.result = await Logger.License.generate2(data, cli?.remoteip, this.tuser, parent);
                 break;
             case "snapshotcreate":
@@ -4915,6 +4863,19 @@ export class Message {
                     let exists = await Config.db.GetOne<any>({ query: { _id: data._id, "_type": "license" }, collectionname: "config", jwt }, parent);
                     if(exists == null) throw new Error("License not found, or access denied");
                     license = exists as License;
+                    if(license.licenseversion == null) {
+                        license.licenseversion = 3;
+                        license = await Config.db.UpdateOne<License>(license, "config", 1, true, Crypt.rootToken(), parent);
+                    }
+                    if(data.licenseversion != null && parseInt(data.licenseversion) != license.licenseversion) {
+                        if(parseInt(data.licenseversion) < 1 || parseInt(data.licenseversion) > 3) throw new Error("License version must be between 1 and 3");
+                        if(this.tuser.HasRoleName("admins")) {
+                            license.licenseversion = parseInt(data.licenseversion);
+                            license = await Config.db.UpdateOne<License>(license, "config", 1, true, Crypt.rootToken(), parent);
+                        } else {
+                            throw new Error("User is not an admin, cannot change license version");
+                        }
+                    }
                     if(license.name != data.name || license._billingid != data._billingid) {
                         let exists = await Config.db.GetOne<any>({ query: { name: data.name, "_type": "license" }, collectionname: "config", jwt: Crypt.rootToken() }, parent);
                         if(exists != null && exists._id != license._id) throw new Error("License with name " + data.name + " already exists");
@@ -4961,6 +4922,7 @@ export class Message {
                     license.workspaces = resource.defaultmetadata.workspaces || 1;
                     license.gitrepos = resource.defaultmetadata.gitrepos || 1;
                     license.openapi = resource.defaultmetadata.openapi || true;
+                    license.licenseversion = resource.defaultmetadata.licenseversion || 3;
                     if(!Util.IsNullEmpty(license._billingid)) {
                         const billing = await Config.db.GetOne<Billing>({ query: { _id: license._billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
                         if(billing == null) throw new Error("Billing " + license._billingid + " not found, or access denied");

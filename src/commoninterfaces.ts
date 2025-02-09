@@ -534,6 +534,7 @@ export class License extends Base {
     public _resourceusageid: string;
     public _productname: string;
     public _stripeprice: string;
+    public licenseversion: number;
     public connections: number;
     public workspaces: number;
     public gitrepos: number;
