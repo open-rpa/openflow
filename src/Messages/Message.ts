@@ -762,12 +762,17 @@ export class Message {
             if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
                 throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
             }
+            var agent = await Config.db.GetOne<any>({ query: { "schedules.packageid": msg.id, "_type": "agent" }, collectionname: "agents", jwt: Crypt.rootToken() }, parent);
+            if (agent != null) {
+                throw new Error("Cannot delete package, it is in use by agent " + agent.name + " id: " + agent._id);
+            }
+
             if (pack.fileid != null && pack.fileid != "") {
                 const rootjwt = Crypt.rootToken();
                 let query = { _id: pack.fileid };
                 const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
                 if (item != null) {
-                    await Config.db.DeleteOne(pack.fileid, "files", false, this.jwt, parent);
+                    await Config.db.DeleteOne(pack.fileid, "files", true, this.jwt, parent);
                 }
             }
             await Config.db.DeleteOne(pack._id, "agents", false, this.jwt, parent);
@@ -4743,12 +4748,16 @@ export class Message {
                 if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
                     throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
                 }
+                var usedbyagent = await Config.db.GetOne<any>({ query: { "schedules.packageid": msg.id, "_type": "agent" }, collectionname: "agents", jwt: Crypt.rootToken() }, parent);
+                if (usedbyagent != null) {
+                    throw new Error("Cannot delete package, it is in use by agent " + usedbyagent.name + " id: " + usedbyagent._id);
+                }
                 if (pack.fileid != null && pack.fileid != "") {
                     const rootjwt = Crypt.rootToken();
                     let query = { _id: pack.fileid };
                     const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
                     if (item != null) {
-                        await Config.db.DeleteOne(pack.fileid, "files", false, jwt, parent);
+                        await Config.db.DeleteOne(pack.fileid, "files", true, jwt, parent);
                     }
                 }
                 await Config.db.DeleteOne(pack._id, "agents", false, jwt, parent);

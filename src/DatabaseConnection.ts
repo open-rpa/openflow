@@ -3474,17 +3474,19 @@ export class DatabaseConnection extends events.EventEmitter {
                             throw new Error(`[${user.name}] Access denied, missing delete permission`);
                         }
                     }
-                    let cursor = this.db.collection("agents").find({ "fileid": id });
+                    let cursor = this.db.collection("workitems").find({ "files._id": id });
                     let locked = await cursor.hasNext();
                     if (locked) {
                         let item = await cursor.next();
-                        throw new Error("Cannot delete file, it is in use by an agent " + item._id + " " + item.name);
-                    }
-                    cursor = this.db.collection("workitems").find({ "files._id": id });
-                    locked = await cursor.hasNext();
-                    if (locked) {
-                        let item = await cursor.next();
                         throw new Error("Cannot delete file, it is in use by a workitem " + item._id + " " + item.name);
+                    }
+                    if(recursive == false) {
+                        cursor = this.db.collection("agents").find({ fileid: id, _type: "package" });
+                        locked = await cursor.hasNext();
+                        if (locked) {
+                            let item = await cursor.next();
+                            throw new Error("Cannot delete file, it is in use by an agent " + item._id + " " + item.name);
+                        }
                     }
 
                     const ot_end = Logger.otel.startTimer();
