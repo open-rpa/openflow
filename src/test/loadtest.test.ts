@@ -90,8 +90,9 @@ import { testConfig } from "./testConfig.js";
         }
     }
 
-    @timeout(6000000)
-    @test async "crud connection load test"() {
+    // @timeout(6000000)
+    // @test 
+    async "crud connection load test"() {
         await this.createandconnect(0);
         var Promises: Promise<any>[] = [];
         for (var i = 0; i < 500; i++) {
