@@ -4451,6 +4451,26 @@ export class Message {
 
         if (msg.purge) {
             await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
+            const workitems = Config.db.db.collection("workitems");
+            const cursor = workitems.find({ "_type": "workitem", "wiqid": wiq._id });
+            let ids = [];
+            for await (let doc of cursor) {
+                ids.push(doc._id);
+                if(ids.length > 1000) {
+                    var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
+                    for (var i = 0; i < files.length; i++) {
+                        await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
+                    }
+                    ids = [];
+                }
+            };
+            if(ids.length > 0) {
+                var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
+                for (var i = 0; i < files.length; i++) {
+                    await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
+                }
+                ids = [];
+            }
             await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
             var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
             if (items.length > 0) {
