@@ -267,10 +267,13 @@ export class Resources {
         }
         return base;
       }
-    public static async CombineMetadata(tuser: User, jwt: string, resourceusage: ResourceUsage, parent: Span): Promise<any> {
+    public static async CombineMetadata(tuser: User, jwt: string, resourceusage: ResourceUsage, removed:boolean, parent: Span): Promise<any> {
         if(resourceusage == null) throw new Error("ResourceUsage is required");
         const resource = await Config.db.GetOne<Resource>({ collectionname: "config", query: { _id: resourceusage.resourceid, _type: "resource" }, jwt }, parent);
         let metadata = resource.defaultmetadata;
+        if(resourceusage.product != null && resourceusage.product.metadata != null && removed == false) {
+            metadata = Resources.mergeObjects(metadata, resourceusage.product.metadata);
+        }
         const target = await Resources.GetResourceTarget(tuser, jwt, resourceusage, parent);
         let query = {};
         if (target._type == "license") {
@@ -294,7 +297,9 @@ export class Resources {
             if(res._id == resourceusage._id) continue;
             if(res.quantity > 0) {
                 for(let i = 0; i < res.quantity; i++) {
-                    metadata = Resources.mergeObjects(metadata, res.product.metadata);
+                    if(res.product != null && res.product.metadata != null) {
+                        metadata = Resources.mergeObjects(metadata, res.product.metadata);
+                    }
                 }
             }                
         }
@@ -323,10 +328,14 @@ export class Resources {
         if (removed === true) {
             if (target._type == "license") {
                 const license = target as License;
+                const metadata = await Resources.CombineMetadata(tuser, jwt, resourceusage, removed, parent);
                 if(license._billingid != "" || license._resourceusageid != "" || license._productname != "Free tier") {
                     license._resourceusageid = "";
                     license._productname = "Free tier";
                     license._stripeprice = "";
+                    license.connections = metadata.connections;
+                    license.workspaces = metadata.workspaces;
+                    license.gitrepos = metadata.gitrepos;
                     await Config.db.UpdateOne(target, "config", 1, true, rootjwt, parent);
                 }
             } else if (target._type == "workspace") {
@@ -349,7 +358,7 @@ export class Resources {
         } else {
             if (target._type == "license") {
                 const license = target as License;
-                const metadata = await Resources.CombineMetadata(tuser, jwt, resourceusage, parent);
+                const metadata = await Resources.CombineMetadata(tuser, jwt, resourceusage, removed, parent);
                 if(license._billingid != resourceusage.customerid || license._resourceusageid != resourceusage._id || license._productname != resourceusage.product.name ||
                     license.connections != metadata.connections || license.workspaces != metadata.workspaces || license.gitrepos != metadata.gitrepos) {
                     
@@ -704,6 +713,22 @@ export class Resources {
         }        
         if (resourceusage.quantity < 1) {
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
+            if(resourceusage.product.valueadd == false) {
+                // if removing a "base" plan, assume we also need to remove all value added plans
+                if (target._type == "license") {
+                    await Config.db.DeleteMany({ licenseid: target._id }, null, "config", null, false, rootjwt, parent);
+                } else if (target._type == "user") {
+                    await Config.db.DeleteMany({ userid: target._id }, null, "config", null, false, rootjwt, parent);
+                } else if (target._type == "member") {
+                    await Config.db.DeleteMany({ memberid: target._id }, null, "config", null, false, rootjwt, parent);
+                } else if (target._type == "customer") {
+                    await Config.db.DeleteMany({ customerid: target._id }, null, "config", null, false, rootjwt, parent);
+                } else if (target._type == "workspace") {
+                    await Config.db.DeleteMany({ workspaceid: target._id }, null, "config", null, false, rootjwt, parent);
+                } else if (target._type == "agent") {
+                    await Config.db.DeleteMany({ agentid: target._id }, null, "config", null, false, rootjwt, parent);
+                }
+            }
             await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, true, parent);
         } else {
             resourceusage = await Config.db.UpdateOne(resourceusage, "config", 1, true, rootjwt, parent);
