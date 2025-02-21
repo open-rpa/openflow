@@ -521,7 +521,7 @@ export class Resources {
             // if we have subscriptions, but none with a matching item, use the first active subscription ( by default there should never be more than one )
             stripesubscription = stripesubscriptions[0];
         }
-        Base.addRight(model, billing._id, billing.name + " billing admins", [Rights.read]);
+        Base.addRight(model, billing.admins, billing.name + " billing admins", [Rights.read]);
         if (workspaceid != null && workspaceid != "") {
             if(resource.target != "customer") {
                 let workspace = await Config.db.GetOne<Workspace>({ collectionname: "users", query: { _id: workspaceid, _type: "workspace" }, jwt }, parent);
@@ -539,7 +539,6 @@ export class Resources {
             model.memberid = target._id;
             model.userid = (target as Member).userid;
             Base.addRight(model, (target as Member).userid, target.name, [Rights.read]);
-            Base.addRight(model, billing._id, billing.name + " billing admins", [Rights.read]);
         } else if (target._type == "customer") {
             model.customerid = target._id;
             Base.addRight(model, (target as Customer).admins, target.name + " admins", [Rights.read]);
