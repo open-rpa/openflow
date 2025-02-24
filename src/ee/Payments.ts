@@ -1,4 +1,4 @@
-import { stripe_customer, stripe_list, stripe_price, stripe_subscription, stripe_subscription_item } from "@openiap/openflow-api";
+import { stripe_customer, stripe_invoice, stripe_list, stripe_price, stripe_subscription, stripe_subscription_item } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import { Billing, Customer, iAgent, Member, ResourceUsage, User, Workspace } from '../commoninterfaces.js';
 import { Config } from "../Config.js";
@@ -280,6 +280,60 @@ export class Payments {
             throw new Error(Logger.enricherror(tuser, null, "Stripe subscription line " + siid + " item not found"));
         }
     }
+    public static async GetNextInvoice(tuser: User, stripeid: string, subscriptionid: string, lookupkey: string, stripeprice: string, quantity: number, proration_behavior: string, parent: Span): Promise<stripe_invoice> {
+        if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
+        if (Util.IsNullEmpty(stripeid)) return null;
+        let subscription = null;
+        if (Util.IsNullEmpty(subscriptionid)) {
+            const subscriptions = await this.GetSubscriptions(tuser, stripeid, parent);
+            if (subscriptions.length == 0) return null;
+            subscription = subscriptions[0];
+        } else {
+            subscription = await this.GetSubscription(tuser, stripeid, subscriptionid, parent);
+            if (subscription == null) return null;
+        }
+        try {
+            if(Util.IsNullEmpty(proration_behavior)) proration_behavior = "none";            
+            const payload = {
+                automatic_tax: { enabled: true },     // Let stripe add the correct tax
+                customer: stripeid,
+                subscription: subscription.id,
+                subscription_details: { items: [], proration_behavior: proration_behavior }
+            };
+            if(Util.IsNullEmpty(stripeprice)) {
+                delete payload.subscription_details;
+            } else {
+                const price = await Payments.GetPrice(tuser, lookupkey, stripeprice, parent);
+                if (price == null) throw new Error("Price not found");
+                if(quantity < 0) quantity = 1;
+                stripeprice = price.id;
+                const metered = (price.recurring && price.recurring.usage_type == "metered");
+                const line_item = { price: stripeprice, quantity, id: "" };
+                const exists = subscription.items.data.find(x => x.price.id == stripeprice);
+                if (exists != null) {
+                    line_item.id = exists.id;
+                    line_item.quantity = exists.quantity + quantity;
+                } else {
+                    delete line_item.id;
+                }
+                if(metered) {
+                    delete line_item.quantity;
+                }
+                payload.subscription_details.items.push(line_item);
+            }
+            
+            const invoices = await Message.Stripe<stripe_list<stripe_invoice>>("GET", "invoices_upcoming", null, payload, stripeid);
+            if(invoices.object == "invoice" && invoices.total_count == undefined) {
+                return invoices as any;
+            }
+            if (invoices.total_count == 0) return null;
+            const invoice = invoices.data[0];
+            return invoice;
+        } catch (error) {
+            Logger.instanse.error(error, parent, { cls: "Payments", func: "GetNextInvoice", stripeid, subscriptionid });
+            throw new Error(Logger.enricherror(tuser, null, "Failed get next invoice (" + error.message + ")"));
+        }
+    }
     public static async CreateCheckoutSession(tuser: User, billingid: string, stripeid: string, lines: ResourceUsage[], parent: Span): Promise<any> {
         if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
         if (Util.IsNullEmpty(billingid)) return null;
@@ -446,6 +500,10 @@ export class Payments {
                 //     Logger.instanse.info("Removed " + count + " resource usage records for Billing acount, since " + stripeid + " no longer exists", parent, { billingid, cls: "Payments", func: "PullBillingAccount" });
                 // }
                 return;
+            } else if (stripe_customer.name != billingaccount.name || stripe_customer.email != billingaccount.email) {
+                stripe_customer.name = billingaccount.name;
+                stripe_customer.email = billingaccount.email;
+                await Payments.EnsureCustomer(tuser, jwt, billingaccount, parent);
             }
             const stripe_subscriptions = await this.GetSubscriptions(tuser, stripeid, parent);
             if (stripe_subscriptions.length == 0) {
@@ -519,7 +577,7 @@ export class Payments {
             throw new Error(Logger.enricherror(tuser, null, "Pull stripe billing account failed (" + error.message + ")"));
         }
     }
-    public static async PushBillingAccount(tuser: User, jwt: string, billingid: string, parent: Span): Promise<void> {
+    public static async PushBillingAccount(tuser: User, jwt: string, billingid: string, proration_behavior: string, parent: Span): Promise<void> {
         if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
         if(Util.IsNullEmpty(billingid)) return null;
         try {
@@ -576,7 +634,8 @@ export class Payments {
                 const subscription = stripe_subscriptions.find(x => x.id == price.subid) ?? default_sub;
                 const line_item = subscription?.items.data.find(x => x.id == stripe_price || x.price.id == stripe_price);
 
-                let payload: any = { proration_behavior: "always_invoice", price: stripe_price };
+                if(Util.IsNullEmpty(proration_behavior)) proration_behavior = "none";
+                let payload: any = { proration_behavior, price: stripe_price };
                 if (!Util.IsNullEmpty(price.quantity)) {
                     payload.quantity = price.quantity;
                 }

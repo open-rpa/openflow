@@ -238,7 +238,7 @@ export class Resources {
             if (target != null) throw new Error("Access denied to target");
             Logger.instanse.warn(resourceusage._id + " ResourceUsage exists, but target " + _id + " does not, so deleting it", parent, { resourceusageid: resourceusage._id, cls: "Resources", func: "GetResourceTarget" });
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
-            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
+            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, Config.stripe_proration_behavior, parent);
         }
         return target;
     }
@@ -428,6 +428,11 @@ export class Resources {
         if (Config.stripe_api_secret != null && Config.stripe_api_secret != "") {
             await Payments.CleanupPendingBillingAcountUsage(billingid, parent);
             if (stripecustomer == null) throw new Error(Logger.enricherror(tuser, target, "Stripe customer associated with billing not found"));
+            if (stripecustomer.name != billing.name || stripecustomer.email != billing.email) {
+                stripecustomer.name = billing.name;
+                stripecustomer.email = billing.email;
+                await Payments.EnsureCustomer(tuser, jwt, billing, parent);
+            }
             stripeprice = await Payments.GetPrice(tuser, product.lookup_key, product.stripeprice, parent);
             if (stripeprice == null) throw new Error(Logger.enricherror(tuser, target, "Stripe price " + product.stripeprice + " not found"));
             if (stripeprice.active == false) throw new Error(Logger.enricherror(tuser, target, "Stripe price " + product.stripeprice + " is not active"));
@@ -589,7 +594,7 @@ export class Resources {
                         await Config.db.UpdateOne(remove_usage, "config", 1, true, rootjwt, parent);
                     }
                 }
-                await Payments.PushBillingAccount(tuser, jwt, billingid, parent);
+                await Payments.PushBillingAccount(tuser, jwt, billingid, Config.stripe_proration_behavior, parent);
                 if(resourceusage.product.valueadd) {
                     await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, false, parent);
                 }
@@ -712,20 +717,20 @@ export class Resources {
         }        
         if (resourceusage.quantity < 1) {
             await Config.db.DeleteOne(resourceusage._id, "config", false, rootjwt, parent);
-            if(resourceusage.product.valueadd == false) {
+            if(resourceusage.product.valueadd == false) { // works if license or agent, but not for workspaces where you can have multiple value plans
                 // if removing a "base" plan, assume we also need to remove all value added plans
                 if (target._type == "license") {
-                    await Config.db.DeleteMany({ licenseid: target._id }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ licenseid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "user") {
-                    await Config.db.DeleteMany({ userid: target._id }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ userid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "member") {
-                    await Config.db.DeleteMany({ memberid: target._id }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ memberid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "customer") {
-                    await Config.db.DeleteMany({ customerid: target._id }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ customerid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "workspace") {
-                    await Config.db.DeleteMany({ workspaceid: target._id }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ workspaceid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "agent") {
-                    await Config.db.DeleteMany({ agentid: target._id }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ agentid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 }
             }
             await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, true, parent);
@@ -734,7 +739,7 @@ export class Resources {
             await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, true, parent);
         }
         if (!Util.IsNullEmpty(resourceusage.siid) || resourceusage.product.valueadd == true) {
-            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, parent);
+            await Payments.PushBillingAccount(tuser, jwt, resourceusage.customerid, Config.stripe_proration_behavior, parent);
         }
         return resourceusage;
     }

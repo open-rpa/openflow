@@ -3042,11 +3042,11 @@ export class Message {
             if (object == "usage_record_summaries") {
                 url = "https://api.stripe.com/v1/subscription_items/" + id + "/usage_record_summaries";
             }
-            if (object == "prices" && method == "GET") {
-                if (payload != null && payload.lookup_keys && payload.lookup_keys.length > 0) {
-                    url = "https://api.stripe.com/v1/prices?lookup_keys[]=" + payload.lookup_keys.join(",");
-                }
-            }
+            // if (object == "prices" && method == "GET") {
+            //     if (payload != null && payload.lookup_keys && payload.lookup_keys.length > 0) {
+            //         url = "https://api.stripe.com/v1/prices?lookup_keys[]=" + payload.lookup_keys.join(",");
+            //     }
+            // }
             if (object == "sources") {
                 if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with sources");
                 url = "https://api.stripe.com/v1/customers/" + customerid + "/sources";
@@ -3057,48 +3057,48 @@ export class Message {
             if (object == "invoices_upcoming") {
                 if (Util.IsNullEmpty(customerid)) throw new Error("Need customer to work with invoices_upcoming");
                 url = "https://api.stripe.com/v1/invoices/upcoming?customer=" + customerid;
-                if (payload != null && payload.subscription_items) {
-                    let index = 0;
-                    for (let item of payload.subscription_items) {
-                        if (item.id) url += "&subscription_items[" + index + "][id]=" + item.id;
-                        if (item.price) url += "&subscription_items[" + index + "][price]=" + item.price;
-                        if (item.quantity) url += "&subscription_items[" + index + "][quantity]=" + item.quantity;
+                // if (payload != null && payload.subscription_items) {
+                //     let index = 0;
+                //     for (let item of payload.subscription_items) {
+                //         if (item.id) url += "&subscription_items[" + index + "][id]=" + item.id;
+                //         if (item.price) url += "&subscription_items[" + index + "][price]=" + item.price;
+                //         if (item.quantity) url += "&subscription_items[" + index + "][quantity]=" + item.quantity;
 
-                        let taxindex = 0;
-                        if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
-                            for (let tax of (item as any).tax_rates) {
-                                url += "&subscription_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
+                //         let taxindex = 0;
+                //         if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
+                //             for (let tax of (item as any).tax_rates) {
+                //                 url += "&subscription_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
 
-                                taxindex++;
-                            }
-                        }
-                        index++;
-                    }
-                }
-                if (payload != null && payload.invoice_items) {
-                    let index = 0;
-                    for (let item of payload.invoice_items) {
-                        if (item.id) url += "&invoice_items[" + index + "][id]=" + item.id;
-                        if (item.price) url += "&invoice_items[" + index + "][price]=" + item.price;
-                        if (item.quantity) url += "&invoice_items[" + index + "][quantity]=" + item.quantity;
+                //                 taxindex++;
+                //             }
+                //         }
+                //         index++;
+                //     }
+                // }
+                // if (payload != null && payload.invoice_items) {
+                //     let index = 0;
+                //     for (let item of payload.invoice_items) {
+                //         if (item.id) url += "&invoice_items[" + index + "][id]=" + item.id;
+                //         if (item.price) url += "&invoice_items[" + index + "][price]=" + item.price;
+                //         if (item.quantity) url += "&invoice_items[" + index + "][quantity]=" + item.quantity;
 
-                        let taxindex = 0;
-                        if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
-                            for (let tax of (item as any).tax_rates) {
-                                url += "&invoice_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
+                //         let taxindex = 0;
+                //         if ((item as any).tax_rates && (item as any).tax_rates.length > 0) {
+                //             for (let tax of (item as any).tax_rates) {
+                //                 url += "&invoice_items[" + index + "][tax_rates[" + taxindex + "]]=" + tax;
 
-                                taxindex++;
-                            }
-                        }
-                        index++;
-                    }
-                }
-                if (payload != null && payload.subscription_proration_date) {
-                    url += "&subscription_proration_date=" + payload.subscription_proration_date;
-                }
-                if (payload != null && payload.subscription) {
-                    url += "&subscription=" + payload.subscription;
-                }
+                //                 taxindex++;
+                //             }
+                //         }
+                //         index++;
+                //     }
+                // }
+                // if (payload != null && payload.subscription_proration_date) {
+                //     url += "&subscription_proration_date=" + payload.subscription_proration_date;
+                // }
+                // if (payload != null && payload.subscription) {
+                //     url += "&subscription=" + payload.subscription;
+                // }
             }
             if (object == "invoices_upcoming_lines") {
                 url = "https://api.stripe.com/v1/invoices/upcoming/lines?customer=" + customerid;
@@ -3109,19 +3109,19 @@ export class Message {
                 }
             }
 
-            if (method == "GET" && payload != null && payload.customer != null) {
-                if (url.indexOf("?") == -1) {
-                    url += "?customer=" + payload.customer;
-                } else {
-                    url += "&customer=" + payload.customer;
-                }
-            }
-            if (payload && payload.starting_after) {
-                url += "&starting_after=" + payload.starting_after;
-            }
-            if (payload && payload.limit) {
-                url += "&limit=" + payload.limit;
-            }
+            // if (method == "GET" && payload != null && payload.customer != null) {
+            //     if (url.indexOf("?") == -1) {
+            //         url += "?customer=" + payload.customer;
+            //     } else {
+            //         url += "&customer=" + payload.customer;
+            //     }
+            // }
+            // if (payload && payload.starting_after) {
+            //     url += "&starting_after=" + payload.starting_after;
+            // }
+            // if (payload && payload.limit) {
+            //     url += "&limit=" + payload.limit;
+            // }
             var stripe_api_secret = Config.stripe_api_secret;
             if (stripe_api_secret == null || stripe_api_secret == "") throw new Error("Missing stripe_api_secret");
             const auth = "Basic " + Buffer.from(stripe_api_secret + ":").toString("base64");
@@ -3141,6 +3141,13 @@ export class Message {
                 payload = JSON.parse(response.body);
             }
             if (method == "GET") {
+                if (payload != null) {
+                    const flatObj = this.flattenAndStringify(payload);
+                    const queryString = new URLSearchParams(flatObj).toString();
+                    if (queryString) {
+                        url += (url.indexOf('?') === -1 ? '?' : '&') + queryString;
+                    }
+                }
                 const response = await got.get(url, options);
                 payload = JSON.parse(response.body);
             }
@@ -5027,6 +5034,18 @@ export class Message {
                 msg.result = await Resources.CreateResourceUsage(this.tuser, this.jwt,
                     data.target, data.billingid, data.workspaceid, data.resourceid, data.productname, data.quantity, data.allowreplace, parent);
                 break;
+            case "getnextinvoice":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                if(Util.IsNullEmpty(msg.id)) throw new Error("Billing id is mandatory");
+                const billing = await Config.db.GetOne<Billing>({ query: { _id: msg.id, "_type": "customer" }, collectionname: "users", jwt }, parent);
+                if(billing == null) throw new Error("Billing not found, or access denied");
+                const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
+                if (!this.tuser.HasRoleName(Wellknown.admins.name)) {
+                    if (!billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, billing, "User is not a member of the billing admins"));
+                }
+                msg.result = await Payments.GetNextInvoice(this.tuser, billing.stripeid, billing.subid, data.lookupkey, data.stripeprice, data.quantity, Config.stripe_proration_behavior, parent);
+                break;
             case "removeresourceusage":
                 // @ts-ignore
                 var data = Util.IsNullEmpty(msg.data) ? {} : JSON.parse(msg.data);
@@ -5043,7 +5062,7 @@ export class Message {
                 msg.result = await Resources.GetWorkspaceResources(msg.id, parent);
                 break;
             case "syncbillingaccount":
-                msg.result = await Payments.PushBillingAccount(this.tuser, this.jwt, msg.id, parent);
+                msg.result = await Payments.PushBillingAccount(this.tuser, this.jwt, msg.id, Config.stripe_proration_behavior, parent);
                 break;
             case "reportresourceusage":
                 // @ts-ignore

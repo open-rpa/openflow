@@ -284,6 +284,7 @@ export class Config {
         stripe_api_key: "",
         stripe_api_secret: "",
         stripe_force_vat: false,
+        stripe_proration_behavior: "always_invoice",
         stripe_force_checkout: false,
         stripe_allow_promotion_codes: true,
         stripe_log_eventhook: true,
@@ -583,6 +584,8 @@ export class Config {
     public static stripe_api_key: string = Config.getEnv("stripe_api_key");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret");
     public static stripe_force_vat: boolean = Config.parseBoolean(Config.getEnv("stripe_force_vat"));
+    public static stripe_proration_behavior: string = Config.getEnv("stripe_proration_behavior");
+    
     public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout"));
     public static stripe_allow_promotion_codes: boolean = Config.parseBoolean(Config.getEnv("stripe_allow_promotion_codes"));
     public static stripe_log_eventhook: boolean = Config.parseBoolean(Config.getEnv("stripe_log_eventhook"));
