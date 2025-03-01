@@ -1,4 +1,4 @@
-VERSION = 1.5.11.37
+VERSION = 1.5.11.38
 HASH = $(shell git rev-parse --short HEAD)
 bump:
 	@echo "Bumping version to $(VERSION) recursively..."
