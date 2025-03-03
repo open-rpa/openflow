@@ -4402,13 +4402,16 @@ export class Message {
         this.Reply();
         let msg: UpdateWorkitemQueueMessage;
         const jwt = this.jwt;
+        let purge = false;
         msg = UpdateWorkitemQueueMessage.assign(this.data);
         // @ts-ignore
         if (this.data.workitemqueue != null) {
             // @ts-ignore
             msg = this.data.workitemqueue;
             // @ts-ignore
-            msg.purge = this.data.purge;
+            purge = this.data.purge;
+        } else {
+            purge = msg.purge;
         }
 
         if (Util.IsNullEmpty(msg.name) && Util.IsNullEmpty(msg._id)) throw new Error("Name or _id is mandatory")
@@ -4456,7 +4459,7 @@ export class Message {
 
         msg.result = await Config.db.UpdateOne(wiq as any, "mq", 1, true, jwt, parent);
 
-        if (msg.purge) {
+        if (purge) {
             await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
             const workitems = Config.db.db.collection("workitems");
             const cursor = workitems.find({ "_type": "workitem", "wiqid": wiq._id });
