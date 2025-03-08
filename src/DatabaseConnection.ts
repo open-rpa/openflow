@@ -642,14 +642,14 @@ export class DatabaseConnection extends events.EventEmitter {
             delete options.collectionname;
             var _options = JSON.parse(JSON.stringify(options))
             if (_options.expireAfterSeconds != null && _options.expireAfterSeconds > 0) {
-                if (_options.metadata == null) {
+                if (_options.timeseries == null) {
                     delete _options.expireAfterSeconds;
                 }
             }
             await this.db.createCollection(collectionname, _options);
             Audit.AuditCollectionAction(user, "create", collectionname, true, span);
             if (options.expireAfterSeconds != null && options.expireAfterSeconds > 0) {
-                if (options.metadata == null) {
+                if (_options.timeseries == null) {
                     await this.createIndex(collectionname, null, { "_created": 1 }, { expireAfterSeconds: options.expireAfterSeconds }, span);
                 }
             }

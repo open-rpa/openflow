@@ -13,6 +13,7 @@ import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { amqpwrapper } from "./amqpwrapper.js";
 import { Base, Rights, Resource, ResourceUsage, Role, Rolemember, TokenUser, User, iAgent, WorkitemQueue } from "./commoninterfaces.js";
 import { Util, Wellknown } from "./Util.js";
+import { Message } from "./Messages/Message.js";
 
 
 export class DBHelper {
@@ -999,6 +1000,7 @@ export class DBHelper {
         }
     }
     public async ClearGetCollections() {
+        Message.clearCollectionCache()
         await this.memoryCache.del("collections");
     }
     public async FindJWT(key: string, parent: Span): Promise<User> {

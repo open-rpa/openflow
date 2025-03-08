@@ -1145,6 +1145,10 @@ export class Message {
     }
     private static collectionCache: any = {};
     private static collectionCachetime: Date = new Date();
+    public static clearCollectionCache() {
+        Message.collectionCache = {};
+        Message.collectionCachetime = new Date();
+    }
     private async ListCollections(parent: Span): Promise<void> {
         this.Reply();
         const span: Span = Logger.otel.startSubSpan("message.ListCollections", parent);
