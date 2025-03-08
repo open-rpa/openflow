@@ -324,7 +324,7 @@ export class Config {
 
         oidc_cookie_key: "Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss=",
         api_rate_limit: true,
-        api_rate_limit_points: 20,
+        api_rate_limit_points: 200,
         api_rate_limit_duration: 1,
         socket_rate_limit: true,
         socket_rate_limit_points: 30,

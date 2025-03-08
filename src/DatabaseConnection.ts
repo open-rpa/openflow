@@ -641,6 +641,8 @@ export class DatabaseConnection extends events.EventEmitter {
             delete options.priority;
             delete options.collectionname;
             var _options = JSON.parse(JSON.stringify(options))
+            // https://www.mongodb.com/community/forums/t/ttl-deleting-thread-isnt-working/165631/4 
+            // db.serverStatus().metrics.ttl
             if (_options.expireAfterSeconds != null && _options.expireAfterSeconds > 0) {
                 if (_options.timeseries == null) {
                     delete _options.expireAfterSeconds;
