@@ -635,7 +635,7 @@ export class DBHelper {
             user.roles = [];
             for (let role of cached_roles) {
                 let isMember: number = -1;
-                if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
+                if (role.members != null) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(user._id); }
                 if (isMember > -1) {
                     user.roles.push(new Rolemember(role.name, role._id));
                 }
@@ -650,7 +650,7 @@ export class DBHelper {
                 for (let userrole of user.roles) {
                     for (let role of cached_roles) {
                         let isMember: number = -1;
-                        if (role.members !== undefined) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
+                        if (role.members != null) { isMember = role.members.map(function (e: Rolemember): string { return e._id; }).indexOf(userrole._id); }
                         if (isMember > -1) {
                             const beenAdded: number = user.roles.map(function (e: Rolemember): string { return e._id; }).indexOf(role._id);
                             if (beenAdded === -1) {
