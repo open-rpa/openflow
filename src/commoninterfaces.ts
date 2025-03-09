@@ -419,15 +419,18 @@ export class Role extends Base {
         return res;
     }
     IsMember(_id: string): boolean {
+        if(this.members == null) this.members = [];
         const hits: Rolemember[] = this.members.filter(member => member._id === _id);
         return (hits.length === 1);
     }
     AddMember(item: Base): void {
         if (!this.IsMember(item._id)) {
+            if(this.members == null) this.members = [];
             this.members.push(new Rolemember(item.name, item._id));
         }
     }
     RemoveMember(_id: string): void {
+        if(this.members == null) this.members = [];
         this.members.forEach((member, idx) => {
             if (member._id === _id) {
                 this.members.splice(idx, 1);
