@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.11.57",
+  "version": "1.5.11.58",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,7 @@
     "updateapilocal": "npm uninstall @openiap/nodeapi && npm i ../nodeapi",
     "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
     "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
+    "updatejsapi": "npm uninstall @openiap/jsapi && npm -D i openiap/jsapi#esm",
     "ncu": "npx -y npm-check-updates",
     "spec": "tsoa spec",
     "routes": "tsoa routes",
@@ -40,6 +41,7 @@
     "@kubernetes/client-node": "0.21.0",
     "@node-saml/passport-saml": "4.0.1",
     "@openiap/cloud-git-mongodb": "1.0.39",
+    "@openiap/jsapi": "github:openiap/jsapi#esm",
     "@openiap/nodeapi": "0.0.38",
     "@openiap/openflow-api": "2.1.12",
     "@opentelemetry/api-logs": "0.57.1",
@@ -67,7 +69,6 @@
     "jsonwebtoken": "8.5.1",
     "mimetype": "0.0.8",
     "mongodb": "4.11.0",
-    "mousetrap": "1.6.5",
     "multer": "1.4.2",
     "multer-gridfs-storage": "5.0.2",
     "nodemailer": "6.9.14",
