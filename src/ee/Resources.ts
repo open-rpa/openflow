@@ -53,7 +53,7 @@ export class Resources {
                     Resources.CreateProduct("Premium License", false, "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "", ResourceAssignedType.single, {connections: 5, workspaces: 5, gitrepos: 5}, true, false, 1),
                     Resources.CreateProduct("Premium License Legacy", false, "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "", ResourceAssignedType.single, {connections: 5, workspaces: 5, gitrepos: 5}, true, false, 1),
                     Resources.CreateProduct("Additional connections", true, "prod_RjJVZh1cT6szd8", "price_1QpqsWC2vUMc6gvhvO0GdT09", "opencore_connections_monthly", ResourceAssignedType.multiple, {connections: 1}, true, false, 1),
-                    Resources.CreateProduct("Additional workspaces", true, "prod_RjJVZh1cT6szd8", "price_1QpqsWC2vUMc6gvhvO0GdT09", "opencore_workspaces_monthly", ResourceAssignedType.multiple, {workspaces: 1}, true, false, 1),
+                    Resources.CreateProduct("Additional workspaces", true, "prod_RjJWttP56SoL79", "price_1QpqtVC2vUMc6gvhfHfjN6Fa", "opencore_workspaces_monthly", ResourceAssignedType.multiple, {workspaces: 1}, true, false, 1),
                     Resources.CreateProduct("Additional getrepos", true, "prod_Rjq7THiRHBkpL4", "price_1QqMRCC2vUMc6gvhByzBizDv", "opencore_gitrepos_monthly", ResourceAssignedType.multiple, {gitrepos: 1}, true, false, 1),
                 ], true, false, 4, parent);
             await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
@@ -97,7 +97,7 @@ export class Resources {
                     Resources.CreateProduct("Premium License", false, "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "", ResourceAssignedType.single, {connections: 5, workspaces: 5, gitrepos: 5}, true, false, 1),
                     Resources.CreateProduct("Premium License Legacy", false, "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "", ResourceAssignedType.single, {connections: 5, workspaces: 5, gitrepos: 5}, true, false, 1),
                     Resources.CreateProduct("Additional connections", true, "prod_RjJVZh1cT6szd8", "price_1QpqsWC2vUMc6gvhvO0GdT09", "opencore_connections_monthly", ResourceAssignedType.multiple, {connections: 1}, true, false, 1),
-                    Resources.CreateProduct("Additional workspaces", true, "prod_RjJVZh1cT6szd8", "price_1QpqsWC2vUMc6gvhvO0GdT09", "opencore_workspaces_monthly", ResourceAssignedType.multiple, {workspaces: 1}, true, false, 1),
+                    Resources.CreateProduct("Additional workspaces", true, "prod_RjJWttP56SoL79", "price_1QpqtVC2vUMc6gvhfHfjN6Fa", "opencore_workspaces_monthly", ResourceAssignedType.multiple, {workspaces: 1}, true, false, 1),
                     Resources.CreateProduct("Additional getrepos", true, "prod_Rjq7THiRHBkpL4", "price_1QqMRCC2vUMc6gvhByzBizDv", "opencore_gitrepos_monthly", ResourceAssignedType.multiple, {gitrepos: 1}, true, false, 1),
                 ], true, false, 3, parent);
             await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
@@ -480,13 +480,14 @@ export class Resources {
                 resources = resources.filter(x => x.product.valueadd !== true);
                 if (resources.length > 1) throw new Error(Logger.enricherror(tuser, target, target._type + " has more than one version of this resource assigned"));
                 if (resources.length == 1) model = resources[0];
-                let resources2 = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { licenseid: target._id, "product.valueadd": {"$ne": true}, "resourceid": resource._id, _type: "resourceusage" }, jwt }, parent);
+                let resources2 = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { ...query, "product.valueadd": {"$ne": true}, "resourceid": resource._id }, jwt }, parent);
                 if (resources2.length > 1) throw new Error(Logger.enricherror(tuser, target, target._type +  " has more than one version of this resource assigned"));
                 if (resource != null && resources2.length == 1) {
-                    if (resources2[0].product.stripeprice != product.stripeprice) throw new Error(Logger.enricherror(tuser, target, "License already has " + resources2[0].product.name + " assigned"));
+                    if (resources2[0].product.stripeprice != product.stripeprice) throw new Error(Logger.enricherror(tuser, target, "Already has " + resources2[0].product.name + " assigned"));
                 }
             }
         }
+        // return { result, link: "" };
         if (model == null) {
             if (resource.deprecated == true) throw new Error(Logger.enricherror(tuser, target, "Resource is deprecated and cannot be assigned")); // should never happen ?
             if (product.deprecated == true) throw new Error(Logger.enricherror(tuser, target, "Product is deprecated and cannot be assigned")); // should never happen ?
@@ -720,17 +721,17 @@ export class Resources {
             if(resourceusage.product.valueadd == false) { // works if license or agent, but not for workspaces where you can have multiple value plans
                 // if removing a "base" plan, assume we also need to remove all value added plans
                 if (target._type == "license") {
-                    await Config.db.DeleteMany({ licenseid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ licenseid: target._id, "product.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "user") {
-                    await Config.db.DeleteMany({ userid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ userid: target._id, "product.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "member") {
-                    await Config.db.DeleteMany({ memberid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ memberid: target._id, "product.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "customer") {
-                    await Config.db.DeleteMany({ customerid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ customerid: target._id, "product.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "workspace") {
-                    await Config.db.DeleteMany({ workspaceid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ workspaceid: target._id, "product.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 } else if (target._type == "agent") {
-                    await Config.db.DeleteMany({ agentid: target._id, "produc.valueadd": true }, null, "config", null, false, rootjwt, parent);
+                    await Config.db.DeleteMany({ agentid: target._id, "product.valueadd": true }, null, "config", null, false, rootjwt, parent);
                 }
             }
             await Resources.UpdateResourceTarget(tuser, jwt, resourceusage, target, true, parent);

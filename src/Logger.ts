@@ -447,7 +447,10 @@ export class Logger {
             if (Config.otel_warn_log) Logger.enabled["WebSocketServerClient"] = level.Warning;
             if (Config.otel_err_log) Logger.enabled["WebSocketServerClient"] = level.Error;
             if (Config.log_database_queries) Logger.enabled["log_database_queries"] = level.Verbose;
-            await Logger.License?.validate();
+            try {
+                await Logger.License?.validate();
+            } catch (error) {
+            }
         } catch (error) {
             console.error("Logger error", error);
         }
