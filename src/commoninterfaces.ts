@@ -9,6 +9,9 @@ export interface i_license_data {
     email: string;
     expirationDate: Date;
     domain: string;
+    connections: number;
+    workspaces: number;
+    gitrepos: number;
 }
 export interface i_license_file {
     template_v1: string;

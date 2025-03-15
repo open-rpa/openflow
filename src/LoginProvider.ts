@@ -272,11 +272,12 @@ export class LoginProvider {
                 const span: Span = Logger.otel.startSpanExpress("OpenIDStrategy", req);
                 try {
                     if (req.user != null) {
+                        // TODO: Readd once we have an dedicated authentication page
                         // @ts-ignore
-                        if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
-                            res.redirect("/login");
-                            return next();
-                        }
+                        // if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                        //     res.redirect("/login");
+                        //     return next();
+                        // }
                     }
                     const originalUrl: any = req.cookies.originalUrl;
                     try {
@@ -321,11 +322,12 @@ export class LoginProvider {
                 const span: Span = Logger.otel.startSpanExpress("GoogleStrategy", req);
                 try {
                     if (req.user != null) {
+                        // TODO: Readd once we have an dedicated authentication page
                         // @ts-ignore
-                        if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
-                            res.redirect("/login");
-                            return next();
-                        }
+                        // if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                        //     res.redirect("/login");
+                        //     return next();
+                        // }
                     }
                     const originalUrl: any = req.cookies.originalUrl;
                     try {
@@ -434,11 +436,12 @@ export class LoginProvider {
                 const span: Span = Logger.otel.startSpanExpress("SAML" + key, req);
                 try {
                     if (req.user != null) {
+                        // TODO: Readd once we have an dedicated authentication page
                         // @ts-ignore
-                        if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
-                            res.redirect("/login");
-                            return next();
-                        }
+                        // if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                        //     res.redirect("/login");
+                        //     return next();
+                        // }
                     }
                     const originalUrl: any = req.cookies.originalUrl;
                     try {
@@ -600,10 +603,12 @@ export class LoginProvider {
                                 Logger.instanse.error(err, null, { cls: "LoginProvider", func: "Localauthenticate" });
                                 return next(err);
                             }
-                            if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
-                                res.redirect("/login");
-                                return next();
-                            } else if (!Util.IsNullEmpty(originalUrl)) {
+                            // TODO: Readd once we have an dedicated authentication page
+                            // if (!Util.IsNullEmpty(Config.validate_user_form) && req.user.validated == false) {
+                            //     res.redirect("/login");
+                            //     return next();
+                            // } else 
+                            if (!Util.IsNullEmpty(originalUrl)) {
                                 try {
                                     try {
                                         res.cookie("originalUrl", "", { expires: new Date(0) });

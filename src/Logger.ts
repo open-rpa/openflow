@@ -510,6 +510,12 @@ export class Logger {
                 Logger.License.validlicense = false;
                 Logger.License.validate = () => { throw new Error("License is not valid"); }
                 Logger.License.shutdown = () => undefined;
+                Logger.License.data = {
+                    domain: Config.domain, email: "", 
+                    expirationDate: new Date(), 
+                    licenseVersion: 3,
+                    connections: 0, workspaces: 0, gitrepos: 0
+                };
             }
         }
 

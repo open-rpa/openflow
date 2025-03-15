@@ -243,7 +243,7 @@ export class OAuthProvider {
                     auth_time: null,
                     iss: null,
                     openid: [
-                        "sub", "name", "email", "email_verified", "role", "roles"
+                        "sub", "name", "email", "validated", "email_verified", "role", "roles"
                     ],
                     sid: null
                 },
@@ -307,18 +307,18 @@ export class OAuthProvider {
             instance.app.use("/oidclogin", async (req, res, next) => {
                 if (req && (req as any).user) {
 
-                    var validated = true;
-                    if (Config.validate_user_form != "") {
-                        if (!(req as any).user.formvalidated) validated = false;
-                    }
-                    if (Config.validate_emails) {
-                        if (!(req as any).user.emailvalidated) validated = false;
-                    }
-                    if (!validated) {
-                        res.cookie("originalUrl", "/oidclogin", { maxAge: 900000, httpOnly: true });
-                        res.redirect("/login");
-                        return next();
-                    }
+                    // var validated = true;
+                    // if (Config.validate_user_form != "") {
+                    //     if (!(req as any).user.formvalidated) validated = false;
+                    // }
+                    // if (Config.validate_emails) {
+                    //     if (!(req as any).user.emailvalidated) validated = false;
+                    // }
+                    // if (!validated) {
+                    //     res.cookie("originalUrl", "/oidclogin", { maxAge: 900000, httpOnly: true });
+                    //     res.redirect("/login");
+                    //     return next();
+                    // }
                     res.cookie("originalUrl", "/oidccb", { maxAge: 900000, httpOnly: true });
                     res.redirect("/oidccb");
                 } else {
@@ -434,6 +434,11 @@ export class Account {
         Logger.DBHelper.UserRoleUpdateId(accountId, false, null);
         if (user == null) throw new Error("Cannot create Account from null user for id ${this.accountId}");
         user = Object.assign(user, { accountId: accountId, sub: accountId });
+        // @ts-ignore
+        user.email_verified = user.emailvalidated;
+        // @ts-ignore
+        user.verified = user.validated;
+        
         // node-bb username hack
         if (Util.IsNullEmpty(user.email)) user.email = user.username;
         if (user.name == user.email && user.email.indexOf("@") > -1) {

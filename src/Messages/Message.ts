@@ -5083,8 +5083,157 @@ export class Message {
             case "getbillingportallink":
                 msg.result = await Billings.GetBillingPortalLink(this.tuser, this.jwt, msg.id, parent);
                 break;
+
+            case "validateuserform":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                var u: User = this.tuser;
+                if (!Util.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, parent);
+                delete data._id;
+                delete data.username;
+                delete data.disabled;
+                delete data.type;
+                delete data.roles;
+                delete data.submit;
+                delete data.federationids;
+                delete data.nodered;
+                delete data.billing;
+                delete data.clientagent;
+                delete data.clientversion;
+
+                const UpdateDoc: any = { "$set": {} };
+                const keys = Object.keys(data);
+                keys.forEach(key => {
+                    if (key.startsWith("_")) {
+                    } else if (key.indexOf("$") > -1) {
+                    } else {
+                        UpdateDoc.$set[key] = data[key];
+                    }
+                });
+                UpdateDoc.$set["formvalidated"] = true;
+                if (Config.validate_emails) {
+                    if (Config.smtp_service == "gmail") {
+                        if (Util.IsNullEmpty(Config.smtp_user) || Util.IsNullEmpty(Config.smtp_pass)) {
+                            Logger.instanse.error("Disabling email validation, missing login information fot gmail", parent, { cls: "LoginProvider", func: "validateuserform" });
+                            Config.validate_emails = false;
+                        }
+                    } else if (Util.IsNullEmpty(Config.smtp_url)) {
+                        Logger.instanse.error("Disabling email validation, missing smtp_url", parent, { cls: "LoginProvider", func: "validateuserform" });
+                        Config.validate_emails = false;
+                    } else if (Util.IsNullEmpty(Config.smtp_from)) {
+                        Logger.instanse.error("Disabling email validation, missing smtp_from", parent, { cls: "LoginProvider", func: "validateuserform" });
+                        Config.validate_emails = false;
+                    }
+                }
+
+                if (Config.validate_emails) {
+                    let email: string = this.tuser.username;
+                    if (this.tuser.email && this.tuser.email.indexOf("@") > -1) email = this.tuser.email;
+                    if (data.email) email = data.email;
+
+                    if (email.indexOf("@") > -1) {
+                        if (Config.debounce_lookup) {
+                            const response = await got.get("https://disposable.debounce.io/?email=" + email);
+                            const body = JSON.parse(response.body);
+                            if (body.disposable == true) {
+                                throw new Error("Please use a valid and non temporary email address");
+                            }
+                        }
+                        if (Config.validate_emails_disposable) {
+                            var domain = await Logger.DBHelper.GetDisposableDomain(email, parent);
+                            if (domain != null) {
+                                throw new Error("Please use a valid and non temporary email address");
+                            }
+                        }
+                    }
+
+                    if (email.indexOf("@") > -1) {
+
+                        // https://disposable.debounce.io/?email=info@example.com
+                        email = email.toLowerCase();
+                        var exists = await Config.db.query<User>({ query: { "$or": [{ "username": email }, { "email": email }], "_type": "user" }, collectionname: "users", jwt: Crypt.rootToken() }, parent);
+                        exists = exists.filter(x => x._id != this.tuser._id);
+                        if (exists.length > 0) {
+                            Logger.instanse.error(this.tuser.name + " trying to register email " + email + " already used by " + exists[0].name + " (" + exists[0]._id + ")", parent, { cls: "LoginProvider", func: "validateuserform" })
+                            email = "";
+                            delete UpdateDoc.$set["email"];
+                            UpdateDoc.$set["formvalidated"] = false;
+                            throw new Error("email already in use by another user");
+                        }
+                    }
+                    if (email.indexOf("@") > -1 || Config.NODE_ENV != "production") {
+                        if (this.tuser.emailvalidated == true) {
+                            UpdateDoc.$set["validated"] = true;
+                            this.tuser.validated = true;
+                        } else {
+                            // @ts-ignore
+                            let code = u._mailcode;
+                            
+                            if(code == null || code == "") {
+                                code = Util.GetUniqueIdentifier();
+                                UpdateDoc.$set["_mailcode"] = code;
+                            }
+                            LoginProvider.sendEmail("validate", this.tuser._id, email, "Validate email in OpenIAP flow",
+                                `Hi ${this.tuser.name}\nPlease use the below code to validate your email\n${code}`, parent);
+                        }
+                    } else {
+                        Logger.instanse.error(this.tuser.name + " email is mandatory)", parent, { cls: "LoginProvider", func: "validateuserform" });
+                        throw new Error("email is mandatory.");
+                    }
+                } else {
+                    UpdateDoc.$set["emailvalidated"] = true;
+                    UpdateDoc.$set["validated"] = true;
+                    this.tuser.validated = true;
+                }
+
+
+                Logger.instanse.debug("Update user " + this.tuser.name + " information", parent, { cls: "LoginProvider", func: "validateuserform" });
+                var res2 = await Config.db.UpdateDocument({ "_id": this.tuser._id }, UpdateDoc, "users", 1, true, Crypt.rootToken(), parent);
+                await Logger.DBHelper.CheckCache("users", this.tuser as any, false, false, parent);
+                break;
+            case "resendvalidateuseremail":
+                if (Config.validate_emails == true) {
+                    let email: string = this.tuser.username;
+                    if (this.tuser.email && this.tuser.email.indexOf("@") > -1) email = this.tuser.email;
+                    if (this.tuser.emailvalidated == true) throw new Error("Email already validated");
+                    // @ts-ignore
+                    let code = this.tuser._mailcode;
+                    if (code == null || code == "") {
+                        code = Util.GetUniqueIdentifier();
+                        const UpdateDoc3: any = { "$set": {} };
+                        UpdateDoc3.$set["_mailcode"] = code;
+                        var res2 = await Config.db.UpdateDocument({ "_id": this.tuser._id }, UpdateDoc3, "users", 1, true, Crypt.rootToken(), parent);
+                        await Logger.DBHelper.CheckCache("users", this.tuser as any, false, false, parent);
+                    }
+                    LoginProvider.sendEmail("validate", this.tuser._id, email, "Validate email in OpenIAP flow",
+                        `Hi ${this.tuser.name}\nPlease use the below code to validate your email\n${code}`, parent);
+                } else {
+                    throw new Error("Email validation is disabled");
+                }
+                break;
+            case "validateuseremail":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                var u: User = this.tuser;
+                if (!Util.IsNullEmpty(u._id)) u = await Logger.DBHelper.FindById(u._id, parent);
+                if (u.emailvalidated == true) throw new Error("Email already validated");
+                // @ts-ignore
+                if (u._mailcode == null || u._mailcode == "") throw new Error("No email validation code found");
+                // @ts-ignore
+                if (u._mailcode != data.code) throw new Error("Invalid code");
+                const UpdateDoc2: any = { "$set": {} };
+                u.emailvalidated = true;
+                UpdateDoc2.$set["emailvalidated"] = true;
+                if(u.formvalidated == true) {
+                    u.validated = true;
+                    UpdateDoc2.$set["validated"] = true;
+                }                
+                var res2 = await Config.db.UpdateDocument({ "_id": u._id }, UpdateDoc2, "users", 1, true, Crypt.rootToken(), parent);
+                await Logger.DBHelper.CheckCache("users", u as any, false, false, parent);
+                break;
             default:
-                msg.error = "Unknown custom command";
+                msg.error = "Unknown custom command " + msg.command;
+                throw new Error("Unknown custom command " + msg.command);
         }
         delete msg.jwt;
         this.data = JSON.stringify(msg);

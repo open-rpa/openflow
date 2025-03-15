@@ -1,6 +1,6 @@
 import { Base, Rights } from "@openiap/nodeapi";
 import { Span } from "@opentelemetry/api";
-import { Customer, Member, Role, User, Workspace } from "../commoninterfaces.js";
+import { Customer, Member, Resource, Role, User, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
@@ -53,6 +53,18 @@ export class Workspaces {
                 }
             }
         } else {
+            const resource: Resource = await Config.db.GetResource("Workspaces", parent);
+            let maxworkspacecount = -1;
+            if(resource != null && resource.defaultmetadata && resource.defaultmetadata.workspacecount) {
+                maxworkspacecount = parseInt(resource.defaultmetadata.workspacecount);
+            }
+            if(maxworkspacecount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Creation of new workspaces has been disabled"));
+            if(maxworkspacecount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
+                const workspacecount = await Config.db.count({ query: { _type: "workspace", "_createdby": tuser._id, _resourceusageid: "" }, collectionname: "users", jwt }, parent);
+                if (workspacecount > maxworkspacecount) {
+                    throw new Error(Logger.enricherror(tuser, workspace, "You cannot create more than " + maxworkspacecount +" free tier workspaces"));
+                }
+            }
             Base.addRight(workspaceadmins, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
             Base.addRight(workspaceadmins, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
             workspaceadmins.AddMember(tuser);
