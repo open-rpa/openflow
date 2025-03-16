@@ -911,6 +911,7 @@ export class LoginProvider {
                 Logger.instanse.info(text, span, { cls: "LoginProvider", func: "sendEmail" });
                 resolve("email not sent");
             } else {
+                Logger.instanse.info(text, span, { cls: "LoginProvider", func: "sendEmail" });
                 transporter.sendMail({
                     from,
                     to,
@@ -1162,6 +1163,7 @@ export class LoginProvider {
             wshost: _url,
             wsurl: _url,
             domain: Config.domain,
+            enable_guest: Config.enable_guest,
             auto_create_users: Config.auto_create_users,
             auto_create_personal_nodered_group: Config.auto_create_personal_nodered_group,
             auto_create_personal_noderedapi_group: Config.auto_create_personal_noderedapi_group,
