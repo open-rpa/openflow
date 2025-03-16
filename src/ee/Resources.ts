@@ -56,7 +56,7 @@ export class Resources {
                     Resources.CreateProduct("Additional workspaces", true, "prod_RjJWttP56SoL79", "price_1QpqtVC2vUMc6gvhfHfjN6Fa", "opencore_workspaces_monthly", ResourceAssignedType.multiple, {workspaces: 1}, true, false, 1),
                     Resources.CreateProduct("Additional getrepos", true, "prod_Rjq7THiRHBkpL4", "price_1QqMRCC2vUMc6gvhByzBizDv", "opencore_gitrepos_monthly", ResourceAssignedType.multiple, {gitrepos: 1}, true, false, 1),
                 ], true, false, 4, parent);
-            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
+            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3, workspacecount: 2},
                 [
                     Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {members: 25}, true, false, 1),
                     Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {members: 5000}, true, false, 1),
@@ -100,7 +100,7 @@ export class Resources {
                     Resources.CreateProduct("Additional workspaces", true, "prod_RjJWttP56SoL79", "price_1QpqtVC2vUMc6gvhfHfjN6Fa", "opencore_workspaces_monthly", ResourceAssignedType.multiple, {workspaces: 1}, true, false, 1),
                     Resources.CreateProduct("Additional getrepos", true, "prod_Rjq7THiRHBkpL4", "price_1QqMRCC2vUMc6gvhByzBizDv", "opencore_gitrepos_monthly", ResourceAssignedType.multiple, {gitrepos: 1}, true, false, 1),
                 ], true, false, 3, parent);
-            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
+            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3, workspacecount: 2},
                 [
                     Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {members: 25}, true, false, 1),
                     Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {members: 5000}, true, false, 2),
@@ -119,7 +119,7 @@ export class Resources {
                     Resources.CreateProduct("50Mb quota", false, "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "", ResourceAssignedType.multiple, { dbusage: (1048576 * 50) }, true, true, 1),
                     Resources.CreateProduct("Metered Monthly", false, "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 0),
                 ], true, true, 1, parent);
-            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3},
+            await Resources.CreateResource("Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, {members: 3, workspacecount: 2},
                 [
                     Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, {members: 25}, true, false, 1),
                     Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, {members: 5000}, true, false, 1),
