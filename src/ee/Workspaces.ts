@@ -1,6 +1,6 @@
 import { Base, Rights } from "@openiap/nodeapi";
 import { Span } from "@opentelemetry/api";
-import { Customer, Member, Resource, Role, User, Workspace } from "../commoninterfaces.js";
+import { Customer, Member, Resource, ResourceUsage, Role, User, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
@@ -60,8 +60,9 @@ export class Workspaces {
             }
             if(maxworkspacecount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Creation of new workspaces has been disabled"));
             if(maxworkspacecount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
-                const workspacecount = await Config.db.count({ query: { _type: "workspace", "_createdby": tuser._id, _resourceusageid: "" }, collectionname: "users", jwt }, parent);
-                if (workspacecount > maxworkspacecount) {
+                // const workspacecount = await Config.db.count({ query: { _type: "workspace", _resourceusageid: "" }, collectionname: "users", jwt }, parent);
+                const workspacecount = await Config.db.count({ query: { _type: "workspace", _resourceusageid: "" }, collectionname: "users", jwt }, parent);
+                if (workspacecount >= maxworkspacecount) {
                     throw new Error(Logger.enricherror(tuser, workspace, "You cannot create more than " + maxworkspacecount +" free tier workspaces"));
                 }
             }
@@ -177,7 +178,7 @@ export class Workspaces {
         if (tuser == null) throw new Error("Invitee user is mandatory");
         if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to invite users");
         if (jwt == null || jwt == "") throw new Error("Invitee JWT is mandatory");
-        const workspace = await Config.db.GetOne<Customer>({ query: { _id: workspaceid, _type: "workspace" }, collectionname: "users", jwt }, parent);
+        const workspace = await Config.db.GetOne<Workspace>({ query: { _id: workspaceid, _type: "workspace" }, collectionname: "users", jwt }, parent);
         if (workspace == null) throw new Error(Logger.enricherror(tuser, workspace, "Workspace not found or access denied"));
         const _workspaceadmins = await Config.db.GetOne<Role>({ query: { _id: workspace.admins, "_type": "role" }, collectionname: "users", jwt }, parent);
         if (_workspaceadmins == null) throw new Error(Logger.enricherror(tuser, workspace, "workspace admins not found"));
@@ -185,6 +186,31 @@ export class Workspaces {
         if (_workspaceusers == null) throw new Error(Logger.enricherror(tuser, workspace, "workspace users not found"));
         const workspaceusers: Role = Role.assign(_workspaceusers);
         if (!workspaceusers.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace"));
+
+        let maxmembercount = -1;
+        if(workspace._resourceusageid != null && workspace._resourceusageid != "") {
+            const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace._resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
+            if(resourceusage == null) {
+                throw new Error(Logger.enricherror(tuser, workspace, "Resource usage " + workspace._resourceusageid + " not found"));
+            }
+            const usage:any = await Resources.CombineMetadata(tuser, jwt, resourceusage, false, parent);
+            if(usage.members != null && usage.members != "") {
+                maxmembercount = parseInt(usage.members);
+            }            
+        } else {
+            const resource: Resource = await Config.db.GetResource("Workspaces", parent);
+            if(resource != null && resource.defaultmetadata && resource.defaultmetadata.members) {
+                maxmembercount = parseInt(resource.defaultmetadata.members);
+            }
+        }
+        if(maxmembercount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Adding new members to workspaces has been disabled"));
+        if(maxmembercount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
+            const membercount = await Config.db.count({ query: { workspaceid: workspaceid, "_type": "member" }, collectionname: "users", jwt }, parent);
+            if (membercount >= maxmembercount) {
+                throw new Error(Logger.enricherror(tuser, workspace, "You cannot add more than more " + maxmembercount +" members, with current workspaces tier (" + workspace._productname  + ")" ));
+            }
+        }
+
 
         const rootjwt = Crypt.rootToken();
         const byid = { $or: [{ "email": email }, { "username": email }, { "federationids.id": email, "federationids.issuer": email }, { "federationids": email }] };
