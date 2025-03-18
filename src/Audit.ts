@@ -3,7 +3,7 @@ import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
 import { Util } from "./Util.js";
-import { Base, Rights, User } from "./commoninterfaces.js";
+import { Base, Rights, User, Workspace } from "./commoninterfaces.js";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
@@ -221,6 +221,26 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
+    public static async AuditWorkspaceAction(user: User, action: string, workspace: Workspace, success: boolean, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
+        try {
+            Audit.ensure_openflow_logins();
+            const log: WorkspaceLog = new WorkspaceLog();
+            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
+            log.success = success;
+            log.userid = user?._id;
+            log.name = user?.name + " " + action + " " + workspace.name;
+            log.workspacename = workspace.name;
+            log.workspaceid = workspace._id;
+            log.username = user?.username;
+            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditCollectionAction" });
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     static dot2num(dot: string): number {
         if (Util.IsNullEmpty(dot)) return 0;
         if (dot.indexOf(".") == -1) return 0;
@@ -315,5 +335,17 @@ export class Collection extends Base {
     constructor() {
         super();
         this._type = "collection";
+    }
+}
+export class WorkspaceLog extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public workspacename: string;
+    public workspaceid: string;
+    constructor() {
+        super();
+        this._type = "workspace";
     }
 }
