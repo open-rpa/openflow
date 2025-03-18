@@ -4400,7 +4400,38 @@ export class Message {
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
-
+    public static async PurgeWorkitemQueue(tuser : User, jwt:string, wiq: WorkitemQueue, parent: Span): Promise<void> {
+        await Audit.AuditWorkitemPurge(tuser, wiq, parent);
+        const workitems = Config.db.db.collection("workitems");
+        const cursor = workitems.find({ "_type": "workitem", "wiqid": wiq._id });
+        let ids = [];
+        for await (let doc of cursor) {
+            ids.push(doc._id);
+            if(ids.length > 1000) {
+                var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
+                for (var i = 0; i < files.length; i++) {
+                    await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
+                }
+                ids = [];
+            }
+        };
+        if(ids.length > 0) {
+            var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
+            for (var i = 0; i < files.length; i++) {
+                await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
+            }
+            ids = [];
+        }
+        await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
+        var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+        if (items.length > 0) {
+        }
+        items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
+        if (items.length > 0) {
+            throw new Error("Failed purging workitemqueue " + wiq.name);
+        }
+        await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
+    }
     async UpdateWorkitemQueue(parent: Span): Promise<void> {
         let user: User = null;
         this.Reply();
@@ -4464,36 +4495,7 @@ export class Message {
         msg.result = await Config.db.UpdateOne(wiq as any, "mq", 1, true, jwt, parent);
 
         if (purge) {
-            await Audit.AuditWorkitemPurge(this.tuser, wiq, parent);
-            const workitems = Config.db.db.collection("workitems");
-            const cursor = workitems.find({ "_type": "workitem", "wiqid": wiq._id });
-            let ids = [];
-            for await (let doc of cursor) {
-                ids.push(doc._id);
-                if(ids.length > 1000) {
-                    var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
-                    for (var i = 0; i < files.length; i++) {
-                        await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
-                    }
-                    ids = [];
-                }
-            };
-            if(ids.length > 0) {
-                var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
-                for (var i = 0; i < files.length; i++) {
-                    await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
-                }
-                ids = [];
-            }
-            await Config.db.DeleteMany({ "_type": "workitem", "wiqid": wiq._id }, null, "workitems", null, false, jwt, parent);
-            var items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
-            if (items.length > 0) {
-            }
-            items = await Config.db.query<WorkitemQueue>({ query: { "_type": "workitem", "wiqid": wiq._id }, collectionname: "workitems", top: 1, jwt }, parent);
-            if (items.length > 0) {
-                throw new Error("Failed purging workitemqueue " + wiq.name);
-            }
-            await Config.db.DeleteMany({ "metadata.wiqid": wiq._id }, null, "fs.files", null, false, jwt, parent);
+            await Message.PurgeWorkitemQueue(this.tuser, jwt, wiq, parent);
         }
         delete msg.jwt;
         this.data = JSON.stringify(msg);
