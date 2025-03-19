@@ -1,12 +1,12 @@
 import { stripe_customer, stripe_invoice, stripe_list, stripe_price, stripe_subscription, stripe_subscription_item } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
-import { Billing, Customer, iAgent, Member, ResourceUsage, User, Workspace } from '../commoninterfaces.js';
+import express from "express";
+import { Billing, Customer, ResourceUsage, User } from '../commoninterfaces.js';
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { Message } from "../Messages/Message.js";
 import { Util } from "../Util.js";
-import express from "express";
 import { Resources } from "./Resources.js";
 export class Payments {
     allowedEvents = [ // Stripe.Event.Type[] = [
@@ -29,13 +29,13 @@ export class Payments {
         "payment_intent.payment_failed",
         "payment_intent.canceled",
     ];
-    private static stripeevents: {stripeid:string, type:string}[] = [];
+    private static stripeevents: { stripeid: string, type: string }[] = [];
     private static stripeeventtimer = null;
     private static async StipeCallbackDebounce() {
         do {
             try {
                 let event = Payments.stripeevents.pop();
-                if(event == null) continue;
+                if (event == null) continue;
                 let billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { stripeid: event.stripeid, _type: "customer" }, jwt: Crypt.rootToken() }, null);
                 if (billing == null && Config.stripe_api_key.indexOf("_test") > -1) { // ugly hack to allow testing using stripe cli
                     billing = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: "679f732f6a6ac0523dac2874", _type: "customer" }, jwt: Crypt.rootToken() }, null);
@@ -49,7 +49,7 @@ export class Payments {
                 Logger.instanse.verbose("Pulling billing account " + billing._id + " for event " + event.type, null, { cls: "Payments", func: "StipeCallbackDebounch" });
                 await Payments.PullBillingAccount(Crypt.rootUser(), Crypt.rootToken(), billing._id, null);
             } catch (error) {
-                Logger.instanse.error(error, null, { cls: "Payments", func: "StipeCallbackDebounch" });                
+                Logger.instanse.error(error, null, { cls: "Payments", func: "StipeCallbackDebounch" });
             }
         } while (Payments.stripeevents.length > 0);
     }
@@ -66,7 +66,7 @@ export class Payments {
                 type = req.body?.type;
                 const object = req.body?.data?.object;
                 if (object == null) throw new Error("No object in stripe event");
-                if(Payments.stripeeventtimer != null) {
+                if (Payments.stripeeventtimer != null) {
                     clearTimeout(Payments.stripeeventtimer);
                 }
                 stripeid = object.customer;
@@ -88,10 +88,10 @@ export class Payments {
                 }
                 Logger.instanse.debug(JSON.stringify({ ...req.body, name: type + " " + name, _type: "stripeevent", stripeid }), parent, { cls: "Payments", func: "stripeevent", stripeid, type });
                 if (stripeid != null && stripeid != "") {
-                    if(Payments.stripeevents.find(x => x.stripeid == stripeid) == null) {
+                    if (Payments.stripeevents.find(x => x.stripeid == stripeid) == null) {
                         Payments.stripeevents.push({ stripeid, type });
                     }
-                    if(Payments.stripeeventtimer == null) {
+                    if (Payments.stripeeventtimer == null) {
                         clearTimeout(Payments.stripeeventtimer);
                     }
                     Payments.stripeeventtimer = setTimeout(async () => {
@@ -293,19 +293,19 @@ export class Payments {
             if (subscription == null) return null;
         }
         try {
-            if(Util.IsNullEmpty(proration_behavior)) proration_behavior = "none";            
+            if (Util.IsNullEmpty(proration_behavior)) proration_behavior = "none";
             const payload = {
                 automatic_tax: { enabled: true },     // Let stripe add the correct tax
                 customer: stripeid,
                 subscription: subscription.id,
                 subscription_details: { items: [], proration_behavior: proration_behavior }
             };
-            if(Util.IsNullEmpty(stripeprice)) {
+            if (Util.IsNullEmpty(stripeprice)) {
                 delete payload.subscription_details;
             } else {
                 const price = await Payments.GetPrice(tuser, lookupkey, stripeprice, parent);
                 if (price == null) throw new Error("Price not found");
-                if(quantity < 0) quantity = 1;
+                if (quantity < 0) quantity = 1;
                 stripeprice = price.id;
                 const metered = (price.recurring && price.recurring.usage_type == "metered");
                 const line_item = { price: stripeprice, quantity, id: "" };
@@ -316,14 +316,14 @@ export class Payments {
                 } else {
                     delete line_item.id;
                 }
-                if(metered) {
+                if (metered) {
                     delete line_item.quantity;
                 }
                 payload.subscription_details.items.push(line_item);
             }
-            
+
             const invoices = await Message.Stripe<stripe_list<stripe_invoice>>("GET", "invoices_upcoming", null, payload, stripeid);
-            if(invoices.object == "invoice" && invoices.total_count == undefined) {
+            if (invoices.object == "invoice" && invoices.total_count == undefined) {
                 return invoices as any;
             }
             if (invoices.total_count == 0) return null;
@@ -409,7 +409,7 @@ export class Payments {
             Logger.instanse.error(error, parent, { cls: "Payments", func: "CreateSubscription", stripeid });
             throw new Error(Logger.enricherror(tuser, null, "Create stripe subscription failed"));
         }
-    }    
+    }
     public static async CleanupPendingLicenseUsage(licenseid: string, parent: Span): Promise<void> {
         if (Util.IsNullEmpty(licenseid)) return;
         if (Config.stripe_api_secret == null || Config.stripe_api_secret == "") return;
@@ -444,7 +444,7 @@ export class Payments {
         if (Util.IsNullEmpty(workspaceid)) return;
         if (Config.stripe_api_secret == null || Config.stripe_api_secret == "") return;
         const rootjwt = Crypt.rootToken();
-        const count = await Config.db.DeleteMany({  workspaceid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
+        const count = await Config.db.DeleteMany({ workspaceid, "$or": [{ "siid": { "$exists": false } }, { "siid": "" }, { "siid": null }], _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
         if (count > 0) {
             Logger.instanse.info("Removed " + count + " pending resource usage records, before creating new one", parent, { workspaceid, cls: "Payments", func: "CleanupPendingWorkspaceUsage" });
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -472,14 +472,14 @@ export class Payments {
     }
     public static async PullBillingAccount(tuser: User, jwt: string, billingid: string, parent: Span): Promise<void> {
         if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
-        if(Util.IsNullEmpty(billingid)) return null;
+        if (Util.IsNullEmpty(billingid)) return null;
         try {
             const rootjwt = Crypt.rootToken();
             const billingaccount = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: billingid, _type: "customer" }, jwt }, parent);
             if (billingaccount == null) throw new Error(Logger.enricherror(tuser, null, "Billing account not found, or access denied"));
             if (Util.IsNullEmpty(billingaccount.stripeid)) {
                 const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid: billingid, _type: "resourceusage" }, jwt: rootjwt }, parent);
-                for(let i = 0; i < 0; i++) {
+                for (let i = 0; i < 0; i++) {
                     await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "customerid": billingid, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
@@ -492,7 +492,7 @@ export class Payments {
             const stripe_customer = await this.GetCustomer(tuser, stripeid, parent);
             if (stripe_customer == null) {
                 const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid: billingid, _type: "resourceusage" }, jwt: rootjwt }, parent);
-                for(let i = 0; i < 0; i++) {
+                for (let i = 0; i < 0; i++) {
                     await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "customerid": billingid, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
@@ -508,7 +508,7 @@ export class Payments {
             const stripe_subscriptions = await this.GetSubscriptions(tuser, stripeid, parent);
             if (stripe_subscriptions.length == 0) {
                 const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { customerid: billingid, _type: "resourceusage" }, jwt: rootjwt }, parent);
-                for(let i = 0; i < 0; i++) {
+                for (let i = 0; i < 0; i++) {
                     await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "customerid": billingid, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
@@ -522,8 +522,8 @@ export class Payments {
                 // @ts-ignore
                 const status = sub.status;
                 if (status == "active") continue;
-                const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { "subid": sub.id, _type: "resourceusage"  }, jwt: rootjwt }, parent);
-                for(let i = 0; i < 0; i++) {
+                const usage = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { "subid": sub.id, _type: "resourceusage" }, jwt: rootjwt }, parent);
+                for (let i = 0; i < 0; i++) {
                     await Resources.RemoveResourceUsage(tuser, jwt, usage[i]._id, 1, parent);
                 }
                 // const count = await Config.db.DeleteMany({ "subid": sub.id, _type: "resourceusage" }, null, "config", null, false, rootjwt, parent);
@@ -539,9 +539,9 @@ export class Payments {
                 for (let i = 0; i < stripe_subscription.items.data.length; i++) {
                     const line_item = stripe_subscription.items.data[i];
                     const u = usage.find(x => x.siid == line_item.id);
-                    if(u == null) {
+                    if (u == null) {
                         const u = usage.find(x => x.product.stripeprice == line_item.price.id);
-                        if(u != null && Util.IsNullEmpty(u.siid)) {
+                        if (u != null && Util.IsNullEmpty(u.siid)) {
                             u.siid = line_item.id;
                             const target = await Resources.GetResourceTarget(tuser, jwt, u, parent);
                             if (target != null) {
@@ -554,15 +554,15 @@ export class Payments {
                 }
             }
             // Remove products no longer in stripe
-            for(let i = 0; i < usage.length; i++) {
+            for (let i = 0; i < usage.length; i++) {
                 const u = usage[i];
-                let line_item:stripe_subscription_item = null;
-                for(let i = 0; i < stripe_subscriptions.length; i++) {
+                let line_item: stripe_subscription_item = null;
+                for (let i = 0; i < stripe_subscriptions.length; i++) {
                     const sub = stripe_subscriptions[i];
                     line_item = sub.items.data.find(x => x.id == u.siid);
-                    if(line_item != null) break;
+                    if (line_item != null) break;
                 }
-                if(line_item == null) {
+                if (line_item == null) {
                     await Config.db.DeleteOne(u._id, "config", false, rootjwt, parent);
                     let target = await Resources.GetResourceTarget(tuser, jwt, u, parent);
                     if (target != null) {
@@ -579,7 +579,7 @@ export class Payments {
     }
     public static async PushBillingAccount(tuser: User, jwt: string, billingid: string, proration_behavior: string, parent: Span): Promise<void> {
         if (Util.IsNullEmpty(Config.stripe_api_secret)) return null;
-        if(Util.IsNullEmpty(billingid)) return null;
+        if (Util.IsNullEmpty(billingid)) return null;
         try {
             const rootjwt = Crypt.rootToken();
             const billingaccount = await Config.db.GetOne<Billing>({ collectionname: "users", query: { _id: billingid, _type: "customer" }, jwt }, parent);
@@ -634,7 +634,7 @@ export class Payments {
                 const subscription = stripe_subscriptions.find(x => x.id == price.subid) ?? default_sub;
                 const line_item = subscription?.items.data.find(x => x.id == stripe_price || x.price.id == stripe_price);
 
-                if(Util.IsNullEmpty(proration_behavior)) proration_behavior = "none";
+                if (Util.IsNullEmpty(proration_behavior)) proration_behavior = "none";
                 let payload: any = { proration_behavior, price: stripe_price };
                 if (!Util.IsNullEmpty(price.quantity)) {
                     payload.quantity = price.quantity;
@@ -648,13 +648,13 @@ export class Payments {
                 if (result != null) {
                     for (let i = 0; i < usage.length; i++) {
                         const u = usage[i];
-                        if (u.product.stripeprice == stripe_price && (Util.IsNullEmpty(u.siid)|| Util.IsNullEmpty(u.subid))) {
+                        if (u.product.stripeprice == stripe_price && (Util.IsNullEmpty(u.siid) || Util.IsNullEmpty(u.subid))) {
                             u.siid = result.id;
                             u.subid = subscription.id;
                             const target = await Resources.GetResourceTarget(tuser, jwt, u, parent);
                             if (target != null) {
                                 await Resources.UpdateResourceTarget(tuser, jwt, u, target, false, parent);
-                            }                        
+                            }
                             await Config.db.UpdateOne(u, "config", 1, true, rootjwt, parent);
                         }
                     }
@@ -688,5 +688,4 @@ export class Payments {
             throw new Error(Logger.enricherror(tuser, null, "Update stripe subscription lines failed (" + error.message + ")"));
         }
     }
- 
 }

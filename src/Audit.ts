@@ -3,7 +3,7 @@ import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
 import { Util } from "./Util.js";
-import { Base, Rights, User, Workspace } from "./commoninterfaces.js";
+import { Base, ResourceUsage, Rights, User, Workspace } from "./commoninterfaces.js";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
@@ -241,6 +241,33 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
+    public static async AuditResourceAction(user: User, action: string, target: Base, resourceusage: ResourceUsage, success: boolean, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
+        try {
+            Audit.ensure_openflow_logins();
+            const log: ResourceLog = new ResourceLog();
+            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
+            log.success = success;
+            log.userid = user?._id;
+            if (resourceusage != null) {
+                log.resourceusagename = resourceusage.name;
+                log.resourceusageid = resourceusage._id;
+                log.productname = resourceusage.product?.name;
+                log.stripeprice = resourceusage.product?.stripeprice;
+            } else {
+                log.name = user?.name + " " + action + " " + target.name;
+            }
+            log.resourcename = target.name;
+            log.resourceid = target._id;
+            log.username = user?.username;
+            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditCollectionAction" });
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     static dot2num(dot: string): number {
         if (Util.IsNullEmpty(dot)) return 0;
         if (dot.indexOf(".") == -1) return 0;
@@ -257,7 +284,6 @@ export class Audit {
         }
         return d;
     }
-
 }
 export class Singin extends Base {
     public success: boolean;
@@ -349,3 +375,20 @@ export class WorkspaceLog extends Base {
         this._type = "workspace";
     }
 }
+export class ResourceLog extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public resourcename: string;
+    public resourceid: string;
+    public resourceusagename: string;
+    public resourceusageid: string;
+    public productname: string;
+    public stripeprice: string;
+    constructor() {
+        super();
+        this._type = "resource";
+    }
+}
+

@@ -1,17 +1,17 @@
 import { Base, Rights } from "@openiap/nodeapi";
 import { Span } from "@opentelemetry/api";
-import { Customer, Member, Resource, ResourceUsage, Role, User, WorkitemQueue, Workspace } from "../commoninterfaces.js";
+import { Audit } from "../Audit.js";
+import { Member, Resource, ResourceUsage, Role, User, WorkitemQueue, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
+import { Message } from "../Messages/Message.js";
 import { Wellknown } from "../Util.js";
 import { Resources } from "./Resources.js";
-import { Message } from "../Messages/Message.js";
-import { Audit } from "../Audit.js";
 export class Workspaces {
     public static async EnsureWorkspace(tuser: User, jwt: string, workspace: Workspace, parent: Span): Promise<Workspace> {
         let _workspace: Workspace = null;
-        try {            
+        try {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
@@ -29,7 +29,7 @@ export class Workspaces {
                 const _workspace = await Config.db.GetOne<Workspace>({ query: { _id: workspace._id, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                 if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
             }
-    
+
             workspaceadmins = await Logger.DBHelper.EnsureUniqueRole(workspace.name + " admins", workspace.admins, parent);
             workspaceusers = await Logger.DBHelper.EnsureUniqueRole(workspace.name + " users", workspace.users, parent);
             global_workspaceadmins = await Logger.DBHelper.EnsureRole(Wellknown.workspace_admins.name, Wellknown.workspace_admins._id, parent);
@@ -59,15 +59,15 @@ export class Workspaces {
             } else {
                 const resource: Resource = await Config.db.GetResource("Workspaces", parent);
                 let maxworkspacecount = -1;
-                if(resource != null && resource.defaultmetadata && resource.defaultmetadata.workspacecount) {
+                if (resource != null && resource.defaultmetadata && resource.defaultmetadata.workspacecount) {
                     maxworkspacecount = parseInt(resource.defaultmetadata.workspacecount);
                 }
-                if(maxworkspacecount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Creation of new workspaces has been disabled"));
-                if(maxworkspacecount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
+                if (maxworkspacecount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Creation of new workspaces has been disabled"));
+                if (maxworkspacecount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
                     // const workspacecount = await Config.db.count({ query: { _type: "workspace", _resourceusageid: "" }, collectionname: "users", jwt }, parent);
                     const workspacecount = await Config.db.count({ query: { _type: "workspace", _resourceusageid: "" }, collectionname: "users", jwt }, parent);
                     if (workspacecount >= maxworkspacecount) {
-                        throw new Error(Logger.enricherror(tuser, workspace, "You cannot create more than " + maxworkspacecount +" free tier workspaces"));
+                        throw new Error(Logger.enricherror(tuser, workspace, "You cannot create more than " + maxworkspacecount + " free tier workspaces"));
                     }
                 }
                 Base.addRight(workspaceadmins, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
@@ -78,7 +78,7 @@ export class Workspaces {
                 workspaceusers.AddMember(workspaceadmins);
                 workspaceusers.AddMember(tuser);
             }
-    
+
             Base.removeRight(workspaceadmins, workspaceadmins._id, [Rights.full_control]);
             Base.addRight(workspaceadmins, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
             Base.removeRight(workspaceadmins, workspaceusers._id, [Rights.full_control]);
@@ -89,7 +89,7 @@ export class Workspaces {
             Base.removeRight(workspaceusers, workspaceusers._id, [Rights.full_control]);
             Base.addRight(workspaceusers, workspaceusers._id, workspaceusers.name, [Rights.read]);
             await Logger.DBHelper.Save(workspaceusers, rootjwt, parent);
-    
+
             Base.addRight(workspace, workspaceadmins._id, workspaceadmins.name, [Rights.read]);
             Base.addRight(workspace, workspaceusers._id, workspaceusers.name, [Rights.read]);
             workspace.admins = workspaceadmins._id;
@@ -114,7 +114,7 @@ export class Workspaces {
                 }
             }
             const result = await Config.db.InsertOrUpdateOne(workspace, "users", "_id", 1, true, rootjwt, parent);
-    
+
             let member = await Config.db.GetOne<Member>({ collectionname: "users", query: { userid: tuser._id, workspaceid: result._id, "_type": "member" } }, parent);
             if (member == null) {
                 member = new Member();
@@ -184,14 +184,14 @@ export class Workspaces {
                 await Message.PurgeWorkitemQueue(tuser, jwt, wiq, parent);
                 await Config.db.DeleteOne(wiq._id, "mq", false, rootjwt, parent);
             }
-    
+
             await Config.db.DeleteOne(id, "users", false, rootjwt, parent);
             await Config.db.DeleteOne(_workspace.admins, "users", false, rootjwt, parent);
             await Config.db.DeleteOne(_workspace.users, "users", false, rootjwt, parent);
             await Config.db.DeleteMany(JSON.stringify({ workspaceid: id, "_type": "member" }), null, "users", "", false, rootjwt, parent);
             await Audit.AuditWorkspaceAction(tuser, "remove", _workspace, true, parent);
         } catch (error) {
-            if(_workspace != null) {
+            if (_workspace != null) {
                 await Audit.AuditWorkspaceAction(tuser, "remove", _workspace, false, parent);
             }
             throw error;
@@ -199,7 +199,7 @@ export class Workspaces {
     }
     public static async InviteUserToWorkspace(tuser: User, jwt: string, email: string, workspaceid: string, role: "member" | "admin", parent: Span): Promise<Member> {
         let workspace: Workspace = null;
-        try {            
+        try {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (email == null || email == "") throw new Error("Email is mandatory");
@@ -217,38 +217,38 @@ export class Workspaces {
             if (_workspaceusers == null) throw new Error(Logger.enricherror(tuser, workspace, "workspace users not found"));
             const workspaceusers: Role = Role.assign(_workspaceusers);
             if (!tuser.HasRoleName(Wellknown.admins.name)) {
-                 if (!workspaceusers.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace"));
+                if (!workspaceusers.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace"));
             }
-    
+
             let maxmembercount = -1;
-            if(workspace._resourceusageid != null && workspace._resourceusageid != "") {
+            if (workspace._resourceusageid != null && workspace._resourceusageid != "") {
                 const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace._resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
-                if(resourceusage == null) {
+                if (resourceusage == null) {
                     throw new Error(Logger.enricherror(tuser, workspace, "Resource usage " + workspace._resourceusageid + " not found"));
                 }
-                const usage:any = await Resources.CombineMetadata(tuser, jwt, resourceusage, false, parent);
-                if(usage.members != null && usage.members != "") {
+                const usage: any = await Resources.CombineMetadata(tuser, jwt, resourceusage, false, parent);
+                if (usage.members != null && usage.members != "") {
                     maxmembercount = parseInt(usage.members);
-                }            
+                }
             } else {
                 const resource: Resource = await Config.db.GetResource("Workspaces", parent);
-                if(resource != null && resource.defaultmetadata && resource.defaultmetadata.members) {
+                if (resource != null && resource.defaultmetadata && resource.defaultmetadata.members) {
                     maxmembercount = parseInt(resource.defaultmetadata.members);
                 }
             }
-            if(maxmembercount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Adding new members to workspaces has been disabled"));
-            if(maxmembercount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
+            if (maxmembercount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Adding new members to workspaces has been disabled"));
+            if (maxmembercount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
                 const membercount = await Config.db.count({ query: { workspaceid: workspaceid, "_type": "member" }, collectionname: "users", jwt }, parent);
                 if (membercount >= maxmembercount) {
-                    throw new Error(Logger.enricherror(tuser, workspace, "You cannot add more than more " + maxmembercount +" members, with current workspaces tier (" + workspace._productname  + ")" ));
+                    throw new Error(Logger.enricherror(tuser, workspace, "You cannot add more than more " + maxmembercount + " members, with current workspaces tier (" + workspace._productname + ")"));
                 }
             }
-    
-    
+
+
             const rootjwt = Crypt.rootToken();
             const byid = { $or: [{ "email": email }, { "username": email }, { "federationids.id": email, "federationids.issuer": email }, { "federationids": email }] };
             const user = await Config.db.GetOne<User>({ query: { ...byid, _type: "user" }, collectionname: "users", jwt: rootjwt }, parent);
-    
+
             let exists: any[] = [{ email: email }];
             if (user != null) exists.push({ userid: user._id });
             const query = { $or: exists, workspaceid: workspaceid, "_type": "member" };
@@ -307,7 +307,7 @@ export class Workspaces {
             await Audit.AuditWorkspaceAction(tuser, "invite", workspace, true, parent);
             return result;
         } catch (error) {
-            if(workspace != null) {
+            if (workspace != null) {
                 await Audit.AuditWorkspaceAction(tuser, "invite", workspace, false, parent);
             }
             throw error;
@@ -333,7 +333,7 @@ export class Workspaces {
     }
     public static async AcceptInvite(user: User, jwt: string, token: string, parent: Span): Promise<Member> {
         let workspace: Workspace = null;
-        try {            
+        try {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (user == null) throw new Error("User is mandatory");
@@ -377,10 +377,10 @@ export class Workspaces {
             await Audit.AuditWorkspaceAction(user, "acceptinvite", workspace, true, parent);
             return result;
         } catch (error) {
-            if(workspace != null) {
+            if (workspace != null) {
                 await Audit.AuditWorkspaceAction(user, "acceptinvite", workspace, false, parent);
-            }            
-            throw error;            
+            }
+            throw error;
         }
     }
     public static async DeclineInvite(user: User, jwt: string, token: string, parent: Span): Promise<Member> {
@@ -400,13 +400,13 @@ export class Workspaces {
             if (user._id == Wellknown.guest._id && member.userid != Wellknown.guest._id) throw new Error(Logger.enricherror(user, null, "Guest is not allowed to decline invites"));
             member.userid = user._id;
             Base.addRight(member, user._id, user.name, [Rights.read]);
-    
+
             workspace = await Config.db.GetOne<Workspace>({ query: { _id: member.workspaceid, "_type": "workspace" }, collectionname: "users", jwt: rootjwt }, parent);
             let workspaceusers = await Config.db.GetOne<Role>({ query: { _id: workspace.users, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
             workspaceusers = Role.assign(workspaceusers);
             let workspaceadmins = await Config.db.GetOne<Role>({ query: { _id: workspace.admins, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
             workspaceadmins = Role.assign(workspaceadmins);
-    
+
             if (member.userid != "" && workspaceusers.IsMember(user._id)) {
                 workspaceusers.RemoveMember(user._id);
                 await Logger.DBHelper.Save(workspaceusers, rootjwt, parent);
@@ -423,7 +423,7 @@ export class Workspaces {
             await Audit.AuditWorkspaceAction(user, "declineinvite", workspace, true, parent);
             return result;
         } catch (error) {
-            if(workspace != null) {
+            if (workspace != null) {
                 await Audit.AuditWorkspaceAction(user, "declineinvite", workspace, false, parent);
             }
             throw error;
@@ -441,7 +441,7 @@ export class Workspaces {
             const rootjwt = Crypt.rootToken();
             const member = await Config.db.GetOne<Member>({ query: { _id: id, "_type": "member" }, collectionname: "users", jwt }, parent);
             if (member == null) throw new Error(Logger.enricherror(user, null, "Member not found or access denied"));
-    
+
             workspace = await Config.db.GetOne<Workspace>({ query: { _id: member.workspaceid, "_type": "workspace" }, collectionname: "users", jwt: rootjwt }, parent);
             if (workspace == null) throw new Error(Logger.enricherror(user, null, "Workspace not found or access denied"));
             let workspaceusers = await Config.db.GetOne<Role>({ query: { _id: workspace.users, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
@@ -470,7 +470,7 @@ export class Workspaces {
             await Config.db.DeleteOne(id, "users", false, rootjwt, parent);
             await Audit.AuditWorkspaceAction(user, "removemember", workspace, true, parent);
         } catch (error) {
-            if(workspace != null) {
+            if (workspace != null) {
                 await Audit.AuditWorkspaceAction(user, "removemember", workspace, false, parent);
             }
             throw error;
@@ -491,7 +491,7 @@ export class Workspaces {
             if (existing == null) throw new Error(Logger.enricherror(user, null, "Member not found or access denied"));
             if (member.status != "accepted" && member.status != "pending" && member.status != "rejected") throw new Error(Logger.enricherror(user, null, "Invalid status"));
             if (member.role != "admin" && member.role != "member") throw new Error(Logger.enricherror(user, null, "Invalid role"));
-    
+
             workspace = await Config.db.GetOne<Workspace>({ query: { _id: member.workspaceid, "_type": "workspace" }, collectionname: "users", jwt: rootjwt }, parent);
             if (workspace == null) throw new Error(Logger.enricherror(user, null, "Workspace not found or access denied"));
             let workspaceusers = await Config.db.GetOne<Role>({ query: { _id: workspace.users, "_type": "role" }, collectionname: "users", jwt: rootjwt }, parent);
@@ -531,7 +531,7 @@ export class Workspaces {
             await Audit.AuditWorkspaceAction(user, "updatemember", workspace, true, parent);
             return result;
         } catch (error) {
-            if(workspace != null) {
+            if (workspace != null) {
                 await Audit.AuditWorkspaceAction(user, "updatemember", workspace, false, parent);
             }
             throw error;

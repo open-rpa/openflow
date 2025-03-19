@@ -3160,14 +3160,14 @@ export class Message {
                 payload = JSON.parse(response.body);
             }
             if (method == "DELETE") {
-                if(payload != null) {
-                    if(url.indexOf("?") == -1) {
+                if (payload != null) {
+                    if (url.indexOf("?") == -1) {
                         url += "?";
                     }
                     var keys = Object.keys(payload);
                     for (var i = 0; i < keys.length; i++) {
                         url += keys[i] + "=" + payload[keys[i]];
-                        if(i < keys.length - 1) {
+                        if (i < keys.length - 1) {
                             url += "&";
                         }
                     }
@@ -4400,23 +4400,23 @@ export class Message {
         delete msg.jwt;
         this.data = JSON.stringify(msg);
     }
-    public static async PurgeWorkitemQueue(tuser : User, jwt:string, wiq: WorkitemQueue, parent: Span): Promise<void> {
+    public static async PurgeWorkitemQueue(tuser: User, jwt: string, wiq: WorkitemQueue, parent: Span): Promise<void> {
         await Audit.AuditWorkitemPurge(tuser, wiq, parent);
         const workitems = Config.db.db.collection("workitems");
         const cursor = workitems.find({ "_type": "workitem", "wiqid": wiq._id });
         let ids = [];
         for await (let doc of cursor) {
             ids.push(doc._id);
-            if(ids.length > 1000) {
-                var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
+            if (ids.length > 1000) {
+                var files = await Config.db.query({ query: { "metadata.wi": { "$in": ids } }, collectionname: "fs.files", jwt }, parent);
                 for (var i = 0; i < files.length; i++) {
                     await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
                 }
                 ids = [];
             }
         };
-        if(ids.length > 0) {
-            var files = await Config.db.query({ query: { "metadata.wi": {"$in": ids} }, collectionname: "fs.files", jwt }, parent);
+        if (ids.length > 0) {
+            var files = await Config.db.query({ query: { "metadata.wi": { "$in": ids } }, collectionname: "fs.files", jwt }, parent);
             for (var i = 0; i < files.length; i++) {
                 await Config.db.DeleteOne(files[i]._id, "fs.files", false, jwt, parent);
             }
@@ -4902,43 +4902,43 @@ export class Message {
             case "ensurelicense":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
-                if(data == null) throw new Error("License object is mandatory");
+                if (data == null) throw new Error("License object is mandatory");
                 let license = data as License;
-                if(!Util.IsNullEmpty(data._id)) {
+                if (!Util.IsNullEmpty(data._id)) {
                     let exists = await Config.db.GetOne<any>({ query: { _id: data._id, "_type": "license" }, collectionname: "config", jwt }, parent);
-                    if(exists == null) throw new Error("License not found, or access denied");
+                    if (exists == null) throw new Error("License not found, or access denied");
                     license = exists as License;
-                    if(license.licenseversion == null) {
+                    if (license.licenseversion == null) {
                         license.licenseversion = 3;
                         license = await Config.db.UpdateOne<License>(license, "config", 1, true, Crypt.rootToken(), parent);
                     }
-                    if(data.licenseversion != null && parseInt(data.licenseversion) != license.licenseversion) {
-                        if(parseInt(data.licenseversion) < 1 || parseInt(data.licenseversion) > 3) throw new Error("License version must be between 1 and 3");
-                        if(this.tuser.HasRoleName("admins")) {
+                    if (data.licenseversion != null && parseInt(data.licenseversion) != license.licenseversion) {
+                        if (parseInt(data.licenseversion) < 1 || parseInt(data.licenseversion) > 3) throw new Error("License version must be between 1 and 3");
+                        if (this.tuser.HasRoleName("admins")) {
                             license.licenseversion = parseInt(data.licenseversion);
                             license = await Config.db.UpdateOne<License>(license, "config", 1, true, Crypt.rootToken(), parent);
                         } else {
                             throw new Error("User is not an admin, cannot change license version");
                         }
                     }
-                    if(license.name != data.name || license._billingid != data._billingid) {
+                    if (license.name != data.name || license._billingid != data._billingid) {
                         let exists = await Config.db.GetOne<any>({ query: { name: data.name, "_type": "license" }, collectionname: "config", jwt: Crypt.rootToken() }, parent);
-                        if(exists != null && exists._id != license._id) throw new Error("License with name " + data.name + " already exists");
+                        if (exists != null && exists._id != license._id) throw new Error("License with name " + data.name + " already exists");
                         // const count = await Resources.GetLicenseResourcesCount(license._id, parent);
                         const usage = await Resources.GetLicenseResources(license._id, parent);
-                        if(usage.length > 0) {
-                            if(license.name != data.name) {
+                        if (usage.length > 0) {
+                            if (license.name != data.name) {
                                 throw new Error("License domain name cannot be changed, either remove the payed resource from this license object, or add a new license object");
                             }
-                            if(license._billingid != data._billingid) {
+                            if (license._billingid != data._billingid) {
                                 throw new Error("Billing account cannot be changed, either remove the payed resource from this license object, or add a new license object");
                             }
                             license._resourceusageid = usage[0]._id;
                             license._productname = usage[0].product.name;
                             license._stripeprice = usage[0].product.stripeprice;
-                            if(!Util.IsNullEmpty(license._billingid)) {
+                            if (!Util.IsNullEmpty(license._billingid)) {
                                 const billing = await Config.db.GetOne<Billing>({ query: { _id: license._billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
-                                if(billing == null) throw new Error("Billing " + license._billingid + " not found, or access denied");
+                                if (billing == null) throw new Error("Billing " + license._billingid + " not found, or access denied");
                                 const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
                                 if (billingadmins == null) throw new Error(Logger.enricherror(this.tuser, license, "Billing admins not found"));
                                 if (!this.tuser.HasRoleName("admins") && !billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, license, "User is not a billing admin"));
@@ -4957,9 +4957,9 @@ export class Message {
                     }
                 } else {
                     let resource = await Config.db.GetOne<Resource>({ collectionname: "config", query: { name: "OpenCore License", _type: "resource" }, jwt: this.jwt }, parent);
-                    if(resource == null) throw new Error("OpenCore License Resource not found");
+                    if (resource == null) throw new Error("OpenCore License Resource not found");
                     let exists = await Config.db.GetOne<any>({ query: { name: data.name, "_type": "license" }, collectionname: "config", jwt: Crypt.rootToken() }, parent);
-                    if(exists != null) throw new Error("License with name " + data.name + " already exists");
+                    if (exists != null) throw new Error("License with name " + data.name + " already exists");
                     license._type = "license";
                     license._resourceusageid = "";
                     license._productname = "Free tier";
@@ -4968,9 +4968,9 @@ export class Message {
                     license.gitrepos = resource.defaultmetadata.gitrepos || 1;
                     license.openapi = resource.defaultmetadata.openapi || true;
                     license.licenseversion = resource.defaultmetadata.licenseversion || 3;
-                    if(!Util.IsNullEmpty(license._billingid)) {
+                    if (!Util.IsNullEmpty(license._billingid)) {
                         const billing = await Config.db.GetOne<Billing>({ query: { _id: license._billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
-                        if(billing == null) throw new Error("Billing " + license._billingid + " not found, or access denied");
+                        if (billing == null) throw new Error("Billing " + license._billingid + " not found, or access denied");
                         const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
                         if (billingadmins == null) throw new Error(Logger.enricherror(this.tuser, license, "Billing admins not found"));
                         if (!this.tuser.HasRoleName("admins") && !billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, license, "User is not a billing admin"));
@@ -4985,12 +4985,12 @@ export class Message {
                 break;
             case "deletelicense":
                 const _license = await Config.db.GetOne<License>({ query: { _id: msg.id, "_type": "license" }, collectionname: "config", jwt }, parent);
-                if(_license == null) throw new Error("License not found, or access denied");
+                if (_license == null) throw new Error("License not found, or access denied");
                 const count = await Resources.GetLicenseResourcesCount(_license._id, parent);
-                if(count > 0) throw new Error("License has resources, remove resources before deleting the license");
-                if(!Util.IsNullEmpty(_license._billingid)) {
+                if (count > 0) throw new Error("License has resources, remove resources before deleting the license");
+                if (!Util.IsNullEmpty(_license._billingid)) {
                     const billing = await Config.db.GetOne<Billing>({ query: { _id: _license._billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
-                    if(billing == null) throw new Error("Billing not found, or access denied");
+                    if (billing == null) throw new Error("Billing not found, or access denied");
                     const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
                     if (billingadmins == null) throw new Error(Logger.enricherror(this.tuser, _license, "Billing admins not found"));
                     if (!this.tuser.HasRoleName("admins") && !billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, _license, "User is not a billing admin"));
@@ -5035,7 +5035,7 @@ export class Message {
                 break;
             case "createcommonresources":
                 if (!this.tuser.HasRoleId(Wellknown.admins._id)) throw new Error("Access denied");
-                await Resources.CreateCommonResources(parent);
+                await Resources.CreateCommonResources(this.tuser, parent);
                 break;
             case "createresourceusage":
                 // @ts-ignore
@@ -5046,9 +5046,9 @@ export class Message {
             case "getnextinvoice":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
-                if(Util.IsNullEmpty(msg.id)) throw new Error("Billing id is mandatory");
+                if (Util.IsNullEmpty(msg.id)) throw new Error("Billing id is mandatory");
                 const billing = await Config.db.GetOne<Billing>({ query: { _id: msg.id, "_type": "customer" }, collectionname: "users", jwt }, parent);
-                if(billing == null) throw new Error("Billing not found, or access denied");
+                if (billing == null) throw new Error("Billing not found, or access denied");
                 const billingadmins = await Logger.DBHelper.EnsureUniqueRole(billing.name + " billing admins", billing.admins, parent);
                 if (!this.tuser.HasRoleName(Wellknown.admins.name)) {
                     if (!billingadmins.IsMember(this.tuser._id)) throw new Error(Logger.enricherror(this.tuser, billing, "User is not a member of the billing admins"));
@@ -5102,6 +5102,12 @@ export class Message {
                 delete data.billing;
                 delete data.clientagent;
                 delete data.clientversion;
+                delete data.sub;
+                delete data.validated;
+                delete data.email_verified;
+                delete data.formvalidated;
+                delete data.emailvalidated;
+                delete data.role;
 
                 const UpdateDoc: any = { "$set": {} };
                 const keys = Object.keys(data);
@@ -5170,8 +5176,8 @@ export class Message {
                         } else {
                             // @ts-ignore
                             let code = u._mailcode;
-                            
-                            if(code == null || code == "") {
+
+                            if (code == null || code == "") {
                                 code = Util.GetUniqueIdentifier();
                                 UpdateDoc.$set["_mailcode"] = code;
                             }
@@ -5226,10 +5232,10 @@ export class Message {
                 const UpdateDoc2: any = { "$set": {} };
                 u.emailvalidated = true;
                 UpdateDoc2.$set["emailvalidated"] = true;
-                if(u.formvalidated == true) {
+                if (u.formvalidated == true) {
                     u.validated = true;
                     UpdateDoc2.$set["validated"] = true;
-                }                
+                }
                 var res2 = await Config.db.UpdateDocument({ "_id": u._id }, UpdateDoc2, "users", 1, true, Crypt.rootToken(), parent);
                 await Logger.DBHelper.CheckCache("users", u as any, false, false, parent);
                 break;
