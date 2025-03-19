@@ -13,6 +13,8 @@ build:
 initdocker:
 	@docker buildx create --name openiap --use
 	@docker buildx inspect --bootstrap
+load:
+	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:$(HASH) -t openiap/openflow:edge --platform linux/amd64 --load .
 compose:
 	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:$(HASH) -t openiap/openflow:edge --platform linux/amd64 --push .
 publish:
