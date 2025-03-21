@@ -899,6 +899,12 @@ export class DBHelper {
             }
             span?.addEvent("Insert user");
             Logger.instanse.verbose(`Adding new user ${name}`, span, {cls: "DBHelper", func: "EnsureUser"});
+            if(Util.IsNullEmpty(user.email) && user.username.indexOf("@") > -1) {
+                user.email = user.username;
+            }
+            if(user.name.indexOf("@") > -1) {
+                user.name = user.name.substring(0, user.name.indexOf("@"));
+            }
             user = await Config.db.InsertOne(user, "users", 0, false, jwt, span);
             user = User.assign(user);
             span?.addEvent("DecorateWithRoles");
