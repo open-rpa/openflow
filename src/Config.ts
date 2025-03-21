@@ -347,6 +347,7 @@ export class Config {
         workspace_enabled: false,
         enable_guest: false,
         enable_guest_file_upload: false,
+        web_hide_general_info: false,
         enable_gitserver: false,
         enable_gitserver_guest: false,
         enable_gitserver_guest_create: false,
@@ -653,6 +654,7 @@ export class Config {
     public static workspace_enabled: boolean = Config.parseBoolean(Config.getEnv("workspace_enabled"));
     public static enable_guest: boolean = Config.parseBoolean(Config.getEnv("enable_guest"));
     public static enable_guest_file_upload: boolean = Config.parseBoolean(Config.getEnv("enable_guest_file_upload"));
+    public static web_hide_general_info: boolean = Config.parseBoolean(Config.getEnv("web_hide_general_info"));
     public static enable_gitserver: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver"));
     public static enable_gitserver_guest: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest"));
     public static enable_gitserver_guest_create: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest_create"));

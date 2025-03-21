@@ -1193,6 +1193,7 @@ export class LoginProvider {
             llmchat_queue: Config.llmchat_queue,
             enable_analytics: Config.enable_analytics,
             enable_gitserver: Config.enable_gitserver,
+            web_hide_general_info: Config.web_hide_general_info,
             ofid: Logger.ofid(),
             loginproviders,
         }
