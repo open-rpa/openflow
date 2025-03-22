@@ -6,7 +6,7 @@ import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { Message } from "../Messages/Message.js";
-import { Wellknown } from "../Util.js";
+import { Util, Wellknown } from "../Util.js";
 import { Resources } from "./Resources.js";
 export class Workspaces {
     public static async EnsureWorkspace(tuser: User, jwt: string, workspace: Workspace, parent: Span): Promise<Workspace> {
@@ -182,6 +182,9 @@ export class Workspaces {
             for (let i = 0; i < workitemqueues.length; i++) {
                 const wiq = workitemqueues[i];
                 await Message.PurgeWorkitemQueue(tuser, jwt, wiq, parent);
+                if(!Util.IsNullEmpty(wiq.usersrole )) {
+                    await Config.db.DeleteOne(wiq.usersrole, "users", false, jwt, parent);
+                }
                 await Config.db.DeleteOne(wiq._id, "mq", false, rootjwt, parent);
             }
 

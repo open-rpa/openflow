@@ -628,4 +628,5 @@ export class WorkitemQueue extends Base {
     public failed_wiqid: string;
     public success_wiq: string;
     public failed_wiq: string;
+    public _workspaceid: string;
 }

@@ -11,7 +11,7 @@ import webpush from "web-push";
 import { amqpwrapper, QueueMessageOptions } from "../amqpwrapper.js";
 import { Audit, clientType, tokenType } from "../Audit.js";
 import { Auth } from "../Auth.js";
-import { Base, Billing, Customer, iAgent, License, Product, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, User, WorkitemQueue } from "../commoninterfaces.js";
+import { Base, Billing, Customer, iAgent, License, Product, Resource, ResourceUsage, Rights, Role, Rolemember, TokenUser, User, WorkitemQueue, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
@@ -3638,6 +3638,9 @@ export class Message {
         if (!DatabaseConnection.hasAuthorization(user, wi, Rights.invoke)) {
             throw new Error("Unknown work item queue or " + this.tuser.username + " is missing invoke rights");
         }
+        if(!Util.IsNullEmpty(wiq._workspaceid)) {
+            wi._workspaceid = wiq._workspaceid;
+        }
         wi.wiq = wiq.name;
         wi.wiqid = wiq._id;
         wi.name = msg.name ? msg.name : "New work item";
@@ -3724,7 +3727,7 @@ export class Message {
                     (metadata as any).wiqid = wiq._id;
                     (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
-                    metadata._acl = wiq._acl;
+                    metadata._acl = wi._acl;
                     metadata.name = path.basename(file.filename);
                     (metadata as any).filename = file.filename;
                     (metadata as any).path = path.dirname(file.filename);
@@ -3786,6 +3789,10 @@ export class Message {
         } catch (error) {
             wi.nextrun = new Date(new Date().toISOString());
         }
+        if(!Util.IsNullEmpty(_wiq._workspaceid)) {
+            wi._workspaceid = _wiq._workspaceid;
+        }
+        
         for (let i = _wiq._acl.length - 1; i >= 0; i--) {
             const ace = _wiq._acl[i];
             let bits = [];
@@ -3847,6 +3854,9 @@ export class Message {
             wi._acl = wiq._acl;
             if (!DatabaseConnection.hasAuthorization(user, wi, Rights.invoke)) {
                 throw new Error("Unknown work item queue or " + this.tuser.username + " is missing invoke rights");
+            }
+            if(!Util.IsNullEmpty(wiq._workspaceid)) {
+                wi._workspaceid = wiq._workspaceid;
             }
             wi.wiq = wiq.name;
             wi.wiqid = wiq._id;
@@ -3933,7 +3943,7 @@ export class Message {
                         (metadata as any).wiqid = wiq._id;
                         (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
-                        metadata._acl = wiq._acl;
+                        metadata._acl = wi._acl;
                         metadata.name = path.basename(file.filename);
                         (metadata as any).filename = file.filename;
                         (metadata as any).path = path.dirname(file.filename);
@@ -4133,7 +4143,7 @@ export class Message {
                     (metadata as any).wiqid = wiq._id;
                     (metadata as any).uniquename = Util.GetUniqueIdentifier() + "-" + path.basename(file.filename);
 
-                    metadata._acl = wiq._acl;
+                    metadata._acl = wi._acl;
                     metadata.name = path.basename(file.filename);
                     (metadata as any).filename = file.filename;
                     (metadata as any).path = path.dirname(file.filename);
@@ -4326,6 +4336,11 @@ export class Message {
             skiprole = this.data.skiprole;
         }
         // @ts-ignore
+        if(!Util.IsNullEmpty(this.data.workitemqueue?._workspaceid)) {
+            // @ts-ignore
+            msg._workspaceid = this.data.workitemqueue._workspaceid;
+        }
+        // @ts-ignore
         if (this.data.workitemqueue != null) msg = this.data.workitemqueue;
         if (Util.IsNullEmpty(msg.name)) throw new Error("Name is mandatory")
         if (Util.IsNullEmpty(msg.maxretries)) throw new Error("maxretries is mandatory")
@@ -4339,16 +4354,45 @@ export class Message {
         user = this.tuser;
 
         var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
+        // @ts-ignore
+        if(!Util.IsNullEmpty(msg._workspaceid)) {
+            // @ts-ignore
+            wiq._workspaceid = msg._workspaceid;
+        }
         const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.workitem_queue_admins.name, Wellknown.workitem_queue_admins._id, parent);
+        if (msg._acl != null) {
+            // @ts-ignore
+            wiq._acl = JSON.parse(JSON.stringify(msg._acl));
+        }
         if (!skiprole) {
             const wiqusers: Role = await Logger.DBHelper.EnsureRole(msg.name + " users", null, parent);
             Base.addRight(wiqusers, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
-            Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
-            wiqusers.AddMember(user as any);
             wiqusers.AddMember(workitem_queue_admins);
+
+            if(!Util.IsNullEmpty(wiq._workspaceid)) {
+                const workspace = await Config.db.GetOne<Workspace>( { query: { _id: wiq._workspaceid, _type: "workspace" }, collectionname: "users", jwt }, parent);
+                if(workspace == null) throw new Error("Workspace " + wiq._workspaceid + " not found");
+                const workspaceadmis = await Config.db.GetOne( { query: { _id: workspace.admins, _type: "role" }, collectionname: "users", jwt }, parent);
+                if(workspaceadmis == null) throw new Error("Workspace admins " + workspace.admins + " not found");
+                Base.addRight(wiqusers, workspaceadmis._id, workspaceadmis.name, [Rights.full_control]);
+                wiqusers.AddMember(workspaceadmis);
+                const workspaceusers = await Config.db.GetOne( { query: { _id: workspace.users, _type: "role" }, collectionname: "users", jwt }, parent);
+                if(workspaceusers == null) throw new Error("Workspace admins " + workspace.admins + " not found");
+                Base.addRight(wiqusers, workspaceusers._id, workspaceusers.name, [Rights.read]);
+                wiqusers.AddMember(workspaceusers);
+                Base.addRight(wiq, workspaceadmis._id, wiqusers.name, [Rights.full_control]);
+                // Base.addRight(wiq, workspaceusers._id, wiqusers.name, [Rights.read]);
+                // Base.removeRight(wiq, user._id, [Rights.full_control]);
+            } else {
+                if(!user.HasRoleName(Wellknown.admins.name)) {
+                    wiqusers.AddMember(user as any);
+                    Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
+                }
+            }
             await Logger.DBHelper.Save(wiqusers, rootjwt, parent);
             Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
             wiq.usersrole = wiqusers._id;
+            await Logger.DBHelper.CheckCache("users", user, false, false, parent);
         } else {
             Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
         }
@@ -4360,10 +4404,6 @@ export class Message {
         wiq.projectid = msg.projectid;
         wiq.amqpqueue = msg.amqpqueue;
         wiq.maxretries = msg.maxretries;
-        if (msg._acl != null) {
-            // @ts-ignore
-            wiq._acl = JSON.parse(JSON.stringify(msg._acl));
-        }
         if (wiq.maxretries < 1) wiq.maxretries = 3;
         wiq.retrydelay = msg.retrydelay;
         wiq.initialdelay = msg.initialdelay;
@@ -4486,10 +4526,59 @@ export class Message {
         if (!Util.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
 
 
+        // @ts-ignore
+        var skiprole = msg.skiprole;
+        // @ts-ignore
+        if (this.data.skiprole != null) {
+            // @ts-ignore
+            skiprole = this.data.skiprole;
+        }
+        // @ts-ignore
+        if(!Util.IsNullEmpty(this.data.workitemqueue?._workspaceid)) {
+            // @ts-ignore
+            msg._workspaceid = this.data.workitemqueue._workspaceid;
+            // @ts-ignore
+            wiq._workspaceid = this.data.workitemqueue._workspaceid;
+        }
         if (msg._acl) {
             // wiq._acl = msg._acl;
             wiq._acl = JSON.parse(JSON.stringify(msg._acl));
         }
+        const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.workitem_queue_admins.name, Wellknown.workitem_queue_admins._id, parent);
+        if (!skiprole) {
+            const rootjwt = Crypt.rootToken();
+            const wiqusers: Role = await Logger.DBHelper.EnsureRole(msg.name + " users", null, parent);
+            Base.addRight(wiqusers, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+            wiqusers.AddMember(workitem_queue_admins);
+
+            if(!Util.IsNullEmpty(wiq._workspaceid)) {
+                const workspace = await Config.db.GetOne<Workspace>( { query: { _id: wiq._workspaceid, _type: "workspace" }, collectionname: "users", jwt }, parent);
+                if(workspace == null) throw new Error("Workspace " + wiq._workspaceid + " not found");
+                const workspaceadmis = await Config.db.GetOne( { query: { _id: workspace.admins, _type: "role" }, collectionname: "users", jwt }, parent);
+                if(workspaceadmis == null) throw new Error("Workspace admins " + workspace.admins + " not found");
+                Base.addRight(wiqusers, workspaceadmis._id, workspaceadmis.name, [Rights.full_control]);
+                wiqusers.AddMember(workspaceadmis);
+                const workspaceusers = await Config.db.GetOne( { query: { _id: workspace.users, _type: "role" }, collectionname: "users", jwt }, parent);
+                if(workspaceusers == null) throw new Error("Workspace admins " + workspace.admins + " not found");
+                Base.addRight(wiqusers, workspaceusers._id, workspaceusers.name, [Rights.read]);
+                wiqusers.AddMember(workspaceusers);
+                Base.addRight(wiq, workspaceadmis._id, wiqusers.name, [Rights.full_control]);
+                // Base.addRight(wiq, workspaceusers._id, wiqusers.name, [Rights.read]);
+                // Base.removeRight(wiq, user._id, [Rights.full_control]);
+            } else {
+                if(!user.HasRoleName(Wellknown.admins.name)) {
+                    wiqusers.AddMember(user as any);
+                    Base.addRight(wiqusers, user._id, user.name, [Rights.full_control]);
+                }
+            }
+            await Logger.DBHelper.Save(wiqusers, rootjwt, parent);
+            Base.addRight(wiq, wiqusers._id, wiqusers.name, [Rights.full_control]);
+            wiq.usersrole = wiqusers._id;
+            await Logger.DBHelper.CheckCache("users", user, false, false, parent);
+        } else {
+            Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
+        }
+
         msg = JSON.parse(JSON.stringify(msg));
 
         msg.result = await Config.db.UpdateOne(wiq as any, "mq", 1, true, jwt, parent);
