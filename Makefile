@@ -15,6 +15,8 @@ initdocker:
 	@docker buildx inspect --bootstrap
 load:
 	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:$(HASH) -t openiap/openflow:edge --platform linux/amd64 --load .
+compose-no-cache:
+	@docker buildx build --no-cache -t openiap/openflow:$(VERSION) -t openiap/openflow:$(HASH) -t openiap/openflow:edge --platform linux/amd64 --push .
 compose:
 	@docker buildx build -t openiap/openflow:$(VERSION) -t openiap/openflow:$(HASH) -t openiap/openflow:edge --platform linux/amd64 --push .
 publish:

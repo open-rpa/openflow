@@ -3639,6 +3639,7 @@ export class Message {
             throw new Error("Unknown work item queue or " + this.tuser.username + " is missing invoke rights");
         }
         if(!Util.IsNullEmpty(wiq._workspaceid)) {
+            // @ts-ignore
             wi._workspaceid = wiq._workspaceid;
         }
         wi.wiq = wiq.name;
@@ -3790,6 +3791,7 @@ export class Message {
             wi.nextrun = new Date(new Date().toISOString());
         }
         if(!Util.IsNullEmpty(_wiq._workspaceid)) {
+            // @ts-ignore
             wi._workspaceid = _wiq._workspaceid;
         }
         
@@ -3856,6 +3858,7 @@ export class Message {
                 throw new Error("Unknown work item queue or " + this.tuser.username + " is missing invoke rights");
             }
             if(!Util.IsNullEmpty(wiq._workspaceid)) {
+                // @ts-ignore
                 wi._workspaceid = wiq._workspaceid;
             }
             wi.wiq = wiq.name;
