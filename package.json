@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.11.74",
+  "version": "1.5.11.75",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "updateapilocal": "npm uninstall @openiap/nodeapi && npm i ../nodeapi",
     "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
     "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
-    "updatejsapi": "npm uninstall @openiap/jsapi && npm -D i openiap/jsapi#esm",
+    "updatejsapi": "npm uninstall @openiap/jsapi && npm i openiap/jsapi#esm",
     "ncu": "npx -y npm-check-updates",
     "spec": "tsoa spec",
     "routes": "tsoa routes",
@@ -41,7 +41,8 @@
     "@kubernetes/client-node": "0.21.0",
     "@node-saml/passport-saml": "4.0.1",
     "@openiap/cloud-git-mongodb": "1.0.39",
-    "@openiap/nodeapi": "0.0.40",
+    "@openiap/jsapi": "github:openiap/jsapi#esm",
+    "@openiap/nodeapi": "0.0.41",
     "@openiap/openflow-api": "2.1.12",
     "@opentelemetry/api-logs": "0.57.1",
     "@opentelemetry/exporter-logs-otlp-grpc": "0.57.1",
@@ -92,7 +93,6 @@
     "xml2js": "0.4.23"
   },
   "devDependencies": {
-    "@openiap/jsapi": "github:openiap/jsapi#esm",
     "@testdeck/mocha": "0.3.3",
     "@types/amqplib": "0.10.5",
     "@types/mocha": "10.0.7",
