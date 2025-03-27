@@ -328,7 +328,7 @@ export class Workspaces {
             throw error;
         }
     }
-    public static async AddUserToWorkspace(tuser: User, jwt: string, email: string, workspaceid: string, role: "member" | "admin", parent: Span): Promise<Member> {
+    public static async AddUserToWorkspace(tuser: User, jwt: string, userid: string, email: string, workspaceid: string, role: "member" | "admin", parent: Span): Promise<Member> {
         let workspace: Workspace = null;
         try {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
@@ -374,8 +374,9 @@ export class Workspaces {
             }
 
             const rootjwt = Crypt.rootToken();
-            const byid = { $or: [{ "email": email }, { "username": email }, { "federationids.id": email, "federationids.issuer": email }, { "federationids": email }] };
-            const user = await Config.db.GetOne<User>({ query: { ...byid, _type: "user" }, collectionname: "users", jwt: rootjwt }, parent);
+            // const byid = { $or: [{ "email": email }, { "username": email }, { "federationids.id": email, "federationids.issuer": email }, { "federationids": email }] };
+            // const user = await Config.db.GetOne<User>({ query: { ...byid, _type: "user" }, collectionname: "users", jwt: rootjwt }, parent);
+            const user = await Config.db.GetOne<User>({ query: { _id: userid, _type: "user" }, collectionname: "users", jwt: rootjwt }, parent);
 
             let exists: any[] = [{ email: email }];
             if (user != null) exists.push({ userid: user._id });

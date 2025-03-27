@@ -77,12 +77,18 @@ export class Billings {
         const ucustomer = await Config.db.GetOne<Customer>({ query: { _id: billingid, "_type": "customer" }, collectionname: "users", jwt }, parent);
         if (ucustomer == null) throw new Error("Customer not found, or access denied");
         let uworkspace = await Config.db.GetOne<Workspace>({ query: { name: ucustomer.name, "_type": "workspace", _billingid: ucustomer._id }, collectionname: "users", jwt }, parent);
-        if(ucustomer.users == null || ucustomer.users == "") {
-            return ucustomer as any;
-        }
+        // if(ucustomer.users == null || ucustomer.users == "") {
+        //     return ucustomer as any;
+        // }
         let u2: User = null;
         let uusers = await Config.db.GetOne<Role>({ query: { name: ucustomer.users, "_type": "role" }, collectionname: "users", jwt }, parent);
+        if(uusers == null) {
+            uusers = await Config.db.GetOne<Role>({ query: { name: ucustomer.name + " users", "_type": "role" }, collectionname: "users", jwt }, parent);
+        }
         let uadmins = await Config.db.GetOne<Role>({ query: { name: ucustomer.admins, "_type": "role" }, collectionname: "users", jwt }, parent);
+        if(uadmins == null) {
+            uadmins = await Config.db.GetOne<Role>({ query: { name: ucustomer.name + " admins", "_type": "role" }, collectionname: "users", jwt }, parent);
+        }
         if(ucustomer.userid != null && ucustomer.userid != "") {
             u2 = await Config.db.GetOne<User>({ query: { _id: ucustomer.userid, "_type": "user" }, collectionname: "users", jwt }, parent);
         }
@@ -98,18 +104,20 @@ export class Billings {
             for(let i = 0; i < uusers.members.length; i++) {
                 const member = uusers.members[i];
                 let u = await Config.db.GetOne<User>({ query: { _id: member._id, "_type": "user" }, collectionname: "users", jwt }, parent);
-                await Workspaces.AddUserToWorkspace(tuser, jwt, u.email, uworkspace._id, "member", parent);
+                if(u == null) continue;
+                await Workspaces.AddUserToWorkspace(tuser, jwt, u._id, u.email || u.username, uworkspace._id, "member", parent);
             }
         }
         if(uadmins != null) {
             for(let i = 0; i < uadmins.members.length; i++) {
                 const member = uadmins.members[i];
                 let u = await Config.db.GetOne<User>({ query: { _id: member._id, "_type": "user" }, collectionname: "users", jwt }, parent);
-                await Workspaces.AddUserToWorkspace(tuser, jwt, u.email, uworkspace._id, "admin", parent);
+                if(u == null) continue;
+                await Workspaces.AddUserToWorkspace(tuser, jwt, u._id, u.email || u.username, uworkspace._id, "admin", parent);
             }
         }
         if(u2 != null) {
-            await Workspaces.AddUserToWorkspace(tuser, jwt, u2.email || u2.username, uworkspace._id, "admin", parent);
+            await Workspaces.AddUserToWorkspace(tuser, jwt, u2._id, u2.email || u2.username, uworkspace._id, "admin", parent);
         }
         delete ucustomer.users;
         delete ucustomer.userid;
