@@ -8,6 +8,7 @@ import { Logger } from "../Logger.js";
 import { Message } from "../Messages/Message.js";
 import { Util, Wellknown } from "../Util.js";
 import { Resources } from "./Resources.js";
+import { LoginProvider } from "../LoginProvider.js";
 export class Workspaces {
     public static async EnsureWorkspace(tuser: User, jwt: string, workspace: Workspace, skipuser: boolean, parent: Span): Promise<Workspace> {
         let _workspace: Workspace = null;
@@ -310,6 +311,15 @@ export class Workspaces {
             }
             const result = await Config.db.InsertOne(member, "users", 1, true, rootjwt, parent);
             await Audit.AuditWorkspaceAction(tuser, "invite", workspace, true, parent);
+            if(member.email.indexOf("@") > -1) {
+                // const url = `${baseurl}${base}/workspace/${workspaceid}/accept/${token}`;
+                const link = Config.baseurl() + "ui/workspace/" + workspaceid + "/accept/" + member.token;
+                await LoginProvider.sendEmail("invite", tuser._id, member.email, "Invite to join " + workspace.name,
+                    `Hi ${tuser.name}\n${member.name} has invited you to join the workspace ${workspace.name} as a ${member.role}.\n\n` + 
+                    `Please click on the link below to accept the invite.\n\n${link}\n\n` + 
+                    `If you have any questions, please contact ${tuser.name} at ${tuser.email}\n\nBest regards\n${workspace.name} team`, parent);
+
+            }
             return result;
         } catch (error) {
             if (workspace != null) {
