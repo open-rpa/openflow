@@ -1256,7 +1256,8 @@ export class LoginProvider {
             let exists: TokenRequest = null;
             exists = await Logger.DBHelper.FindRequestTokenID(key, span);
             if (Util.IsNullUndefinded(exists)) {
-                Logger.instanse.error("Unknown key " + key + " from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
+                // Logger.instanse.error("Unknown key " + key + " from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
+                Logger.instanse.debug("Unknown key " + key + " from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                 res.status(200).send({ message: "Illegal key" });
                 return;
             }
