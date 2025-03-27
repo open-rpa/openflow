@@ -59,6 +59,7 @@ export class Workspaces {
                     }
                 }
             } else {
+                Base.addRight(workspace, tuser._id, tuser.name, [Rights.full_control]);
                 const resource: Resource = await Config.db.GetResource("Workspaces", parent);
                 let maxworkspacecount = -1;
                 if (resource != null && resource.defaultmetadata && resource.defaultmetadata.workspacecount) {
@@ -79,6 +80,7 @@ export class Workspaces {
                 Base.addRight(workspaceusers, workspaceusers._id, workspaceusers.name, [Rights.read]);
                 workspaceusers.AddMember(workspaceadmins);
                 if(skipuser == false) workspaceusers.AddMember(tuser);
+
             }
 
             Base.removeRight(workspaceadmins, workspaceadmins._id, [Rights.full_control]);
