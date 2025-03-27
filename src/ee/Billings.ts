@@ -87,8 +87,8 @@ export class Billings {
             u2 = await Config.db.GetOne<User>({ query: { _id: ucustomer.userid, "_type": "user" }, collectionname: "users", jwt }, parent);
         }
         if(uusers == null && uadmins == null && u2 == null) {
-            console.warn("Deleting customer " + ucustomer.name + " (" + ucustomer._id + ") with no users attached");
-            await Config.db.DeleteOne(ucustomer._id, "users", false, jwt, parent);
+            // console.warn("Deleting customer " + ucustomer.name + " (" + ucustomer._id + ") with no users attached");
+            // await Config.db.DeleteOne(ucustomer._id, "users", false, jwt, parent);
             return ucustomer as any;
         }
         if(uworkspace == null) {
