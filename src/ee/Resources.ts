@@ -15,7 +15,11 @@ export class Resources {
         await Resources.CreateResource(tuser, "Agent Instance", ResourceTargetType.agent, ResourceVariantType.single,
             {
                 "resources": {
-                    "requests": {
+                    "requests":{
+                        "cpu": "200m",
+                        "memory": "152Mi"
+                    },
+                    "limits": {
                         "cpu": "200m",
                         "memory": "152Mi"
                     }
@@ -25,10 +29,10 @@ export class Resources {
                 "agentcount": 1
             },
             [
-                Resources.CreateProduct("Basic (256Mi ram)", false, "prod_RG5CJC2X3xuVil", "price_1QNZ1mC2vUMc6gvhWxYwPvsN", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 1),
-                Resources.CreateProduct("Plus (512Mi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 3),
-                Resources.CreateProduct("Premium (1Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 4),
-                Resources.CreateProduct("Advanced (2Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 5),
+                Resources.CreateProduct("Basic (256Mi ram)", false, "prod_RG5CJC2X3xuVil", "price_1QNZ1mC2vUMc6gvhWxYwPvsN", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "limits": { "memory": "256Mi", "cpu": "500m" }, "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 1),
+                Resources.CreateProduct("Plus (512Mi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "limits": { "memory": "512Mi", "cpu": "500m" }, "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 3),
+                Resources.CreateProduct("Premium (1Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "limits": { "memory": "1Gi", "cpu": "900m" }, "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 4),
+                Resources.CreateProduct("Advanced (2Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "limits": { "memory": "2Gi", "cpu": "900m" }, "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 5),
             ], true, false, 0, parent);
         if (Config.stripe_api_key != "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI" &&
             Config.stripe_api_key != "pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99"
