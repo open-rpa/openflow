@@ -316,6 +316,122 @@ export class Workspaces {
             throw error;
         }
     }
+    public static async AddUserToWorkspace(tuser: User, jwt: string, email: string, workspaceid: string, role: "member" | "admin", parent: Span): Promise<Member> {
+        let workspace: Workspace = null;
+        try {
+            if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
+            if (!Logger.License.validlicense) await Logger.License.validate();
+            if (email == null || email == "") throw new Error("Email is mandatory");
+            if (workspaceid == null || workspaceid == "") throw new Error("Workspace ID is mandatory");
+            email = email.toLowerCase();
+            if (role != "member" && role != "admin") throw new Error("Invalid role");
+            if (tuser == null) throw new Error("Invitee user is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to add users");
+            if (jwt == null || jwt == "") throw new Error("Invitee JWT is mandatory");
+            workspace = await Config.db.GetOne<Workspace>({ query: { _id: workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+            if (workspace == null) throw new Error(Logger.enricherror(tuser, workspace, "Workspace not found or access denied"));
+            const _workspaceadmins = await Config.db.GetOne<Role>({ query: { _id: workspace.admins, "_type": "role" }, collectionname: "users", jwt }, parent);
+            if (_workspaceadmins == null) throw new Error(Logger.enricherror(tuser, workspace, "workspace admins not found"));
+            const _workspaceusers = await Config.db.GetOne<Role>({ query: { _id: workspace.users, "_type": "role" }, collectionname: "users", jwt }, parent);
+            if (_workspaceusers == null) throw new Error(Logger.enricherror(tuser, workspace, "workspace users not found"));
+            const workspaceusers: Role = Role.assign(_workspaceusers);
+            if (!tuser.HasRoleName(Wellknown.admins.name)) {
+                if (!workspaceusers.IsMember(tuser._id)) throw new Error(Logger.enricherror(tuser, workspace, "User is not a member of the workspace"));
+            }
+
+            let maxmembercount = -1;
+            if (workspace._resourceusageid != null && workspace._resourceusageid != "") {
+                const resourceusage = await Config.db.GetOne<ResourceUsage>({ query: { _id: workspace._resourceusageid, "_type": "resourceusage" }, collectionname: "config", jwt }, parent);
+                if (resourceusage == null) {
+                    throw new Error(Logger.enricherror(tuser, workspace, "Resource usage " + workspace._resourceusageid + " not found"));
+                }
+                const usage: any = await Resources.CombineMetadata(tuser, jwt, resourceusage, false, parent);
+                if (usage.members != null && usage.members != "") {
+                    maxmembercount = parseInt(usage.members);
+                }
+
+
+            }
+            if (maxmembercount == 0 && !tuser.HasRoleName(Wellknown.admins.name)) throw new Error(Logger.enricherror(tuser, workspace, "Adding new members to workspaces has been disabled"));
+
+            if (maxmembercount > -1 && !tuser.HasRoleName(Wellknown.admins.name)) {
+                const membercount = await Config.db.count({ query: { workspaceid: workspaceid, "_type": "member" }, collectionname: "users", jwt }, parent);
+                if (membercount >= maxmembercount) {
+                    throw new Error(Logger.enricherror(tuser, workspace, "You cannot add more than more " + maxmembercount + " members, with current workspaces tier (" + workspace._productname + ")"));
+                }
+            }
+
+            const rootjwt = Crypt.rootToken();
+            const byid = { $or: [{ "email": email }, { "username": email }, { "federationids.id": email, "federationids.issuer": email }, { "federationids": email }] };
+            const user = await Config.db.GetOne<User>({ query: { ...byid, _type: "user" }, collectionname: "users", jwt: rootjwt }, parent);
+
+            let exists: any[] = [{ email: email }];
+            if (user != null) exists.push({ userid: user._id });
+            const query = { $or: exists, workspaceid: workspaceid, "_type": "member" };
+            let member = await Config.db.GetOne<Member>({ query, collectionname: "users", jwt: rootjwt }, parent);
+            if (member == null) {
+                member = new Member();
+                member._type = "member";
+                member.email = email;
+                member.name = "Invite for " + email + " to " + workspace.name;
+            } else {
+                if (member.status == "accepted") throw new Error(Logger.enricherror(tuser, workspace, member.email + " is already a member of the workspace"));
+                if (member.status == "rejected") {
+                    throw new Error(Logger.enricherror(tuser, workspace, member.email + " has rejected the invite"));
+                }
+                if (member.expires < new Date()) {
+                    member.expires = new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
+                    member.token = Crypt.GetUniqueIdentifier(32);
+                } else {
+                    if (member.role == role) {
+                        throw new Error(Logger.enricherror(tuser, workspace, member.email + " has allready been Invited, please wait for the user to accept or reject the invite"));
+                    }
+                }
+            }
+            Base.addRight(member, tuser._id, tuser.name, [Rights.read]);
+            Base.addRight(member, workspace.admins, workspace.name + " admins", [Rights.read]);
+            Base.addRight(member, workspace.users, workspace.name + " users", [Rights.read]);
+            member.userid = "";
+            member.status = "accepted"; // pending, accepted, rejected
+            if (user != null) {
+                Base.addRight(member, user._id, user.name, [Rights.read]);
+                member.userid = user._id;
+                if (!workspaceusers.IsMember(user._id)) {
+                    member.name = user.name;
+                } else {
+                    member.name = user.name;
+                    member.status = "accepted";
+                    member.acceptedby = user._id;
+                    member.acceptedbyname = user.name;
+                    member.acceptedon = new Date();
+                }
+            }
+            member.workspaceid = workspaceid;
+            member.workspacename = workspace.name;
+            // @ts-ignore
+            if(member.role == "" || member.role == null) member.role = "member";
+            if(role == "admin") member.role = "admin";
+            member.invitedby = tuser._id;
+            member.invitedbyname = tuser.name;
+            member.invitedon = new Date();
+            member.token = Crypt.GetUniqueIdentifier(32);
+            member.expires = new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
+            if (member._id != null && member._id != "") {
+                const result = await Config.db.UpdateOne(member, "users", 1, true, rootjwt, parent);
+                await Audit.AuditWorkspaceAction(tuser, "invite", workspace, true, parent);
+                return result;
+            }
+            const result = await Config.db.InsertOne(member, "users", 1, true, rootjwt, parent);
+            await Audit.AuditWorkspaceAction(tuser, "invite", workspace, true, parent);
+            return result;
+        } catch (error) {
+            if (workspace != null) {
+                await Audit.AuditWorkspaceAction(tuser, "invite", workspace, false, parent);
+            }
+            throw error;
+        }
+        
+    }
     public static async GetInvite(user: User, jwt: string, token: string, parent: Span): Promise<Member> {
         if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
         if (!Logger.License.validlicense) await Logger.License.validate();

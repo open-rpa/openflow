@@ -5331,6 +5331,10 @@ export class Message {
                 var res2 = await Config.db.UpdateDocument({ "_id": u._id }, UpdateDoc2, "users", 1, true, Crypt.rootToken(), parent);
                 await Logger.DBHelper.CheckCache("users", u as any, false, false, parent);
                 break;
+            case "upgradecustomer":
+                Billings.UpgradeBillingAccount(this.tuser, this.jwt, msg.id, parent);
+           
+                break;
             default:
                 msg.error = "Unknown custom command " + msg.command;
                 throw new Error("Unknown custom command " + msg.command);

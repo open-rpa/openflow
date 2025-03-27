@@ -12,120 +12,52 @@ import { Payments } from "./Payments.js";
 
 export class Resources {
     public static async CreateCommonResources(tuser: User, parent: Span) {
-        if (Config.stripe_api_key == "pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99") {
-            await Resources.CreateResource(tuser, "Agent Instance", ResourceTargetType.agent, ResourceVariantType.single,
-                {
-                    "resources": {
-                        "requests": {
-                            "cpu": "200m",
-                            "memory": "152Mi"
-                        }
-                    },
-                    "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" },
-                    "runtime_hours": 4,
-                    "agentcount": 1
+        await Resources.CreateResource(tuser, "Agent Instance", ResourceTargetType.agent, ResourceVariantType.single,
+            {
+                "resources": {
+                    "requests": {
+                        "cpu": "200m",
+                        "memory": "152Mi"
+                    }
                 },
-                [
-                    Resources.CreateProduct("Basic (256Mi ram)", false, "prod_ReVjqIUfPNOX0W", "price_1QlCiKC2vUMc6gvhz97QpaAD", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 0),
-                    Resources.CreateProduct("Basic (256Mi ram) old", false, "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 1),
-                    Resources.CreateProduct("Plus (512Mi ram)", false, "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 2),
-                    Resources.CreateProduct("Premium (1Gi ram)", false, "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 3),
-                    Resources.CreateProduct("Advanced (2Gi ram)", false, "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 4),
-                ], true, false, 0, parent);
-            await Resources.CreateResource(tuser, "Database Usage", ResourceTargetType.customer, ResourceVariantType.single, { dbusage: (1048576 * 25) },
-                [
-                    Resources.CreateProduct("50Mb quota", false, "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "", ResourceAssignedType.multiple, { dbusage: (1048576 * 50) }, true, true, 1),
-                    Resources.CreateProduct("Metered Monthly", false, "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 0),
-                ], true, true, 1, parent);
-
-            await Resources.CreateResource(tuser, "Support Agreement", ResourceTargetType.customer, ResourceVariantType.single, {},
-                [
-                    Resources.CreateProduct("Basic Support", false, "prod_HEGjSQ9M6wiYiP", "plan_HEGjLCtwsVbIx8", "", ResourceAssignedType.single, {}, true, true, 0),
-                ], true, false, 2, parent);
-
-            await Resources.CreateResource(tuser, "Support Hours", ResourceTargetType.customer, ResourceVariantType.multiple, {},
-                [
-                    Resources.CreateProduct("Premium Hours", false, "prod_HEZnir2GdKX5Jm", "plan_HEZp4Q4In2XcXe", "supporthours_premium_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 1),
-                    Resources.CreateProduct("Basic Hours", false, "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "supporthours_basic_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 2),
-                    Resources.CreateProduct("Old Basic Hours", false, "prod_HEGjSQ9M6wiYiP", "plan_HEZAsA1DfkiQ6k", "", ResourceAssignedType.metered, { "supportplan": true }, true, true, 3),
-                ], true, false, 3, parent);
-            await Resources.CreateResource(tuser, "OpenCore License", ResourceTargetType.license, ResourceVariantType.single, { connections: 1, workspaces: 1, gitrepos: 1 },
-                [
-                    Resources.CreateProduct("Premium License", false, "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "", ResourceAssignedType.single, { connections: 5, workspaces: 5, gitrepos: 5 }, true, false, 1),
-                    Resources.CreateProduct("Premium License Legacy", false, "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "", ResourceAssignedType.single, { connections: 5, workspaces: 5, gitrepos: 5 }, true, false, 1),
-                    Resources.CreateProduct("Additional connections", true, "prod_RjJVZh1cT6szd8", "price_1QpqsWC2vUMc6gvhvO0GdT09", "opencore_connections_monthly", ResourceAssignedType.multiple, { connections: 1 }, true, false, 1),
-                    Resources.CreateProduct("Additional workspaces", true, "prod_RjJWttP56SoL79", "price_1QpqtVC2vUMc6gvhfHfjN6Fa", "opencore_workspaces_monthly", ResourceAssignedType.multiple, { workspaces: 1 }, true, false, 1),
-                    Resources.CreateProduct("Additional getrepos", true, "prod_Rjq7THiRHBkpL4", "price_1QqMRCC2vUMc6gvhByzBizDv", "opencore_gitrepos_monthly", ResourceAssignedType.multiple, { gitrepos: 1 }, true, false, 1),
-                ], true, false, 4, parent);
-            await Resources.CreateResource(tuser, "Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, { members: 3, workspacecount: 2 },
-                [
-                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, { members: 25 }, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, { members: 5000 }, true, false, 1),
-                ], true, false, 5, parent);
-
-        } else if (Config.stripe_api_key == "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI") {
-            await Resources.CreateResource(tuser, "Agent Instance", ResourceTargetType.agent, ResourceVariantType.single,
-                {
-                    "resources": {
-                        "requests": {
-                            "cpu": "200m",
-                            "memory": "152Mi"
-                        }
-                    },
-                    "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" },
-                    "runtime_hours": 4,
-                    "agentcount": 1
-                },
-                [
-                    Resources.CreateProduct("Basic (256Mi ram)", false, "prod_RG5CJC2X3xuVil", "price_1QNZ1mC2vUMc6gvhWxYwPvsN", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 1),
-                    Resources.CreateProduct("Basic (256Mi ram) - Legacy", false, "prod_Jfg1JU7byqHYs9", "price_1J2KglC2vUMc6gvh3JGredpM", "", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 2),
-                    Resources.CreateProduct("Plus (512Mi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 3),
-                    Resources.CreateProduct("Premium (1Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 4),
-                    Resources.CreateProduct("Advanced (2Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 5),
-                ], true, false, 0, parent);
-            await Resources.CreateResource(tuser, "Database Usage", ResourceTargetType.customer, ResourceVariantType.single, { dbusage: (1048576 * 25) },
-                [
-                    Resources.CreateProduct("50Mb quota", false, "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", "", ResourceAssignedType.multiple, { dbusage: (1048576 * 50) }, true, true, 1),
-                    Resources.CreateProduct("Metered Monthly", false, "prod_JffpwKLldz2QWN", "price_1Jkl6HC2vUMc6gvhXe4asJXW", "", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 2),
-                ], true, true, 1, parent);
-            await Resources.CreateResource(tuser, "Support Hours", ResourceTargetType.customer, ResourceVariantType.multiple, {},
-                [
-                    Resources.CreateProduct("Premium Hours", false, "prod_JccNQXT636UNhG", "plan_HFkbfsAs1Yvcly", "supporthours_premium_monthly", ResourceAssignedType.metered, { "supportplan": true }, false, false, 1),
-                    Resources.CreateProduct("Basic Hours", false, "prod_HG1vTqU4c7EaV5", "plan_HG1wBF6yq1O15C", "supporthours_basic_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, false, 2),
-                ], false, false, 2, parent);
-            await Resources.CreateResource(tuser, "OpenCore License", ResourceTargetType.license, ResourceVariantType.single, { connections: 1, workspaces: 1, gitrepos: 1 },
-                [
-                    Resources.CreateProduct("Premium License", false, "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "", ResourceAssignedType.single, { connections: 5, workspaces: 5, gitrepos: 5 }, true, false, 1),
-                    Resources.CreateProduct("Premium License Legacy", false, "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "", ResourceAssignedType.single, { connections: 5, workspaces: 5, gitrepos: 5 }, true, false, 1),
-                    Resources.CreateProduct("Additional connections", true, "prod_RjJVZh1cT6szd8", "price_1QpqsWC2vUMc6gvhvO0GdT09", "opencore_connections_monthly", ResourceAssignedType.multiple, { connections: 1 }, true, false, 1),
-                    Resources.CreateProduct("Additional workspaces", true, "prod_RjJWttP56SoL79", "price_1QpqtVC2vUMc6gvhfHfjN6Fa", "opencore_workspaces_monthly", ResourceAssignedType.multiple, { workspaces: 1 }, true, false, 1),
-                    Resources.CreateProduct("Additional getrepos", true, "prod_Rjq7THiRHBkpL4", "price_1QqMRCC2vUMc6gvhByzBizDv", "opencore_gitrepos_monthly", ResourceAssignedType.multiple, { gitrepos: 1 }, true, false, 1),
-                ], true, false, 3, parent);
-            await Resources.CreateResource(tuser, "Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, { members: 3, workspacecount: 2 },
-                [
-                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, { members: 25 }, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, { members: 5000 }, true, false, 2),
-                ], true, false, 4, parent);
-
+                "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" },
+                "runtime_hours": 4,
+                "agentcount": 1
+            },
+            [
+                Resources.CreateProduct("Basic (256Mi ram)", false, "prod_RG5CJC2X3xuVil", "price_1QNZ1mC2vUMc6gvhWxYwPvsN", "agent_basic_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "256Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 1),
+                Resources.CreateProduct("Plus (512Mi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhPC2vUMc6gvhIwTNUWAk", "agent_plus_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "512Mi", "cpu": "500m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, true, 3),
+                Resources.CreateProduct("Premium (1Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KhuC2vUMc6gvhRcs1mdUr", "agent_premium_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "1Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 4),
+                Resources.CreateProduct("Advanced (2Gi ram)", false, "prod_Jfg1JU7byqHYs9", "price_1J2KiFC2vUMc6gvhGy0scDB5", "agent_advanced_monthly", ResourceAssignedType.single, { "resources": { "requests": { "memory": "2Gi", "cpu": "900m" } }, "nodeSelector": { "cloud.google.com/gke-nodepool": "agent-pool" } }, true, false, 5),
+            ], true, false, 0, parent);
+        if (Config.stripe_api_key != "pk_live_0XOJdv1fPLPnOnRn40CSdBsh009Ge1B2yI" &&
+            Config.stripe_api_key != "pk_test_DNS5WyEjThYBdjaTgwuyGeVV00KqiCvf99"
+        ) {
+            // await Resources.CreateResource(tuser, "Database Usage", ResourceTargetType.customer, ResourceVariantType.single, { dbusage: (1048576 * 25) },
+            //     [
+            //         Resources.CreateProduct("50Mb quota", false, "prod_JffpwKLldz2QWN", "price_1J2KWFC2vUMc6gvheg4kFzjI", "opencore_database_monthly", ResourceAssignedType.multiple, { dbusage: (1048576 * 50) }, true, true, 1),
+            //         Resources.CreateProduct("Metered Monthly", false, "prod_JffpwKLldz2QWN", "price_1Jkl6HC2vUMc6gvhXe4asJXW", "opencore_database_metered_monthly", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 2),
+            //     ], true, true, 1, parent);
         } else {
-            await Resources.CreateResource(tuser, "Agent Instance", ResourceTargetType.agent, ResourceVariantType.single, { "runtime_hours": 8, "agentcount": 1, "resources": { "limits": { "memory": "225Mi" } } },
+            await Resources.CreateResource(tuser, "Support Hours", ResourceTargetType.customer, ResourceVariantType.multiple, {},
                 [
-                    Resources.CreateProduct("Basic (256Mi ram)", false, "prod_HEC6rB2wRUwviG", "plan_HECATxbGlff4Pv", "", ResourceAssignedType.single, { "resources": { "limits": { "memory": "256Mi" }, "requests": { "memory": "256Mi" } } }, true, false, 0),
-                    Resources.CreateProduct("Plus (512Mi ram)", false, "prod_HEDSUIZLD7rfgh", "plan_HEDSUl6qdOE4ru", "", ResourceAssignedType.single, { "resources": { "limits": { "memory": "512Mi" }, "requests": { "memory": "512Mi" } } }, true, false, 1),
-                    Resources.CreateProduct("Premium (1Gi ram)", false, "prod_HEDTI7YBbwEzVX", "plan_HEDTJQBGaVGnvl", "", ResourceAssignedType.single, { "resources": { "limits": { "memory": "1Gi" }, "requests": { "memory": "1Gi" } } }, true, false, 2),
-                    Resources.CreateProduct("Premium+ (2Gi ram)", false, "prod_IERLqCwV7BV8zy", "price_1HdySLC2vUMc6gvh3H1pgG7A", "", ResourceAssignedType.single, { "resources": { "limits": { "memory": "2Gi" }, "requests": { "memory": "2Gi" } } }, true, false, 3),
-                ], true, false, 0, parent);
-            await Resources.CreateResource(tuser, "Database Usage", ResourceTargetType.customer, ResourceVariantType.single, { dbusage: (1048576 * 25) },
+                    Resources.CreateProduct("Premium Hours", false, "prod_JccNQXT636UNhG", "plan_HFkbfsAs1Yvcly", "supporthours_premium_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, true, 1),
+                    Resources.CreateProduct("Basic Hours", false, "prod_HG1vTqU4c7EaV5", "plan_HG1wBF6yq1O15C", "supporthours_basic_monthly", ResourceAssignedType.metered, { "supportplan": true }, true, true, 2),
+                ], false, true, 2, parent);
+            await Resources.CreateResource(tuser, "OpenCore License", ResourceTargetType.license, ResourceVariantType.single, { connections: 1, workspaces: 1, gitrepos: 1 },
                 [
-                    Resources.CreateProduct("50Mb quota", false, "prod_JccNQXT636UNhG", "price_1IzQBRC2vUMc6gvh3Er9QaO8", "", ResourceAssignedType.multiple, { dbusage: (1048576 * 50) }, true, true, 1),
-                    Resources.CreateProduct("Metered Monthly", false, "prod_JccNQXT636UNhG", "price_1IzNEZC2vUMc6gvhAWQbEBHm", "", ResourceAssignedType.metered, { dbusage: (1048576 * 50) }, true, true, 0),
-                ], true, true, 1, parent);
-            await Resources.CreateResource(tuser, "Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, { members: 3, workspacecount: 2 },
-                [
-                    Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, { members: 25 }, true, false, 1),
-                    Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, { members: 5000 }, true, false, 1),
-                ], true, false, 1, parent);
+                    Resources.CreateProduct("Premium License", false, "prod_JcXS2AvXfwk1Lv", "price_1Qgw6DC2vUMc6gvhHuoezYIH", "opencore_premium_monthly", ResourceAssignedType.single, { connections: 5, workspaces: 5, gitrepos: 5 }, true, true, 1),
+                    Resources.CreateProduct("Premium License Legacy", false, "prod_JcXS2AvXfwk1Lv", "price_1IzISoC2vUMc6gvhMtqTq2Ef", "openflow_license_monthly", ResourceAssignedType.single, { connections: 5, workspaces: 5, gitrepos: 5 }, true, true, 1),
+                    Resources.CreateProduct("Additional connections", true, "prod_RjJVZh1cT6szd8", "price_1QpqsWC2vUMc6gvhvO0GdT09", "opencore_connections_monthly", ResourceAssignedType.multiple, { connections: 1 }, true, true, 1),
+                    Resources.CreateProduct("Additional workspaces", true, "prod_RjJWttP56SoL79", "price_1QpqtVC2vUMc6gvhfHfjN6Fa", "opencore_workspaces_monthly", ResourceAssignedType.multiple, { workspaces: 1 }, true, true, 1),
+                    Resources.CreateProduct("Additional getrepos", true, "prod_Rjq7THiRHBkpL4", "price_1QqMRCC2vUMc6gvhByzBizDv", "opencore_gitrepos_monthly", ResourceAssignedType.multiple, { gitrepos: 1 }, true, true, 1),
+                ], true, true, 3, parent);
         }
+        await Resources.CreateResource(tuser, "Workspaces", ResourceTargetType.workspace, ResourceVariantType.single, { members: 3, workspacecount: 2 },
+            [
+                Resources.CreateProduct("Basic tier", false, "prod_ReVF12d55IgEfP", "price_1QlCFIC2vUMc6gvhGBxdjMxp", "workspace_basic_monthly", ResourceAssignedType.single, { members: 25 }, true, false, 1),
+                Resources.CreateProduct("Enterprise tier", false, "prod_RfB0sjDxjN0yCo", "price_1QlqeJC2vUMc6gvhvBWhaQUA", "workspace_ee_monthly", ResourceAssignedType.single, { members: 5000 }, true, true, 2),
+            ], true, false, 4, parent);
         const usages = await Config.db.query<ResourceUsage>({ collectionname: "config", query: { _type: "resourceusage" }, jwt: Crypt.rootToken() }, parent);
         for (let i = 0; i < usages.length; i++) {
             const usage = usages[i];
