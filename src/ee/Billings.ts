@@ -92,7 +92,7 @@ export class Billings {
             return ucustomer as any;
         }
         if(uworkspace == null) {
-            uworkspace = await Workspaces.EnsureWorkspace(tuser, jwt, {"name": ucustomer.name, _billingid: ucustomer._id } as any, parent);
+            uworkspace = await Workspaces.EnsureWorkspace(tuser, jwt, {"name": ucustomer.name, _billingid: ucustomer._id } as any, true, parent);
         }
         if(uusers != null) {
             for(let i = 0; i < uusers.members.length; i++) {
@@ -109,7 +109,7 @@ export class Billings {
             }
         }
         if(u2 != null) {
-            await Workspaces.AddUserToWorkspace(tuser, jwt, u2.email, uworkspace._id, "admin", parent);
+            await Workspaces.AddUserToWorkspace(tuser, jwt, u2.email || u2.username, uworkspace._id, "admin", parent);
         }
         delete ucustomer.users;
         delete ucustomer.userid;

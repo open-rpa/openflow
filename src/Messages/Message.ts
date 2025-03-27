@@ -4986,7 +4986,7 @@ export class Message {
             case "ensureworkspace":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
-                msg.result = await Workspaces.EnsureWorkspace(this.tuser, this.jwt, data, parent);
+                msg.result = await Workspaces.EnsureWorkspace(this.tuser, this.jwt, data, false, parent);
                 break;
             case "deleteworkspace":
                 msg.result = await Workspaces.DeleteWorkspace(this.tuser, this.jwt, msg.id, parent);
@@ -5332,8 +5332,7 @@ export class Message {
                 await Logger.DBHelper.CheckCache("users", u as any, false, false, parent);
                 break;
             case "upgradecustomer":
-                Billings.UpgradeBillingAccount(this.tuser, this.jwt, msg.id, parent);
-           
+                msg.result = await Billings.UpgradeBillingAccount(this.tuser, this.jwt, msg.id, parent);           
                 break;
             default:
                 msg.error = "Unknown custom command " + msg.command;
