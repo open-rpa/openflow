@@ -8,6 +8,7 @@ import { Util, Wellknown } from "../Util.js";
 import { Payments } from "./Payments.js";
 import { Resources } from "./Resources.js";
 import { Workspaces } from "./Workspaces.js";
+import { DatabaseConnection } from "../DatabaseConnection.js";
 
 export class Billings {
     public static async EnsureBilling(tuser: User, jwt: string, billing: Billing, parent: Span): Promise<Billing> {
@@ -105,7 +106,9 @@ export class Billings {
                 const member = uusers.members[i];
                 let u = await Config.db.GetOne<User>({ query: { _id: member._id, "_type": "user" }, collectionname: "users", jwt }, parent);
                 if(u == null) continue;
-                await Workspaces.AddUserToWorkspace(tuser, jwt, u._id, u.email || u.username, uworkspace._id, "member", parent);
+                if(DatabaseConnection.WellknownIdsArray.indexOf(u._id) == -1 ) {
+                    await Workspaces.AddUserToWorkspace(tuser, jwt, u._id, u.email || u.username, uworkspace._id, "member", parent);
+                }
             }
         }
         if(uadmins != null) {
@@ -113,10 +116,12 @@ export class Billings {
                 const member = uadmins.members[i];
                 let u = await Config.db.GetOne<User>({ query: { _id: member._id, "_type": "user" }, collectionname: "users", jwt }, parent);
                 if(u == null) continue;
-                await Workspaces.AddUserToWorkspace(tuser, jwt, u._id, u.email || u.username, uworkspace._id, "admin", parent);
+                if(DatabaseConnection.WellknownIdsArray.indexOf(u._id) == -1 ) {
+                    await Workspaces.AddUserToWorkspace(tuser, jwt, u._id, u.email || u.username, uworkspace._id, "admin", parent);
+                }
             }
         }
-        if(u2 != null) {
+        if(u2 != null && DatabaseConnection.WellknownIdsArray.indexOf(u2._id) == -1) {
             await Workspaces.AddUserToWorkspace(tuser, jwt, u2._id, u2.email || u2.username, uworkspace._id, "admin", parent);
         }
         delete ucustomer.users;

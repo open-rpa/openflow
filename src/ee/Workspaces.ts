@@ -9,6 +9,7 @@ import { Message } from "../Messages/Message.js";
 import { Util, Wellknown } from "../Util.js";
 import { Resources } from "./Resources.js";
 import { LoginProvider } from "../LoginProvider.js";
+import { DatabaseConnection } from "../DatabaseConnection.js";
 export class Workspaces {
     public static async EnsureWorkspace(tuser: User, jwt: string, workspace: Workspace, skipuser: boolean, parent: Span): Promise<Workspace> {
         let _workspace: Workspace = null;
@@ -109,7 +110,9 @@ export class Workspaces {
                 }
             } else {
                 if (workspace._productname != "Free tier" || workspace._resourceusageid != "") {
-                    Logger.instanse.warn("Workspace " + workspace._id + " had resourceusageid " + workspace._resourceusageid + " that no longer exists, downgrade to basic tier ", parent, { cls: "Workspaces", func: "EnsureWorkspace" });
+                    if(workspace._resourceusageid != null) {
+                        Logger.instanse.warn("Workspace " + workspace._id + " had resourceusageid " + workspace._resourceusageid + " that no longer exists, downgrade to basic tier ", parent, { cls: "Workspaces", func: "EnsureWorkspace" });
+                    }
                     workspace._resourceusageid = "";
                     workspace._productname = "Free tier";
                 }
@@ -331,6 +334,9 @@ export class Workspaces {
     public static async AddUserToWorkspace(tuser: User, jwt: string, userid: string, email: string, workspaceid: string, role: "member" | "admin", parent: Span): Promise<Member> {
         let workspace: Workspace = null;
         try {
+            if(DatabaseConnection.WellknownIdsArray.indexOf(userid) > -1 ) {
+                throw new Error("User id is not valid");
+            }
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (email == null || email == "") throw new Error("Email is mandatory");
@@ -388,6 +394,9 @@ export class Workspaces {
                 member.email = email;
                 member.name = "Invite for " + email + " to " + workspace.name;
             } else {
+                if(member.status == "accepted" && member.role == role) {
+                    return member;
+                }
                 // if (member.status == "accepted") throw new Error(Logger.enricherror(tuser, workspace, member.email + " is already a member of the workspace"));
                 if (member.status == "rejected") {
                     throw new Error(Logger.enricherror(tuser, workspace, member.email + " has rejected the invite"));

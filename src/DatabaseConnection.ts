@@ -1098,7 +1098,9 @@ export class DatabaseConnection extends events.EventEmitter {
         }
         span?.addEvent("verityToken");
         const user: User = await Auth.Token2User(jwt, span);
-        if (user == null) throw new Error("Access denied");
+        if (user == null) {
+            throw new Error("Access denied");
+        }
         if (user._id == Wellknown.guest._id && collectionname == "audit") {
             return [];
         }
