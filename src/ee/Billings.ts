@@ -82,11 +82,17 @@ export class Billings {
         //     return ucustomer as any;
         // }
         let u2: User = null;
-        let uusers = await Config.db.GetOne<Role>({ query: { name: ucustomer.users, "_type": "role" }, collectionname: "users", jwt }, parent);
+        let uusers = await Config.db.GetOne<Role>({ query: { _id: ucustomer.users, "_type": "role" }, collectionname: "users", jwt }, parent);
+        if(uusers != null && uusers.name == "users") {
+            uusers = null;
+        }
         if(uusers == null) {
             uusers = await Config.db.GetOne<Role>({ query: { name: ucustomer.name + " users", "_type": "role" }, collectionname: "users", jwt }, parent);
         }
-        let uadmins = await Config.db.GetOne<Role>({ query: { name: ucustomer.admins, "_type": "role" }, collectionname: "users", jwt }, parent);
+        let uadmins = await Config.db.GetOne<Role>({ query: { _id: ucustomer.admins, "_type": "role" }, collectionname: "users", jwt }, parent);
+        if(uadmins != null && uadmins.name == "admins") {
+            uadmins = null;
+        }
         if(uadmins == null) {
             uadmins = await Config.db.GetOne<Role>({ query: { name: ucustomer.name + " admins", "_type": "role" }, collectionname: "users", jwt }, parent);
         }
