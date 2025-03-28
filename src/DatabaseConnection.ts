@@ -2706,6 +2706,29 @@ export class DatabaseConnection extends events.EventEmitter {
                             }
                         }
                     }
+
+                    // @ts-ignore
+                    let _resourceusageid = q.item._resourceusageid;
+                    // @ts-ignore
+                    let _stripeprice = q.item._stripeprice;
+                    // @ts-ignore
+                    let _productname = q.item._productname;
+                    if(Util.IsNullEmpty(_resourceusageid) == false) {
+                        let resourceusage = await this.getbyid<ResourceUsage>(_resourceusageid, "resourceusage", Crypt.rootToken(), true, span);
+                        if (resourceusage == null) {
+                            (q.item as any)._resourceusageid = "";
+                            (q.item as any)._productname = "Free tier";
+                            if(_stripeprice != null) {
+                                (q.item as any)._stripeprice = "";
+                            }
+                        }
+                    } else if (_productname != null && _productname != "" && _productname != "Free tier") {
+                        (q.item as any)._productname = "Free tier";
+                        if(_stripeprice != null) {
+                            (q.item as any)._stripeprice = "";
+                        }
+                    }
+                    
                     if (q.item._acl === null || q.item._acl === undefined || !Array.isArray(q.item._acl)) {
                         q.item._acl = original._acl;
                         q.item._version = original._version;
