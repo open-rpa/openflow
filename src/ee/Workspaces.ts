@@ -320,7 +320,7 @@ export class Workspaces {
                 // const url = `${baseurl}${base}/workspace/${workspaceid}/accept/${token}`;
                 const link = Config.baseurl() + "ui/workspace/" + workspaceid + "/accept/" + member.token;
                 await LoginProvider.sendEmail("invite", tuser._id, member.email, "Invite to join " + workspace.name,
-                    `Hi ${tuser.name}\n${member.name} has invited you to join the workspace ${workspace.name} as a ${member.role}.\n\n` + 
+                    `Hi ${member.name}\n${tuser.name} has invited you to join the workspace ${workspace.name} with role ${member.role}.\n\n` + 
                     `Please click on the link below to accept the invite.\n\n${link}\n\n` + 
                     `If you have any questions, please contact ${tuser.name} at ${tuser.email}\n\nBest regards\n${workspace.name} team`, parent);
 
