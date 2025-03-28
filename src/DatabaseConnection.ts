@@ -2713,14 +2713,31 @@ export class DatabaseConnection extends events.EventEmitter {
                     let _stripeprice = q.item._stripeprice;
                     // @ts-ignore
                     let _productname = q.item._productname;
-                    if(Util.IsNullEmpty(_resourceusageid) == false) {
-                        let resourceusage = await this.getbyid<ResourceUsage>(_resourceusageid, "resourceusage", Crypt.rootToken(), true, span);
+                    if (q.collectionname === "agents" && q.item._type === "agent") {
+                        // 
+                        let resourceusage = await this.GetOne<ResourceUsage>({collectionname: "config", jwt: Crypt.rootToken(), query: {agentid: q.item._id}}, span);
                         if (resourceusage == null) {
                             (q.item as any)._resourceusageid = "";
                             (q.item as any)._productname = "Free tier";
                             if(_stripeprice != null) {
                                 (q.item as any)._stripeprice = "";
                             }
+                        } else {
+                            (q.item as any)._resourceusageid = resourceusage._id;
+                            (q.item as any)._productname = resourceusage.product.name;
+                            (q.item as any).stripeprice = resourceusage.product.stripeprice;
+                        }
+                    }
+                    if(Util.IsNullEmpty(_resourceusageid) == false) {
+                        let resourceusage = await this.getbyid<ResourceUsage>(_resourceusageid, "config", Crypt.rootToken(), true, span);
+                        if (resourceusage == null) {
+                            (q.item as any)._resourceusageid = "";
+                            (q.item as any)._productname = "Free tier";
+                            if(_stripeprice != null) {
+                                (q.item as any)._stripeprice = "";
+                            }
+                        } else {
+                            (q.item as any)._productname = resourceusage.product.name;
                         }
                     } else if (_productname != null && _productname != "" && _productname != "Free tier") {
                         (q.item as any)._productname = "Free tier";
