@@ -29,6 +29,7 @@ import { SocketMessage } from "../SocketMessage.js";
 import { Util, Wellknown } from "../Util.js";
 import { WebSocketServer } from "../WebSocketServer.js";
 import { WebSocketServerClient } from "../WebSocketServerClient.js";
+import { FaaS } from "../ee/FaaS.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -648,7 +649,11 @@ export class Message {
                     this.command = "error";
                 }
                 this.data = JSON.stringify({ "message": error.message });
-                if (error.message.indexOf("Not signed in, and missing jwt") > -1) {
+                if(error.response?.body?.message != null) {
+                    this.data = JSON.stringify({ "message": error.response.body.message });
+                    Logger.instanse.error(JSON.stringify(error.response.body), span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
+                }
+                else if (error.message.indexOf("Not signed in, and missing jwt") > -1) {
                     Logger.instanse.error(error.message, span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
                 } else {
                     Logger.instanse.error(error, span, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
@@ -5334,6 +5339,33 @@ export class Message {
                 break;
             case "upgradecustomer":
                 msg.result = await Billings.UpgradeBillingAccount(this.tuser, this.jwt, msg.id, parent);           
+                break;
+            case "getimage":
+                if (msg.id == null || msg.id == "") throw new Error("id is mandatory");
+                var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt }, parent);
+                if (pack == null) throw new Error("Access denied or package not found");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${pack.name}`);
+                }
+                msg.result = await FaaS.GetImage(this.tuser, this.jwt, pack);
+                break;
+            case "buildimage":
+                if (msg.id == null || msg.id == "") throw new Error("id is mandatory");
+                var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt }, parent);
+                if (pack == null) throw new Error("Access denied or package not found");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${pack.name}`);
+                }
+                msg.result = await FaaS.BuildImage(this.tuser, this.jwt, pack);
+                break;
+            case "deleteimage":
+                if (msg.id == null || msg.id == "") throw new Error("id is mandatory");
+                var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt }, parent);
+                if (pack == null) throw new Error("Access denied or package not found");
+                if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.invoke)) {
+                    throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${pack.name}`);
+                }
+                msg.result = await FaaS.DeleteImage(this.tuser, this.jwt, pack);
                 break;
             default:
                 msg.error = "Unknown custom command " + msg.command;
