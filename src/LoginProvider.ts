@@ -1816,7 +1816,11 @@ export class LoginProvider {
             span?.setAttribute("remoteip", LoginProvider.remoteip(req));
             let user: User = null;
             let jwt: string = null;
-            const authHeader = req.headers.authorization;
+            if (req.query && req.query.jwt) {
+                jwt = req.query.jwt;
+            }
+            const authHeader = req.headers.authorization || jwt;
+
             if (authHeader) {
                 user = await Auth.Token2User(authHeader, span);
                 if (user == null) throw new Error("Access denied");
