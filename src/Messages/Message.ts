@@ -4871,6 +4871,7 @@ export class Message {
                 msg.result = agent
                 break;
             case "deletepackage":
+                if(msg.id == null || msg.id == "") throw new Error("id is mandatory");
                 var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt }, parent);
                 if (pack == null) throw new Error("Access denied or package not found");
                 if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
