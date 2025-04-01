@@ -22,39 +22,42 @@ export class FaaS {
         if(image != null) {
             await KubeUtil.DeleteImage(Config.namespace, pack.name);
         }
-        let url = Config.baseurl() + "download/" + pack._id + "?jwt=" + jwt;
+        let url = Config.baseurl() + "download/" + pack.fileid + "?jwt=" + jwt;
         image = await KubeUtil.CreateImage(Config.namespace, Config.namespace, "demo-builder", pack.name, url);
         let start = new Date();
-        do {
+
+        while (new Date().getTime() - start.getTime() < 5 * 60 * 1000) {
             image = await KubeUtil.GetImage(Config.namespace, pack.name);
-            if (image == null) {
+            if (!image?.status?.conditions) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 continue;
-                throw new Error("Failed to find image after it was created");
             }
-            let complete = true;
-            for(let i = 0; i < image.status.conditions.length; i++) {
-                const condition = image.status.conditions[i];
-                if (condition.type == "Ready" && condition.status != "True") {
-                    complete = false;
-                }
-                if((condition.type == "Failed" && condition.status == "True") || (condition.message.indexOf("failed") > -1)) {
-                    complete = false;
-                    console.log("Image build failed");
-                    throw new Error("Image build failed: " + condition.message);
-                }
-                console.log(condition.type, condition.status, condition.message);
+        
+            const ready = image.status.conditions.find(c => c.type === "Ready");
+            const failed = image.status.conditions.find(c => c.type === "Failed");
+        
+            if (ready?.message && Date.now() % 10000 < 1000) {
+                console.log(`[build status] ${ready.status}: ${ready.message}`);
             }
-            if(image.status.conditions.length <= 3) {
-                complete = false;
+            
+            if (failed?.status === "True") {
+                throw new Error("Image build failed: " + (failed.message || "Unknown failure"));
             }
-            if (complete) {
+        
+            if (ready?.status === "True") {
                 console.log("Image build complete");
-                break;
+                return image;
             }
+        
+            if (ready?.status === "False") {
+                throw new Error("Image build failed: " + (ready.message || "Build marked as not ready"));
+            }
+        
+            // Still building (status == "Unknown" or not set yet)
             await new Promise(resolve => setTimeout(resolve, 1000));
-        } while (new Date().getTime() - start.getTime() < (60000 * 5)); // wait for 5 minutes
-        return image;
+        }
+        
+        throw new Error("Timed out waiting for image to be built");
     }
     public static async DeleteImage(tuser: User, jwt: string, pack: any) {
         let image = await KubeUtil.GetImage(Config.namespace, pack.name);
