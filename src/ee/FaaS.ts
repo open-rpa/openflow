@@ -45,8 +45,9 @@ export class FaaS {
             }
         
             if (ready?.status === "True") {
-                console.log("Image build complete");
-                return image;
+                const timetaken = (new Date().getTime() - start.getTime()) / 1000;
+                console.log("Image build complete in " + timetaken + " seconds");
+                return {image, timetaken};
             }
         
             if (ready?.status === "False") {
