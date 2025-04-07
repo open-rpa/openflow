@@ -242,7 +242,7 @@ export class dockerdriver implements i_agent_driver {
                 if(HostConfig.Binds == null) HostConfig.Binds = [];
                 HostConfig.Binds.push('/var/run/docker.sock:/var/run/docker.sock');
                 instance = await docker.createContainer({
-                    Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
+                    Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig, User: 'root'
                 })
             } else {
                 instance = await docker.createContainer({
