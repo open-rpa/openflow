@@ -7,7 +7,7 @@ import { User, iAgent, i_agent_driver } from "./commoninterfaces.js";
 import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
-import { Util } from "./Util.js";
+import { Util, Wellknown } from "./Util.js";
 export class dockerdriver implements i_agent_driver {
     public async detect(): Promise<boolean> {
         try {
@@ -39,6 +39,34 @@ export class dockerdriver implements i_agent_driver {
         if (pull) {
             Logger.instanse.info("Pull image " + imagename, span, { cls: "dockerdriver", func: "_pullImage" });
             await docker.pull(imagename)
+        }
+    }
+    async ensureImageExists(imageName) {
+        const docker = new Docker();
+        try {
+            await docker.getImage(imageName).inspect();
+            console.log(`Image ${imageName} already exists locally`);
+        } catch (err) {
+            if (err.statusCode === 404) {
+                console.log(`Image ${imageName} not found locally. Pulling...`);
+                await new Promise((resolve, reject) => {
+                    docker.pull(imageName, (err, stream) => {
+                        if (err) return reject(err);
+                        docker.modem.followProgress(stream, onFinished, onProgress);
+
+                        function onFinished(err, output) {
+                            if (err) reject(err);
+                            else resolve(output);
+                        }
+
+                        function onProgress(event) {
+                            if (event && event.status) console.log(`Pulling image ${imageName}: ${event.status}`);
+                        }
+                    });
+                });
+            } else {
+                throw err; // something else went wrong
+            }
         }
     }
     public async NodeLabels(parent: Span): Promise<any> {
@@ -180,7 +208,7 @@ export class dockerdriver implements i_agent_driver {
                 "enable_detailed_analytic=" + Config.enable_detailed_analytic.toString(),
                 "otel_trace_url=" + Config.otel_trace_url,
                 "otel_metric_url=" + Config.otel_metric_url,
-                "otel_log_url=" + Config.otel_log_url,                
+                "otel_log_url=" + Config.otel_log_url,
                 "TZ=" + agent.tz,
                 "log_with_colors=true",
                 "oidc_config=" + oidc_config,
@@ -208,10 +236,19 @@ export class dockerdriver implements i_agent_driver {
             if (agent.sleep == true) {
                 Cmd = ["/bin/sh", "-c", "while true; do echo sleep 10; sleep 10;done"]
             }
-            await this._pullImage(docker, agent.image, span);
-            instance = await docker.createContainer({
-                Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
-            })
+            // await this._pullImage(docker, agent.image, span);
+            await this.ensureImageExists(agent.image);
+            if ((agent as any).dockersocket == true && user.HasRoleName(Wellknown.admins.name)) {
+                if(HostConfig.Binds == null) HostConfig.Binds = [];
+                HostConfig.Binds.push('/var/run/docker.sock:/var/run/docker.sock');
+                instance = await docker.createContainer({
+                    Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
+                })
+            } else {
+                instance = await docker.createContainer({
+                    Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig
+                })
+            }
             await instance.start();
             Audit.CloudAgentAction(user, true, "Created agent " + agent.name, "ensureagent", agent.image, agent.slug, parent);
         } else {
@@ -316,7 +353,7 @@ export class dockerdriver implements i_agent_driver {
                     if (agent != null) {
                         await this.RemoveInstance(rootuser, rootjwt, agent, false, parent);
                     } else {
-                        Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name, parent, { cls: "dockerdriver", func: "InstanceCleanup",  user: item.metadata.name });
+                        Logger.instanse.debug("Cannot remove un billed instance " + item.metadata.name + " that has been running for " + diffhours + " hours, unable to find agent with slug " + item.metadata.name, parent, { cls: "dockerdriver", func: "InstanceCleanup", user: item.metadata.name });
                     }
                 }
             }
