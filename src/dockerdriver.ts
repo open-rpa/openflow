@@ -73,6 +73,8 @@ export class dockerdriver implements i_agent_driver {
         return null;
     }
     public async EnsureInstance(user: User, jwt: string, agent: iAgent, parent: Span): Promise<void> {
+        if (agent == null) throw new Error("agent is null");
+        if (Util.IsNullEmpty(agent.image)) throw new Error("agent image is null");
         const span: Span = Logger.otel.startSubSpan("message.EnsureInstance", parent);
         Logger.instanse.debug("[" + agent.slug + "] EnsureInstance", span, { cls: "dockerdriver", func: "EnsureInstance" });
 
@@ -239,7 +241,7 @@ export class dockerdriver implements i_agent_driver {
             // await this._pullImage(docker, agent.image, span);
             await this.ensureImageExists(agent.image);
             if ((agent as any).dockersocket == true && user.HasRoleName(Wellknown.admins.name)) {
-                if(HostConfig.Binds == null) HostConfig.Binds = [];
+                if (HostConfig.Binds == null) HostConfig.Binds = [];
                 HostConfig.Binds.push('/var/run/docker.sock:/var/run/docker.sock');
                 instance = await docker.createContainer({
                     Cmd, Image: agent.image, name: agent.slug, Labels, Env, NetworkingConfig, HostConfig, User: 'root'
