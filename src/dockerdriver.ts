@@ -287,6 +287,8 @@ export class dockerdriver implements i_agent_driver {
         }
     }
     public async GetInstanceLog(user: User, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<string> {
+        if (agent == null) return null;
+        if (Util.IsNullEmpty(agent.slug) == null) return null;
         const span: Span = Logger.otel.startSubSpan("message.GetInstanceLog", parent);
         try {
             var result: string = null;
@@ -364,7 +366,6 @@ export class dockerdriver implements i_agent_driver {
     public async GetInstancePods(user: User, jwt: string, agent: iAgent, getstats: boolean, parent: Span): Promise<any[]> {
         const span: Span = Logger.otel.startSubSpan("message.EnsureNoderedInstance", parent);
         try {
-
             span?.addEvent("init Docker()");
             const docker = new Docker();
             span?.addEvent("listContainers()");
