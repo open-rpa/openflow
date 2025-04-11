@@ -4415,10 +4415,14 @@ export class Message {
         if (wiq.maxretries < 1) wiq.maxretries = 3;
         wiq.retrydelay = msg.retrydelay;
         wiq.initialdelay = msg.initialdelay;
-        wiq.failed_wiq = msg.failed_wiq;
-        wiq.failed_wiqid = msg.failed_wiqid;
-        wiq.success_wiq = msg.success_wiq;
-        wiq.success_wiqid = msg.success_wiqid;
+        // @ts-ignore
+        wiq.failed_wiq = msg.failed_wiq || msg.failedWiq;
+        // @ts-ignore
+        wiq.failed_wiqid = msg.failed_wiqid || msg.failedWiqid;
+        // @ts-ignore
+        wiq.success_wiq = msg.success_wiq || successWiq;
+        // @ts-ignore
+        wiq.success_wiqid = msg.success_wiqid || msg.successWiqid;
         // @ts-ignore
         wiq.packageid = msg.packageid;
         msg = JSON.parse(JSON.stringify(msg));
@@ -4521,17 +4525,37 @@ export class Message {
         wiq.robotqueue = msg.robotqueue;
         wiq.projectid = msg.projectid;
         wiq.amqpqueue = msg.amqpqueue;
+
+        // @ts-ignore
+        let failed_wiq = msg.failed_wiq || msg.failedWiq;
+        // @ts-ignore
+        let failed_wiqid = msg.failed_wiqid || msg.failedWiqid;
+        // @ts-ignore
+        let success_wiq = msg.success_wiq || successWiq;
+        // @ts-ignore
+        let success_wiqid = msg.success_wiqid || msg.successWiqid;
+        
         if (!Util.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
         if (!Util.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
         if (!Util.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
-        if (!Util.IsNullEmpty(msg.failed_wiq) || msg.failed_wiq == "") wiq.failed_wiq = msg.failed_wiq;
-        if (msg.failed_wiq === null) { delete wiq.failed_wiq; delete wiq.failed_wiqid; }
-        if (!Util.IsNullEmpty(msg.failed_wiqid) || msg.failed_wiqid == "") wiq.failed_wiqid = msg.failed_wiqid;
-        if (!Util.IsNullEmpty(msg.success_wiq) || msg.success_wiq == "") wiq.success_wiq = msg.success_wiq;
-        if (!Util.IsNullEmpty(msg.success_wiqid) || msg.success_wiqid == "") wiq.success_wiqid = msg.success_wiqid;
-        if (msg.success_wiq === null) { delete wiq.success_wiq; delete wiq.success_wiqid; }
+        if (!Util.IsNullEmpty(failed_wiq)) wiq.failed_wiq = failed_wiq;
+        if (!Util.IsNullEmpty(failed_wiqid)) wiq.failed_wiqid = failed_wiqid;
+        if (!Util.IsNullEmpty(success_wiq)) wiq.success_wiq = success_wiq;
+        if (!Util.IsNullEmpty(success_wiqid)) wiq.success_wiqid = success_wiqid;
+
         // @ts-ignore
         if (!Util.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
+
+
+                // @ts-ignore
+                wiq.failed_wiq = msg.failed_wiq || msg.failedWiq;
+                // @ts-ignore
+                wiq.failed_wiqid = msg.failed_wiqid || msg.failedWiqid;
+                // @ts-ignore
+                wiq.success_wiq = msg.success_wiq || successWiq;
+                // @ts-ignore
+                wiq.success_wiqid = msg.success_wiqid || msg.successWiqid;
+        
 
 
         // @ts-ignore
