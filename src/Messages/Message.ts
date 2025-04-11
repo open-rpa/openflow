@@ -4420,7 +4420,7 @@ export class Message {
         // @ts-ignore
         wiq.failed_wiqid = msg.failed_wiqid || msg.failedWiqid;
         // @ts-ignore
-        wiq.success_wiq = msg.success_wiq || successWiq;
+        wiq.success_wiq = msg.success_wiq || msg.successWiq;
         // @ts-ignore
         wiq.success_wiqid = msg.success_wiqid || msg.successWiqid;
         // @ts-ignore
@@ -4531,7 +4531,7 @@ export class Message {
         // @ts-ignore
         let failed_wiqid = msg.failed_wiqid || msg.failedWiqid;
         // @ts-ignore
-        let success_wiq = msg.success_wiq || successWiq;
+        let success_wiq = msg.success_wiq || msg.successWiq;
         // @ts-ignore
         let success_wiqid = msg.success_wiqid || msg.successWiqid;
         
@@ -4545,17 +4545,6 @@ export class Message {
 
         // @ts-ignore
         if (!Util.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
-
-
-                // @ts-ignore
-                wiq.failed_wiq = msg.failed_wiq || msg.failedWiq;
-                // @ts-ignore
-                wiq.failed_wiqid = msg.failed_wiqid || msg.failedWiqid;
-                // @ts-ignore
-                wiq.success_wiq = msg.success_wiq || successWiq;
-                // @ts-ignore
-                wiq.success_wiqid = msg.success_wiqid || msg.successWiqid;
-        
 
 
         // @ts-ignore
