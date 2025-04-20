@@ -380,11 +380,21 @@ export class flowclient extends client {
             q.exchangename = options.exchangename;
             var t = QueueEvent.create(q);
             const data2 = Any.create({ type_url: "type.googleapis.com/openiap.QueueEvent", value: QueueEvent.encode(QueueEvent.create(q)).finish() })
-            var paylad = {
+            var payload = {
                 "command": "queueevent",
                 "data": data2, traceid, spanid
             }
-            protowrap._RPC(this, paylad);
+            // protowrap._RPC(this, payload);
+
+            const id = Math.random().toString(36).substring(2, 11);
+            // const id = client.seq.toString();
+              const dt = new Date();
+              const command = payload.command;
+              var _payload = { ...payload };
+              // @ts-ignore
+              delete _payload.id;
+              protowrap.sendMesssag(this, { id, ..._payload }, id, true);
+        
         } catch (error) {
             err(error);
         }

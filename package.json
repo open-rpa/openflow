@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.11.116",
+  "version": "1.5.11.117",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -20,7 +20,8 @@
     "copypublic": "rm -rf public && cp -r ../openflow-web/dist/ public",
     "linkpublic": "rm -rf public && ln -s /mnt/data/vscode/config/workspace/code/openflow-web/dist /mnt/data/vscode/config/workspace/code/openflow/public",
     "copypublic2": "rm -rf public && cp -r ../core-web/build/ public",
-    "linkpublic2": "rm -rf public && ln -s /mnt/data/vscode/config/workspace/code/core-web/build /mnt/data/vscode/config/workspace/code/openflow/public"
+    "linkpublic2": "rm -rf public && ln -s /mnt/data/vscode/config/workspace/code/core-web/build /mnt/data/vscode/config/workspace/code/openflow/public",
+    "inspector": "npx @modelcontextprotocol/inspector "
   },
   "repository": {
     "type": "git",
@@ -39,6 +40,7 @@
   "funding": "https://github.com/sponsors/skadefro",
   "dependencies": {
     "@kubernetes/client-node": "0.21.0",
+    "@modelcontextprotocol/sdk": "^1.9.0",
     "@node-saml/passport-saml": "4.0.1",
     "@openiap/cloud-git-mongodb": "1.0.39",
     "@openiap/jsapi": "github:openiap/jsapi#esm",
