@@ -243,6 +243,7 @@ export class OpenAPIProxy {
     }
     Logger.instanse.debug("Updating servers to " + url, null, { cls: "OpenAPIProxy", func: "configure" });
     schema2["servers"] = [{ url }]
+    schema2["openapi"] = "3.1.0";
     // @ts-ignore
     let components: any = schema2?.components;
     if (components?.securitySchemes?.oidc?.openIdConnectUrl != null) {
