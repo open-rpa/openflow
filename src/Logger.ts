@@ -171,7 +171,7 @@ export class Logger {
             }
 
             const { cls, func, message, lvl } = obj;
-            if (!Util.IsNullEmpty(func) && span != null && span.isRecording()) {
+            if (!Util.IsNullEmpty(func) && span != null && span.isRecording && span.isRecording()) {
                 if (typeof obj.message == "object") obj.message = JSON.parse(stringifyError(obj.message, circularcheck, 2));
                 if (lvl == level.Error) {
                     span.setStatus({ code: 2, message: obj.message });
