@@ -3079,16 +3079,18 @@ export class DatabaseConnection extends events.EventEmitter {
 
 
                 if (customer != null && !Util.IsNullEmpty(user2.customerid) && user2._id != customer.users && user2._id != customer.admins && user2._id != Wellknown.root._id) {
-                    // TODO: Check user has permission to this customer
-                    let custusers: Role = await this.getbyid<Role>(customer.users, "users", q.jwt, true, span);
-                    if (custusers != null) {
-                        custusers = Role.assign(custusers);
-                    }
-                    if (custusers != null && !custusers.IsMember(q.item._id)) {
-                        custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
-                        custusers.AddMember(q.item);
-                        await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
-                        await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
+                    if(!Util.IsNullEmpty(customer.users)) {
+                        // TODO: Check user has permission to this customer
+                        let custusers: Role = await this.getbyid<Role>(customer.users, "users", q.jwt, true, span);
+                        if (custusers != null) {
+                            custusers = Role.assign(custusers);
+                        }
+                        if (custusers != null && !custusers.IsMember(q.item._id)) {
+                            custusers = Role.assign(await this.getbyid<Role>(customer.users, "users", q.jwt, true, span));
+                            custusers.AddMember(q.item);
+                            await Logger.DBHelper.Save(custusers, Crypt.rootToken(), span);
+                            await Logger.DBHelper.CheckCache(q.collectionname, q.item, false, false, span);
+                        }
                     }
                 } else {
                     // await Logger.DBHelper.UserRoleUpdate(q.item, false, span);
@@ -4046,23 +4048,27 @@ export class DatabaseConnection extends events.EventEmitter {
         } else if (user._type == "customer") {
             let customer = user as any as Customer;
             if (user.roles == null) user.roles = [];
-            user.roles.push(new Rolemember(user.name + " users", customer.users))
-            user.roles.push(new Rolemember(user.name + " admins", customer.admins))
-            let users = await Logger.DBHelper.FindRoleById(customer.users, Crypt.rootToken(), parent);
-            let admins = await Logger.DBHelper.FindRoleById(customer.admins, Crypt.rootToken(), parent);
-            if(users != null) {
-                for (let i = 0; i < users.members.length; i++) {
-                    const exists = user.roles.filter(x => x._id == users.members[i]._id);
-                    if (exists.length == 0) {
-                        user.roles.push(new Rolemember(users.members[i].name, users.members[i]._id))
+            if(!Util.IsNullEmpty(customer.users)) {
+                user.roles.push(new Rolemember(user.name + " users", customer.users))
+                let users = await Logger.DBHelper.FindRoleById(customer.users, Crypt.rootToken(), parent);
+                if(users != null) {
+                    for (let i = 0; i < users.members.length; i++) {
+                        const exists = user.roles.filter(x => x._id == users.members[i]._id);
+                        if (exists.length == 0) {
+                            user.roles.push(new Rolemember(users.members[i].name, users.members[i]._id))
+                        }
                     }
                 }
             }
-            if(admins != null) {
-                for (let i = 0; i < admins.members.length; i++) {
-                    const exists = user.roles.filter(x => x._id == admins.members[i]._id);
-                    if (exists.length == 0 && admins.members[i]._id != Wellknown.customer_admins._id) {
-                        user.roles.push(new Rolemember(admins.members[i].name, admins.members[i]._id))
+            if(!Util.IsNullEmpty(customer.admins)) {
+                user.roles.push(new Rolemember(user.name + " admins", customer.admins))
+                let admins = await Logger.DBHelper.FindRoleById(customer.admins, Crypt.rootToken(), parent);
+                if(admins != null) {
+                    for (let i = 0; i < admins.members.length; i++) {
+                        const exists = user.roles.filter(x => x._id == admins.members[i]._id);
+                        if (exists.length == 0 && admins.members[i]._id != Wellknown.customer_admins._id) {
+                            user.roles.push(new Rolemember(admins.members[i].name, admins.members[i]._id))
+                        }
                     }
                 }
             }

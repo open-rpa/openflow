@@ -376,7 +376,7 @@ export class Config {
         amqp_force_sender_has_invoke: false,
         amqp_force_consumer_has_update: false,
         amqp_enabled_exchange: false,
-        amqp_url: "amqp://localhost",
+        amqp_url: "amqp://localhost?frameMax=0x2000",
         amqp_username: "guest",
         amqp_password: "guest",
 
