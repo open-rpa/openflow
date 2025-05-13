@@ -9,6 +9,7 @@ function cerror(error) {
     console.error(dts, error.message ? error.message : error);
 }
 clog("Starting @openiap/core");
+import 'global-agent/bootstrap.js';
 import { Span } from "@opentelemetry/api";
 import crypto from "crypto";
 import http from "http";
