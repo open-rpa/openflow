@@ -435,6 +435,7 @@ export class Config {
         otel_measure__mongodb_watch: false,
         enable_analytics: true,
         enable_detailed_analytic: false,
+        otel_protocol: "grpc",
         otel_debug_log: false,
         otel_warn_log: false,
         otel_err_log: false,
@@ -749,6 +750,7 @@ export class Config {
     public static otel_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics"));
     public static enable_detailed_analytic: boolean = Config.parseBoolean(Config.getEnv("enable_detailed_analytic"));
+    public static otel_protocol: string = Config.getEnv("otel_protocol");
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log"));
     public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log"));
     public static otel_err_log: boolean = Config.parseBoolean(Config.getEnv("otel_err_log"));

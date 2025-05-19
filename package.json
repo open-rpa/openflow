@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.11.123",
+  "version": "1.5.11.124",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -49,6 +49,8 @@
     "@opentelemetry/api-logs": "0.57.1",
     "@opentelemetry/exporter-logs-otlp-grpc": "0.57.1",
     "@opentelemetry/exporter-metrics-otlp-grpc": "0.57.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.57.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.57.1",
     "@opentelemetry/sdk-node": "0.57.1",
     "amqplib": "0.10.4",
     "bcryptjs": "2.4.3",

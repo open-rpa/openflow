@@ -680,6 +680,7 @@ export class WebServer {
                     if (Config.otel_trace_interval > 0) res.config.otel_trace_interval = Config.otel_trace_interval;
                     if (Config.otel_metric_interval > 0) res.config.otel_metric_interval = Config.otel_metric_interval;
                     res.config.enable_analytics = Config.enable_analytics;
+                    res.config.otel_protocol = Config.otel_protocol;
                     res.config.otel_trace_url = Config.otel_trace_url;
                     res.config.otel_metric_url = Config.otel_metric_url;
                     res.config.otel_log_url = Config.otel_log_url;

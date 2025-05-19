@@ -1999,6 +1999,8 @@ export class Message {
             if (Config.otel_trace_interval > 0) msg.otel_trace_interval = Config.otel_trace_interval;
             if (Config.otel_metric_interval > 0) msg.otel_metric_interval = Config.otel_metric_interval;
             msg.enable_analytics = Config.enable_analytics;
+            // @ts-ignore
+            msg.otel_protocol = Config.otel_protocol;
             if (msg.user != null) {
                 if (msg.user.email == null || msg.user.email == "") {
                     msg.user.email = "";

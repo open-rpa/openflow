@@ -208,6 +208,7 @@ export class dockerdriver implements i_agent_driver {
                 "NPM_TOKEN=" + NPM_TOKEN,
                 "enable_analytics=" + Config.enable_analytics.toString(),
                 "enable_detailed_analytic=" + Config.enable_detailed_analytic.toString(),
+                "otel_protocol=" + Config.otel_protocol.toString(),
                 "otel_trace_url=" + Config.otel_trace_url,
                 "otel_metric_url=" + Config.otel_metric_url,
                 "otel_log_url=" + Config.otel_log_url,
