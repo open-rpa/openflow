@@ -1144,6 +1144,10 @@ export class Message {
             Logger.instanse.error(new Error("Received message with no command"), null, { cls: "Message", func: "UnknownCommand" });
             return;
         }
+        if (this.command == "queueevent") { 
+            // ignore
+            return;
+        }
         this.data = "{\"message\": \"Unknown command " + this.command + "\"}";
         Logger.instanse.error(`UnknownCommand ${this.command}`, null, { cls: "Message", func: "UnknownCommand" });
         this.Reply("error");
