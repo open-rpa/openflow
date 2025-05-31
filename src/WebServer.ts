@@ -388,60 +388,61 @@ export class WebServer {
     }
     public static async ReceiveFileContent(client: flowclient, rid: string, msg: any) {
         return new Promise<string>((resolve, reject) => {
-            const bucket = new GridFSBucket(Config.db.db);
-            var metadata = new Base();
-            metadata._acl = [];
-            metadata._createdby = Wellknown.root.name;
-            metadata._createdbyid = Wellknown.root._id;
-            metadata._modifiedby = Wellknown.root.name;
-            metadata._modifiedbyid = Wellknown.root._id;
-            if (msg.metadata != null && msg.metadata != "") {
-                try {
-                    // is metadata a string ?
-                    if (typeof msg.metadata == "string") {
-                        metadata = Object.assign(metadata, JSON.parse(msg.metadata));
+            try {
+                const bucket = new GridFSBucket(Config.db.db);
+                var metadata = new Base();
+                metadata._acl = [];
+                metadata._createdby = Wellknown.root.name;
+                metadata._createdbyid = Wellknown.root._id;
+                metadata._modifiedby = Wellknown.root.name;
+                metadata._modifiedbyid = Wellknown.root._id;
+
+                console.log("ReceiveFileContent from", client.user.username);
+                if (msg.metadata != null && msg.metadata != "") {
+                    try {
+                        // is metadata a string ?
+                        if (typeof msg.metadata == "string") {
+                            metadata = Object.assign(metadata, JSON.parse(msg.metadata));
+                        }
+                    } catch (error) {
+                        Logger.instanse.error(error, null, { cls: "WebServer", func: "ReceiveFileContent" });
                     }
-                } catch (error) {
-                    Logger.instanse.error(error, null, { cls: "WebServer", func: "ReceiveFileContent" });
                 }
-            }
-            if (metadata.name == null || metadata.name == "") metadata.name = msg.filename;
-            if (client.user) {
-                if (client.user._id == Wellknown.guest._id && Config.enable_guest_file_upload == false) {
-                    reject(new Error("Guests are not allowed to upload files"));
-                    return;
+                if (metadata.name == null || metadata.name == "") metadata.name = msg.filename;
+                if (client.user) {
+                    Base.addRight(metadata, client.user._id, client.user.name, [Rights.full_control]);
+                    metadata._createdby = client.user.name;
+                    metadata._createdbyid = client.user._id;
+                    metadata._modifiedby = client.user.name;
+                    metadata._modifiedbyid = client.user._id;
                 }
-                Base.addRight(metadata, client.user._id, client.user.name, [Rights.full_control]);
-                metadata._createdby = client.user.name;
-                metadata._createdbyid = client.user._id;
-                metadata._modifiedby = client.user.name;
-                metadata._modifiedbyid = client.user._id;
+                metadata._created = new Date(new Date().toISOString());
+                metadata._modified = metadata._created;
+    
+                Base.addRight(metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
+                if (!Config.multi_tenant) {
+                    Base.addRight(metadata, Wellknown.filestore_users._id, Wellknown.filestore_users.name, [Rights.read]);
+                }
+    
+    
+                const rs = new stream.Readable;
+                rs._read = () => { };
+                const s = protowrap.SetStream(client, rs, rid)
+                if (Util.IsNullEmpty(msg.mimetype)) {
+                    msg.mimetype = mimetype.lookup(msg.filename);
+                }
+                let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
+                let id = uploadStream.id
+                uploadStream.on("finish", () => {
+                    resolve(id.toString());
+                })
+                uploadStream.on("error", (err) => {
+                    reject(err);
+                });
+                rs.pipe(uploadStream);
+            } catch (error) {
+                reject(error);                
             }
-            metadata._created = new Date(new Date().toISOString());
-            metadata._modified = metadata._created;
-
-            Base.addRight(metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
-            if (!Config.multi_tenant) {
-                Base.addRight(metadata, Wellknown.filestore_users._id, Wellknown.filestore_users.name, [Rights.read]);
-            }
-
-
-            const rs = new stream.Readable;
-            rs._read = () => { };
-            const s = protowrap.SetStream(client, rs, rid)
-            if (Util.IsNullEmpty(msg.mimetype)) {
-                msg.mimetype = mimetype.lookup(msg.filename);
-            }
-
-            let uploadStream = bucket.openUploadStream(msg.filename, { contentType: msg.mimetype, metadata: metadata });
-            let id = uploadStream.id
-            uploadStream.on("finish", () => {
-                resolve(id.toString());
-            })
-            uploadStream.on("error", (err) => {
-                reject(err);
-            });
-            rs.pipe(uploadStream);
         });
     }
     static sendFileContent(client: flowclient, rid, id, collectionname): Promise<void> {
@@ -547,6 +548,19 @@ export class WebServer {
 
             } else if (command == "upload") {
                 var id = await WebServer.ReceiveFileContent(client, reply.rid, msg)
+                let user = client.user;
+                if(msg.jwt && msg.jwt != "") {
+                    user = await Auth.Token2User(msg.jwt, null);
+                } else if (message.jwt && message.jwt != "") {
+                    user = await Auth.Token2User(message.jwt, null);
+                }
+                if (user._id == Wellknown.guest._id && Config.enable_guest_file_upload == false) {
+                    Config.db.db.collection("fs.files").deleteOne({ _id: safeObjectID(id) });
+                    throw new Error("Guest user cannot upload files, please login first");
+                }
+                if(client.user?.username != user?.username) {
+                    Config.db.db.collection("fs.files").updateOne({ _id: safeObjectID(id) }, { $set: { _createdby: user.name, _createdbyid: user._id, _modifiedby: user.name, _modifiedbyid: user._id } });
+                }
                 reply.command = "uploadreply"
                 const data = Any.create({ type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id, filename: msg.filename })).finish() })
                 reply.data = data
