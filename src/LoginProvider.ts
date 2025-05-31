@@ -1194,6 +1194,7 @@ export class LoginProvider {
             enable_analytics: Config.enable_analytics,
             otel_protocol: Config.otel_protocol,
             enable_gitserver: Config.enable_gitserver,
+            enable_serverless: Config.enable_serverless,
             web_hide_general_info: Config.web_hide_general_info,
             ofid: Logger.ofid(),
             loginproviders,
