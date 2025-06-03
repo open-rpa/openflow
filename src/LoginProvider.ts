@@ -1147,6 +1147,10 @@ export class LoginProvider {
         if (Util.IsNullEmpty(agent_domain_schema)) {
             agent_domain_schema = "$slug$." + Config.domain;
         }
+        let serverless_domain_schema = Config.serverless_domain_schema;
+        if (Util.IsNullEmpty(serverless_domain_schema)) {
+            serverless_domain_schema = "$slug$.fn." + Config.domain;
+        }
 
         let forceddomains = [];
         var providers = await Logger.DBHelper.GetProviders(null);
@@ -1195,6 +1199,7 @@ export class LoginProvider {
             otel_protocol: Config.otel_protocol,
             enable_gitserver: Config.enable_gitserver,
             enable_serverless: Config.enable_serverless,
+            serverless_domain_schema: Config.serverless_domain_schema,
             web_hide_general_info: Config.web_hide_general_info,
             ofid: Logger.ofid(),
             loginproviders,

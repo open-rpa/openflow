@@ -44,7 +44,7 @@ export class Util {
         return obj === Object(obj);
     }
     public static GetUniqueIdentifier(length: number = 16): string {
-        return crypto.randomBytes(16).toString("hex")
+        return crypto.randomBytes(16).toString("hex").substring(0, length);
     }
 
 }

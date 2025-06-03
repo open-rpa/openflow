@@ -217,6 +217,7 @@ export class Config {
         enable_openapi: true,
         enable_grafanaapi: true,
         enable_serverless: false,
+        serverless_domain_schema: "",
 
         llmchat_queue: "",
         log_with_colors: true,
@@ -509,6 +510,7 @@ export class Config {
     public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi"));
     public static enable_grafanaapi: boolean = Config.parseBoolean(Config.getEnv("enable_grafanaapi"));
     public static enable_serverless: boolean = Config.parseBoolean(Config.getEnv("enable_serverless"));
+    public static serverless_domain_schema: string = Config.getEnv("serverless_domain_schema");
 
     public static llmchat_queue: string = Config.getEnv("llmchat_queue");
     public static version: string = Config.getversion();

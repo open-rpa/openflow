@@ -1881,6 +1881,30 @@ export class DatabaseConnection extends events.EventEmitter {
                         agent.runas = user._id
                     }
                 }
+                if (item._type == "package" && Util.IsNullEmpty((item as any).slug)) {
+                    let slugexists = null;
+                    let slug = "";
+                    do {
+                        slug = Util.GetUniqueIdentifier(8).toLowerCase();
+                        slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                    } while (slugexists != null);
+                    (item as any).slug = slug;
+                }
+                if (item._type == "package" && !Util.IsNullEmpty((item as any).slug)) {
+                    let slug = (item as any).slug.toLowerCase();
+                    slug = slug.replace(/[^a-z0-9-]/g, "");
+                    if (slug.length < 3) {
+                        throw new Error("Slug must be at least 3 characters long");
+                    }
+                    if (slug.length > 50) {
+                        throw new Error("Slug must be at most 50 characters long");
+                    }
+                    let slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                    if (slugexists != null && slugexists._id != item._id) {
+                        throw new Error("Access denied, slug " + slug + " already in use");
+                    }
+                    (item as any).slug = slug;
+                }
             }
             if (collectionname === "users" && (item._type === "user" || item._type === "role")) {
                 let user2: User = item as any;
@@ -2282,6 +2306,30 @@ export class DatabaseConnection extends events.EventEmitter {
                             agent.runas = user._id
                         }
                     }
+                    if (item._type == "package" && Util.IsNullEmpty((item as any).slug)) {
+                        let slugexists = null;
+                        let slug = "";
+                        do {
+                            slug = Util.GetUniqueIdentifier(8).toLowerCase();
+                            slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                        } while (slugexists != null);
+                        (item as any).slug = slug;
+                    }
+                    if (item._type == "package" && !Util.IsNullEmpty((item as any).slug)) {
+                        let slug = (item as any).slug.toLowerCase();
+                        slug = slug.replace(/[^a-z0-9-]/g, "");
+                        if (slug.length < 3) {
+                            throw new Error("Slug must be at least 3 characters long");
+                        }
+                        if (slug.length > 50) {
+                            throw new Error("Slug must be at most 50 characters long");
+                        }
+                        let slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                        if (slugexists != null && slugexists._id != item._id) {
+                            throw new Error("Access denied, slug " + slug + " already in use");
+                        }
+                        (item as any).slug = slug;
+                    }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }
                 if (collectionname === "users" && item._type === "user" && item.hasOwnProperty("newpassword")) {
@@ -2619,6 +2667,30 @@ export class DatabaseConnection extends events.EventEmitter {
                         if (!user.HasRoleName(Wellknown.admins.name) && agent.slug != original.slug) {
                             throw new Error("Access denied, changing slug");
                         }
+                    }
+                    if (q.item._type == "package" && Util.IsNullEmpty((q.item as any).slug)) {
+                        let slugexists = null;
+                        let slug = "";
+                        do {
+                            slug = Util.GetUniqueIdentifier(8).toLowerCase();
+                            slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                        } while (slugexists != null);
+                        (q.item as any).slug = slug;
+                    }
+                    if (q.item._type == "package" && !Util.IsNullEmpty((q.item as any).slug)) {
+                        let slug = (q.item as any).slug.toLowerCase();
+                        slug = slug.replace(/[^a-z0-9-]/g, "");
+                        if (slug.length < 3) {
+                            throw new Error("Slug must be at least 3 characters long");
+                        }
+                        if (slug.length > 50) {
+                            throw new Error("Slug must be at most 50 characters long");
+                        }
+                        let slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                        if (slugexists != null && slugexists._id != q.item._id) {
+                            throw new Error("Access denied, slug " + slug + " already in use");
+                        }
+                        (q.item as any).slug = slug;
                     }
                 }
 
