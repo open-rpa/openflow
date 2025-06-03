@@ -1,9 +1,9 @@
-import { NoderedUtil } from "@openiap/openflow-api";
 import got from "got";
 import url from "url";
 import { AssertQueue } from "./amqpwrapper.js";
 import { Config } from "./Config.js";
 import { Logger, promiseRetry } from "./Logger.js";
+import { Util } from "./Util.js";
 
 export class rabbitmq {
     static parseurl(amqp_url): url.UrlWithParsedQuery {
@@ -47,7 +47,6 @@ export class rabbitmq {
         try {
             result = await promiseRetry(async () => {
                 const queue = await rabbitmq.getqueue(Config.amqp_url, "/", queuename);
-                // const queue = await amqpwrapper.getqueue(queuename);
                 let hasConsumers: boolean = false;
                 if (queue.consumers > 0) {
                     hasConsumers = true;
@@ -62,12 +61,11 @@ export class rabbitmq {
                 if (hasConsumers == false) {
                     hasConsumers = false;
                     throw new Error("No consumer listening at " + queuename);
-                    // return bail();
                 }
                 return hasConsumers;
             }, 10, 1000);
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "rabbitmq", func: "checkQueueConsumerCount" });
         }
         if (result == true) {
             return result;
@@ -98,7 +96,7 @@ export class rabbitmq {
             password: (q as any).password
         };
         let _url = "http://" + q.host + ":" + q.port + "/api/queues";
-        if (!NoderedUtil.IsNullEmpty(vhost)) _url += "/" + encodeURIComponent(vhost);
+        if (!Util.IsNullEmpty(vhost)) _url += "/" + encodeURIComponent(vhost);
         const response = await got.get(_url, options);
         const payload = JSON.parse(response.body);
         return payload;

@@ -1,4 +1,3 @@
-import { Base, NoderedUtil, Rights, TokenUser, User, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import crypto from "crypto";
 import express from "express";
@@ -9,6 +8,8 @@ import { Auth } from "../Auth.js";
 import { Config } from "../Config.js";
 import { Logger } from "../Logger.js";
 import { LoginProvider } from "../LoginProvider.js";
+import { Util, Wellknown } from "../Util.js";
+import { Base, Rights, TokenUser, User } from "../commoninterfaces.js";
 
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 
@@ -25,7 +26,6 @@ export class FormioEP {
                             if (err) {
                                 return reject(err);
                             }
-                            // const filename = buf.toString("hex") + path.extname(file.originalname);
                             const filename = file.originalname;
                             const fileInfo = {
                                 filename: filename,
@@ -36,7 +36,7 @@ export class FormioEP {
                             const authHeader = req.headers.authorization;
                             if (authHeader) {
                                 user = await Auth.Token2User(authHeader, null);
-                                if(user == null) throw new Error("Access denied");
+                                if (user == null) throw new Error("Access denied");
                                 jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, null);
                             }
                             else if (req.user) {
@@ -66,9 +66,9 @@ export class FormioEP {
                                 fileInfo.metadata[keys[i]] = query[keys[i]];
                             }
                             Base.addRight(fileInfo.metadata, user._id, user.name, [Rights.full_control]);
-                            Base.addRight(fileInfo.metadata, WellknownIds.filestore_admins, "filestore admins", [Rights.full_control]);
-                            if(!Config.multi_tenant) {
-                                Base.addRight(fileInfo.metadata, WellknownIds.filestore_users, "filestore users", [Rights.read]);
+                            Base.addRight(fileInfo.metadata, Wellknown.filestore_admins._id, Wellknown.filestore_admins.name, [Rights.full_control]);
+                            if (!Config.multi_tenant) {
+                                Base.addRight(fileInfo.metadata, Wellknown.filestore_users._id, Wellknown.filestore_users.name, [Rights.read]);
                             }
                             // Fix acl
                             fileInfo.metadata._acl.forEach((a, index) => {
@@ -96,7 +96,7 @@ export class FormioEP {
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -109,7 +109,7 @@ export class FormioEP {
                     const _query = req.query;
                     let uniquename: string = _query.uniquename;
                     let query: any = {};
-                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                    if (!Util.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
                         if (uniquename.indexOf("/") > -1) uniquename = uniquename.substr(0, uniquename.indexOf("/"));
                         query = { "metadata.uniquename": uniquename };
@@ -126,7 +126,7 @@ export class FormioEP {
                     });
                 } catch (error) {
                     span?.recordException(error);
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "delete" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -142,7 +142,7 @@ export class FormioEP {
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -156,11 +156,11 @@ export class FormioEP {
                     let uniquename: string = _query.uniquename;
                     let _id: string = _query.id || _query._id;
                     let query: any = {};
-                    if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                    if (!Util.IsNullEmpty(uniquename)) {
                         if (Array.isArray(uniquename)) uniquename = uniquename.join("_");
                         if (uniquename.indexOf("/") > -1) uniquename = uniquename.substr(0, uniquename.indexOf("/"));
                         query = { "metadata.uniquename": uniquename };
-                    } else if (!NoderedUtil.IsNullEmpty(_id)) {
+                    } else if (!Util.IsNullEmpty(_id)) {
                         query = { _id };
                     } else {
                         return res.status(404).send({ message: "nothing unique. Not found." });
@@ -168,7 +168,7 @@ export class FormioEP {
 
                     const arr = await Config.db.query({ query, top: 1, orderby: { "uploadDate": -1 }, collectionname: "files", jwt }, span);
                     if (arr.length == 0) {
-                        if (!NoderedUtil.IsNullEmpty(uniquename)) {
+                        if (!Util.IsNullEmpty(uniquename)) {
                             return res.status(404).send({ message: "uniquename " + uniquename + " Not found." });
                         }
                         return res.status(404).send({ message: "id " + _id + " Not found." });
@@ -189,7 +189,7 @@ export class FormioEP {
                     downloadStream.pipe(res);
                     return;
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -203,7 +203,7 @@ export class FormioEP {
                     const authHeader = req.headers.authorization;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -220,10 +220,9 @@ export class FormioEP {
                             return;
                         }
                         LoginProvider.redirect(res, req.headers.referer);
-                        // res.json({ error_code: 0, err_desc: null });
                     });
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "post" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -238,7 +237,7 @@ export class FormioEP {
                     let jwt: string = null;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -255,17 +254,17 @@ export class FormioEP {
                             var results = await Config.db.query<Base>({ query: { _type: "resource" }, collectionname: "forms", jwt }, span);
                             results.forEach(result => {
                                 // @ts-ignore
-                                if (NoderedUtil.IsNullEmpty(result.title)) result.title = result.name;
+                                if (Util.IsNullEmpty(result.title)) result.title = result.name;
                             });
                             return res.send(results);
 
                         }
                     } catch (error) {
-                        Logger.instanse.error(error, span);
+                        Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     }
                     res.status(404).send({ message: "unknown url" });
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -283,7 +282,7 @@ export class FormioEP {
                     const skip = req.query.skip;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -293,7 +292,7 @@ export class FormioEP {
                     if (user == null) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
-                    if (NoderedUtil.IsNullEmpty(resourceid)) {
+                    if (Util.IsNullEmpty(resourceid)) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
 
@@ -301,7 +300,7 @@ export class FormioEP {
                     // /form/1?limit=100&skip=0
                     const resource: any = await Config.db.getbyid<Base>(resourceid, "forms", jwt, true, null);
                     // @ts-ignore
-                    if (NoderedUtil.IsNullEmpty(resource.label)) resource.label = resource.name;
+                    if (Util.IsNullEmpty(resource.label)) resource.label = resource.name;
 
 
 
@@ -318,7 +317,7 @@ export class FormioEP {
                     }
                     return res.send(resource);
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
@@ -338,7 +337,7 @@ export class FormioEP {
                     const sort = req.query.sort;
                     if (authHeader) {
                         user = await Auth.Token2User(authHeader, span);
-                        if(user == null) throw new Error("Access denied");
+                        if (user == null) throw new Error("Access denied");
                         jwt = await Auth.User2Token(user, Config.downloadtoken_expires_in, span);
                     }
                     else if (req.user) {
@@ -348,12 +347,12 @@ export class FormioEP {
                     if (user == null) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
-                    if (NoderedUtil.IsNullEmpty(resourceid)) {
+                    if (Util.IsNullEmpty(resourceid)) {
                         return res.status(404).send({ message: "Route " + req.url + " Not found." });
                     }
 
                     let resource: any = await Config.db.getbyid(resourceid, "forms", jwt, true, span);
-                    if (NoderedUtil.IsNullUndefinded(resource)) {
+                    if (Util.IsNullUndefinded(resource)) {
                         return res.status(404).send({ message: "Route " + resourceid + " Not found." });
                     }
 
@@ -373,47 +372,43 @@ export class FormioEP {
                             ors.push(m);
                         });
                         resource.aggregates.unshift({ "$match": { "$or": ors } });
-                        Logger.instanse.debug("searching using " + logfields.join(", ") + " fields", span);
+                        Logger.instanse.debug("searching using " + logfields.join(", ") + " fields", span, { cls: "FormioEP", func: "get" });
                     }
 
-                    if (!NoderedUtil.IsNullEmpty(query)) {
+                    if (!Util.IsNullEmpty(query)) {
                         resource.aggregates.unshift({ "$match": { name: { $regex: ".*" + query + ".*", $options: "si" } } });
                     }
-                    if (!NoderedUtil.IsNullEmpty(sort)) {
+                    if (!Util.IsNullEmpty(sort)) {
                         var sorts = sort.split(",");
                         var orderby = {};
                         sorts.forEach(s => {
                             orderby[s] = 1;
                         });
                         resource.aggregates.push({ "$sort": orderby });
-                        Logger.instanse.debug("sort using " + sorts.join(", ") + " fields", span);
+                        Logger.instanse.debug("sort using " + sorts.join(", ") + " fields", span, { cls: "FormioEP", func: "get" });
                     }
-                    if (!NoderedUtil.IsNullEmpty(skip) && !isNaN(skip) && skip > 0) {
+                    if (!Util.IsNullEmpty(skip) && !isNaN(skip) && skip > 0) {
                         resource.aggregates.push({ "$skip": +skip });
                     }
-                    if (!NoderedUtil.IsNullEmpty(limit) && !isNaN(limit) && limit > 0) {
+                    if (!Util.IsNullEmpty(limit) && !isNaN(limit) && limit > 0) {
                         resource.aggregates.push({ "$limit": +limit });
                     }
                     var dbresults = await Config.db.aggregate<Base>(resource.aggregates, resource.collection, jwt, null, null, false, span);
                     var results = [];
                     dbresults.forEach(result => {
-                        // @ts-ignore
-                        // if (NoderedUtil.IsNullEmpty(result.label)) result.label = result.name;
-                        // results.push({ _id: result._id, data: result })
-                        // results.push({ _id: result._id, data: result })
                         results.push({ "data": result, label: result.name, id: result._id });
                     });
-                    Logger.instanse.info("Return " + dbresults.length + " items based of resource " + resource.name, span);
+                    Logger.instanse.info("Return " + dbresults.length + " items based of resource " + resource.name, span, { cls: "FormioEP", func: "get" });
                     return res.send(results);
                 } catch (error) {
-                    Logger.instanse.error(error, span);
+                    Logger.instanse.error(error, span, { cls: "FormioEP", func: "get" });
                     return res.status(500).send({ message: error.message ? error.message : error });
                 } finally {
                     Logger.otel.endSpan(span);
                 }
             });
         } catch (error) {
-            Logger.instanse.error(error, null);
+            Logger.instanse.error(error, null, { cls: "FormioEP", func: "configure" });
         }
     }
     static expandobject(o) {

@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.10.62",
+  "version": "1.5.11.124",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,7 @@
     "updateapilocal": "npm uninstall @openiap/nodeapi && npm i ../nodeapi",
     "updateapidev": "npm uninstall @openiap/nodeapi && npm i openiap/nodeapi",
     "updateapi": "npm uninstall @openiap/nodeapi && npm i @openiap/nodeapi",
+    "updatejsapi": "npm uninstall @openiap/jsapi && npm i openiap/jsapi#esm",
     "ncu": "npx -y npm-check-updates",
     "spec": "tsoa spec",
     "routes": "tsoa routes",
@@ -19,7 +20,8 @@
     "copypublic": "rm -rf public && cp -r ../openflow-web/dist/ public",
     "linkpublic": "rm -rf public && ln -s /mnt/data/vscode/config/workspace/code/openflow-web/dist /mnt/data/vscode/config/workspace/code/openflow/public",
     "copypublic2": "rm -rf public && cp -r ../core-web/build/ public",
-    "linkpublic2": "rm -rf public && ln -s /mnt/data/vscode/config/workspace/code/core-web/build /mnt/data/vscode/config/workspace/code/openflow/public"
+    "linkpublic2": "rm -rf public && ln -s /mnt/data/vscode/config/workspace/code/core-web/build /mnt/data/vscode/config/workspace/code/openflow/public",
+    "inspector": "npx @modelcontextprotocol/inspector "
   },
   "repository": {
     "type": "git",
@@ -38,13 +40,18 @@
   "funding": "https://github.com/sponsors/skadefro",
   "dependencies": {
     "@kubernetes/client-node": "0.21.0",
+    "@modelcontextprotocol/sdk": "^1.9.0",
     "@node-saml/passport-saml": "4.0.1",
-    "@openiap/cloud-git-mongodb": "1.0.38",
-    "@openiap/nodeapi": "0.0.38",
+    "@openiap/cloud-git-mongodb": "1.0.39",
+    "@openiap/jsapi": "github:openiap/jsapi#esm",
+    "@openiap/nodeapi": "0.0.41",
     "@openiap/openflow-api": "2.1.12",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "0.43.0",
-    "@opentelemetry/sdk-node": "0.43.0",
-    "@testdeck/mocha": "0.3.3",
+    "@opentelemetry/api-logs": "0.57.1",
+    "@opentelemetry/exporter-logs-otlp-grpc": "0.57.1",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "0.57.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.57.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.57.1",
+    "@opentelemetry/sdk-node": "0.57.1",
     "amqplib": "0.10.4",
     "bcryptjs": "2.4.3",
     "cache-manager": "5.2.3",
@@ -55,6 +62,7 @@
     "dockerode": "3.3.4",
     "dotenv": "16.4.5",
     "express": "4.19.2",
+    "global-agent": "^3.0.0",
     "got": "11.8.5",
     "hjson": "3.2.2",
     "ip": "2.0.1",
@@ -85,12 +93,12 @@
     "systeminformation": "5.22.11",
     "tsoa": "5.1.1",
     "tsx": "4.16.0",
-    "typescript": "4.8.4",
     "web-push": "3.6.7",
     "ws": "8.17.1",
     "xml2js": "0.4.23"
   },
   "devDependencies": {
+    "@testdeck/mocha": "0.3.3",
     "@types/amqplib": "0.10.5",
     "@types/mocha": "10.0.7",
     "@types/node": "20.14.9",
@@ -98,6 +106,8 @@
     "gulp": "4.0.2",
     "gulp-shell": "0.8.0",
     "mocha": "10.5.2",
-    "nyc": "17.0.0"
+    "nyc": "17.0.0",
+    "typescript": "4.8.4",
+    "wtfnode": "0.10.0"
   }
 }

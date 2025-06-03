@@ -1,24 +1,19 @@
 import { suite, test, timeout } from "@testdeck/mocha";
-import { Config } from "../Config.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from "../Logger.js";
+import { Config } from "../Config.js";
 // @ts-ignore
 import { KubeUtil } from "../ee/KubeUtil.js";
+import { testConfig } from "./testConfig.js";
 
 @suite class kubeutil_test {
     @timeout(10000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
-        await Config.db.connect(null);
-        await Config.Load(null);
+        await testConfig.configure();
     }
     async after() {
-        await Logger.shutdown();
+        await testConfig.cleanup();
     }
+    @timeout(60000)
     @test async "GetStatefulSet"() {
         var sfs = await KubeUtil.instance().GetStatefulSet(Config.namespace, "findme");
         assert.strictEqual(sfs, null)

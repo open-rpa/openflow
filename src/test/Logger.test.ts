@@ -1,28 +1,23 @@
 import { suite, test, timeout } from "@testdeck/mocha";
-import { Config } from "../Config.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from "../Logger.js";
-import { NoderedUtil } from "@openiap/openflow-api";
 import { i_license_data } from "../commoninterfaces.js";
+import { Config } from "../Config.js";
+import { Logger } from "../Logger.js";
+import { Util } from "../Util.js";
+import { testConfig } from "./testConfig.js";
 
 @suite class logger_test {
     @timeout(10000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, false);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
-        await Config.db.connect(null);
-        await Config.Load(null);
+        await testConfig.configure();
     }
     async after() {
-        await Logger.shutdown();
+        await testConfig.cleanup();
     }
     @test async "test info"() {
         // assert.ok(!NoderedUtil.IsNullUndefinded(Logger.myFormat), "Logger missing winston error formatter");
         var ofid = Logger.ofid();
-        assert.strictEqual(NoderedUtil.IsNullEmpty(ofid), false);
+        assert.strictEqual(Util.IsNullEmpty(ofid), false);
     }
     @test async "v1_lic"() {
         const months: number = 1;
@@ -49,7 +44,7 @@ import { i_license_data } from "../commoninterfaces.js";
         const data: i_license_data = {} as any;
         let template = Logger.License.template_v2;
         let ofid = Logger.License.ofid(false);
-        assert.ok(!NoderedUtil.IsNullEmpty(ofid));
+        assert.ok(!Util.IsNullEmpty(ofid));
         data.licenseVersion = 2;
         data.email = "test@user.com";
         data.domain = "localhost.openiap.io"
@@ -74,7 +69,7 @@ import { i_license_data } from "../commoninterfaces.js";
         assert.strictEqual(Logger.License.validlicense, false);
         assert.strictEqual(Logger.License.data.domain, "localhost.openiap.io");
         let ofid2 = Logger.License.ofid(true);
-        assert.ok(!NoderedUtil.IsNullEmpty(ofid2));
+        assert.ok(!Util.IsNullEmpty(ofid2));
         assert.notStrictEqual(ofid, ofid2);
     }
 }

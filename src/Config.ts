@@ -1,11 +1,5 @@
-import { config } from "dotenv";
-const env = path.join(process.cwd(), "config", ".env");
-if(fs.existsSync(env)) {
-    console.log("Loading env file: " + env);
-    config({ path: env }); // , debug: false 
-}
-import { Base, NoderedUtil, Rights, WellknownIds } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
+import { config } from "dotenv";
 import fs from "fs";
 import http from "http";
 import https from "https";
@@ -17,6 +11,13 @@ import xml2js from "xml2js";
 import { Crypt } from "./Crypt.js";
 import { DatabaseConnection } from "./DatabaseConnection.js";
 import { Logger, promiseRetry } from "./Logger.js";
+import { Util, Wellknown } from "./Util.js";
+import { Base, Rights } from "./commoninterfaces.js";
+const env = path.join(process.cwd(), "config", ".env");
+if (fs.existsSync(env)) {
+    console.log("Loading env file: " + env);
+    config({ path: env });
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,7 +33,7 @@ export class dbConfig extends Base {
     public needsupdate: boolean;
     public updatedat: Date;
 
-    
+
 
     public async Save(jwt: string, parent: Span): Promise<void> {
         if (this.needsupdate = true) {
@@ -40,17 +41,17 @@ export class dbConfig extends Base {
             this.needsupdate = false;
             this.version = Config.version;
         }
-        Base.addRight(this, WellknownIds.admins, "admins", [Rights.full_control]);
-        if (NoderedUtil.IsNullEmpty(this._id)) {
+        Base.addRight(this, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+        if (Util.IsNullEmpty(this._id)) {
             const result = await Config.db.InsertOne(this, "config", 1, true, jwt, parent);
             this._id = result._id;
         }
-        if (!NoderedUtil.IsNullEmpty(this._id)) {
-            await Config.db._UpdateOne(null, this, "config", 1, true, jwt, parent);
+        if (!Util.IsNullEmpty(this._id)) {
+            await Config.db.UpdateOne(this, "config", 1, true, jwt, parent);
         }
     }
     public compare(version: string): number {
-        if(this.version == null) return -1;
+        if (this.version == null) return -1;
         return this.version.localeCompare(version, undefined, { numeric: true, sensitivity: "base" });
     }
     public static areEqual(a, b) {
@@ -60,50 +61,50 @@ export class dbConfig extends Base {
             var _a = JSON.stringify(a);
             var _b = JSON.stringify(b);
         } catch (error) {
-            console.error("areEqual failed to stringify")
+            Logger.instanse.error("areEqual failed to stringify", null, {cls: "Config", func: "areEqual"});
             return false;
         }
         if (_a !== _b) return false;
         return true;
-      }
+    }
     public static cleanAndApply(conf: dbConfig, parent: Span): Boolean {
-        if(Config.disable_db_config) return false;
+        if (Config.disable_db_config) return false;
         var updated = false;
         // add settings et via env variables that is not the default value
         var keys = Object.keys(Config);
-        for(var i = 0; i < keys.length; i++) {
+        for (var i = 0; i < keys.length; i++) {
             const key = keys[i];
-            if(key == "_version") continue;
-            if(key.startsWith("_")) continue;
-            if(key == "disable_db_config") continue;
-            
-            if(["db", "api_ws_url", "mongodb_url", "mongodb_db", "domain", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
-            if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "workitem_queue_monitoring_interval",
-            "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", 
-            "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-            "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
-            "enable_openflow_amqp"].indexOf(key) > -1 ) {
-            
-                if(os.hostname().toLowerCase() == "nixos") {
+            if (key == "_version") continue;
+            if (key.startsWith("_")) continue;
+            if (key == "disable_db_config") continue;
+
+            if (["db", "api_ws_url", "mongodb_url", "mongodb_db", "domain", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1) continue;
+            if (["license_key", "cache_store_type", "cache_store_redis_host", "cache_store_max", "workitem_queue_monitoring_interval",
+                "NODE_ENV", "amqp_url", "port", "saml_issuer", "saml_federation_metadata",
+                "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
+                "otel_metric_url", "otel_trace_url", "otel_log_url", "multi_tenant", "auto_hourly_housekeeping",
+                "enable_openflow_amqp", "max_memory_restart_mb" ].indexOf(key) > -1) {
+
+                if (os.hostname().toLowerCase() == "nixos") {
                     continue;
                 }
             }
 
             if (Object.prototype.hasOwnProperty.call(Config.default_config, key) &&
-            !Object.prototype.hasOwnProperty.call(conf, key)
+                !Object.prototype.hasOwnProperty.call(conf, key)
             ) {
-                let _default:any = Config.default_config[key]; // envorinment variable 
-                if(_default == null) _default = "";
-                let _env:any = process.env[key]; // db value
-                if(_env == null || _env == "") {
+                let _default: any = Config.default_config[key]; // envorinment variable 
+                if (_default == null) _default = "";
+                let _env: any = process.env[key]; // db value
+                if (_env == null || _env == "") {
                     Config[key] = _default; // reset to original
                     continue;
                 }
                 _env = Config.parse(key, _env);
-                if(key == "HTTP_PROXY") {
+                if (key == "HTTP_PROXY") {
                     var b = true;
                 }
-                if(!dbConfig.areEqual(_env, _default)) {
+                if (!dbConfig.areEqual(_env, _default)) {
                     updated = true;
                     conf[key] = Config[key];
                 }
@@ -113,83 +114,82 @@ export class dbConfig extends Base {
 
         // Update Config with db values
         var keys = Object.keys(conf);
-        for(var i = 0; i < keys.length; i++) {
+        for (var i = 0; i < keys.length; i++) {
             const key = keys[i];
-            if(key == "_version") continue;
-            if(key == "disable_db_config") continue;
+            if (key == "_version") continue;
+            if (key == "disable_db_config") continue;
             let value = conf[key];
             try {
-                if(key.startsWith("_")) continue;
-                // if(NoderedUtil.IsNullEmpty(value)) continue;
-                if(["db", "api_ws_url", "mongodb_url", "mongodb_db", "domain", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1 ) continue;
+                if (key.startsWith("_")) continue;
+                if (["db", "api_ws_url", "mongodb_url", "mongodb_db", "domain", "name", "version", "needsupdate", "updatedat"].indexOf(key) > -1) continue;
 
-                if(["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "workitem_queue_monitoring_interval",
-                "NODE_ENV", "validate_emails", "amqp_url", "port", "saml_issuer", "saml_federation_metadata", 
-                "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
-                "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
-                "enable_openflow_amqp" ].indexOf(key) > -1 ) {
-                    if(os.hostname().toLowerCase() == "nixos") {
+                if (["license_key", "otel_trace_url", "cache_store_type", "cache_store_redis_host", "cache_store_max", "workitem_queue_monitoring_interval",
+                    "NODE_ENV", "amqp_url", "port", "saml_issuer", "saml_federation_metadata",
+                    "enable_openapi", "ping_clients_interval", "tls_crt", "tls_key", "tls_ca",
+                    "otel_metric_url", "otel_trace_url", "multi_tenant", "auto_hourly_housekeeping", "housekeeping_skip_calculate_size", "housekeeping_skip_update_user_size",
+                    "enable_openflow_amqp", "max_memory_restart_mb" ].indexOf(key) > -1) {
+                    if (os.hostname().toLowerCase() == "nixos") {
                         continue;
                     }
                 }
                 if (Object.prototype.hasOwnProperty.call(Config, key)) {
-                    let _default:any = Config.default_config[key]; // envorinment variable 
-                    if(typeof Config[key] === "boolean") {
+                    let _default: any = Config.default_config[key]; // envorinment variable 
+                    if (typeof Config[key] === "boolean") {
                         value = Config.parseBoolean(value);
-                    } else if(typeof Config[key] === "number") {
+                    } else if (typeof Config[key] === "number") {
                         value = parseInt(value);
-                    } else if(Array.isArray(Config[key])) {
+                    } else if (Array.isArray(Config[key])) {
                         value = Config.parseArray(value);
-                    } else if(typeof Config[key] === "string") {
+                    } else if (typeof Config[key] === "string") {
                         value = value;
                     } else {
                         continue;
                     }
                     Config[key] = value;
 
-                    if(_default == null) _default = "";
-                    let _env:any = process.env[key]; // db value
-                    if(_env != null && _env != "") {
-                        if(typeof Config[key] === "boolean") {
-                            _env = Config.parseBoolean(_env);                        
-                        } else if(typeof Config[key] === "number") {
+                    if (_default == null) _default = "";
+                    let _env: any = process.env[key]; // db value
+                    if (_env != null && _env != "") {
+                        if (typeof Config[key] === "boolean") {
+                            _env = Config.parseBoolean(_env);
+                        } else if (typeof Config[key] === "number") {
                             _env = parseInt(_env);
-                        } else if(Array.isArray(Config[key])) {
+                        } else if (Array.isArray(Config[key])) {
                             _env = Config.parseArray(_env);
-                        } else if(typeof Config[key] === "string") {
+                        } else if (typeof Config[key] === "string") {
                             _env = _env;
                         } else {
                             continue;
                         }
-                        if(_env != _default) {
-                        } else if(dbConfig.areEqual(_env, value)) {
+                        if (_env != _default) {
+                        } else if (dbConfig.areEqual(_env, value)) {
                             updated = true;
                             delete conf[key];
                         }
                     } else {
-                        if(dbConfig.areEqual(_default, value)) {
+                        if (dbConfig.areEqual(_default, value)) {
                             updated = true;
                             delete conf[key];
                         }
                     }
                 }
             } catch (error) {
-                Logger.instanse.error("Error setting config " + keys + " to " + value, null);
+                Logger.instanse.error("Error setting config " + keys + " to " + value, null, {cls: "Config", func: "cleanAndApply"});
             }
         }
         conf._encrypt = ["mongodb_url", "amqp_url", "stripe_api_secret", "smtp_url", "amqp_password", "cache_store_redis_password", "cookie_secret", "singing_key", "wapid_key"];
-        if(Config._version != conf._version) {
+        if (Config._version != conf._version) {
             Config._version = conf._version;
-            Logger.instanse.info("Loaded config version " + conf._version, parent);
+            Logger.instanse.info("Loaded config version " + conf._version, parent, {cls: "Config", func: "cleanAndApply"});
         }
 
         return updated;
     }
-    public static async Load(jwt: string, watch:boolean, parent: Span): Promise<dbConfig> {
+    public static async Load(jwt: string, watch: boolean, parent: Span): Promise<dbConfig> {
         var conf: dbConfig = await Config.db.GetOne({ query: { "_type": "config" }, collectionname: "config", jwt, decrypt: true }, parent);
         // @ts-ignore
         if (conf == null) { conf = new dbConfig(); } else {
-            if(Config._version == conf._version) {
+            if (Config._version == conf._version) {
                 conf = Object.assign(new dbConfig(), conf);
                 return conf;
             }
@@ -201,13 +201,13 @@ export class dbConfig extends Base {
         }
 
         let updated = dbConfig.cleanAndApply(conf, parent);
-        if(updated ) {
+        if (updated) {
             await conf.Save(jwt, parent);
         }
         await Logger.reload();
         return conf;
     }
-    public static async Reload(jwt: string, watch:boolean, parent: Span): Promise<void> {
+    public static async Reload(jwt: string, watch: boolean, parent: Span): Promise<void> {
         Config.dbConfig = await dbConfig.Load(jwt, watch, parent);
     }
 }
@@ -284,8 +284,10 @@ export class Config {
         stripe_api_key: "",
         stripe_api_secret: "",
         stripe_force_vat: false,
+        stripe_proration_behavior: "always_invoice",
         stripe_force_checkout: false,
         stripe_allow_promotion_codes: true,
+        stripe_log_eventhook: true,
 
         ensure_indexes: true,
         text_index_name_fields: ["name", "_names"],
@@ -322,11 +324,11 @@ export class Config {
 
         oidc_cookie_key: "Y6SPiXCxDhAJbN7cbydMw5eX1wIrdy8PiWApqEcguss=",
         api_rate_limit: true,
-        api_rate_limit_points: 20,
+        api_rate_limit_points: 1000,
         api_rate_limit_duration: 1,
         socket_rate_limit: true,
-        socket_rate_limit_points: 30,
-        socket_rate_limit_points_disconnect: 100,
+        socket_rate_limit_points: 1000,
+        socket_rate_limit_points_disconnect: 1600,
         socket_rate_limit_duration: 1,
         socket_error_rate_limit_points: 30,
         socket_error_rate_limit_duration: 1,
@@ -343,11 +345,12 @@ export class Config {
 
         multi_tenant: false,
         workspace_enabled: false,
-        enable_guest: false, 
-        enable_guest_file_upload: false, 
-        enable_gitserver: false, 
-        enable_gitserver_guest: false, 
-        enable_gitserver_guest_create: false, 
+        enable_guest: false,
+        enable_guest_file_upload: false,
+        web_hide_general_info: false,
+        enable_gitserver: false,
+        enable_gitserver_guest: false,
+        enable_gitserver_guest_create: false,
         cleanup_on_delete_customer: false,
         cleanup_on_delete_user: false,
         api_bypass_perm_check: false,
@@ -355,7 +358,7 @@ export class Config {
         force_audit_ts: false,
         force_dbusage_ts: false,
         migrate_audit_to_ts: true,
-        
+
         websocket_package_size: 25000,
         websocket_max_package_count: 1048576,
         websocket_message_callback_timeout: 3600,
@@ -365,7 +368,7 @@ export class Config {
         domain: "localhost.openiap.io",
         cookie_secret: "NLgUIsozJaxO38ze0WuHthfj2eb1eIEu",
         max_ace_count: 128,
-        
+
         amqp_reply_expiration: 60 * 1000, // 1 min
         amqp_force_queue_prefix: false,
         amqp_force_exchange_prefix: false,
@@ -373,7 +376,7 @@ export class Config {
         amqp_force_sender_has_invoke: false,
         amqp_force_consumer_has_update: false,
         amqp_enabled_exchange: false,
-        amqp_url: "amqp://localhost",
+        amqp_url: "amqp://localhost?frameMax=0x2000",
         amqp_username: "guest",
         amqp_password: "guest",
 
@@ -388,7 +391,7 @@ export class Config {
         mongodb_minpoolsize: 25,
         mongodb_maxpoolsize: 25,
 
-        skip_history_collections: "audit,oauthtokens,openrpa_instances,workflow_instances,workitems,mailhist", // "audit,openrpa_instances,workflow_instances",
+        skip_history_collections: "audit,oauthtokens,openrpa_instances,workflow_instances,workitems,mailhist",
         history_delta_count: 1000,
         history_obj_max_kb_size: 10240,
         allow_skiphistory: false,
@@ -408,7 +411,7 @@ export class Config {
         downloadtoken_expires_in: "15m",
         personalnoderedtoken_expires_in: "365d",
 
-        agent_images: [{"name":"Agent", "image":"openiap/nodeagent", "languages": ["nodejs","exec","python"]}, {"name":"Agent+Chromium", "image":"openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs","exec","python"]}, {"name":"NodeRED", "image":"openiap/noderedagent", "port": 3000}, {"name":"DotNet 6", "image":"openiap/dotnetagent", "languages": ["nodejs","exec","python","dotnet","powershell"]}  ],
+        agent_images: [{ "name": "Agent", "image": "openiap/nodeagent", "languages": ["nodejs", "exec", "python"] }, { "name": "Agent+Chromium", "image": "openiap/nodechromiumagent", "chromium": true, "languages": ["nodejs", "exec", "python"] }, { "name": "NodeRED", "image": "openiap/noderedagent", "port": 3000 }, { "name": "DotNet 6", "image": "openiap/dotnetagent", "languages": ["nodejs", "exec", "python", "dotnet", "powershell"] }],
         agent_domain_schema: "",
         agent_node_selector: "",
         agent_apiurl: "",
@@ -432,11 +435,13 @@ export class Config {
         otel_measure__mongodb_watch: false,
         enable_analytics: true,
         enable_detailed_analytic: false,
+        otel_protocol: "grpc",
         otel_debug_log: false,
         otel_warn_log: false,
         otel_err_log: false,
         otel_trace_url: "",
         otel_metric_url: "",
+        otel_log_url: "",
 
         otel_trace_interval: 5000,
         otel_metric_interval: 5000,
@@ -476,7 +481,7 @@ export class Config {
         if (fs.existsSync(packagefile)) {
             let packagejson = JSON.parse(fs.readFileSync(packagefile, "utf8"));
             version = packagejson.version;
-        }        
+        }
         Config.version = version;
         return Config.version;
     }
@@ -484,7 +489,7 @@ export class Config {
         Config.log_cache = false;
         Config.log_amqp = false;
         Config.log_openapi = false;
-        
+
         Config.log_login_provider = false;
         Config.log_websocket = false;
         Config.log_oauth = false;
@@ -502,7 +507,7 @@ export class Config {
     public static license_key: string = Config.getEnv("license_key");
     public static enable_openapi: boolean = Config.parseBoolean(Config.getEnv("enable_openapi"));
     public static enable_grafanaapi: boolean = Config.parseBoolean(Config.getEnv("enable_grafanaapi"));
-    
+
     public static llmchat_queue: string = Config.getEnv("llmchat_queue");
     public static version: string = Config.getversion();
     public static log_with_colors: boolean = Config.parseBoolean(Config.getEnv("log_with_colors"));
@@ -539,7 +544,7 @@ export class Config {
     public static log_silly: boolean = Config.parseBoolean(Config.getEnv("log_silly"));
     public static log_to_exchange: boolean = Config.parseBoolean(Config.getEnv("log_to_exchange"));
     public static log_all_watches: boolean = Config.parseBoolean(Config.getEnv("log_all_watches"));
-    
+
 
     public static heapdump_onstop: boolean = Config.parseBoolean(Config.getEnv("heapdump_onstop"));
 
@@ -552,7 +557,7 @@ export class Config {
     public static enable_entity_restriction: boolean = Config.parseBoolean(Config.getEnv("enable_entity_restriction"));
     public static enable_web_tours: boolean = Config.parseBoolean(Config.getEnv("enable_web_tours"));
     public static enable_nodered_tours: boolean = Config.parseBoolean(Config.getEnv("enable_nodered_tours"));
-    public static grafana_url:string = Config.getEnv("grafana_url");
+    public static grafana_url: string = Config.getEnv("grafana_url");
     public static auto_hourly_housekeeping: boolean = Config.parseBoolean(Config.getEnv("auto_hourly_housekeeping"));
     public static housekeeping_skip_calculate_size: boolean = Config.parseBoolean(Config.getEnv("housekeeping_skip_calculate_size"));
     public static housekeeping_skip_update_user_size: boolean = Config.parseBoolean(Config.getEnv("housekeeping_skip_update_user_size"));
@@ -576,13 +581,16 @@ export class Config {
     public static agent_NO_PROXY: string = Config.getEnv("agent_NO_PROXY");
     public static agent_NPM_REGISTRY: string = Config.getEnv("agent_NPM_REGISTRY");
     public static agent_NPM_TOKEN: string = Config.getEnv("agent_NPM_TOKEN");
-    
+
 
     public static stripe_api_key: string = Config.getEnv("stripe_api_key");
     public static stripe_api_secret: string = Config.getEnv("stripe_api_secret");
     public static stripe_force_vat: boolean = Config.parseBoolean(Config.getEnv("stripe_force_vat"));
+    public static stripe_proration_behavior: string = Config.getEnv("stripe_proration_behavior");
+    
     public static stripe_force_checkout: boolean = Config.parseBoolean(Config.getEnv("stripe_force_checkout"));
     public static stripe_allow_promotion_codes: boolean = Config.parseBoolean(Config.getEnv("stripe_allow_promotion_codes"));
+    public static stripe_log_eventhook: boolean = Config.parseBoolean(Config.getEnv("stripe_log_eventhook"));
 
     public static ensure_indexes: boolean = Config.parseBoolean(Config.getEnv("ensure_indexes"));
     public static text_index_name_fields: string[] = Config.parseArray(Config.getEnv("text_index_name_fields"));
@@ -646,10 +654,11 @@ export class Config {
     public static multi_tenant: boolean = Config.parseBoolean(Config.getEnv("multi_tenant"));
     public static workspace_enabled: boolean = Config.parseBoolean(Config.getEnv("workspace_enabled"));
     public static enable_guest: boolean = Config.parseBoolean(Config.getEnv("enable_guest"));
-    public static enable_guest_file_upload: boolean = Config.parseBoolean(Config.getEnv("enable_guest_file_upload"));    
+    public static enable_guest_file_upload: boolean = Config.parseBoolean(Config.getEnv("enable_guest_file_upload"));
+    public static web_hide_general_info: boolean = Config.parseBoolean(Config.getEnv("web_hide_general_info"));
     public static enable_gitserver: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver"));
     public static enable_gitserver_guest: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest"));
-    public static enable_gitserver_guest_create: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest_create"));    
+    public static enable_gitserver_guest_create: boolean = Config.parseBoolean(Config.getEnv("enable_gitserver_guest_create"));
 
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user"));
@@ -669,7 +678,7 @@ export class Config {
     public static cookie_secret: string = Config.getEnv("cookie_secret");
     public static max_ace_count: number = parseInt(Config.getEnv("max_ace_count"), 10);
 
-    public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration")); 
+    public static amqp_reply_expiration: number = parseInt(Config.getEnv("amqp_reply_expiration"));
     public static amqp_force_queue_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_queue_prefix"));
     public static amqp_force_exchange_prefix: boolean = Config.parseBoolean(Config.getEnv("amqp_force_exchange_prefix"));
     public static amqp_force_sender_has_read: boolean = Config.parseBoolean(Config.getEnv("amqp_force_sender_has_read"));
@@ -694,13 +703,13 @@ export class Config {
     public static skip_history_collections: string = Config.getEnv("skip_history_collections");
     public static history_delta_count: number = parseInt(Config.getEnv("history_delta_count"));
     public static history_obj_max_kb_size: number = parseInt(Config.getEnv("history_obj_max_kb_size"));
-    
+
     public static allow_skiphistory: boolean = Config.parseBoolean(Config.getEnv("allow_skiphistory"));
     public static max_memory_restart_mb: number = parseInt(Config.getEnv("max_memory_restart_mb"));
     public static max_memory_query_mb: number = parseInt(Config.getEnv("max_memory_query_mb"));
     public static max_memory_aggregate_mb: number = parseInt(Config.getEnv("max_memory_aggregate_mb"));
 
-    public static saml_issuer: string = Config.getEnv("saml_issuer"); 
+    public static saml_issuer: string = Config.getEnv("saml_issuer");
     public static aes_secret: string = Config.getEnv("aes_secret");
     public static signing_crt: string = Config.getEnv("signing_crt");
     public static singing_key: string = Config.getEnv("singing_key");
@@ -713,9 +722,9 @@ export class Config {
     public static downloadtoken_expires_in: string = Config.getEnv("downloadtoken_expires_in");
     public static personalnoderedtoken_expires_in: string = Config.getEnv("personalnoderedtoken_expires_in");
 
-    public static agent_images: NoderedImage[] = Array.isArray(Config.getEnv("agent_images")) ? Config.getEnv("agent_images") :  JSON.parse(Config.getEnv("agent_images"));
+    public static agent_images: NoderedImage[] = Array.isArray(Config.getEnv("agent_images")) ? Config.getEnv("agent_images") : JSON.parse(Config.getEnv("agent_images"));
     public static agent_domain_schema: string = Config.getEnv("agent_domain_schema");
-    public static agent_node_selector:string = Config.getEnv("agent_node_selector");
+    public static agent_node_selector: string = Config.getEnv("agent_node_selector");
 
     public static agent_grpc_apihost: string = Config.getEnv("agent_grpc_apihost");
     public static agent_ws_apihost: string = Config.getEnv("agent_ws_apihost");
@@ -741,10 +750,12 @@ export class Config {
     public static otel_measure__mongodb_watch: boolean = Config.parseBoolean(Config.getEnv("otel_measure__mongodb_watch"));
     public static enable_analytics: boolean = Config.parseBoolean(Config.getEnv("enable_analytics"));
     public static enable_detailed_analytic: boolean = Config.parseBoolean(Config.getEnv("enable_detailed_analytic"));
+    public static otel_protocol: string = Config.getEnv("otel_protocol");
     public static otel_debug_log: boolean = Config.parseBoolean(Config.getEnv("otel_debug_log"));
     public static otel_warn_log: boolean = Config.parseBoolean(Config.getEnv("otel_warn_log"));
     public static otel_err_log: boolean = Config.parseBoolean(Config.getEnv("otel_err_log"));
     public static otel_trace_url: string = Config.getEnv("otel_trace_url");
+    public static otel_log_url: string = Config.getEnv("otel_log_url");
     public static otel_metric_url: string = Config.getEnv("otel_metric_url");
     public static otel_trace_interval: number = parseInt(Config.getEnv("otel_trace_interval"));
     public static otel_metric_interval: number = parseInt(Config.getEnv("otel_metric_interval"));
@@ -772,7 +783,7 @@ export class Config {
     public static grpc_max_send_message_length: number = parseInt(Config.getEnv("grpc_max_send_message_length"));
 
     public static validate_user_form: string = Config.getEnv("validate_user_form");
-    
+
 
     public static externalbaseurl(): string {
         let result: string = "";
@@ -826,7 +837,7 @@ export class Config {
                     "Content-Length": dataString.length
                 }
             };
-            if(headers != null) {
+            if (headers != null) {
                 headers.forEach(header => {
                     options.headers[header[0]] = header[1];
                 });
@@ -861,7 +872,7 @@ export class Config {
                     "Content-Length": dataString.length
                 }
             };
-            if(headers != null) {
+            if (headers != null) {
                 headers.forEach(header => {
                     options.headers[header[0]] = header[1];
                 });
@@ -906,7 +917,7 @@ export class Config {
             // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             const data: string = await Config.get(url)
             // if (Config.saml_ignore_cert) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
-            if (NoderedUtil.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
+            if (Util.IsNullEmpty(data)) { throw new Error("Failed getting result"); }
             var xml = await xml2js.parseStringPromise(data);
             if (xml && xml.EntityDescriptor && xml.EntityDescriptor.IDPSSODescriptor && xml.EntityDescriptor.IDPSSODescriptor.length > 0) {
                 var IDPSSODescriptor = xml.EntityDescriptor.IDPSSODescriptor[0];
@@ -937,20 +948,20 @@ export class Config {
         return metadata;
     }
     public static parse(key, value: any) {
-        if(typeof Config.default_config[key] === "boolean") {
+        if (typeof Config.default_config[key] === "boolean") {
             return Config.parseBoolean(value);
-        } else if(typeof Config.default_config[key] === "number") {
-            return  parseInt(value);
-        } else if(Array.isArray(Config.default_config[key])) {
-            return  Config.parseArray(value);
-        } else if(typeof Config.default_config[key] === "string") {
+        } else if (typeof Config.default_config[key] === "number") {
+            return parseInt(value);
+        } else if (Array.isArray(Config.default_config[key])) {
+            return Config.parseArray(value);
+        } else if (typeof Config.default_config[key] === "string") {
             return value;
         } else {
             return value;
         }
     }
     public static parseArray(s: string): string[] {
-        if(Array.isArray(s)) return s;
+        if (Array.isArray(s)) return s;
         let arr = s.split(",");
         arr = arr.map(p => p.trim());
         arr = arr.filter(result => (result.trim() !== ""));

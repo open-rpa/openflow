@@ -1,8 +1,9 @@
-import { Base, NoderedUtil, Rights, User, WorkitemQueue } from "@openiap/openflow-api";
 import { Span, UpDownCounter } from "@opentelemetry/api";
 import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
+import { Util } from "./Util.js";
+import { Base, ResourceUsage, Rights, User, Workspace } from "./commoninterfaces.js";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
@@ -10,8 +11,8 @@ export type clientAgent = "node" | "browser" | "rdservice" | "nodered" | "openrp
 export class Audit {
     public static openflow_logins: UpDownCounter = null;
     public static ensure_openflow_logins() {
-        if (!NoderedUtil.IsNullUndefinded(Audit.openflow_logins)) return;
-        if (!NoderedUtil.IsNullUndefinded(Logger.otel) && !NoderedUtil.IsNullUndefinded(Logger.otel.meter)) {
+        if (!Util.IsNullUndefinded(Audit.openflow_logins)) return;
+        if (!Util.IsNullUndefinded(Logger.otel) && !Util.IsNullUndefinded(Logger.otel.meter)) {
             Audit.openflow_logins = Logger.otel.meter.createUpDownCounter("openflow_logins", {
                 description: "Number of login attempts"
             });
@@ -36,7 +37,7 @@ export class Audit {
             log.clientversion = clientversion;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "LoginSuccess" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -63,7 +64,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "ImpersonateSuccess" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -89,7 +90,7 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "ImpersonateFailed" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -112,13 +113,13 @@ export class Audit {
             log.clientversion = clientversion;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "LoginFailed" });
         }
         finally {
             Logger.otel.endSpan(span);
         }
     }
-    public static async AuditWorkitemPurge(user: User, wiq: WorkitemQueue, parent: Span): Promise<void> {
+    public static async AuditWorkitemPurge(user: User, wiq: Base, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.LoginSuccess", parent);
         try {
             Audit.ensure_openflow_logins();
@@ -133,16 +134,16 @@ export class Audit {
             log.wiq = wiq.name;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditWorkitemPurge" });
         }
         finally {
             Logger.otel.endSpan(span);
         }
     }
-    public static async NoderedAction(user: User, success: boolean, name: string, type: string, image: string, instancename: string, parent: Span): Promise<void> {
-        const span: Span = Logger.otel.startSubSpan("Audit.NoderedAction", parent);
+    public static async CloudAgentAction(user: User, success: boolean, name: string, type: string, image: string, instancename: string, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CloudAgentAction", parent);
         try {
-            const log: Nodered = new Nodered();
+            const log: Agent = new Agent();
             Base.addRight(log, user._id, user.name, [Rights.read]);
             log.success = success;
             log.type = type;
@@ -150,22 +151,22 @@ export class Audit {
             log.name = name;
             log.username = user.username;
             log.instancename = instancename;
-            if (!NoderedUtil.IsNullEmpty(image)) {
+            if (!Util.IsNullEmpty(image)) {
                 while (image.indexOf("/") != image.lastIndexOf("/")) {
                     image = image.substring(image.indexOf("/") + 1);
                 }
             }
             log.image = image;
-            if (!NoderedUtil.IsNullEmpty(image) && image.indexOf(":") > -1) {
+            if (!Util.IsNullEmpty(image) && image.indexOf(":") > -1) {
                 log.imagename = image.split(":")[0];
                 log.imageversion = image.split(":")[1];
             } else {
                 log.imagename = image;
             }
-            if (!NoderedUtil.IsNullEmpty(instancename) && NoderedUtil.IsNullEmpty(log.name)) log.name = instancename;
+            if (!Util.IsNullEmpty(instancename) && Util.IsNullEmpty(log.name)) log.name = instancename;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "CloudAgentAction" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -195,7 +196,7 @@ export class Audit {
             log.userid = userid;
             Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "IssueLicense" });
         }
         finally {
             Logger.otel.endSpan(span);
@@ -214,20 +215,67 @@ export class Audit {
             log.username = user?.username;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditCollectionAction" });
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async AuditWorkspaceAction(user: User, action: string, workspace: Workspace, success: boolean, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
+        try {
+            Audit.ensure_openflow_logins();
+            const log: WorkspaceLog = new WorkspaceLog();
+            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
+            log.success = success;
+            log.userid = user?._id;
+            log.name = user?.name + " " + action + " " + workspace.name;
+            log.workspacename = workspace.name;
+            log.workspaceid = workspace._id;
+            log.username = user?.username;
+            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditCollectionAction" });
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    public static async AuditResourceAction(user: User, action: string, target: Base, resourceusage: ResourceUsage, success: boolean, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
+        try {
+            Audit.ensure_openflow_logins();
+            const log: ResourceLog = new ResourceLog();
+            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
+            log.success = success;
+            log.userid = user?._id;
+            if (resourceusage != null) {
+                log.resourceusagename = resourceusage.name;
+                log.resourceusageid = resourceusage._id;
+                log.productname = resourceusage.product?.name;
+                log.stripeprice = resourceusage.product?.stripeprice;
+            } else {
+                log.name = user?.name + " " + action + " " + target.name;
+            }
+            log.resourcename = target.name;
+            log.resourceid = target._id;
+            log.username = user?.username;
+            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditCollectionAction" });
         }
         finally {
             Logger.otel.endSpan(span);
         }
     }
     static dot2num(dot: string): number {
-        if (NoderedUtil.IsNullEmpty(dot)) return 0;
+        if (Util.IsNullEmpty(dot)) return 0;
         if (dot.indexOf(".") == -1) return 0;
         var d = dot.split(".");
         return ((((((+d[0]) * 256) + (+d[1])) * 256) + (+d[2])) * 256) + (+d[3]);
     }
     static num2dot(num: number): string {
-        if (NoderedUtil.IsNullEmpty(num)) return "";
+        if (Util.IsNullEmpty(num)) return "";
         if (num < 1) return "";
         var d: string = (num % 256).toString();
         for (var i = 3; i > 0; i--) {
@@ -236,7 +284,6 @@ export class Audit {
         }
         return d;
     }
-
 }
 export class Singin extends Base {
     public success: boolean;
@@ -256,7 +303,7 @@ export class Singin extends Base {
         this._type = "signin";
     }
 }
-export class Nodered extends Base {
+export class Agent extends Base {
     public success: boolean;
     public type: string;
     public userid: string;
@@ -267,7 +314,7 @@ export class Nodered extends Base {
     public instancename: string;
     constructor() {
         super();
-        this._type = "nodered";
+        this._type = "agent";
     }
 }
 export class LicenseKey extends Base {
@@ -316,3 +363,32 @@ export class Collection extends Base {
         this._type = "collection";
     }
 }
+export class WorkspaceLog extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public workspacename: string;
+    public workspaceid: string;
+    constructor() {
+        super();
+        this._type = "workspace";
+    }
+}
+export class ResourceLog extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public resourcename: string;
+    public resourceid: string;
+    public resourceusagename: string;
+    public resourceusageid: string;
+    public productname: string;
+    public stripeprice: string;
+    constructor() {
+        super();
+        this._type = "resource";
+    }
+}
+

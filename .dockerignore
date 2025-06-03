@@ -15,3 +15,12 @@ crash.log
 .devcontainer.old
 .clinic
 docker-compose.yml
+Makefile
+readme.md
+src/test
+register.js
+.mocharc.json
+.nyrc.json
+tsoa.json
+stripe
+Dockerfile

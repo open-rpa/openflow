@@ -21,3 +21,4 @@ docker-compose.yml
 .aider*
 /public
 /public2
+stripe

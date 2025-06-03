@@ -2,7 +2,6 @@ export interface IStringToStringDictionary {
   [key: string]: string;
 }
 export type StringToStringDictionary = Record<string, any>;
-// or
 export interface IRecordOfAny {
   [key: string]: any;
 }
@@ -41,7 +40,7 @@ export interface User extends Base {
 export interface WorkflowParameter {
   name: string;
   type: string; // .NET type, like System.String, System.Int32, System.Boolean, System.object, etc.
-  direction: "in" | "out" | "inout"; 
+  direction: "in" | "out" | "inout";
 }
 export interface Workflow extends Base {
   Parameters: WorkflowParameter[];
@@ -53,15 +52,15 @@ export interface Workflow extends Base {
 }
 export interface Collection {
   name: string;
-  type: "collection" | "timeseries"; // collection, timeseries, view, etc.
+  type: "collection" | "timeseries";
 }
 export type CreateCollectionOptions = {
   name: string;
   expireAfterSeconds?: number;
-  timeseries?:{ 
-    timeField?: string, 
+  timeseries?: {
+    timeField?: string,
     metaField?: string
-   }
+  }
 }
 export type CreateIndexOptions = {
   // required, index paths and type, like { "name": "text", "age": 1, "timstamp": "-1" }
@@ -72,7 +71,7 @@ export type CreateIndexOptions = {
   name?: string;
 }
 export type QueryParams = {
-  query: any; //IStringToStringDictionary;
+  query: any;
   projection?: IStringToStringDictionary;
   top?: number;
   skip?: number;
@@ -81,16 +80,16 @@ export type QueryParams = {
   explain?: boolean;
 }
 export type CountParams = {
-  query: any; //IStringToStringDictionary;
+  query: any;
   queryas?: string;
 }
 export type DistinctParams = {
-  query: any; //IStringToStringDictionary;
+  query: any;
   field: string;
   queryas?: string;
 }
 export type AggregateParams = {
-  pipeline: any; // IRecordOfAny[];
+  pipeline: any;
   queryas?: string;
   explain?: boolean;
 }
@@ -110,14 +109,13 @@ export type QueueMessageParams = {
 }
 
 
-// // A post request should not contain an id.
+// A post request should not contain an id.
 export type UserCreationParams = Pick<User, "name" | "email" | "username" | "newpassword">;
 export type OpenRPAWorkflowCreationParams = Pick<Workflow, "name" | "background" | "Serializable" | "Filename" | "projectandname" | "Xaml">;
 
 import express from "express";
 
 // src/users/usersController.ts
-import { NoderedUtil, UpdateOneMessage } from "@openiap/openflow-api";
 import {
   Body,
   Controller,
@@ -137,20 +135,18 @@ import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { OpenAPIProxy } from "./OpenAPIProxy.js";
+import { Util } from "../Util.js";
 
 @Route("api/v1/me")
 export class MeController extends Controller {
-   /**
-   * Returns the current user
-   */
+  /**
+  * Returns the current user
+  */
   @Get()
   @Security("oidc")
   public async me(
     @Request() request: express.Request,
   ): Promise<User[]> {
-    // var jwt = await OpenAPIProxy.GetToken(request);
-    // const tuser = await Message.verityToken(jwt, null);
-
     // @ts-ignore
     delete request.user.nodered;
     // @ts-ignore
@@ -162,7 +158,6 @@ export class MeController extends Controller {
     // @ts-ignore
     delete request.user._version;
     // @ts-ignore
-    // delete request.user.federationids;
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in);
     return request.user as any
   }
@@ -202,10 +197,9 @@ export class UsersController extends Controller {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
       var res = await Config.db.GetOne<User>({ collectionname: "users", query: { _id: id }, jwt }, null)
-      // return { "name": "allan", "email": "blah", "dbusage": 1, "dblocked": false, "_id": "12334"} as any;
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in GetUser", error, { cls: "UsersController", func: "GetUser" });
       throw error;
     }
   }
@@ -232,7 +226,7 @@ export class UsersController extends Controller {
     @Request() request: express.Request
   ): Promise<void> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-    await Config.db.DeleteOne(id, "users", false, jwt , null)
+    await Config.db.DeleteOne(id, "users", false, jwt, null)
   }
 }
 @Route("api/v1/openrpaworkflows")
@@ -263,7 +257,7 @@ export class openrpaworkflowsController extends Controller {
       var res = await Config.db.GetOne<Workflow>({ collectionname: "openrpa", query: { _id: id, "_type": "workflow" }, jwt }, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in GetOpenRPAWorkflow", error, { cls: "openrpaworkflowsController", func: "GetOpenRPAWorkflow" });
       throw error;
     }
   }
@@ -285,7 +279,7 @@ export class openrpaworkflowsController extends Controller {
     @Request() request: express.Request
   ): Promise<void> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-    await Config.db.DeleteOne(id, "openrpa", false, jwt , null)
+    await Config.db.DeleteOne(id, "openrpa", false, jwt, null)
   }
 }
 @Route("api/v1/collections")
@@ -296,11 +290,11 @@ export class collectionsController extends Controller {
     @Query() includesystem?: boolean,
   ): Promise<Collection[]> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-    if(includesystem == null) includesystem = false;
+    if (includesystem == null) includesystem = false;
     var collections = await Config.db.ListCollections(true, Crypt.rootToken());
     collections = collections.filter(x => !x.name.endsWith(".chunks"));
     collections = collections.filter(x => !x.name.endsWith("_hist"));
-    if(!includesystem) {
+    if (!includesystem) {
       collections = collections.filter(x => x.name.indexOf("system.") === -1);
     }
     collections.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
@@ -318,7 +312,7 @@ export class collectionsController extends Controller {
       var collections = await Config.db.ListCollections(true, Crypt.rootToken());
       return collections.find(x => x.name == collectionname);
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in GetCollection", error, { cls: "collectionsController", func: "GetCollection" });
       throw error;
     }
   }
@@ -333,7 +327,7 @@ export class collectionsController extends Controller {
     const name = requestBody.name;
     delete requestBody.name;
     await Config.db.CreateCollection(name, requestBody, jwt, null);
-    if(requestBody.timeseries != null) {
+    if (requestBody.timeseries != null) {
       return { name, type: "timeseries" };
     }
     return { name, type: "collection" };
@@ -345,7 +339,7 @@ export class collectionsController extends Controller {
     @Request() request: express.Request
   ): Promise<void> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-    await Config.db.DropCollection(collectionname, jwt , null)
+    await Config.db.DropCollection(collectionname, jwt, null)
   }
 }
 @Route("api/v1/indexes")
@@ -381,7 +375,7 @@ export class indexesController extends Controller {
     @Request() request: express.Request
   ): Promise<void> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-    await Config.db.deleteIndex(collectionname, name , null)
+    await Config.db.deleteIndex(collectionname, name, null)
   }
 }
 @Route("api/v1/query")
@@ -397,12 +391,12 @@ export class QueryController extends Controller {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
       const options = { collectionname, ...requestBody, jwt };
-      if(options.queryas == "string") options.queryas = "";
-      if(options.query == "string") options.query = "{}";
+      if (options.queryas == "string") options.queryas = "";
+      if (options.query == "string") options.query = "{}";
       var res = await Config.db.query<any>(options, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Query", error, { cls: "QueryController", func: "Query" });
       throw error;
     }
   }
@@ -421,12 +415,12 @@ export class CountController extends Controller {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
       const options = { collectionname, ...requestBody, jwt };
-      if(options.queryas == "string") options.queryas = "";
-      if(options.query == "string") options.query = "{}";
+      if (options.queryas == "string") options.queryas = "";
+      if (options.query == "string") options.query = "{}";
       var res = await Config.db.count(options, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Count", error, { cls: "CountController", func: "Count" });
       throw error;
     }
   }
@@ -445,12 +439,12 @@ export class DistinctController extends Controller {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
       const options = { collectionname, ...requestBody, jwt };
-      if(options.queryas == "string") options.queryas = "";
-      if(options.query == "string") options.query = "{}";
+      if (options.queryas == "string") options.queryas = "";
+      if (options.query == "string") options.query = "{}";
       var res = await Config.db.distinct(options, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Distinct", error, { cls: "DistinctController", func: "Distinct" });
       throw error;
     }
   }
@@ -468,12 +462,12 @@ export class AggregateController extends Controller {
   ): Promise<any[]> {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-      if(requestBody.queryas == "string") requestBody.queryas = "";
-      if(requestBody.pipeline == "string") requestBody.pipeline = "[]";
+      if (requestBody.queryas == "string") requestBody.queryas = "";
+      if (requestBody.pipeline == "string") requestBody.pipeline = "[]";
       var res = await Config.db.aggregate<any>(requestBody.pipeline, collectionname, jwt, null, requestBody.queryas, requestBody.explain, null)
       return res;
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in Aggregate", error, { cls: "AggregateController", func: "Aggregate" });
       throw error;
     }
   }
@@ -493,7 +487,7 @@ export class RunOpenRPAWorkflowController extends Controller {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
 
       var robotuser = null;
-      if(robotname != null && robotname != "") {
+      if (robotname != null && robotname != "") {
         robotuser = await Config.db.getbyid(robotname, "users", jwt, true, null)
         if (robotuser == null) {
           robotuser = await Config.db.GetOne({
@@ -505,9 +499,9 @@ export class RunOpenRPAWorkflowController extends Controller {
           }, null);
         }
       }
-      if(robotuser == null) throw new Error("Robot " + robotname + " not found");
+      if (robotuser == null) throw new Error("Robot " + robotname + " not found");
       var workflow = null;
-      if(requestBody.workflowid != null && requestBody.workflowid != "") {
+      if (requestBody.workflowid != null && requestBody.workflowid != "") {
         workflow = await Config.db.getbyid(requestBody.workflowid, "openrpa", jwt, true, null)
         if (workflow == null) {
           workflow = await Config.db.GetOne({
@@ -519,27 +513,27 @@ export class RunOpenRPAWorkflowController extends Controller {
           }, null);
         }
       }
-      if(workflow == null) throw new Error("Workflow " + requestBody.workflowid + " not found");
+      if (workflow == null) throw new Error("Workflow " + requestBody.workflowid + " not found");
       const rpacommand = {
         command: "invoke",
         workflowid: workflow._id,
         data: requestBody.Parameters
       }
 
-      if(requestBody.rpc) {
+      if (requestBody.rpc) {
         const { correlationId, promise } = OpenAPIProxy.createPromise();
-        Logger.instanse.debug("RPC a message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
+        Logger.instanse.debug("RPC a message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy", func: "RunOpenRPAWorkflow" });
         await amqpwrapper.Instance().sendWithReplyTo("", robotuser._id, "openapi", rpacommand, 5000, correlationId, "", null);
         var result = await promise;
         return result as any;
       } else {
-        const correlationId = NoderedUtil.GetUniqueIdentifier();
-        Logger.instanse.debug("Send message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy" });
+        const correlationId = Util.GetUniqueIdentifier();
+        Logger.instanse.debug("Send message to " + robotname + " with correlationId: " + correlationId + " and message: " + JSON.stringify(rpacommand), null, { cls: "OpenAPIProxy", func: "RunOpenRPAWorkflow" });
         await amqpwrapper.Instance().send("", robotuser._id, rpacommand, 5000, correlationId, "", null);
         return { correlationId };
       }
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in RunOpenRPAWorkflow", error, { cls: "RunOpenRPAWorkflowController", func: "RunOpenRPAWorkflow" });
       throw error;
     }
   }
@@ -557,25 +551,25 @@ export class QueueMessageController extends Controller {
   ): Promise<IRecordOfAny> {
     try {
       const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-      if(queuename == null || queuename == "") {
+      if (queuename == null || queuename == "") {
         throw new Error("Queue name must be specified");
       }
       var payload = requestBody.Payload;
 
-      if(requestBody.rpc) {
+      if (requestBody.rpc) {
         const { correlationId, promise } = OpenAPIProxy.createPromise();
-        Logger.instanse.debug("RPC a message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy" });
+        Logger.instanse.debug("RPC a message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy", func: "QueueMessage" });
         await amqpwrapper.Instance().sendWithReplyTo("", queuename, "openapi", payload, 5000, correlationId, "", null);
         var result = await promise;
         return result as any;
       } else {
-        const correlationId = NoderedUtil.GetUniqueIdentifier();
-        Logger.instanse.debug("Send message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy" });
+        const correlationId = Util.GetUniqueIdentifier();
+        Logger.instanse.debug("Send message to " + queuename + " with correlationId: " + correlationId + " and message: " + JSON.stringify(payload), null, { cls: "OpenAPIProxy", func: "QueueMessage" });
         await amqpwrapper.Instance().send("", queuename, payload, 5000, correlationId, "", null);
         return { correlationId };
       }
     } catch (error) {
-      console.error(error);
+      Logger.instanse.error("Error in QueueMessage", error, { cls: "QueueMessageController", func: "QueueMessage" });
       throw error;
     }
   }
@@ -589,8 +583,8 @@ export class EntitiesController extends Controller {
 
 
 
-  
-  
+
+
   @Post("{collectionname}")
   @Security("oidc")
   public async CreateEntities(
@@ -611,13 +605,7 @@ export class EntitiesController extends Controller {
   ): Promise<any> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
     var item = { ...requestBody } as any;
-    let msg = new UpdateOneMessage();
-    msg.collectionname = collectionname;
-    msg.item = item as any;
-    msg.j = false;
-    msg.w = 1;
-    msg.jwt = jwt;
-    let result = await Config.db.UpdateOne<any>(msg, null);
+    let result = await Config.db.UpdateOne(item, collectionname, 1, true, jwt, null);
     return result.item;
   }
   @Delete("{collectionname}/{id}")
@@ -628,6 +616,6 @@ export class EntitiesController extends Controller {
     @Request() request: express.Request
   ): Promise<number> {
     const jwt = await Auth.User2Token(request.user as any, Config.shorttoken_expires_in, null);
-    return await Config.db.DeleteOne(id, collectionname, false, jwt , null);
+    return await Config.db.DeleteOne(id, collectionname, false, jwt, null);
   }
 }

@@ -1,4 +1,4 @@
-import { ExchangeClosedMessage, NoderedUtil, QueueClosedMessage, QueuedMessage, QueuedMessageCallback, QueueMessage, SigninMessage, TokenUser, User, WatchEventMessage } from "@openiap/openflow-api";
+import { ExchangeClosedMessage, QueueClosedMessage, QueuedMessage, QueuedMessageCallback, QueueMessage, SigninMessage, WatchEventMessage } from "@openiap/openflow-api";
 import { Span } from "@opentelemetry/api";
 import express from "express";
 import { ChangeStream } from "mongodb";
@@ -12,6 +12,8 @@ import { SocketMessage } from "./SocketMessage.js";
 import { WebServer } from "./WebServer.js";
 import { WebSocketServer } from "./WebSocketServer.js";
 import { amqpexchange, amqpqueue, amqpwrapper, exchangealgorithm, QueueMessageOptions } from "./amqpwrapper.js";
+import { TokenUser, User } from "./commoninterfaces.js";
+import { Util } from "./Util.js";
 interface IHashTable<T> {
     [key: string]: T;
 }
@@ -98,8 +100,8 @@ export class WebSocketServerClient {
             this._dbdisconnected = this.dbdisconnected.bind(this);
             this._dbconnected = this.dbconnected.bind(this);
             this._amqpdisconnected = this.amqpdisconnected.bind(this);
-            this.id = NoderedUtil.GetUniqueIdentifier();
-            if (!NoderedUtil.IsNullUndefinded(req)) {
+            this.id = Util.GetUniqueIdentifier();
+            if (!Util.IsNullUndefinded(req)) {
                 this.remoteip = WebSocketServerClient.remoteip(req);
             }
             let _remoteip = "unknown";
@@ -110,14 +112,14 @@ export class WebSocketServerClient {
             WebSocketServer.total_connections_count[_remoteip]++;
 
             if (await WebServer.isBlocked(req)) {
-                if (Config.log_blocked_ips) Logger.instanse.error(this.remoteip + " is blocked", null);
+                if (Config.log_blocked_ips) Logger.instanse.error(this.remoteip + " is blocked", null, {cls: "WebSocketServerClient", func: "Initialize"});
                 try {
                     if (Config.client_disconnect_signin_error) {
                         this._socketObject.close()
                         return false;
                     }
                 } catch (error) {
-                    Logger.instanse.error(error, null);
+                    Logger.instanse.error(error, null, {cls: "WebSocketServerClient", func: "Initialize"});
                 }
                 return true;
             } else {
@@ -125,20 +127,20 @@ export class WebSocketServerClient {
                     try {
                         await WebSocketServer.BaseRateLimiter.consume(this.remoteip);
                     } catch (error) {
-                        Logger.instanse.error(error, null);
+                        Logger.instanse.error(error, null, {cls: "WebSocketServerClient", func: "Initialize"});
                         this._socketObject.close()
                         return false;
                     }
                 }
             }
-            Logger.instanse.debug("new client " + this.id + " from " + this.remoteip, span, Logger.parsecli(this));
+            Logger.instanse.debug("new client " + this.id + " from " + this.remoteip, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "Initialize"});
             Config.db.on("disconnected", this._dbdisconnected);
             Config.db.on("connected", this._dbconnected);
             amqpwrapper.Instance().on("disconnected", this._amqpdisconnected);
             this.init_complete = true;
             this.ProcessQueue(null);
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, {cls: "WebSocketServerClient", func: "Initialize"});
         } finally {
             Logger.otel.endSpan(span);
         }
@@ -161,7 +163,7 @@ export class WebSocketServerClient {
             q.queuename = this._queues[i].queue;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.debug("Send queue closed message to " + this.id + " for queue " + q.queuename, null, Logger.parsecli(this));
+            Logger.instanse.debug("Send queue closed message to " + this.id + " for queue " + q.queuename, null, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "amqpdisconnected"});
         }
         for (var i = 0; i < this._exchanges.length; i++) {
             let msg: SocketMessage = SocketMessage.fromcommand("exchangeclosed");
@@ -169,18 +171,17 @@ export class WebSocketServerClient {
             q.queuename = this._exchanges[i].queue.queue; q.exchangename = this._exchanges[i].exchange;
             msg.data = JSON.stringify(q);
             this._socketObject.send(msg.tojson());
-            Logger.instanse.debug("Send queue closed message to " + this.id + " for exchange " + q.exchangename, null, Logger.parsecli(this));
+            Logger.instanse.debug("Send queue closed message to " + this.id + " for exchange " + q.exchangename, null, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "amqpdisconnected"});
         }
         this._exchanges = [];
         this.CloseConsumers(null);
     }
     private close(e: CloseEvent): void {
-        Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent, null, Logger.parsecli(this));
+        Logger.instanse.debug("Connection closed " + e + " " + this.id + "/" + this.clientagent, null, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "close"});
         this.init_complete = false;
-        // this.Close(null);
     }
     private error(e: Event): void {
-        Logger.instanse.error(e, null, Logger.parsecli(this));
+        Logger.instanse.error(e, null, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "error"});
     }
     public queuecount(): number {
         if (this._queues == null) return 0;
@@ -210,12 +211,12 @@ export class WebSocketServerClient {
                 return;
             }
         } catch (error) {
-            Logger.instanse.error(error, span, Logger.parsecli(this));
+            Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "ping"});
             this._receiveQueue = [];
             this._sendQueue = [];
             if (this._socketObject != null) {
                 this.Close(span).catch((err) => {
-                    Logger.instanse.error(error, span, Logger.parsecli(this));
+                    Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "ping"});
                 });
             }
         } finally {
@@ -224,7 +225,7 @@ export class WebSocketServerClient {
     }
     public async RefreshToken(parent: Span): Promise<boolean> {
         const tuser: User = await Message.DoSignin(this, null, parent);
-        if(tuser == null) return false;
+        if (tuser == null) return false;
         await Logger.DBHelper.CheckCache("users", tuser, true, false, parent);
         const l: SigninMessage = new SigninMessage();
         this.jwt = await Auth.User2Token(tuser, Config.shorttoken_expires_in, parent);
@@ -237,9 +238,9 @@ export class WebSocketServerClient {
     }
     private message(message: string): void {
         try {
-            Logger.instanse.silly("WebSocket message received " + message, null, Logger.parsecli(this));
+            Logger.instanse.silly("WebSocket message received " + message, null, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "message"});
             let msg: SocketMessage = SocketMessage.fromjson(message);
-            Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count, null, Logger.parsecli(this));
+            Logger.instanse.silly("WebSocket message received id: " + msg.id + " index: " + msg.index + " count: " + msg.count, null, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "message"});
             this.lastheartbeat = new Date();
             this.lastheartbeatstr = new Date().toISOString();
             const now = new Date();
@@ -249,7 +250,7 @@ export class WebSocketServerClient {
             this._receiveQueue.push(msg);
             if ((msg.index + 1) >= msg.count) this.ProcessQueue(null);
         } catch (error) {
-            Logger.instanse.error(error, null, Logger.parsecli(this));
+            Logger.instanse.error(error, null, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "message"});
             try {
                 const errormessage: Message = new Message(); errormessage.command = "error"; errormessage.data = (error.message ? error.message : error);
                 this._socketObject.send(JSON.stringify(errormessage));
@@ -261,13 +262,12 @@ export class WebSocketServerClient {
         await semaphore.down();
         for (let i = this._queues.length - 1; i >= 0; i--) {
             try {
-                // await this.CloseConsumer(this._queues[i]);
                 await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._queues[i], parent);
                 this._queues.splice(i, 1);
                 this._queuescurrent--;
                 this._queuescurrentstr = this._queuescurrent.toString();
             } catch (error) {
-                Logger.instanse.error(error, parent, Logger.parsecli(this));
+                Logger.instanse.error(error, parent, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "CloseConsumers"});
             }
         }
         for (let i = this._exchanges.length - 1; i >= 0; i--) {
@@ -277,7 +277,7 @@ export class WebSocketServerClient {
                     await amqpwrapper.Instance().RemoveQueueConsumer(this.user, this._exchanges[i].queue, parent);
                     this._exchanges.splice(i, 1);
                 } catch (error) {
-                    Logger.instanse.error(error, parent, Logger.parsecli(this));
+                    Logger.instanse.error(error, parent, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "CloseConsumers"});
                 }
             }
         }
@@ -296,15 +296,15 @@ export class WebSocketServerClient {
             try {
                 if (this._amqpdisconnected != null) amqpwrapper.Instance().removeListener("disconnected", this._amqpdisconnected);
             } catch (error) {
-                Logger.instanse.error(error, span, Logger.parsecli(this));
+                Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "Close"});
             }
 
             await this.CloseConsumers(span);
-            if (!NoderedUtil.IsNullUndefinded(this._socketObject)) {
+            if (!Util.IsNullUndefinded(this._socketObject)) {
                 try {
                     this._socketObject.close();
                 } catch (error) {
-                    Logger.instanse.error(error, span, Logger.parsecli(this));
+                    Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "Close"});
                 }
             }
             var keys = Object.keys(this.watches);
@@ -330,13 +330,13 @@ export class WebSocketServerClient {
                 if (q && (q.queue == queuename || q.queuename == queuename)) {
                     try {
                         amqpwrapper.Instance().RemoveQueueConsumer(user, this._queues[i], span).catch((err) => {
-                            Logger.instanse.error(err, span, Logger.parsecli(this));
+                            Logger.instanse.error(err, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "CloseConsumer"});
                         });
                         this._queues.splice(i, 1);
                         this._queuescurrent--;
                         this._queuescurrentstr = this._queuescurrent.toString();
                     } catch (error) {
-                        Logger.instanse.error(error, span, Logger.parsecli(this));
+                        Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "CloseConsumer"});
                     }
                 }
             }
@@ -345,11 +345,11 @@ export class WebSocketServerClient {
                 if (e && (e.queue != null && e.queue.queue == queuename || e.queue.queuename == queuename)) {
                     try {
                         amqpwrapper.Instance().RemoveQueueConsumer(user, this._exchanges[i].queue, span).catch((err) => {
-                            Logger.instanse.error(err, span, Logger.parsecli(this));
+                            Logger.instanse.error(err, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "CloseConsumer"});
                         });
                         this._exchanges.splice(i, 1);
                     } catch (error) {
-                        Logger.instanse.error(error, span, Logger.parsecli(this));
+                        Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "CloseConsumer"});
                     }
                 }
             }
@@ -363,10 +363,10 @@ export class WebSocketServerClient {
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let exchange = exchangename;
-            if (NoderedUtil.IsNullEmpty(exchange)) {
+            if (Util.IsNullEmpty(exchange)) {
                 // @ts-ignore
-                if(this.clientagent == "") this.clientagent = "unknown"
-                exchange = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                if (this.clientagent == "") this.clientagent = "unknown"
+                exchange = this.clientagent + "." + Util.GetUniqueIdentifier(); exclusive = true;
             }
             let exchangequeue: amqpexchange = null;
             try {
@@ -383,8 +383,8 @@ export class WebSocketServerClient {
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            Logger.instanse.error(exchange + " failed message queue message, nack and re queue message: ", span, Logger.parsecli(this));
-                            Logger.instanse.error(error, span, Logger.parsecli(this));
+                            Logger.instanse.error(exchange + " failed message queue message, nack and re queue message: ", span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "RegisterExchange"});
+                            Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "RegisterExchange"});
                         }, Config.amqp_requeue_time);
                     } finally {
                         span?.end()
@@ -403,7 +403,7 @@ export class WebSocketServerClient {
                     this._queuescurrentstr = this._queuescurrent.toString();
                 }
             } catch (error) {
-                Logger.instanse.error(error, span, Logger.parsecli(this));
+                Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "RegisterExchange"});
             }
             if (exchangequeue) semaphore.up();
             if (exchangequeue != null) return { exchangename: exchangequeue.exchange, queuename: exchangequeue.queue?.queue };
@@ -417,44 +417,41 @@ export class WebSocketServerClient {
         try {
             let exclusive: boolean = false; // Should we keep the queue around ? for robots and roles
             let qname = queuename;
-            if (NoderedUtil.IsNullEmpty(qname)) {
+            if (Util.IsNullEmpty(qname)) {
                 // @ts-ignore
-                if(this.clientagent == "") this.clientagent = "unknown"
-                qname = this.clientagent + "." + NoderedUtil.GetUniqueIdentifier(); exclusive = true;
+                if (this.clientagent == "") this.clientagent = "unknown"
+                qname = this.clientagent + "." + Util.GetUniqueIdentifier(); exclusive = true;
             }
             await this.CloseConsumer(this.user, qname, span);
             let queue: amqpqueue = null;
             try {
                 const AssertQueueOptions: any = Object.assign({}, (amqpwrapper.Instance().AssertQueueOptions));
                 AssertQueueOptions.exclusive = exclusive;
-                if (NoderedUtil.IsNullEmpty(queuename)) {
+                if (Util.IsNullEmpty(queuename)) {
                     AssertQueueOptions.autoDelete = true;
                 }
                 var exists = this._queues.filter(x => x.queuename == qname || x.queue == qname);
                 if (exists.length > 0) {
-                    Logger.instanse.warn(qname + " already exists, removing before re-creating", span);
+                    Logger.instanse.warn(qname + " already exists, removing before re-creating", span, { cls: "WebSocketServerClient", func: "CreateConsumer" });
                     for (let i = 0; i < exists.length; i++) {
                         await amqpwrapper.Instance().RemoveQueueConsumer(this.user, exists[i], span);
                     }
                 }
                 queue = await amqpwrapper.Instance().AddQueueConsumer(this.user, qname, AssertQueueOptions, this.jwt, async (msg: any, options: QueueMessageOptions, ack: any, done: any) => {
-                    // const _data = msg;
                     let span: Span = null;
                     var _data = msg;
                     try {
                         var o = msg;
                         if (typeof o === "string") o = JSON.parse(o);
                         span = Logger.otel.startSpan("OpenFlow Queue Process Message", o.traceId, o.spanId);
-                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
+                        Logger.instanse.verbose("[preack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span, {cls: "WebSocketServerClient", func: "CreateConsumer"});
                         _data = await this.Queue(msg, qname, options, span);;
                         ack();
-                        // const result = await this.Queue(msg, qname, options);
-                        // done(result);
-                        Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span)
+                        Logger.instanse.debug("[ack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId, span, {cls: "WebSocketServerClient", func: "CreateConsumer"});
                     } catch (error) {
                         setTimeout(() => {
                             ack(false);
-                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error), span)
+                            Logger.instanse.warn("[nack] queuename: " + queuename + " qname: " + qname + " replyto: " + options.replyTo + " correlationId: " + options.correlationId + " error: " + (error.message ? error.message : error), span, {cls: "WebSocketServerClient", func: "CreateConsumer"});
                         }, Config.amqp_requeue_time);
                     } finally {
                         Logger.otel.endSpan(span);
@@ -501,7 +498,7 @@ export class WebSocketServerClient {
         const span: Span = Logger.otel.startSubSpan("WebSocketServerClient.ProcessQueue", parent);
         try {
             let username: string = "Unknown";
-            if (!NoderedUtil.IsNullUndefinded(this.user)) { username = this.user.username; }
+            if (!Util.IsNullUndefinded(this.user)) { username = this.user.username; }
             let ids: string[] = [];
             this._receiveQueue.forEach(msg => {
                 if (ids.indexOf(msg.id) === -1) { ids.push(msg.id); }
@@ -510,10 +507,10 @@ export class WebSocketServerClient {
                 const msgs: SocketMessage[] = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id === id; });
                 if (this._receiveQueue.length > Config.websocket_max_package_count) {
                     if (Config.websocket_disconnect_out_of_sync) {
-                        Logger.instanse.error(`_receiveQueue containers more than ${Config.websocket_max_package_count} messages for id ${id}, disconnecting`, span, Logger.parsecli(this));
+                        Logger.instanse.error(`_receiveQueue containers more than ${Config.websocket_max_package_count} messages for id ${id}, disconnecting`, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "ProcessQueue"});
                         this.Close(span);
                     } else {
-                        Logger.instanse.error(`_receiveQueue containers more than ${Config.websocket_max_package_count} messages for id ${id} so discarding all !!!!!!!`, span, Logger.parsecli(this));
+                        Logger.instanse.error(`_receiveQueue containers more than ${Config.websocket_max_package_count} messages for id ${id} so discarding all !!!!!!!`, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "ProcessQueue"});
                         this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                     }
                 }
@@ -525,35 +522,34 @@ export class WebSocketServerClient {
                         const singleresult: Message = Message.frommessage(first, first.data);
                         singleresult.priority = first.priority;
                         if (singleresult.command != "ping" && singleresult.command != "pong") {
-                            singleresult.Process(this).then(msg=> {
-                                if(msg==null) return;
-                                if(msg.command == "error" && !msg.error && msg.data) {
+                            singleresult.Process(this).then(msg => {
+                                if (msg == null) return;
+                                if (msg.command == "error" && !msg.error && msg.data) {
                                     msg.data = JSON.parse(msg.data.replace(/\n/g, "\\n"));
                                     msg.data.error = msg.data.message;
                                     msg.data = JSON.stringify(msg.data);
-                                    // msg.error =  msg.data; // backward compaility
                                 }
                                 this.Send(msg);
-                            }) .catch((error) => {
+                            }).catch((error) => {
                                 singleresult.command = "error";
-                                singleresult.data = JSON.stringify({"error": error.message});
+                                singleresult.data = JSON.stringify({ "error": error.message });
                                 this.Send(singleresult);
-                                Logger.instanse.error(error, span, Logger.parsecli(this));
+                                Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "ProcessQueue"});
                             });
                         }
                     } else {
                         let chunk: string = "";
                         msgs.forEach(msg => {
-                            if (!NoderedUtil.IsNullUndefinded(msg.data)) { chunk += msg.data; }
+                            if (!Util.IsNullUndefinded(msg.data)) { chunk += msg.data; }
                         });
                         this._receiveQueue = this._receiveQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
                         const result: Message = Message.frommessage(first, chunk);
                         result.priority = first.priority;
                         if (result.command != "ping" && result.command != "pong") {
-                            result.Process(this).then(msg=> {
-                                if(msg != null) this.Send(msg);
-                            }) .catch((error) => {
-                                Logger.instanse.error(error, span, Logger.parsecli(this));
+                            result.Process(this).then(msg => {
+                                if (msg != null) this.Send(msg);
+                            }).catch((error) => {
+                                Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "ProcessQueue"});
                             });
                         }
 
@@ -565,12 +561,12 @@ export class WebSocketServerClient {
                 try {
                     if (this._socketObject != null) this._socketObject.send(JSON.stringify(msg));
                 } catch (error) {
-                    Logger.instanse.error(error, span, Logger.parsecli(this));
+                    Logger.instanse.error(error, span, {...Logger.parsecli(this), cls: "WebSocketServerClient", func: "ProcessQueue"});
                 }
                 this._sendQueue = this._sendQueue.filter(function (msg: SocketMessage): boolean { return msg.id !== id; });
             });
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, {cls: "WebSocketServerClient", func: "ProcessQueue"});
         } finally {
             span?.end();
         }
@@ -578,18 +574,18 @@ export class WebSocketServerClient {
     }
     public async Send<T>(message: Message, parent: Span = null): Promise<T> {
         return new Promise<T>(async (resolve, reject) => {
-            if(message == null) return reject("message is null");
+            if (message == null) return reject("message is null");
             this._Send(message, ((msg) => {
-                if (!NoderedUtil.IsNullUndefinded(msg.error)) { return reject(msg.error); }
+                if (!Util.IsNullUndefinded(msg.error)) { return reject(msg.error); }
                 resolve(msg);
             }).bind(this), parent);
         });
     }
     private _Send(message: Message, cb: QueuedMessageCallback, parent: Span): void {
         const messages: string[] = this.chunkString(message.data, Config.websocket_package_size);
-        if (NoderedUtil.IsNullUndefinded(messages) || messages.length === 0) {
+        if (Util.IsNullUndefinded(messages) || messages.length === 0) {
             const singlemessage: SocketMessage = SocketMessage.frommessage(message, "", 1, 0);
-            if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
+            if (Util.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
                 this.messageQueue[singlemessage.id] = new QueuedMessage(singlemessage, cb);
             } else {
                 try {
@@ -601,12 +597,12 @@ export class WebSocketServerClient {
             this._cleanupMessageQueue();
             return;
         }
-        if (NoderedUtil.IsNullEmpty(message.id)) { message.id = NoderedUtil.GetUniqueIdentifier(); }
+        if (Util.IsNullEmpty(message.id)) { message.id = Util.GetUniqueIdentifier(); }
         for (let i: number = 0; i < messages.length; i++) {
             const _message: SocketMessage = SocketMessage.frommessage(message, messages[i], messages.length, i);
             this._sendQueue.push(_message);
         }
-        if (NoderedUtil.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
+        if (Util.IsNullEmpty(message.replyto) && message.command != "refreshtoken") {
             this.messageQueue[message.id] = new QueuedMessage(message, cb);
         } else {
             try {
@@ -630,11 +626,16 @@ export class WebSocketServerClient {
                 }
             }
         });
-    }    
+    }
     public chunkString(str: string, length: number): string[] | null {
-        if (NoderedUtil.IsNullEmpty(str)) { return null; }
-        // tslint:disable-next-line: quotemark
-        return str.match(new RegExp(".{1," + length + "}", "g"));
+        if (Util.IsNullEmpty(str)) { return null; }
+        const chunks: string[] = [];
+        for (let i = 0; i < str.length; i += length) {
+            chunks.push(str.substring(i, i + length));
+        }
+        return chunks;
+        // if (Util.IsNullEmpty(str)) { return null; }
+        // return str.match(new RegExp(".{1," + length + "}", "g"));
     }
     async Queue(data: string, queuename: string, options: QueueMessageOptions, span: Span): Promise<any[]> {
         const d: any = JSON.parse(data);
@@ -651,7 +652,7 @@ export class WebSocketServerClient {
         q.routingkey = options.routingKey;
         q.exchangename = options.exchangename;
         let m: Message = Message.fromcommand("queuemessage");
-        if (NoderedUtil.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
+        if (Util.IsNullEmpty(q.correlationId)) { q.correlationId = m.id; }
         m.data = JSON.stringify(q);
         const q2 = await this.Send<QueueMessage>(m, span);
         if ((q2 as any).command == "error") throw new Error(q2.data);
@@ -664,30 +665,20 @@ export class WebSocketServerClient {
     }
     public watches: IHashTable<ClientWatch> = {};
     async Watch(aggregates: object[], collectionname: string, jwt: string, id: string = null): Promise<string> {
+        if(collectionname == null || collectionname == "") throw new Error("collectionname is required");
         if (typeof aggregates === "string") {
             try {
                 aggregates = JSON.parse(aggregates);
             } catch (error) {
             }
         }
-        // if (Array.isArray(aggregates)) {
-        //     for (let p = 0; p < aggregates.length; p++) {
-        //         let path = aggregates[p];
-        //         if (typeof path === "string") {
-        //             try {
-        //                 path = JSON.parse(path);
-        //             } catch (error) {
-        //             }
-        //         }
-        //     }
-        // }
         const stream: clsstream = new clsstream();
-        stream.id = NoderedUtil.GetUniqueIdentifier();
+        stream.id = Util.GetUniqueIdentifier();
         stream.collectionname = collectionname;
         stream.aggregates = aggregates;
-        if (id == null) id = NoderedUtil.GetUniqueIdentifier();
+        if (id == null) id = Util.GetUniqueIdentifier();
         this.watches[id] = {
-            aggregates, collectionname, id //, streamid: stream.id
+            aggregates, collectionname, id
         } as ClientWatch;
         return id;
     }
@@ -695,7 +686,7 @@ export class WebSocketServerClient {
         var _type = next.fullDocument._type;
         let subspan: Span = Logger.otel.startSpan("Watch " + watch.collectionname + " " + next.operationType + " " + _type, null, null);
         try {
-            Logger.instanse.verbose("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name, span, { collection: watch.collectionname });
+            Logger.instanse.verbose("Notify " + this.user.username + " of " + next.operationType + " " + next.fullDocument.name, span, { collection: watch.collectionname, cls: "WebSocketServerClient", func: "SendWatch" });
             const msg: SocketMessage = SocketMessage.fromcommand("watchevent");
             const q = new WatchEventMessage();
             const [traceId, spanId] = Logger.otel.GetTraceSpanId(subspan);
@@ -708,11 +699,11 @@ export class WebSocketServerClient {
             this._socketObject.send(msg.tojson(), (err) => {
                 if (err) {
                     var message: string = (err.message ? err.message : err as any);
-                    Logger.instanse.warn(message, subspan, { collection: watch.collectionname });
+                    Logger.instanse.warn(message, subspan, { collection: watch.collectionname, cls: "WebSocketServerClient", func: "SendWatch" });
                 }
             });
         } catch (error) {
-            Logger.instanse.error(error, span);
+            Logger.instanse.error(error, span, { collection: watch.collectionname, cls: "WebSocketServerClient", func: "SendWatch" });
         } finally {
             subspan?.end();
         }

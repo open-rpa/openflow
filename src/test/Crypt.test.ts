@@ -1,25 +1,15 @@
 import { suite, test, timeout } from "@testdeck/mocha";
-import { Config } from "../Config.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
 import assert from "assert";
-import { Logger } from "../Logger.js";
-import { User } from "@openiap/openflow-api";
 import { Crypt } from "../Crypt.js";
 import { OAuthProvider } from "../OAuthProvider.js";
+import { testConfig } from "./testConfig.js";
 @suite class crypt_test {
-    private testUser: User;
     @timeout(10000)
     async before() {
-        Config.workitem_queue_monitoring_enabled = false;
-        Config.disablelogging();
-        await Logger.configure(true, true);
-        Config.db = new DatabaseConnection(Config.mongodb_url, Config.mongodb_db);
-        await Config.db.connect(null);
-        await Config.Load(null);
-        this.testUser = await Logger.DBHelper.FindByUsername("testuser", Crypt.rootToken(), null)
+        await testConfig.configure();
     }
     async after() {
-        await Logger.shutdown();
+        await testConfig.cleanup();
     }
     @test async "TestGenerateKeys"() {
         let jwks = await OAuthProvider.generatekeys();
@@ -27,10 +17,10 @@ import { OAuthProvider } from "../OAuthProvider.js";
     }
     @timeout(10000)
     @test async "ValidatePassword"() {
-        await Crypt.SetPassword(this.testUser, "randompassword", null);
-        var result = await Crypt.ValidatePassword(this.testUser, "randompassword", null);
+        await Crypt.SetPassword(testConfig.testUser, "randompassword", null);
+        var result = await Crypt.ValidatePassword(testConfig.testUser, "randompassword", null);
         assert.ok(result, "Failed validating with the correct password");
-        result = await Crypt.ValidatePassword(this.testUser, "not-my-randompassword", null);
+        result = await Crypt.ValidatePassword(testConfig.testUser, "not-my-randompassword", null);
         assert.ok(!result, "ValidatePassword did not fail with wrong password");
         var hash = await Crypt.hash("secondrandompassword");
         result = await Crypt.compare("secondrandompassword", hash, null)
@@ -39,10 +29,10 @@ import { OAuthProvider } from "../OAuthProvider.js";
         assert.ok(!result, "compare did not fail with wrong password");
 
         await assert.rejects(Crypt.SetPassword(null, "randompassword", null));
-        await assert.rejects(Crypt.SetPassword(this.testUser, null, null));
+        await assert.rejects(Crypt.SetPassword(testConfig.testUser, null, null));
         await assert.rejects(Crypt.SetPassword(null, null, null));
         await assert.rejects(Crypt.ValidatePassword(null, "randompassword", null));
-        await assert.rejects(Crypt.ValidatePassword(this.testUser, null, null));
+        await assert.rejects(Crypt.ValidatePassword(testConfig.testUser, null, null));
         await assert.rejects(Crypt.ValidatePassword(null, null, null));
         await assert.rejects(Crypt.compare(null, null, null));
 
