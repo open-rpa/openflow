@@ -4544,13 +4544,13 @@ export class Message {
         if (!Util.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
         if (!Util.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
         if (!Util.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
-        if (!Util.IsNullEmpty(failed_wiq)) wiq.failed_wiq = failed_wiq;
-        if (!Util.IsNullEmpty(failed_wiqid)) wiq.failed_wiqid = failed_wiqid;
-        if (!Util.IsNullEmpty(success_wiq)) wiq.success_wiq = success_wiq;
-        if (!Util.IsNullEmpty(success_wiqid)) wiq.success_wiqid = success_wiqid;
+        wiq.failed_wiq = failed_wiq;
+        wiq.failed_wiqid = failed_wiqid;
+        wiq.success_wiq = success_wiq;
+        wiq.success_wiqid = success_wiqid;
 
         // @ts-ignore
-        if (!Util.IsNullEmpty(msg.packageid) || msg.packageid == "") wiq.packageid = msg.packageid;
+        wiq.packageid = msg.packageid;
 
 
         // @ts-ignore
