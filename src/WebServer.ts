@@ -329,15 +329,84 @@ export class WebServer {
             res.status(402).redirect("/ui/")
         });
         if (fs.existsSync(path.join(WebServer.webapp_file_path, 'handler.js'))) {
+            
+
             const handler = await import(path.join(WebServer.webapp_file_path, 'handler.js'));
 
-            this.app.use((req, res, next) => {
-                if (req.url != null && req.url.startsWith("/ui")) {
-                    handler.handler(req, res, next)
-                } else {
-                    next();
+            this.app.use(async (req, res, next) => {
+                const OriginalRequest = global.Request;
+            
+                console.log(`>>> Incoming request: ${req.method} ${req.url}`);
+                console.log(`>>> Content-Type: ${req.headers['content-type']}`);
+                console.log(`>>> Body (parsed):`, req.body);
+            
+                let injected = false;
+            
+                try {
+                    global.Request = class extends OriginalRequest {
+                        constructor(url, init = {}) {
+                            if (
+                                req.method !== 'GET' &&
+                                req.method !== 'HEAD' &&
+                                req.headers['content-type']?.includes('application/json') &&
+                                req.body && typeof req.body === 'object'
+                            ) {
+                                injected = true;
+                                console.log(`>>> Injecting JSON body into fetch Request`);
+            
+                                const json = JSON.stringify(req.body);
+                                // @ts-ignore
+                                init.body = new ReadableStream({
+                                    start(controller) {
+                                        controller.enqueue(new TextEncoder().encode(json));
+                                        controller.close();
+                                    }
+                                });
+                            }
+                            super(url, init);
+                        }
+                    };
+            
+                    const maybePromise = handler.handler(req, res, () => {
+                        global.Request = OriginalRequest;
+                        next();
+                    });
+            
+                    if (maybePromise && typeof maybePromise.then === 'function') {
+                        maybePromise.finally(() => {
+                            if (global.Request !== OriginalRequest) {
+                                console.log(">>> Restoring global.Request (async)");
+                                global.Request = OriginalRequest;
+                            }
+                        });
+                    } else {
+                        if (global.Request !== OriginalRequest) {
+                            console.log(">>> Restoring global.Request (sync)");
+                            global.Request = OriginalRequest;
+                        }
+                    }
+                } catch (err) {
+                    console.error('>>> SvelteKit handler error:', err);
+                    global.Request = OriginalRequest;
+                    res.statusCode = 500;
+                    res.end('Internal Server Error');
+                } finally {
+                    // Extra safety to ensure cleanup
+                    if (global.Request !== OriginalRequest) {
+                        console.log(">>> Final restore of global.Request");
+                        global.Request = OriginalRequest;
+                    }
+                    if (injected) {
+                        console.log(">>> JSON body was injected into Request");
+                    }
                 }
             });
+            
+            
+            
+
+            
+            
         } else {
             this.app.use('/ui', express.static(WebServer.webapp_file_path));
             this.app.get('/ui/*', (req, res, next) => {
