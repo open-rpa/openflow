@@ -335,6 +335,9 @@ export class WebServer {
 
             this.app.use(async (req, res, next) => {
                 const OriginalRequest = global.Request;
+                if( req.url && req.url.indexOf("/ui") != 0 ) {
+                    return next();
+                }
             
                 console.log(`>>> Incoming request: ${req.method} ${req.url}`);
                 console.log(`>>> Content-Type: ${req.headers['content-type']}`);
