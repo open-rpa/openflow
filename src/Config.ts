@@ -356,6 +356,7 @@ export class Config {
         cleanup_on_delete_customer: false,
         cleanup_on_delete_user: false,
         api_bypass_perm_check: false,
+        web_auto_login: false,
         disable_db_config: false,
         force_audit_ts: false,
         force_dbusage_ts: false,
@@ -667,6 +668,7 @@ export class Config {
     public static cleanup_on_delete_customer: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_customer"));
     public static cleanup_on_delete_user: boolean = Config.parseBoolean(Config.getEnv("cleanup_on_delete_user"));
     public static api_bypass_perm_check: boolean = Config.parseBoolean(Config.getEnv("api_bypass_perm_check"));
+    public static web_auto_login: boolean = Config.parseBoolean(Config.getEnv("web_auto_login"));
     public static disable_db_config: boolean = Config.parseBoolean(Config.getEnv("disable_db_config"));
     public static force_audit_ts: boolean = Config.parseBoolean(Config.getEnv("force_audit_ts"));
     public static force_dbusage_ts: boolean = Config.parseBoolean(Config.getEnv("force_dbusage_ts"));
