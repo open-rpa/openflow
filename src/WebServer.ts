@@ -338,13 +338,7 @@ export class WebServer {
                 if( req.url && req.url.indexOf("/ui") != 0 ) {
                     return next();
                 }
-            
-                console.log(`>>> Incoming request: ${req.method} ${req.url}`);
-                console.log(`>>> Content-Type: ${req.headers['content-type']}`);
-                console.log(`>>> Body (parsed):`, req.body);
-            
                 let injected = false;
-            
                 try {
                     global.Request = class extends OriginalRequest {
                         constructor(url, init = {}) {
@@ -355,8 +349,6 @@ export class WebServer {
                                 req.body && typeof req.body === 'object'
                             ) {
                                 injected = true;
-                                console.log(`>>> Injecting JSON body into fetch Request`);
-            
                                 const json = JSON.stringify(req.body);
                                 // @ts-ignore
                                 init.body = new ReadableStream({
@@ -378,13 +370,11 @@ export class WebServer {
                     if (maybePromise && typeof maybePromise.then === 'function') {
                         maybePromise.finally(() => {
                             if (global.Request !== OriginalRequest) {
-                                console.log(">>> Restoring global.Request (async)");
                                 global.Request = OriginalRequest;
                             }
                         });
                     } else {
                         if (global.Request !== OriginalRequest) {
-                            console.log(">>> Restoring global.Request (sync)");
                             global.Request = OriginalRequest;
                         }
                     }
@@ -396,11 +386,7 @@ export class WebServer {
                 } finally {
                     // Extra safety to ensure cleanup
                     if (global.Request !== OriginalRequest) {
-                        console.log(">>> Final restore of global.Request");
                         global.Request = OriginalRequest;
-                    }
-                    if (injected) {
-                        console.log(">>> JSON body was injected into Request");
                     }
                 }
             });
