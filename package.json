@@ -95,7 +95,7 @@
     "tsx": "4.16.0",
     "web-push": "3.6.7",
     "ws": "8.17.1",
-    "xml2js": "0.4.23"
+    "xml2js": "0.5.0"
   },
   "devDependencies": {
     "@testdeck/mocha": "0.3.3",
