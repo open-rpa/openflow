@@ -1161,7 +1161,7 @@ export class LoginProvider {
             }
         }
         const loginproviders = (await Logger.DBHelper.GetProviders(null)).map((x: any) => (
-            { name: x.name, id: x.id, provider: x.provider, issuer: x.issuer, logo: x.logo }
+            { name: x.name, id: x.id, provider: x.provider, issuer: x.issuer, logo: x.logo, order: x.order }
         ))
         const res2 = {
             wshost: _url,
