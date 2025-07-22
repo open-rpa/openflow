@@ -189,6 +189,15 @@ export class DatabaseConnection extends events.EventEmitter {
             this.isConnected = false;
             Logger.instanse.info("mongodb.error", span, { cls: "DatabaseConnection", func: "connect" });
             Logger.instanse.error(error, span, { cls: "DatabaseConnection", func: "connect" });
+            if (this.watchFaultHandler) {
+                clearTimeout(this.watchFaultHandler);
+                this.watchFaultHandler = null;
+            }
+            if (this.stream.watchdog) {
+                clearInterval(this.stream.watchdog);
+                this.stream.watchdog = null;
+            }
+
             this.emit("disconnected");
         }
         const parseErrEvent = (error) => {
@@ -571,9 +580,38 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
             });
             this.stream.stream.on("change", async (next: any) => {
+                this.stream.lastChange = Date.now();
                 const collectionname = next.ns.coll;
                 this.GlobalWatchCallback(collectionname, next)
             });
+            // Watchdog to detect stalled stream
+            if (!this.stream.watchdog) {
+                this.stream.watchdog = setInterval(() => {
+                    const now = Date.now();
+                    try {
+                        this.db.collection("config").updateOne(
+                            { name: "watchtest", _type: "watchtest", _id: "687fa757b92de0da4368fb00",  _acl: [{rights: 65535,_id: "5a1702fa245d9013697656fb",name: "admins"}] },
+                            { $set: { ts: new Date() } },
+                            { upsert: true }
+                        ).catch(err => {
+                            Logger.instanse.error(err, span, { cls: "DatabaseConnection", func: "doRegisterGlobalWatch" });
+                        });
+                            // @ts-ignore
+                        if (now - this.stream.lastChange > 60000) { // no changes in 60s
+                            Logger.instanse.warn("Change stream stalled — restarting", span, { cls: "DatabaseConnection", func: "doRegisterGlobalWatch" });
+                            try {
+                                this.stream.stream?.close();
+                            } catch (_) {}
+                            this.stream.stream = null;
+                            clearInterval(this.stream.watchdog);
+                            this.stream.watchdog = null;
+                            this.doRegisterGlobalWatch(null);
+                        }                        
+                    } catch (error) {
+                        console.error("Error in change stream watchdog", error);                        
+                    }
+                }, 30000);
+            }
         } catch (error) {
             Logger.instanse.error(error, span, { cls: "DatabaseConnection", func: "doRegisterGlobalWatch" });
             return false;

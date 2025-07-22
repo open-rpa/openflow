@@ -45,6 +45,8 @@ export class clsstream {
     public callback: any;
     aggregates: object[];
     collectionname: string;
+    watchdog: any;
+    lastChange: Number;
 }
 export class WebSocketServerClient {
     public jwt: string;
