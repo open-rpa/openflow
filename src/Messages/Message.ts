@@ -5403,6 +5403,14 @@ export class Message {
             case "deletesfvolume":
                 msg.result = await Serverless.DeleteVolume(this.tuser, this.jwt, msg.id, parent)
                 break;
+            case "ensuredistro":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Serverless.EnsureDistro(this.tuser, this.jwt, data, parent)
+                break;
+            case "deletedistro":
+                msg.result = await Serverless.DeleteDistro(this.tuser, this.jwt, msg.id, parent)
+                break;
             default:
                 msg.error = "Unknown custom command " + msg.command;
                 throw new Error("Unknown custom command " + msg.command);

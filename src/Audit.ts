@@ -3,7 +3,7 @@ import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
 import { Util } from "./Util.js";
-import { Base, ResourceUsage, Rights, User, Workspace, Volume, SFunc } from "./commoninterfaces.js";
+import { Base, Distro, ResourceUsage, Rights, SFunc, User, Volume, Workspace } from "./commoninterfaces.js";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
@@ -281,6 +281,26 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
+    public static async AuditDistroAction(user: User, action: string, distro: Distro, success: boolean, parent: Span): Promise<void> {
+        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
+        try {
+            Audit.ensure_openflow_logins();
+            const log: DistroLog = new DistroLog();
+            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
+            log.success = success;
+            log.userid = user?._id;
+            log.name = user?.name + " " + action + " " + distro.name;
+            log.funcname = distro.name;
+            log.workspaceid = distro._workspaceid;
+            log.username = user?.username;
+            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
+        } catch (error) {
+            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditDistroAction" });
+        }
+        finally {
+            Logger.otel.endSpan(span);
+        }
+    }
     public static async AuditResourceAction(user: User, action: string, target: Base, resourceusage: ResourceUsage, success: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
         try {
@@ -455,5 +475,18 @@ export class FuncLog extends Base {
     constructor() {
         super();
         this._type = "func";
+    }
+}
+export class DistroLog extends Base {
+    public success: boolean;
+    public type: string;
+    public userid: string;
+    public username: string;
+    public funcname: string;
+    public funcid: string;
+    public workspaceid: string;
+    constructor() {
+        super();
+        this._type = "distro";
     }
 }

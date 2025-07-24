@@ -483,6 +483,11 @@ export class SFunc extends Base {
     public users: string;
     public _workspaceid: string;
 }
+export class Distro extends Base {
+    public admins: string;
+    public users: string;
+    public _workspaceid: string;
+}
 export  class Customer extends Base {
     constructor() {
         super();
