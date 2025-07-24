@@ -96,12 +96,16 @@ export class Serverless {
             if (volume._workspaceid == null || volume._workspaceid == "") {
                 throw new Error("Workspace ID is required to ensure a volume");
             }
+            volume._encrypt = [
+                "password",
+                "access_key",
+                "secret_key"
+            ];
 
             const workspace = await Config.db.GetOne<Workspace>({ query: { _id: volume._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
             if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
 
             const rootjwt = Crypt.rootToken();
-
             if (volume._id == null || volume._id == "") {
                 volume._type = "volume";
                 volume._createdby = tuser._id;
