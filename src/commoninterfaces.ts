@@ -473,6 +473,16 @@ export class Workspace extends Base {
     public _resourceusageid: string;
     public _productname: string;
 }
+export class Volume extends Base {
+    public admins: string;
+    public users: string;
+    public _workspaceid: string;
+}
+export class SFunc extends Base {
+    public admins: string;
+    public users: string;
+    public _workspaceid: string;
+}
 export  class Customer extends Base {
     constructor() {
         super();

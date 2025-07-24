@@ -30,6 +30,7 @@ import { Util, Wellknown } from "../Util.js";
 import { WebSocketServer } from "../WebSocketServer.js";
 import { WebSocketServerClient } from "../WebSocketServerClient.js";
 import { FaaS } from "../ee/FaaS.js";
+import { Serverless } from "../ee/Serverless.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -1144,7 +1145,7 @@ export class Message {
             Logger.instanse.error(new Error("Received message with no command"), null, { cls: "Message", func: "UnknownCommand" });
             return;
         }
-        if (this.command == "queueevent") { 
+        if (this.command == "queueevent") {
             // ignore
             return;
         }
@@ -3805,7 +3806,7 @@ export class Message {
             // @ts-ignore
             wi._workspaceid = _wiq._workspaceid;
         }
-        
+
         for (let i = _wiq._acl.length - 1; i >= 0; i--) {
             const ace = _wiq._acl[i];
             let bits = [];
@@ -4540,7 +4541,7 @@ export class Message {
         let success_wiq = msg.success_wiq || msg.successWiq;
         // @ts-ignore
         let success_wiqid = msg.success_wiqid || msg.successWiqid;
-        
+
         if (!Util.IsNullEmpty(msg.maxretries)) wiq.maxretries = msg.maxretries;
         if (!Util.IsNullEmpty(msg.retrydelay)) wiq.retrydelay = msg.retrydelay;
         if (!Util.IsNullEmpty(msg.initialdelay)) wiq.initialdelay = msg.initialdelay;
@@ -5357,7 +5358,7 @@ export class Message {
                 await Logger.DBHelper.CheckCache("users", u as any, false, false, parent);
                 break;
             case "upgradecustomer":
-                msg.result = await Billings.UpgradeBillingAccount(this.tuser, this.jwt, msg.id, parent);           
+                msg.result = await Billings.UpgradeBillingAccount(this.tuser, this.jwt, msg.id, parent);
                 break;
             case "getimage":
                 if (msg.id == null || msg.id == "") throw new Error("id is mandatory");
@@ -5385,6 +5386,22 @@ export class Message {
                     throw new Error(`[${this.tuser.name}] Access denied, missing invoke permission on ${pack.name}`);
                 }
                 msg.result = await FaaS.DeleteImage(this.tuser, this.jwt, pack);
+                break;
+            case "ensuresfunc":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Serverless.EnsureFunc(this.tuser, this.jwt, data, parent)
+                break;
+            case "deletesfunc":
+                msg.result = await Serverless.DeleteFunc(this.tuser, this.jwt, msg.id, parent)
+                break;
+            case "ensuresfvolume":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Serverless.EnsureVolume(this.tuser, this.jwt, data, parent)
+                break;
+            case "deletesfvolume":
+                msg.result = await Serverless.DeleteVolume(this.tuser, this.jwt, msg.id, parent)
                 break;
             default:
                 msg.error = "Unknown custom command " + msg.command;
