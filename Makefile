@@ -1,6 +1,6 @@
 .PHONY: build
 
-VERSION = 1.5.12.22
+VERSION = 1.5.12.23
 HASH = $(shell git rev-parse --short HEAD)
 bump:
 	@echo "Bumping version to $(VERSION) recursively..."
