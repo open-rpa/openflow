@@ -27,7 +27,7 @@ export class Serverless {
             const rootjwt = Crypt.rootToken();
 
             if (func._id == null || func._id == "") {
-                func._type = "package";
+                func._type = "app";
                 func._createdby = tuser._id;
                 func._created = new Date();
                 func._modifiedby = tuser._id;
@@ -37,7 +37,7 @@ export class Serverless {
                 Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
             }
             else {
-                const _func = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "package" }, collectionname: "fc", jwt }, parent);
+                const _func = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "fc", jwt }, parent);
                 if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
 
                 if (func._workspaceid != _func._workspaceid) {
@@ -72,7 +72,7 @@ export class Serverless {
             if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
 
             const rootjwt = Crypt.rootToken();
-            const _func = await Config.db.GetOne<SFunc>({ query: { _id: id, "_type": "package" }, collectionname: "fc", jwt }, parent);
+            const _func = await Config.db.GetOne<SFunc>({ query: { _id: id, "_type": "app" }, collectionname: "fc", jwt }, parent);
             if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
 
             await Config.db.DeleteOne(id, "fc", false, rootjwt, parent);
