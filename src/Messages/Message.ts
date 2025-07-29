@@ -5411,6 +5411,29 @@ export class Message {
             case "deletedistro":
                 msg.result = await Serverless.DeleteDistro(this.tuser, this.jwt, msg.id, parent)
                 break;
+            case "ensurepackage":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Serverless.EnsurePackage(this.tuser, this.jwt, data, parent)
+                break;
+            case "deletepackage":
+                msg.result = await Serverless.DeletePackage(this.tuser, this.jwt, msg.id, parent)
+                break;
+            case "issueusertoken":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                const {id, exp, workspaceid } = data
+                msg.result = await Serverless.IssueUserToken(this.tuser, this.jwt, id, exp, data.name, workspaceid, parent)
+                break;
+            case "addusertokenrequest":
+                msg.result = await Serverless.AddUserToken(msg.id, parent)
+                break;
+            case "getusertokenrequest":
+                msg.result = await Serverless.GetUserToken(msg.id, parent)
+                break;
+            case "revokeusertoken":
+                await Serverless.RevokeUserToken(this.tuser, this.jwt, msg.id, parent)
+                break;
             default:
                 msg.error = "Unknown custom command " + msg.command;
                 throw new Error("Unknown custom command " + msg.command);

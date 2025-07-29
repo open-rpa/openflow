@@ -5,7 +5,9 @@ import { Distro, SFunc, User, Volume, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
-import { Wellknown } from "../Util.js";
+import { Util, Wellknown } from "../Util.js";
+import { DatabaseConnection } from "../DatabaseConnection.js";
+import { Auth } from "../Auth.js";
 
 export class Serverless {
     public static async EnsureFunc(tuser: User, jwt: string, func: SFunc, parent: Span): Promise<any> {
@@ -238,4 +240,86 @@ export class Serverless {
             throw error;
         }
     }
+
+    public static async EnsurePackage(tuser: User, jwt: string, id: string, parent: Span): Promise<any> {
+        // 
+    }
+    public static async DeletePackage(tuser: User, jwt: string, id: string, parent: Span): Promise<any> { }
+
+    public static async IssueUserToken(tuser: User, jwt: string, id: string, exp: string, name: string, workspaceid: string, parent: Span): Promise<any> {
+        if (exp == null || exp == "") throw new Error("Expiration date is mandatory");
+        if (tuser == null) throw new Error("User is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to issue tokens");
+        if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+        
+        let workspace: Workspace = null;
+        if (!Util.IsNullEmpty(workspaceid)) {
+            workspace = await Config.db.GetOne<Workspace>({ query: { _id: workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+            if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+            
+        } else{
+            workspaceid = undefined;
+        }
+
+        let tokenuser = tuser;
+
+        if (tuser._id != id && Util.IsNullEmpty(id) == false) {
+            const _user = await Config.db.GetOne<User>({ query: { _id: id }, collectionname: "users", jwt }, parent);
+            if (_user == null) throw new Error(Logger.enricherror(tuser, null, "User not found or access denied"));
+            if (!DatabaseConnection.hasAuthorization(tuser, _user, Rights.update)) throw new Error(Logger.enricherror(tuser, null, "Permission denied to issue token for user " + _user.name));
+            tokenuser = _user;
+        }
+        let item: any = {
+            name: name,
+            _type: "usertoken",
+            access_token: "",
+            _encrypt: [
+                "access_token"
+            ],
+            revoked: false,
+            _workspaceid: workspaceid,
+        }
+        if(workspace != null) {
+            Base.addRight(item, workspace.admins, workspace.name + " admins", [Rights.read]);
+        }
+        Base.addRight(item, tokenuser._id, "User " + tokenuser.name, [Rights.read]);
+        const rootjwt = Crypt.rootToken();
+        item = await Config.db.InsertOne<any>(item, "usertokens", 1, true, rootjwt, parent);
+        tokenuser.apitokenid = item._id;
+        let _jwt = await Auth.User2Token(tokenuser, exp, parent);
+        item.access_token = _jwt;
+        Config.db.UpdateOne<any>(item, "usertokens", 1, true, rootjwt, parent);
+
+        return {
+            access_token: _jwt
+        }
+    }
+    // when we dont know who the user is
+    public static async AddUserToken(key: string, parent: Span): Promise<any> {
+        if (key == null || key == "") {
+            key = Util.GetUniqueIdentifier(32);
+        }
+        // check the 
+    }
+    public static async GetUserToken(key: string, parent: Span): Promise<any> {
+
+    }
+    public static async RevokeUserToken(tuser: User, jwt: string, id: string, parent: Span): Promise<void> {
+        if (tuser == null) throw new Error("User is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to issue tokens");
+        if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+        if (id == null || id == "") throw new Error("Id is mandatory");
+
+        const item = await Config.db.GetOne<any>({ query: { _id: id, "_type": "usertoken" }, collectionname: "usertokens", jwt }, parent);
+        if (item == null) throw new Error(Logger.enricherror(tuser, null, "User token not found or access denied"));
+
+        const rootjwt = Crypt.rootToken();
+        item.revoked = true;
+        Config.db.UpdateOne<any>(item, "usertokens", 1, true, rootjwt, parent);
+    }
+
+    // Checks for all functions
+    // vscode extension should call custom function for upload file
+    // env
+    // ragnet
 }

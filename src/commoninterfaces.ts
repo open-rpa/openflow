@@ -326,6 +326,7 @@ export class TokenUser {
     customerid: string;
     selectedcustomerid: string;
     dblocked: boolean;
+    apitokenid: string;
     static assign<T>(o: any): T {
         const res = Object.assign(new User(), o);
         return res;
@@ -397,6 +398,7 @@ export class User extends Base {
     formvalidated: boolean;
     dbusage: number;
     dblocked: boolean;
+    apitokenid: string;
     static assign<T>(o: any): T {
         const res = Object.assign(new User(), o);
         return res;
