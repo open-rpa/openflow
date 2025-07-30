@@ -251,13 +251,13 @@ export class Serverless {
         if (tuser == null) throw new Error("User is mandatory");
         if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to issue tokens");
         if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
-        
+
         let workspace: Workspace = null;
         if (!Util.IsNullEmpty(workspaceid)) {
             workspace = await Config.db.GetOne<Workspace>({ query: { _id: workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
             if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
-            
-        } else{
+
+        } else {
             workspaceid = undefined;
         }
 
@@ -278,9 +278,15 @@ export class Serverless {
             ],
             revoked: false,
             _workspaceid: workspaceid,
-            _workspacename: workspace ? workspace.name : undefined, 
+            _workspacename: workspace ? workspace.name : undefined,
+            _userid: tokenuser ? tokenuser._id : undefined,
+            _username: tokenuser ? tokenuser.username : undefined,
+            _userdisplayname: tokenuser ? tokenuser.name : undefined,
         }
-        if(workspace != null) {
+        if (tuser._id != id) {
+            Base.addRight(item, tuser._id, tuser.name, [Rights.read]);
+        }
+        if (workspace != null) {
             Base.addRight(item, workspace.admins, workspace.name + " admins", [Rights.read]);
         }
         Base.addRight(item, tokenuser._id, "User " + tokenuser.name, [Rights.read]);
