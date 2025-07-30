@@ -285,7 +285,7 @@ export class Serverless {
         Base.addRight(item, tokenuser._id, "User " + tokenuser.name, [Rights.read]);
         const rootjwt = Crypt.rootToken();
         item = await Config.db.InsertOne<any>(item, "usertokens", 1, true, rootjwt, parent);
-        tokenuser.apitokenid = item._id;
+        tokenuser.tokenid = item._id;
         let _jwt = await Auth.User2Token(tokenuser, exp, parent);
         item.access_token = _jwt;
         Config.db.UpdateOne<any>(item, "usertokens", 1, true, rootjwt, parent);

@@ -302,30 +302,35 @@ export class DBHelper {
             Logger.otel.endSpan(span);
         }
     }
-    public FindByAuthorizationWrap(token, jwt, span) {
-        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+    public FindByAuthorizationWrap(token, span) {
+        // if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
         Logger.instanse.debug("Add authentication header to cache", span, {cls: "DBHelper", func: "FindByAuthorizationWrap"});
-        return LoginProvider.validateToken(token, span);
+        return Auth.Token2User(token, null);
+        // return LoginProvider.validateToken(token, span);
     }
-    public FindByAuthorizationWrap2(login, password, jwt, span) {
-        if (jwt === null || jwt == undefined || jwt == "") { jwt = Crypt.rootToken(); }
+    public FindByAuthorizationWrap2(login, password, span) {
         Logger.instanse.debug("Add basicauth header to cache", span, {cls: "DBHelper", func: "FindByAuthorizationWrap2"});
         return Auth.ValidateByPassword(login, password, span);
     }
-    public async FindByAuthorization(authorization: string, jwt: string, span: Span): Promise<User> {
-        if (!Util.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
-            (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
-            const token = authorization.split(" ")[1].toString();
-            let item: User = await this.memoryCache.wrap(token, () => { return this.FindByAuthorizationWrap(token, jwt, span) });
-            if (Util.IsNullUndefinded(item)) return null;
-            return this.DecorateWithRoles(User.assign(item), span);
-        }
-        const b64auth = (authorization || "").split(" ")[1].toString() || ""
-        const [login, password] = Buffer.from(b64auth, "base64").toString().split(":")
-        if (!Util.IsNullEmpty(login) && !Util.IsNullEmpty(password)) {
-            let item: User = await this.memoryCache.wrap(b64auth, () => { return this.FindByAuthorizationWrap2(login, password, jwt, span) });
-            if (Util.IsNullUndefinded(item)) return null;
-            return this.DecorateWithRoles(User.assign(item), span);
+    public async FindByAuthorization(authorization: string, span: Span): Promise<User> {
+        try {
+            if (!Util.IsNullEmpty(authorization) && authorization.indexOf(" ") > 1 &&
+                (authorization.toLocaleLowerCase().startsWith("bearer") || authorization.toLocaleLowerCase().startsWith("jwt"))) {
+                const token = authorization.split(" ")[1].toString();
+                let item: User = await this.memoryCache.wrap(token, () => { return this.FindByAuthorizationWrap(token, span) });
+                if (Util.IsNullUndefinded(item)) return null;
+                return this.DecorateWithRoles(User.assign(item), span);
+            }
+            const b64auth = (authorization || "").split(" ")[1].toString() || ""
+            const [login, password] = Buffer.from(b64auth, "base64").toString().split(":")
+            if (!Util.IsNullEmpty(login) && !Util.IsNullEmpty(password)) {
+                let item: User = await this.memoryCache.wrap(b64auth, () => { return this.FindByAuthorizationWrap2(login, password, span) });
+                if (Util.IsNullUndefinded(item)) return null;
+                return this.DecorateWithRoles(User.assign(item), span);
+            }
+        } catch (error) {
+            Logger.instanse.error("Error in FindByAuthorization: " + error.message, span, {cls: "DBHelper", func: "FindByAuthorization"});
+            return null;
         }
     }
     public FindAgentBySlugOrIdWrap(_id, jwt, span) {

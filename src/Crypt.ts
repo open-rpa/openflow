@@ -114,13 +114,13 @@ export class Crypt {
             }
         });
     }
-    static createSlimToken(id: string, impostor: string, expiresIn: string): string {
+    static createSlimToken(id: string, impostor: string, tokenid: string, expiresIn: string): string {
         if (Util.IsNullEmpty(id)) throw new Error("id is mandatory");
         if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         const key = Crypt.encryption_key;
         if (Util.IsNullEmpty(Config.aes_secret)) throw new Error("Config missing aes_secret");
         if (Util.IsNullEmpty(key)) throw new Error("Config missing aes_secret");
-        const user = { _id: id, impostor: impostor }
+        const user = { _id: id, impostor: impostor, tokenid: tokenid }
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
@@ -152,9 +152,13 @@ export class Crypt {
             if (Config.allow_signin_with_expired_jwt == false) ignoreExpiration = false;
             const o: any = jsonwebtoken.verify(token, Crypt.encryption_key, { ignoreExpiration: ignoreExpiration });
             let impostor: string = null;
+            let tokenid: string = undefined;
             if (!Util.IsNullUndefinded(o) && !Util.IsNullUndefinded(o.data) && !Util.IsNullEmpty(o.data._id)) {
                 if (!Util.IsNullEmpty(o.data.impostor)) {
                     impostor = o.data.impostor;
+                }
+                if (!Util.IsNullEmpty(o.data.tokenid)) {
+                    tokenid = o.data.tokenid;
                 }
             }
             if (!Util.IsNullUndefinded(o) && !Util.IsNullUndefinded(o.data) && !Util.IsNullEmpty(o.data._id) && o.data._id != Wellknown.root._id) {
@@ -165,6 +169,7 @@ export class Crypt {
                 }
             }
             if (!Util.IsNullEmpty(impostor)) o.data.impostor = impostor;
+            if (!Util.IsNullEmpty(tokenid)) o.data.tokenid = tokenid;
             return TokenUser.assign(o.data);
         } catch (error) {
             var e = error;

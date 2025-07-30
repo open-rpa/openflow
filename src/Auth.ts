@@ -25,7 +25,7 @@ export class Auth {
             Logger.otel.endSpan(span);
         }
     }
-    public static async RefreshUser(user: User, impostor: string, parent: Span) {
+    public static async RefreshUser(user: User, impostor: string, tokenid: string, parent: Span) {
         let result = await Logger.DBHelper.FindById(user._id, parent)
         if (result == null) {
             throw new Error("User " + user._id + " not found");
@@ -33,13 +33,18 @@ export class Auth {
         // Assign to ensure overload functions are available
         result = User.assign(result);
         if (impostor != null && impostor != "") {
-            (user as any).impostor = impostor;
+            (result as any).impostor = impostor;
+        }
+        if (tokenid != null && tokenid != "") {
+            user.tokenid = tokenid;
+            result.tokenid = tokenid;
         }
         return result;
     }
     public static async Token2User(jwt: string, parent: Span) {
         let tuser: TokenUser = null;
         let user: User = null;
+        let tokenid = undefined;
         let impostor: string = undefined;
         if (jwt == null || jwt.trim() == "") {
             if (Config.enable_guest == true) {
@@ -68,6 +73,7 @@ export class Auth {
                 tuser = await Crypt.verityToken(jwt);
                 if (tuser != null) {
                     impostor = tuser.impostor;
+                    tokenid = tuser.tokenid;
                 }
             } catch (error) {
             }
@@ -76,9 +82,11 @@ export class Auth {
         if (user == null) {
             user = await Logger.DBHelper.FindJWT(jwt, parent)
             if (user != null) {
+                tokenid = user.tokenid;
+                impostor = (user as any).impostor;
                 user = User.assign(user);
                 (user as any).impostor = impostor;
-                return Auth.RefreshUser(user, impostor, parent);
+                return Auth.RefreshUser(user, impostor, tokenid, parent);
             }
         }
         // if root, pass through to avoid circular calls
@@ -180,7 +188,7 @@ export class Auth {
                                 if (os.hostname().toLowerCase() != "nixos") {
                                     Logger.DBHelper.AddJWT(jwt, _user, parent);
                                 }
-                                return Auth.RefreshUser(_user, impostor, parent);
+                                return Auth.RefreshUser(_user, impostor, tokenid, parent);
                             }
 
                         }
@@ -196,18 +204,19 @@ export class Auth {
         if (user == null) {
             throw new Error("User " + tuser._id + " not found");
         }
+        user.tokenid = tokenid;
         await Logger.DBHelper.AddJWT(jwt, user, parent);
         if (user._id == Wellknown.guest._id && Config.enable_guest == false) {
             throw new Error("Guest user is not enabled");
         }
-        user = await Auth.RefreshUser(user, impostor, parent);
+        user = await Auth.RefreshUser(user, impostor, tokenid, parent);
         return user;
     }
-    public static async Id2Token(id: string, impostor: string, expiresIn: string, parent: Span) {
+    public static async Id2Token(id: string, impostor: string, tokenid: string, expiresIn: string, parent: Span) {
         if (id == Wellknown.guest._id && Config.enable_guest == false) {
             throw new Error("Guest user is not enabled");
         }
-        const jwt = await Crypt.createSlimToken(id, impostor, expiresIn)
+        const jwt = await Crypt.createSlimToken(id, impostor, tokenid, expiresIn)
         return jwt;
     }
     public static async User2Token(item: User | TokenUser, expiresIn: string, parent: Span) {
@@ -215,9 +224,9 @@ export class Auth {
             throw new Error("Guest user is not enabled");
         }
         if (item instanceof TokenUser) {
-            return Crypt.createSlimToken(item._id, item.impostor, expiresIn)
+            return Crypt.createSlimToken(item._id, item.impostor, item.tokenid, expiresIn)
         } else {
-            return Crypt.createSlimToken(item._id, (item as any).impostor, expiresIn)
+            return Crypt.createSlimToken(item._id, (item as any).impostor, item.tokenid, expiresIn)
         }
     }
 }

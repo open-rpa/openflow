@@ -160,6 +160,7 @@ export class LoginProvider {
             }
         });
         app.get("/dashboardauth", LoginProvider.get_dashboardauth.bind(this));
+        app.get("/sfauth/me", LoginProvider.get_sfauth_me.bind(this));
         app.get("/Signout", LoginProvider.get_Signout.bind(this));
         app.get("/PassiveSignout", LoginProvider.get_PassiveSignout.bind(this));
         await LoginProvider.RegisterProviders(app, baseurl, parent);
@@ -720,7 +721,7 @@ export class LoginProvider {
                             await Logger.DBHelper.Save(role, jwt, span);
                         }
                     }
-                    _user = await Auth.RefreshUser(_user, "", span);
+                    _user = await Auth.RefreshUser(_user, "", "", span);
                 }
             }
 
@@ -976,7 +977,7 @@ export class LoginProvider {
             }
 
             Logger.instanse.verbose("Lookup user by authentication header", span, { cls: "LoginProvider", func: "dashboardauth" });
-            var user: User = await Logger.DBHelper.FindByAuthorization(authorization, null, span);
+            var user: User = await Logger.DBHelper.FindByAuthorization(authorization, span);
             if (user != null) {
                 const allowed = user.roles.filter(x => x.name == "dashboardusers" || x.name == Wellknown.admins.name);
                 if (allowed.length > 0) {
@@ -989,6 +990,75 @@ export class LoginProvider {
                 } else {
                     Logger.instanse.warn(user.username + " is not member of 'dashboardusers' for " + req.url, span, { cls: "LoginProvider", func: "dashboardauth" });
                 }
+            }
+            res.statusCode = 401;
+            res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);
+            res.end("Unauthorized");
+            return;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
+    }
+    static async get_sfauth_me(req: any, res: any, next: any) {
+        const span: Span = (Config.otel_trace_dashboardauth ? Logger.otel.startSpanExpress("LoginProvider.get_sfauth_me", req) : null);
+        try {
+            span?.setAttribute("remoteip", LoginProvider.remoteip(req));
+            if (req.user) {
+                Logger.instanse.verbose("User is signed in", span, { cls: "LoginProvider", func: "get_sfauth_me" });
+                const user: User = req.user;
+                span?.setAttribute("username", user.username);
+                if (user != null) {
+                    Logger.instanse.verbose("Authorized " + user.username + " for " + req.url, span, { cls: "LoginProvider", func: "get_sfauth_me" });
+                    return res.send({
+                        status: "success",
+                        display_status: "Success",
+                        message: "Connection OK",
+                        user: {
+                            id: user._id,
+                            username: user.username,
+                            email: user.email,
+                            roles: user.roles.map(x => {
+                                return {
+                                    id: x._id,
+                                    name: x.name
+                                };
+                            }),
+                        }
+                    });
+                } else {
+                    Logger.instanse.error("Failed casting user", span, { cls: "LoginProvider", func: "get_sfauth_me" });
+                }
+            }
+            const authorization: string = req.headers.authorization;
+
+            if (Util.IsNullEmpty(authorization)) {
+                res.statusCode = 401;
+                res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);
+                res.end("Unauthorized");
+                return;
+            }
+
+            Logger.instanse.verbose("Lookup user by authentication header", span, { cls: "LoginProvider", func: "get_sfauth_me" });
+            var user: User = await Logger.DBHelper.FindByAuthorization(authorization, span);
+            if (user != null) {
+                Logger.instanse.debug("User is authorized to see dashboard", span, { cls: "LoginProvider", func: "get_sfauth_me" });
+                return res.send({
+                    status: "success",
+                    display_status: "Success",
+                    message: "Connection OK",
+                    user: {
+                        id: user._id,
+                        name: user.name,
+                        username: user.username,
+                        email: user.email,
+                        roles: user.roles.map(x => {
+                            return {
+                                id: x._id,
+                                name: x.name
+                            };
+                        }),
+                    }
+                });
             }
             res.statusCode = 401;
             res.setHeader("WWW-Authenticate", `Basic realm="OpenFlow"`);

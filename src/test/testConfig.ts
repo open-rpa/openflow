@@ -26,7 +26,7 @@ export class testConfig {
         await Config.Load(null);
         try {
             testConfig.testUser = await Logger.DBHelper.FindByUsername(testConfig.testUsername, Crypt.rootToken(), null)
-            testConfig.userToken = Crypt.createSlimToken(testConfig.testUser._id, null, Config.shorttoken_expires_in);
+            testConfig.userToken = Crypt.createSlimToken(testConfig.testUser._id, null, null, Config.shorttoken_expires_in);
         } catch (error) {
             console.error("Error finding testuser: " + error);
         }
