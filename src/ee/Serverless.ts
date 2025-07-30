@@ -278,6 +278,7 @@ export class Serverless {
             ],
             revoked: false,
             _workspaceid: workspaceid,
+            _workspacename: workspace ? workspace.name : undefined, 
         }
         if(workspace != null) {
             Base.addRight(item, workspace.admins, workspace.name + " admins", [Rights.read]);
@@ -291,7 +292,8 @@ export class Serverless {
         Config.db.UpdateOne<any>(item, "usertokens", 1, true, rootjwt, parent);
 
         return {
-            access_token: _jwt
+            access_token: _jwt,
+            id: item._id,
         }
     }
     // when we dont know who the user is
