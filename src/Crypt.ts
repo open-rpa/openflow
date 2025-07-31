@@ -143,6 +143,16 @@ export class Crypt {
         return jsonwebtoken.sign({ data: user }, key,
             { expiresIn: expiresIn }); // 60 (seconds), "2 days", "10h", "7d"
     }
+    static async getTokenExp(token: string, ): Promise<Date> {
+        if (Util.IsNullEmpty(token)) {
+            throw new Error("jwt must be provided");
+        }
+        if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
+        const o: any = jsonwebtoken.verify(token, Crypt.encryption_key);
+        let unixtimestamp: number = o.exp;
+        let result = new Date(unixtimestamp * 1000);
+        return result;
+    }
     static async verityToken(token: string, cli?: WebSocketServerClient, ignoreExpiration: boolean = false): Promise<TokenUser> {
         try {
             if (Util.IsNullEmpty(token)) {
