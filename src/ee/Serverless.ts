@@ -108,6 +108,7 @@ export class Serverless {
                 "access_key",
                 "secret_key"
             ];
+            delete volume._acl;
 
             const workspace = await Config.db.GetOne<Workspace>({ query: { _id: volume._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
             if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
@@ -182,6 +183,7 @@ export class Serverless {
             if (distro._workspaceid == null || distro._workspaceid == "") {
                 throw new Error("Workspace ID is required to ensure a volume");
             }
+            delete distro._acl;
 
             const workspace = await Config.db.GetOne<Workspace>({ query: { _id: distro._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
             if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
