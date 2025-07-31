@@ -360,6 +360,16 @@ export class TokenUser {
         return (hits.length === 1);
     }
 }
+export class UserToken extends Base {
+    access_token: string;
+    revoked: boolean;
+    exp: Date;
+    _workspaceid: string;
+    _workspacename: string;
+    _userid: string;
+    _username: string;
+    _userdisplayname: string;
+}
 export class User extends Base {
     constructor() {
         super();

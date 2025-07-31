@@ -1,7 +1,7 @@
 import { Base, Rights } from "@openiap/nodeapi";
 import { Span } from "@opentelemetry/api";
 import { Audit } from "../Audit.js";
-import { Distro, SFunc, User, Volume, Workspace } from "../commoninterfaces.js";
+import { Distro, SFunc, User, UserToken, Volume, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
@@ -269,20 +269,19 @@ export class Serverless {
             if (!DatabaseConnection.hasAuthorization(tuser, _user, Rights.update)) throw new Error(Logger.enricherror(tuser, null, "Permission denied to issue token for user " + _user.name));
             tokenuser = _user;
         }
-        let item: any = {
-            name: name,
-            _type: "usertoken",
-            access_token: "",
-            _encrypt: [
-                "access_token"
-            ],
-            revoked: false,
-            _workspaceid: workspaceid,
-            _workspacename: workspace ? workspace.name : undefined,
-            _userid: tokenuser ? tokenuser._id : undefined,
-            _username: tokenuser ? tokenuser.username : undefined,
-            _userdisplayname: tokenuser ? tokenuser.name : undefined,
-        }
+        let item: UserToken = new UserToken();
+        item.name = name;
+        item._type = "usertoken";
+        item.access_token = "";
+        item._encrypt = [
+            "access_token"
+        ];
+        item.revoked = false;
+        item._workspaceid = workspaceid;
+        item._workspacename = workspace ? workspace.name : undefined;
+        item._userid = tokenuser ? tokenuser._id : undefined;
+        item._username = tokenuser ? tokenuser.username : undefined;
+        item._userdisplayname = tokenuser ? tokenuser.name : undefined;
         if (tuser._id != id) {
             Base.addRight(item, tuser._id, tuser.name, [Rights.read]);
         }
@@ -291,11 +290,13 @@ export class Serverless {
         }
         Base.addRight(item, tokenuser._id, "User " + tokenuser.name, [Rights.read]);
         const rootjwt = Crypt.rootToken();
-        item = await Config.db.InsertOne<any>(item, "usertokens", 1, true, rootjwt, parent);
+        item = await Config.db.InsertOne<UserToken>(item, "usertokens", 1, true, rootjwt, parent);
         tokenuser.tokenid = item._id;
         let _jwt = await Auth.User2Token(tokenuser, exp, parent);
+        let _exp = await Crypt.getTokenExp(_jwt);
         item.access_token = _jwt;
-        Config.db.UpdateOne<any>(item, "usertokens", 1, true, rootjwt, parent);
+        item.exp = _exp;
+        Config.db.UpdateOne<UserToken>(item, "usertokens", 1, true, rootjwt, parent);
 
         return {
             access_token: _jwt,
@@ -318,12 +319,12 @@ export class Serverless {
         if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
         if (id == null || id == "") throw new Error("Id is mandatory");
 
-        const item = await Config.db.GetOne<any>({ query: { _id: id, "_type": "usertoken" }, collectionname: "usertokens", jwt }, parent);
+        const item = await Config.db.GetOne<UserToken>({ query: { _id: id, "_type": "usertoken" }, collectionname: "usertokens", jwt }, parent);
         if (item == null) throw new Error(Logger.enricherror(tuser, null, "User token not found or access denied"));
 
         const rootjwt = Crypt.rootToken();
         item.revoked = true;
-        Config.db.UpdateOne<any>(item, "usertokens", 1, true, rootjwt, parent);
+        Config.db.UpdateOne<UserToken>(item, "usertokens", 1, true, rootjwt, parent);
     }
 
     // Checks for all functions

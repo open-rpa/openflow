@@ -11,7 +11,7 @@ import { LoginProvider, Provider } from "./LoginProvider.js";
 import { TokenRequest } from "./TokenRequest.js";
 import { WebSocketServerClient } from "./WebSocketServerClient.js";
 import { amqpwrapper } from "./amqpwrapper.js";
-import { Base, Rights, Resource, ResourceUsage, Role, Rolemember, TokenUser, User, iAgent, WorkitemQueue } from "./commoninterfaces.js";
+import { Base, Rights, Resource, ResourceUsage, Role, Rolemember, TokenUser, User, iAgent, WorkitemQueue, UserToken } from "./commoninterfaces.js";
 import { Util, Wellknown } from "./Util.js";
 import { Message } from "./Messages/Message.js";
 
@@ -112,6 +112,9 @@ export class DBHelper {
         }
         if (collectionname == "users" && (item._type == "user" || item._type == "role" || item._type == "customer")) {
             this.UserRoleUpdate(item, watch, span);
+        }
+        if (collectionname == "usertokens") {
+            await this.DeleteKey(("usertoken_" + item._id).toString(), watch, false, span);
         }
         if (collectionname == "mq") {
             if (item._type == "queue") await this.QueueUpdate(item._id, item.name, watch, span);
@@ -311,6 +314,23 @@ export class DBHelper {
     public FindByAuthorizationWrap2(login, password, span) {
         Logger.instanse.debug("Add basicauth header to cache", span, {cls: "DBHelper", func: "FindByAuthorizationWrap2"});
         return Auth.ValidateByPassword(login, password, span);
+    }
+    public FindUsertokenByIdWrap(_id, span) {
+        const jwt = Crypt.rootToken();
+        Logger.instanse.debug("Add usertoken to cache : " + _id, span, {cls: "DBHelper", func: "FindUsertokenByIdWrap"});
+        return Config.db.getbyid<UserToken>(_id, "usertokens", jwt, true, span);
+    }
+    public async FindUsertokenById(_id: string, parent: Span): Promise<UserToken> {
+        await this.init();
+        const span: Span = Logger.otel.startSubSpan("dbhelper.FindUsertokenById", parent);
+        try {
+            if (Util.IsNullEmpty(_id)) return null;
+            var key = ("usertoken_" + _id).toString().toLowerCase();
+            let item = await this.memoryCache.wrap(key, () => { return this.FindUsertokenByIdWrap(_id, span) });
+            return item;
+        } finally {
+            Logger.otel.endSpan(span);
+        }
     }
     public async FindByAuthorization(authorization: string, span: Span): Promise<User> {
         try {

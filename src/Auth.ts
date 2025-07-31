@@ -5,7 +5,7 @@ import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
 import { LoginProvider } from "./LoginProvider.js";
 import { OAuthProvider } from "./OAuthProvider.js";
-import { Wellknown } from "./Util.js";
+import { Util, Wellknown } from "./Util.js";
 import { FederationId, TokenUser, User } from "./commoninterfaces.js";
 export class Auth {
     public static async ValidateByPassword(username: string, password: string, parent: Span): Promise<User> {
@@ -74,6 +74,12 @@ export class Auth {
                 if (tuser != null) {
                     impostor = tuser.impostor;
                     tokenid = tuser.tokenid;
+                    if(!Util.IsNullEmpty(tokenid)) {
+                        let TokenUser = await Logger.DBHelper.FindUsertokenById(tokenid, parent);
+                        if(TokenUser == null || TokenUser.revoked == true) {
+                            throw new Error("Token is not valid (revoked)");
+                        }
+                    }
                 }
             } catch (error) {
             }
