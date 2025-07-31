@@ -113,8 +113,17 @@ export class DBHelper {
         if (collectionname == "users" && (item._type == "user" || item._type == "role" || item._type == "customer")) {
             this.UserRoleUpdate(item, watch, span);
         }
-        if (collectionname == "usertokens") {
+        if (collectionname == "usertokens" && item != null) {
+            let decrypted = Config.db.decryptentity(item);
             await this.DeleteKey(("usertoken_" + item._id).toString(), watch, false, span);
+            
+            // @ts-ignore
+            let access_token = decrypted.access_token;
+            if(!Util.IsNullEmpty(access_token)) {
+                await this.DeleteKey(access_token.toString(), watch, false, span);
+                this.RemoveJWT(access_token, span);
+            }
+
         }
         if (collectionname == "mq") {
             if (item._type == "queue") await this.QueueUpdate(item._id, item.name, watch, span);
@@ -340,6 +349,9 @@ export class DBHelper {
                 let item: User = await this.memoryCache.wrap(token, () => { return this.FindByAuthorizationWrap(token, span) });
                 if (Util.IsNullUndefinded(item)) return null;
                 return this.DecorateWithRoles(User.assign(item), span);
+            }
+            if(authorization.indexOf(" ") == -1) {
+                return null;    
             }
             const b64auth = (authorization || "").split(" ")[1].toString() || ""
             const [login, password] = Buffer.from(b64auth, "base64").toString().split(":")
