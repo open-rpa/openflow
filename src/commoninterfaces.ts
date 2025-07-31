@@ -493,6 +493,7 @@ export class Volume extends Base {
 export class SFunc extends Base {
     public admins: string;
     public users: string;
+    public anonymous: boolean;
     public _workspaceid: string;
 }
 export class Distro extends Base {

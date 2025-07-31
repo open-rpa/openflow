@@ -53,6 +53,11 @@ export class Serverless {
                     Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
                 }
             }
+            if (func.anonymous == true) {
+                Base.addRight(func, Wellknown.guest._id, Wellknown.guest.name, [Rights.read]);
+            } else {
+                Base.removeRight(func, Wellknown.guest._id, [Rights.full_control]);
+            }
 
             const result = await Config.db.InsertOrUpdateOne(func, "fc", "_id", 1, true, rootjwt, parent);
             await Audit.AuditFuncAction(tuser, "ensure", result, true, parent);
