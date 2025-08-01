@@ -51,6 +51,9 @@ export class Serverless {
 
                     Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
                     Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
+                } else {
+                    Base.addRight(func, workspace.users, workspace.name + " users", [Rights.read]);
+                    Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
                 }
             }
             if (func.anonymous == true) {
