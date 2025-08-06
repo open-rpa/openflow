@@ -39,7 +39,7 @@ export class Serverless {
                 Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
             }
             else {
-                const _func = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "fc", jwt }, parent);
+                const _func = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
                 if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
 
                 if (func._workspaceid != _func._workspaceid) {
@@ -62,7 +62,7 @@ export class Serverless {
                 Base.removeRight(func, Wellknown.guest._id, [Rights.full_control]);
             }
 
-            const result = await Config.db.InsertOrUpdateOne(func, "fc", "_id", 1, true, rootjwt, parent);
+            const result = await Config.db.InsertOrUpdateOne(func, "sf", "_id", 1, true, rootjwt, parent);
             await Audit.AuditFuncAction(tuser, "ensure", result, true, parent);
             return result
 
@@ -82,10 +82,10 @@ export class Serverless {
             if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
 
             const rootjwt = Crypt.rootToken();
-            const _func = await Config.db.GetOne<SFunc>({ query: { _id: id, "_type": "app" }, collectionname: "fc", jwt }, parent);
+            const _func = await Config.db.GetOne<SFunc>({ query: { _id: id, "_type": "app" }, collectionname: "sf", jwt }, parent);
             if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
 
-            await Config.db.DeleteOne(id, "fc", false, rootjwt, parent);
+            await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
             await Audit.AuditFuncAction(tuser, "remove", _func, true, parent);
 
         } catch (error) {
@@ -127,7 +127,7 @@ export class Serverless {
                 Base.addRight(volume, workspace.admins, workspace.name + " admins", [Rights.read]);
                 Base.addRight(volume, workspace.admins, workspace.name + " users", [Rights.read]);
             } else {
-                const _volume = await Config.db.GetOne<Volume>({ query: { _id: volume._id, "_type": "volume" }, collectionname: "fc", jwt }, parent);
+                const _volume = await Config.db.GetOne<Volume>({ query: { _id: volume._id, "_type": "volume" }, collectionname: "sf", jwt }, parent);
                 if (_volume == null) throw new Error(Logger.enricherror(tuser, null, "Volume not found or access denied"));
                 if (volume._workspaceid != _volume._workspaceid) {
                     let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _volume._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
@@ -142,7 +142,7 @@ export class Serverless {
             }
 
 
-            const result = await Config.db.InsertOrUpdateOne(volume, "fc", "_id", 1, true, rootjwt, parent);
+            const result = await Config.db.InsertOrUpdateOne(volume, "sf", "_id", 1, true, rootjwt, parent);
             await Audit.AuditVolumeAction(tuser, "ensure", result, true, parent);
             return result
 
@@ -162,10 +162,10 @@ export class Serverless {
             if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
 
             const rootjwt = Crypt.rootToken();
-            const _volume = await Config.db.GetOne<Volume>({ query: { _id: id, "_type": "volume" }, collectionname: "fc", jwt }, parent);
+            const _volume = await Config.db.GetOne<Volume>({ query: { _id: id, "_type": "volume" }, collectionname: "sf", jwt }, parent);
             if (_volume == null) throw new Error(Logger.enricherror(tuser, null, "Volume not found or access denied"));
 
-            await Config.db.DeleteOne(id, "fc", false, rootjwt, parent);
+            await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
             await Audit.AuditVolumeAction(tuser, "remove", _volume, true, parent);
 
         } catch (error) {
@@ -202,7 +202,7 @@ export class Serverless {
                 Base.addRight(distro, workspace.admins, workspace.name + " admins", [Rights.read]);
                 Base.addRight(distro, workspace.admins, workspace.name + " users", [Rights.read]);
             } else {
-                const _distro = await Config.db.GetOne<Distro>({ query: { _id: distro._id, "_type": "distro" }, collectionname: "fc", jwt }, parent);
+                const _distro = await Config.db.GetOne<Distro>({ query: { _id: distro._id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
                 if (_distro == null) throw new Error(Logger.enricherror(tuser, null, "Distro not found or access denied"));
                 if (distro._workspaceid != _distro._workspaceid) {
                     let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _distro._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
@@ -217,7 +217,7 @@ export class Serverless {
             }
 
 
-            const result = await Config.db.InsertOrUpdateOne(distro, "fc", "_id", 1, true, rootjwt, parent);
+            const result = await Config.db.InsertOrUpdateOne(distro, "sf", "_id", 1, true, rootjwt, parent);
             await Audit.AuditDistroAction(tuser, "ensure", result, true, parent);
             return result
 
@@ -237,10 +237,10 @@ export class Serverless {
             if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
 
             const rootjwt = Crypt.rootToken();
-            const _distro = await Config.db.GetOne<Distro>({ query: { _id: id, "_type": "distro" }, collectionname: "fc", jwt }, parent);
+            const _distro = await Config.db.GetOne<Distro>({ query: { _id: id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
             if (_distro == null) throw new Error(Logger.enricherror(tuser, null, "Distro not found or access denied"));
 
-            await Config.db.DeleteOne(id, "fc", false, rootjwt, parent);
+            await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
             await Audit.AuditDistroAction(tuser, "remove", _distro, true, parent);
 
         } catch (error) {
