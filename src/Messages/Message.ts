@@ -5425,7 +5425,7 @@ export class Message {
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 const {id, exp, workspaceid } = data
-                msg.result = await Serverless.IssueUserToken(this.tuser, this.jwt, id, exp, data.name, workspaceid, parent)
+                msg.result = await Serverless.IssueUserToken(this.tuser, this.jwt, id, exp, data.name, data.app, workspaceid, parent)
                 break;
             case "addusertokenrequest":
                 msg.result = await Serverless.AddUserToken(msg.id, parent)

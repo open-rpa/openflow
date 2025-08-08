@@ -9,4 +9,6 @@ export class TokenRequest extends Base {
     }
     public code: string;
     public jwt: string;
+    public app: string;
+    public workspaceid: string;
 }

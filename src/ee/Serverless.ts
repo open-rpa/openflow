@@ -256,7 +256,7 @@ export class Serverless {
     }
     public static async DeletePackage(tuser: User, jwt: string, id: string, parent: Span): Promise<any> { }
 
-    public static async IssueUserToken(tuser: User, jwt: string, id: string, exp: string, name: string, workspaceid: string, parent: Span): Promise<any> {
+    public static async IssueUserToken(tuser: User, jwt: string, userid: string, exp: string, name: string, app: string, workspaceid: string, parent: Span) {
         if (exp == null || exp == "") throw new Error("Expiration date is mandatory");
         if (tuser == null) throw new Error("User is mandatory");
         if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to issue tokens");
@@ -273,11 +273,19 @@ export class Serverless {
 
         let tokenuser = tuser;
 
-        if (tuser._id != id && Util.IsNullEmpty(id) == false) {
-            const _user = await Config.db.GetOne<User>({ query: { _id: id }, collectionname: "users", jwt }, parent);
+        if (tuser._id != userid && Util.IsNullEmpty(userid) == false) {
+            const _user = await Config.db.GetOne<User>({ query: { _id: userid }, collectionname: "users", jwt }, parent);
             if (_user == null) throw new Error(Logger.enricherror(tuser, null, "User not found or access denied"));
             if (!DatabaseConnection.hasAuthorization(tuser, _user, Rights.update)) throw new Error(Logger.enricherror(tuser, null, "Permission denied to issue token for user " + _user.name));
             tokenuser = _user;
+        }
+        let exists = await Config.db.GetOne<UserToken>({ 
+            query: { _userid: tokenuser._id, "_type": "usertoken", "_workspaceid": workspaceid, name, app, revoked: false }, collectionname: "usertokens", jwt }, parent);
+        if (exists != null) {
+            return {
+                access_token: exists.access_token,
+                id: exists._id,
+            }
         }
         let item: UserToken = new UserToken();
         item.name = name;
@@ -286,13 +294,14 @@ export class Serverless {
         item._encrypt = [
             "access_token"
         ];
+        item.app = app;
         item.revoked = false;
         item._workspaceid = workspaceid;
         item._workspacename = workspace ? workspace.name : undefined;
         item._userid = tokenuser ? tokenuser._id : undefined;
         item._username = tokenuser ? tokenuser.username : undefined;
         item._userdisplayname = tokenuser ? tokenuser.name : undefined;
-        if (tuser._id != id) {
+        if (tuser._id != userid) {
             Base.addRight(item, tuser._id, tuser.name, [Rights.read]);
         }
         if (workspace != null) {

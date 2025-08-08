@@ -362,6 +362,7 @@ export class TokenUser {
 }
 export class UserToken extends Base {
     access_token: string;
+    app: string;
     revoked: boolean;
     exp: Date;
     _workspaceid: string;
