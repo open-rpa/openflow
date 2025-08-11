@@ -895,7 +895,12 @@ export class HouseKeeping {
     if (Config.dbConfig.needsupdate) {
       await Config.dbConfig.Save(jwt, span);
     }
-
+    if (Config.enable_serverless) {
+      const sf_anonymous_user: User = await Logger.DBHelper.EnsureUser(jwt, Wellknown.sf_anonymous_user.name, Wellknown.sf_anonymous_user.username, Wellknown.sf_anonymous_user._id, null, null, span);
+      Base.removeRight(sf_anonymous_user, Wellknown.sf_anonymous_user._id, [Rights.full_control]);
+      Base.addRight(sf_anonymous_user, Wellknown.sf_anonymous_user._id, Wellknown.sf_anonymous_user.name, [Rights.read]);
+      await Logger.DBHelper.Save(sf_anonymous_user, jwt, span);
+    }
     if (Config.multi_tenant) {
       try {
         const resellers: Role = await Logger.DBHelper.EnsureRole(Wellknown.resellers.name, Wellknown.resellers._id, span);

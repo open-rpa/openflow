@@ -57,9 +57,9 @@ export class Serverless {
                 }
             }
             if (func.anonymous == true) {
-                Base.addRight(func, Wellknown.guest._id, Wellknown.guest.name, [Rights.read]);
+                Base.addRight(func, Wellknown.sf_anonymous_user._id, Wellknown.sf_anonymous_user.name, [Rights.read]);
             } else {
-                Base.removeRight(func, Wellknown.guest._id, [Rights.full_control]);
+                Base.removeRight(func, Wellknown.sf_anonymous_user._id, [Rights.full_control]);
             }
 
             const result = await Config.db.InsertOrUpdateOne(func, "sf", "_id", 1, true, rootjwt, parent);

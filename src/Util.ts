@@ -19,6 +19,7 @@ export class Wellknown {
     static robot_agent_users = {_id: "5f33c29d8fe78504bd259a04", name: "robot agent users"};
     static workitem_queue_admins = {_id: "625440c4231309af5f2052cd", name: "workitem queue admins"};
     static workitem_queue_users = {_id: "62544134231309e2cd2052ce", name: "workitem queue users"};
+    static sf_anonymous_user = {_id: "6899bcdaa5f91f7454ac322f", name: "sf anonymous user", username: "sfanonymoususer"};
 }
 export class Util {
     public static Delay = ms => new Promise<void>(res => setTimeout(res, ms));
