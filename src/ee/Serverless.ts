@@ -42,7 +42,7 @@ export class Serverless {
                 const _func = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
                 if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
 
-                if (func._workspaceid != _func._workspaceid) {
+                if (func._workspaceid != _func._workspaceid && (_func._workspaceid != null && _func._workspaceid != "")) {
                     let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _func._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                     if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
 
@@ -279,8 +279,9 @@ export class Serverless {
             if (!DatabaseConnection.hasAuthorization(tuser, _user, Rights.update)) throw new Error(Logger.enricherror(tuser, null, "Permission denied to issue token for user " + _user.name));
             tokenuser = _user;
         }
-        let exists = await Config.db.GetOne<UserToken>({ 
-            query: { _userid: tokenuser._id, "_type": "usertoken", "_workspaceid": workspaceid, name, app, revoked: false }, collectionname: "usertokens", jwt }, parent);
+        let exists = await Config.db.GetOne<UserToken>({
+            query: { _userid: tokenuser._id, "_type": "usertoken", "_workspaceid": workspaceid, name, app, revoked: false }, collectionname: "usertokens", jwt
+        }, parent);
         if (exists != null) {
             return {
                 access_token: exists.access_token,
