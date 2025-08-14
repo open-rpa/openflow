@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.12.31",
+  "version": "1.5.12.32",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -62,7 +62,7 @@
     "dockerode": "3.3.4",
     "dotenv": "16.4.5",
     "express": "4.19.2",
-    "global-agent": ".0.0",
+    "global-agent": "3.0.0",
     "got": "11.8.5",
     "hjson": "3.2.2",
     "ip": "2.0.1",
