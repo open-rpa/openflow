@@ -900,6 +900,12 @@ export class HouseKeeping {
       Base.removeRight(sf_anonymous_user, Wellknown.sf_anonymous_user._id, [Rights.full_control]);
       Base.addRight(sf_anonymous_user, Wellknown.sf_anonymous_user._id, Wellknown.sf_anonymous_user.name, [Rights.read]);
       await Logger.DBHelper.Save(sf_anonymous_user, jwt, span);
+
+      const sf_users: Role = await Logger.DBHelper.EnsureRole(Wellknown.sf_users.name, Wellknown.sf_users._id, span);
+      Base.addRight(sf_users, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+      Base.removeRight(sf_users, sf_users._id, [Rights.full_control]);
+      Base.removeRight(sf_users, users._id, [Rights.full_control]);
+      await Logger.DBHelper.Save(sf_users, jwt, span);
     }
     if (Config.multi_tenant) {
       try {

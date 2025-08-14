@@ -724,6 +724,8 @@ export class DatabaseConnection extends events.EventEmitter {
         Wellknown.guest._id,
         Wellknown.workitem_queue_admins._id,
         Wellknown.workitem_queue_users._id,
+        Wellknown.sf_users._id,
+        Wellknown.sf_anonymous_user._id
     ]
     public static WellknownNamesArray: string[] = [
         Wellknown.root.name,
@@ -744,6 +746,8 @@ export class DatabaseConnection extends events.EventEmitter {
         Wellknown.guest.name,
         Wellknown.workitem_queue_admins.name,
         Wellknown.workitem_queue_users.name,
+        Wellknown.sf_users.name,
+        Wellknown.sf_anonymous_user.name,
         "reseller",
         "user",
         "admin",
