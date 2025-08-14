@@ -129,7 +129,7 @@ export class Serverless {
             } else {
                 const _volume = await Config.db.GetOne<Volume>({ query: { _id: volume._id, "_type": "volume" }, collectionname: "sf", jwt }, parent);
                 if (_volume == null) throw new Error(Logger.enricherror(tuser, null, "Volume not found or access denied"));
-                if (volume._workspaceid != _volume._workspaceid) {
+                if (volume._workspaceid != _volume._workspaceid && (_volume._workspaceid != null && _volume._workspaceid != "")) {
                     let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _volume._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                     if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
 
@@ -204,7 +204,7 @@ export class Serverless {
             } else {
                 const _distro = await Config.db.GetOne<Distro>({ query: { _id: distro._id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
                 if (_distro == null) throw new Error(Logger.enricherror(tuser, null, "Distro not found or access denied"));
-                if (distro._workspaceid != _distro._workspaceid) {
+                if (distro._workspaceid != _distro._workspaceid && _distro._workspaceid != null && _distro._workspaceid != "") {
                     let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _distro._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                     if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
 
