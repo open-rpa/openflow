@@ -1,7 +1,7 @@
 FROM node:20 AS build-env
 WORKDIR /app
 
-RUN npm i -g typescript
+RUN npm i -g typescript@4.8.4
 COPY package.json /app/
 COPY package-lock.json /app/
 RUN npm ci --omit=dev
