@@ -77,7 +77,7 @@ export class Serverless {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create functions");
+            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete functions");
             if (id == null) throw new Error("Id is mandatory");
             if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
 
@@ -157,7 +157,7 @@ export class Serverless {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create volumes");
+            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete volumes");
             if (id == null) throw new Error("Id is mandatory");
             if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
 
