@@ -177,19 +177,12 @@ export class Serverless {
     }
     public static async EnsureDistro(tuser: User, jwt: string, distro: Distro, parent: Span): Promise<any> {
         try {
-            if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
             if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create volumes");
             if (distro == null) throw new Error("Data is mandatory");
             if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
-            if (distro._workspaceid == null || distro._workspaceid == "") {
-                throw new Error("Workspace ID is required to ensure a volume");
-            }
             delete distro._acl;
-
-            const workspace = await Config.db.GetOne<Workspace>({ query: { _id: distro._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
-            if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
 
             const rootjwt = Crypt.rootToken();
             if (distro._id == null || distro._id == "") {
@@ -198,24 +191,10 @@ export class Serverless {
                 distro._created = new Date();
                 distro._modifiedby = tuser._id;
                 distro._modified = new Date();
-                distro._workspaceid = distro._workspaceid;
-                Base.addRight(distro, workspace.admins, workspace.name + " admins", [Rights.read]);
-                Base.addRight(distro, workspace.admins, workspace.name + " users", [Rights.read]);
             } else {
                 const _distro = await Config.db.GetOne<Distro>({ query: { _id: distro._id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
                 if (_distro == null) throw new Error(Logger.enricherror(tuser, null, "Distro not found or access denied"));
-                if (distro._workspaceid != _distro._workspaceid && _distro._workspaceid != null && _distro._workspaceid != "") {
-                    let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _distro._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
-                    if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
-
-                    Base.removeRight(distro, _workspace.admins, [Rights.full_control]);
-                    Base.removeRight(distro, _workspace.users, [Rights.full_control]);
-
-                    Base.addRight(distro, workspace.admins, workspace.name + " admins", [Rights.read]);
-                    Base.addRight(distro, workspace.admins, workspace.name + " users", [Rights.read]);
-                }
             }
-
 
             const result = await Config.db.InsertOrUpdateOne(distro, "sf", "_id", 1, true, rootjwt, parent);
             await Audit.AuditDistroAction(tuser, "ensure", result, true, parent);
