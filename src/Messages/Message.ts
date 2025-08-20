@@ -5424,7 +5424,7 @@ export class Message {
             case "issueusertoken":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
-                const {id, exp, workspaceid } = data
+                const { id, exp, workspaceid } = data
                 msg.result = await Serverless.IssueUserToken(this.tuser, this.jwt, id, exp, data.name, data.app, workspaceid, parent)
                 break;
             case "addusertokenrequest":
@@ -5435,6 +5435,12 @@ export class Message {
                 break;
             case "revokeusertoken":
                 await Serverless.RevokeUserToken(this.tuser, this.jwt, msg.id, parent)
+                break;
+            case "removegitrepo":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                const { reponame } = data
+                await GitProxy.RemoveGitRepo(this.tuser, this.jwt, reponame, parent)
                 break;
             default:
                 msg.error = "Unknown custom command " + msg.command;

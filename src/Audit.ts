@@ -291,7 +291,6 @@ export class Audit {
             log.userid = user?._id;
             log.name = user?.name + " " + action + " " + distro.name;
             log.funcname = distro.name;
-            log.workspaceid = distro._workspaceid;
             log.username = user?.username;
             await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
         } catch (error) {
