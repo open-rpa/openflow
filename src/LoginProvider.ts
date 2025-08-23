@@ -1350,9 +1350,9 @@ export class LoginProvider {
                 Logger.instanse.debug("Token " + key + " has been forfilled from " + remoteip, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                 if (Config.validate_user_form != "") {
                     try {
-                        var tuser = await await Auth.Token2User(exists.jwt, span);
+                        let tuser = await Auth.Token2User(exists.jwt, span);
                         if (tuser == null) throw new Error("Access denied");
-                        var user = await Logger.DBHelper.FindById(tuser._id, span);
+                        let user = await Logger.DBHelper.FindById(tuser._id, span);
                         if (user.dblocked == true) {
                             Logger.instanse.debug("User is DB Locked, for key " + key + " user " + user.name + " " + user._id, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                             res.status(200).send({ message: "ok" });
@@ -1370,6 +1370,9 @@ export class LoginProvider {
                         Logger.instanse.error(error, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                     }
                 } else {
+                    let tuser = await Auth.Token2User(exists.jwt, span);
+                    if (tuser == null) throw new Error("Access denied");
+                    let user = await Logger.DBHelper.FindById(tuser._id, span);
                     Logger.instanse.debug("return jwt for " + key, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                     let token = await Serverless.IssueUserToken(user, exists.jwt, user._id, Config.longtoken_expires_in, exists.name, exists.app, exists.workspaceid, span);
                     exists.jwt = token.access_token;
