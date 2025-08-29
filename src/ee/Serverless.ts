@@ -1,13 +1,13 @@
 import { Base, Rights } from "@openiap/nodeapi";
 import { Span } from "@opentelemetry/api";
 import { Audit } from "../Audit.js";
-import { Distro, SFunc, User, UserToken, Volume, Workspace } from "../commoninterfaces.js";
+import { Auth } from "../Auth.js";
+import { Distro, Package, SFunc, User, UserToken, Volume, Workspace } from "../commoninterfaces.js";
 import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
+import { DatabaseConnection } from "../DatabaseConnection.js";
 import { Logger } from "../Logger.js";
 import { Util, Wellknown } from "../Util.js";
-import { DatabaseConnection } from "../DatabaseConnection.js";
-import { Auth } from "../Auth.js";
 
 export class Serverless {
     public static async EnsureFunc(tuser: User, jwt: string, func: SFunc, parent: Span): Promise<any> {
@@ -230,10 +230,85 @@ export class Serverless {
         }
     }
 
-    public static async EnsurePackage(tuser: User, jwt: string, id: string, parent: Span): Promise<any> {
-        // 
+    public static async EnsurePackage(tuser: User, jwt: string, packageData: Package, parent: Span): Promise<any> {
+        if (tuser == null) throw new Error("User is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create a package");
+        if (packageData == null) throw new Error("Package data is mandatory");
+        if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+
+        try {
+
+
+            if (packageData._id == null || packageData._id == "") {
+                packageData._type = "package";
+                packageData._createdby = tuser._id;
+                packageData._created = new Date();
+                packageData._modifiedby = tuser._id;
+                packageData._modified = new Date();
+                const slug = GenerateSlug();
+                console.log("Generated slug: " + slug);
+                packageData.slug = slug;
+
+                if (!Util.IsNullEmpty(packageData?._workspaceid)) {
+                    packageData._workspaceid = packageData._workspaceid;
+                }
+            } else {
+                const _packageData = await Config.db.GetOne<Package>({ query: { _id: packageData._id, "_type": "package" }, collectionname: "agents", jwt }, parent);
+                if (_packageData == null) throw new Error(Logger.enricherror(tuser, null, "Package not found or access denied"));
+
+                // let workspaceid: string = packageData?._workspaceid;
+                if (!Util.IsNullEmpty(packageData?._workspaceid)) {
+                    const workspace = await Config.db.GetOne<Workspace>({ query: { _id: packageData?._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+                    if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+
+                    if (packageData._workspaceid != _packageData._workspaceid && (_packageData._workspaceid != null && _packageData._workspaceid != "")) {
+                        let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _packageData._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+                        if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+
+                        Base.removeRight(packageData, _workspace.admins, [Rights.full_control]);
+                        Base.removeRight(packageData, _workspace.users, [Rights.full_control]);
+
+                        Base.addRight(packageData, workspace.admins, workspace.name + " admins", [Rights.read]);
+                        Base.addRight(packageData, workspace.admins, workspace.name + " users", [Rights.read]);
+                    }
+                    // packageData._workspaceid = workspace._id;
+                }
+            }
+
+            const rootjwt = Crypt.rootToken();
+            const result = await Config.db.InsertOrUpdateOne(packageData, "agents", "_id", 1, true, rootjwt, parent);
+            await Audit.AuditPackageAction(tuser, "ensure", result, true, parent);
+
+            return result
+
+        } catch (error) {
+            await Audit.AuditPackageAction(tuser, "ensure", packageData, false, parent);
+            throw error;
+        }
     }
-    public static async DeletePackage(tuser: User, jwt: string, id: string, parent: Span): Promise<any> { }
+
+    public static async DeletePackage(tuser: User, jwt: string, id: string, parent: Span): Promise<any> {
+        let _package: Package = null;
+        try {
+            if (tuser == null) throw new Error("User is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete packages");
+            if (id == null) throw new Error("Id is mandatory");
+            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+
+            const _package = await Config.db.GetOne<Package>({ query: { _id: id, "_type": "package" }, collectionname: "agent", jwt }, parent);
+            if (_package == null) throw new Error(Logger.enricherror(tuser, null, "Package not found or access denied"));
+
+            const rootjwt = Crypt.rootToken();
+            await Config.db.DeleteOne(id, "agent", false, rootjwt, parent);
+            await Audit.AuditPackageAction(tuser, "remove", _package, true, parent);
+
+        } catch (error) {
+            if (_package != null) {
+                await Audit.AuditPackageAction(tuser, "remove", _package, false, parent);
+            }
+            throw error;
+        }
+    }
 
     public static async IssueUserToken(tuser: User, jwt: string, userid: string, exp: string, name: string, app: string, workspaceid: string, parent: Span) {
         if (exp == null || exp == "") throw new Error("Expiration date is mandatory");
@@ -330,4 +405,215 @@ export class Serverless {
     // vscode extension should call custom function for upload file
     // env
     // ragnet
+}
+
+const Adjectives = [
+    "aged",
+    "ancient",
+    "autumn",
+    "billowing",
+    "bitter",
+    "black",
+    "blue",
+    "bold",
+    "broad",
+    "broken",
+    "calm",
+    "cold",
+    "cool",
+    "crimson",
+    "curly",
+    "damp",
+    "dark",
+    "dawn",
+    "delicate",
+    "divine",
+    "dry",
+    "empty",
+    "falling",
+    "fancy",
+    "flat",
+    "floral",
+    "fragrant",
+    "frosty",
+    "gentle",
+    "green",
+    "hidden",
+    "holy",
+    "icy",
+    "jolly",
+    "late",
+    "lingering",
+    "little",
+    "lively",
+    "long",
+    "lucky",
+    "misty",
+    "morning",
+    "muddy",
+    "mute",
+    "nameless",
+    "noisy",
+    "odd",
+    "old",
+    "orange",
+    "patient",
+    "plain",
+    "polished",
+    "proud",
+    "purple",
+    "quiet",
+    "rapid",
+    "raspy",
+    "red",
+    "restless",
+    "rough",
+    "round",
+    "royal",
+    "shiny",
+    "shrill",
+    "shy",
+    "silent",
+    "small",
+    "snowy",
+    "soft",
+    "solitary",
+    "sparkling",
+    "spring",
+    "square",
+    "steep",
+    "still",
+    "summer",
+    "super",
+    "sweet",
+    "throbbing",
+    "tight",
+    "tiny",
+    "twilight",
+    "wandering",
+    "weathered",
+    "white",
+    "wild",
+    "winter",
+    "wispy",
+    "withered",
+    "yellow",
+    "young",
+];
+
+const Nouns = [
+    "art",
+    "band",
+    "bar",
+    "base",
+    "bird",
+    "block",
+    "boat",
+    "bonus",
+    "bread",
+    "breeze",
+    "brook",
+    "bush",
+    "butterfly",
+    "cake",
+    "cell",
+    "cherry",
+    "cloud",
+    "credit",
+    "darkness",
+    "dawn",
+    "dew",
+    "disk",
+    "dream",
+    "dust",
+    "feather",
+    "field",
+    "fire",
+    "firefly",
+    "flower",
+    "fog",
+    "forest",
+    "frog",
+    "frost",
+    "glade",
+    "glitter",
+    "grass",
+    "hall",
+    "hat",
+    "haze",
+    "heart",
+    "hill",
+    "king",
+    "lab",
+    "lake",
+    "leaf",
+    "limit",
+    "math",
+    "meadow",
+    "mode",
+    "moon",
+    "morning",
+    "mountain",
+    "mouse",
+    "mud",
+    "night",
+    "paper",
+    "pine",
+    "poetry",
+    "pond",
+    "queen",
+    "rain",
+    "recipe",
+    "resonance",
+    "rice",
+    "river",
+    "salad",
+    "scene",
+    "sea",
+    "shadow",
+    "shape",
+    "silence",
+    "sky",
+    "smoke",
+    "snow",
+    "snowflake",
+    "sound",
+    "star",
+    "sun",
+    "sun",
+    "sunset",
+    "surf",
+    "term",
+    "thunder",
+    "tooth",
+    "tree",
+    "truth",
+    "union",
+    "unit",
+    "violet",
+    "voice",
+    "water",
+    "waterfall",
+    "wave",
+    "wildflower",
+    "wind",
+    "wood",
+];
+
+const tokenChars = "0123456789abcdef";
+function random(min: any, max: any) {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+}
+function GenerateSlug() {
+    let token = "";
+    for (let i = 0; i < 4; i++) {
+        token += tokenChars[random(0, tokenChars.length - 1)];
+    }
+    return (
+        Adjectives[random(0, Adjectives.length - 1)] +
+        "-" +
+        Nouns[random(0, Nouns.length - 1)] +
+        "-" +
+        token
+    );
 }
