@@ -226,6 +226,17 @@ export class dockerdriver implements i_agent_driver {
             if (packageid != "") {
                 Env.push("packageid=" + packageid);
             }
+            if (agent.image.indexOf("openiap/grafana") > -1) {
+                Env.push("GF_AUTH_GENERIC_OAUTH_CLIENT_ID=" + "agent")
+                Env.push("GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=" + "")
+                Env.push("GF_AUTH_GENERIC_OAUTH_TOKEN_URL=" + "http://api:3000/oidc/token")
+                Env.push("GF_AUTH_GENERIC_OAUTH_AUTH_URL=" + Config.protocol + "://" + Config.domain + "/oidc/auth")
+                Env.push("GF_AUTH_GENERIC_OAUTH_API_URL=" + Config.protocol + "://" + Config.domain + "/oidc/me")
+                Env.push("GF_AUTH_SIGNOUT_REDIRECT_URL=" + Config.protocol + "://" + Config.domain + "/oidc/session/end")
+                Env.push("GF_SERVER_DOMAIN=" + hostname)
+                Env.push("GF_SERVER_ROOT_URL=" + Config.protocol + "://" + hostname)
+            }
+
             if (agent.environment != null) {
                 var keys = Object.keys(agent.environment);
                 for (var i = 0; i < keys.length; i++) {
