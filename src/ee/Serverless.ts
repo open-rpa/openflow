@@ -10,6 +10,39 @@ import { Logger } from "../Logger.js";
 import { Util, Wellknown } from "../Util.js";
 
 export class Serverless {
+
+    private static async IsValidSlug(tuser: User, jwt: string, slug: string, parent: Span): Promise<boolean> {
+        const rootjwt = Crypt.rootToken();
+        let appexists = await Config.db.GetOne<SFunc>({ query: { repo: slug, "_type": "app" }, collectionname: "sf", jwt }, parent);
+        if (appexists == null) {
+            appexists = await Config.db.GetOne<SFunc>({ query: { repo: slug, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
+            if (appexists != null) {
+                return false;
+            }
+        } 
+        let packageexists = await Config.db.GetOne<SFunc>({ query: { slug, "_type": "package" }, collectionname: "agents", jwt }, parent);
+        if (packageexists == null) {
+            packageexists = await Config.db.GetOne<SFunc>({ query: { slug, "_type": "package" }, collectionname: "agents", jwt: rootjwt }, parent);
+            if (packageexists != null) {
+                return false;
+            }
+        }
+        return true;
+    }
+    private static async EnsureUniqueSlug(tuser: User, jwt: string, slug: string, parent: Span): Promise<string> {
+        slug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        let uniqueSlug = slug;
+        do {
+            if (await Serverless.IsValidSlug(tuser, jwt, uniqueSlug, parent) == true) {
+                break;
+            }
+            if(slug.length >= 10 && slug.indexOf("-") > -1) {
+                slug = slug.split("-").slice(0, -1).join("-");
+            }
+            uniqueSlug = slug + "-" + Util.GetUniqueIdentifier(4).toLowerCase();
+        } while (true);
+        return uniqueSlug;
+    }
     public static async EnsureApplication(tuser: User, jwt: string, func: SFunc, parent: Span): Promise<any> {
         try {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
@@ -21,7 +54,12 @@ export class Serverless {
             if (Util.IsNullEmpty(func._workspaceid)) {
                 throw new Error(Logger.enricherror(tuser, null, "Workspace ID is required to ensure a func"));
             }
-            if (Util.IsNullEmpty(func.repo)) throw new Error(Logger.enricherror(tuser, null, "Repo is required to ensure a func"));
+            if (Util.IsNullEmpty(func.name)) {
+                throw new Error(Logger.enricherror(tuser, null, "Function name is required to ensure a func"));
+            }
+            if (Util.IsNullEmpty(func.repo)) {
+                func.repo = func.name;
+            }
             if (Util.IsNullEmpty(func.tag)) {
                 func.tag = "latest";
             }
@@ -52,18 +90,7 @@ export class Serverless {
             } else {
                 repoexists = null;
             }
-            // if not, does repo+tag already exists, if so, deny creation
-            if (repoexists == null) {
-                repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, tag: func.tag, "_type": "app" }, collectionname: "sf", jwt }, parent);
-                if (repoexists == null) {
-                    repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, tag: func.tag, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
-                    if (repoexists != null) {
-                        throw new Error(Logger.enricherror(tuser, null, "Function with the same repo and tag already exists"));
-                    }
-                } else {
-                    func._id = repoexists._id;
-                }
-            }
+            func.repo = await Serverless.EnsureUniqueSlug(tuser, jwt, func.repo, parent);
 
 
             if (Util.IsNullEmpty(func._id)) {
@@ -268,19 +295,23 @@ export class Serverless {
         if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to create a package"));
         if (packageData == null) throw new Error(Logger.enricherror(tuser, null, "Package data is mandatory"));
         if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
+        if (Util.IsNullEmpty(packageData.name)) {
+            throw new Error(Logger.enricherror(tuser, null, "Package name is required to ensure a package"));
+        }
+            
 
         try {
-
-
+            if (Util.IsNullEmpty(packageData.slug)) {
+                packageData.slug = packageData.name;
+            }
+                
+            packageData.slug = await Serverless.EnsureUniqueSlug(tuser, jwt, packageData.slug, parent);
             if (packageData._id == null || packageData._id == "") {
                 packageData._type = "package";
                 packageData._createdby = tuser._id;
                 packageData._created = new Date();
                 packageData._modifiedby = tuser._id;
                 packageData._modified = new Date();
-                const slug = GenerateSlug();
-                console.log("Generated slug: " + slug);
-                packageData.slug = slug;
 
                 if (!Util.IsNullEmpty(packageData?._workspaceid)) {
                     packageData._workspaceid = packageData._workspaceid;
