@@ -14,12 +14,16 @@ export class Serverless {
         try {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
-            if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create func");
-            if (func == null) throw new Error("Data is mandatory");
-            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
-            if (func._workspaceid == null || func._workspaceid == "") {
-                throw new Error("Workspace ID is required to ensure a func");
+            if (Util.IsNullEmpty(tuser)) throw new Error("User is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to create func"));
+            if (Util.IsNullUndefinded(func)) throw new Error(Logger.enricherror(tuser, null, "Data is mandatory"));
+            if (Util.IsNullEmpty(jwt)) throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
+            if (Util.IsNullEmpty(func._workspaceid)) {
+                throw new Error(Logger.enricherror(tuser, null, "Workspace ID is required to ensure a func"));
+            }
+            if (Util.IsNullEmpty(func.repo)) throw new Error(Logger.enricherror(tuser, null, "Repo is required to ensure a func"));
+            if (Util.IsNullEmpty(func.tag)) {
+                func.tag = "latest";
             }
             delete func._acl;
 
@@ -28,17 +32,46 @@ export class Serverless {
 
             const rootjwt = Crypt.rootToken();
 
-            if (func._id == null || func._id == "") {
+            // Does user has rights to ANY repo using that repo name?
+            let repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt }, parent);
+            if (repoexists == null) {
+                // if not, does repo already exists, if so, deny creation
+                repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
+                if (repoexists != null) {
+                    if (!DatabaseConnection.hasAuthorization(tuser, repoexists, Rights.full_control)) {
+                        throw new Error(Logger.enricherror(tuser, null, "Function with the same repo already exists"));
+                    }
+                }
+            }
+            // Does user has rights to the object if _id is provided?
+            if (!Util.IsNullEmpty(func._id)) {
+                repoexists = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
+                if (repoexists == null) {
+                    delete func._id;
+                }
+            } else {
+                repoexists = null;
+            }
+            // if not, does repo+tag already exists, if so, deny creation
+            if (repoexists == null) {
+                repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, tag: func.tag, "_type": "app" }, collectionname: "sf", jwt }, parent);
+                if (repoexists == null) {
+                    repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, tag: func.tag, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
+                    if (repoexists != null) {
+                        throw new Error(Logger.enricherror(tuser, null, "Function with the same repo and tag already exists"));
+                    }
+                } else {
+                    func._id = repoexists._id;
+                }
+            }
+
+
+            if (Util.IsNullEmpty(func._id)) {
                 func._type = "app";
-                func._createdby = tuser._id;
-                func._created = new Date();
-                func._modifiedby = tuser._id;
-                func._modified = new Date();
                 func._workspaceid = func._workspaceid;
                 Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
                 Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
-            }
-            else {
+            } else {
                 const _func = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
                 if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
 

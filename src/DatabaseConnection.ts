@@ -2290,87 +2290,89 @@ export class DatabaseConnection extends events.EventEmitter {
 
                     // @ts-ignore
                     var fileid = item.fileid;
-                    if (item._type == "package" && fileid != "" && fileid != null) {
-                        var f = await this.getbyid<any>(fileid, "fs.files", jwt, true, span);
-                        if (f == null) throw new Error("File " + fileid + " not found");
-                    }
-
-                    if (item._type == "agent") {
-                        // @ts-ignore
-                        var runas = item.runas;
-                        // @ts-ignore
-                        var runasname = item.runasname;
-                        if (!Util.IsNullEmpty(runas)) {
-                            let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
-                            runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
-                            if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
-                                if (Util.IsNullEmpty(runasuser.customerid)) {
-                                    Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
-                                } else {
-                                    customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
-                                    if (customer != null) {
-                                        Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
-                                        Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
-                                    } else {
+                    if (collectionname == "agents") {
+                        if (item._type == "package" && fileid != "" && fileid != null) {
+                            var f = await this.getbyid<any>(fileid, "fs.files", jwt, true, span);
+                            if (f == null) throw new Error("File " + fileid + " not found");
+                        }
+    
+                        if (item._type == "agent") {
+                            // @ts-ignore
+                            var runas = item.runas;
+                            // @ts-ignore
+                            var runasname = item.runasname;
+                            if (!Util.IsNullEmpty(runas)) {
+                                let runasuser = await this.getbyid<User>(runas, "users", jwt, true, span);
+                                runasuser = await Logger.DBHelper.DecorateWithRoles(runasuser as any, parent);
+                                if (!DatabaseConnection.hasAuthorization(runasuser as any, item, Rights.update)) {
+                                    if (Util.IsNullEmpty(runasuser.customerid)) {
                                         Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                                    } else {
+                                        customer = await this.getbyid<Customer>(runasuser.customerid, "users", jwt, true, span);
+                                        if (customer != null) {
+                                            Base.addRight(item, customer.users, customer.name + " users", [Rights.read, Rights.update, Rights.invoke]);
+                                            Base.addRight(item, customer.admins, customer.name + " admins", [Rights.full_control]);
+                                        } else {
+                                            Base.addRight(item, runas, runasname, [Rights.read, Rights.update, Rights.invoke]);
+                                        }
+                                    }
+    
+                                }
+                            }
+    
+                            // @ts-ignore
+                            if (item.autostart == true && Util.IsNullEmpty(item._stripeprice) && Util.IsNullEmpty(item.stripeprice)) {
+                                if (!user.HasRoleName(Wellknown.admins.name)) {
+                                    throw new Error("Access denied");
+                                }
+                            }
+                            // @ts-ignore
+                            if (Util.IsNullEmpty(item.slug)) {
+                                throw new Error("Slug is required for agents");
+                            }
+                            // @ts-ignore
+                            item.slug = item.slug.toLowerCase();
+                            if (Util.IsNullEmpty((item as any).customerid)) {
+                                if (!Util.IsNullEmpty(user.selectedcustomerid)) {
+                                    var customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
+                                    if (customer != null) {
+                                        (item as any).customerid = user.selectedcustomerid;
                                     }
                                 }
-
-                            }
-                        }
-
-                        // @ts-ignore
-                        if (item.autostart == true && Util.IsNullEmpty(item._stripeprice) && Util.IsNullEmpty(item.stripeprice)) {
-                            if (!user.HasRoleName(Wellknown.admins.name)) {
-                                throw new Error("Access denied");
-                            }
-                        }
-                        // @ts-ignore
-                        if (Util.IsNullEmpty(item.slug)) {
-                            throw new Error("Slug is required for agents");
-                        }
-                        // @ts-ignore
-                        item.slug = item.slug.toLowerCase();
-                        if (Util.IsNullEmpty((item as any).customerid)) {
-                            if (!Util.IsNullEmpty(user.selectedcustomerid)) {
-                                var customer = await this.getbyid<Customer>(user.selectedcustomerid, "users", jwt, true, span)
-                                if (customer != null) {
-                                    (item as any).customerid = user.selectedcustomerid;
+                                if (Util.IsNullEmpty((item as any).customerid)) {
+                                    (item as any).customerid = user.customerid;
                                 }
                             }
-                            if (Util.IsNullEmpty((item as any).customerid)) {
-                                (item as any).customerid = user.customerid;
+    
+                            var agent: iAgent = (item as any);
+                            if (Util.IsNullEmpty(agent.runas)) {
+                                agent.runas = user._id
                             }
                         }
-
-                        var agent: iAgent = (item as any);
-                        if (Util.IsNullEmpty(agent.runas)) {
-                            agent.runas = user._id
+                        if (item._type == "package" && Util.IsNullEmpty((item as any).slug)) {
+                            let slugexists = null;
+                            let slug = "";
+                            do {
+                                slug = Util.GetUniqueIdentifier(8).toLowerCase();
+                                slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                            } while (slugexists != null);
+                            (item as any).slug = slug;
                         }
-                    }
-                    if (item._type == "package" && Util.IsNullEmpty((item as any).slug)) {
-                        let slugexists = null;
-                        let slug = "";
-                        do {
-                            slug = Util.GetUniqueIdentifier(8).toLowerCase();
-                            slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
-                        } while (slugexists != null);
-                        (item as any).slug = slug;
-                    }
-                    if (item._type == "package" && !Util.IsNullEmpty((item as any).slug)) {
-                        let slug = (item as any).slug.toLowerCase();
-                        slug = slug.replace(/[^a-z0-9-]/g, "");
-                        if (slug.length < 3) {
-                            throw new Error("Slug must be at least 3 characters long");
+                        if (item._type == "package" && !Util.IsNullEmpty((item as any).slug)) {
+                            let slug = (item as any).slug.toLowerCase();
+                            slug = slug.replace(/[^a-z0-9-]/g, "");
+                            if (slug.length < 3) {
+                                throw new Error("Slug must be at least 3 characters long");
+                            }
+                            if (slug.length > 50) {
+                                throw new Error("Slug must be at most 50 characters long");
+                            }
+                            let slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
+                            if (slugexists != null && slugexists._id != item._id) {
+                                throw new Error("Access denied, slug " + slug + " already in use");
+                            }
+                            (item as any).slug = slug;
                         }
-                        if (slug.length > 50) {
-                            throw new Error("Slug must be at most 50 characters long");
-                        }
-                        let slugexists = await Config.db.GetOne({ collectionname: "agents", query: { slug: slug }, jwt: Crypt.rootToken() }, span);
-                        if (slugexists != null && slugexists._id != item._id) {
-                            throw new Error("Access denied, slug " + slug + " already in use");
-                        }
-                        (item as any).slug = slug;
                     }
                     await Logger.DBHelper.CheckCache(collectionname, item, false, false, span);
                 }

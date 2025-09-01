@@ -495,6 +495,8 @@ export class SFunc extends Base {
     public admins: string;
     public users: string;
     public anonymous: boolean;
+    public repo: string;
+    public tag: string;
     public _workspaceid: string;
 }
 export class Distro extends Base {
