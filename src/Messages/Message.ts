@@ -5390,9 +5390,10 @@ export class Message {
                 msg.result = await FaaS.DeleteImage(this.tuser, this.jwt, pack);
                 break;
             case "ensuresfunc":
+            case "ensuresfapp":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
-                msg.result = await Serverless.EnsureFunc(this.tuser, this.jwt, data, parent)
+                msg.result = await Serverless.EnsureApplication(this.tuser, this.jwt, data, parent)
                 break;
             case "deletesfunc":
                 msg.result = await Serverless.DeleteFunc(this.tuser, this.jwt, msg.id, parent)

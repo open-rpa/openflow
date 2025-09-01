@@ -10,7 +10,7 @@ import { Logger } from "../Logger.js";
 import { Util, Wellknown } from "../Util.js";
 
 export class Serverless {
-    public static async EnsureFunc(tuser: User, jwt: string, func: SFunc, parent: Span): Promise<any> {
+    public static async EnsureApplication(tuser: User, jwt: string, func: SFunc, parent: Span): Promise<any> {
         try {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
