@@ -85,11 +85,11 @@ export interface i_otel {
 export interface i_agent_driver {
     detect(): Promise<boolean>;
     NodeLabels(parent: Span): Promise<any>;
-    EnsureInstance(user: User, jwt:string, agent: iAgent, parent: Span): Promise<void>;
-    GetInstancePods(user: User, jwt:string, agent: iAgent, getstats:boolean, parent: Span): Promise<any[]>;
-    RemoveInstance(user: User, jwt:string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void>;
-    GetInstanceLog(user: User, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<string>;
-    RemoveInstancePod(user: User, jwt:string, agent: iAgent, podname: string, parent: Span): Promise<void>;
+    EnsureInstance(user: User, jwt: string, agent: iAgent, parent: Span): Promise<void>;
+    GetInstancePods(user: User, jwt: string, agent: iAgent, getstats: boolean, parent: Span): Promise<any[]>;
+    RemoveInstance(user: User, jwt: string, agent: iAgent, removevolumes: boolean, parent: Span): Promise<void>;
+    GetInstanceLog(user: User, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<string>;
+    RemoveInstancePod(user: User, jwt: string, agent: iAgent, podname: string, parent: Span): Promise<void>;
     InstanceCleanup(parent: Span): Promise<void>;
 }
 
@@ -157,7 +157,7 @@ export interface iAgent extends iBase {
     _resourceusageid: string;
     _productname: string;
     _workspaceid: string;
-constructor();
+    constructor();
 }
 export class Rights {
     static create = 1;
@@ -435,18 +435,18 @@ export class Role extends Base {
         return res;
     }
     IsMember(_id: string): boolean {
-        if(this.members == null) this.members = [];
+        if (this.members == null) this.members = [];
         const hits: Rolemember[] = this.members.filter(member => member._id === _id);
         return (hits.length === 1);
     }
     AddMember(item: Base): void {
         if (!this.IsMember(item._id)) {
-            if(this.members == null) this.members = [];
+            if (this.members == null) this.members = [];
             this.members.push(new Rolemember(item.name, item._id));
         }
     }
     RemoveMember(_id: string): void {
-        if(this.members == null) this.members = [];
+        if (this.members == null) this.members = [];
         this.members.forEach((member, idx) => {
             if (member._id === _id) {
                 this.members.splice(idx, 1);
@@ -503,7 +503,19 @@ export class Distro extends Base {
     public admins: string;
     public users: string;
 }
-export  class Customer extends Base {
+export class Package extends Base {
+    public admins: string;
+    public users: string;
+    public language: string;
+    public daemon: boolean;
+    public chromium: boolean;
+    public fileid: string;
+    public repo: string;
+    public ref: string;
+    public slug: string;
+    public _workspaceid: string;
+}
+export class Customer extends Base {
     constructor() {
         super();
         this._type = "customer";
