@@ -110,9 +110,9 @@ export class Serverless {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete functions");
-            if (id == null) throw new Error("Id is mandatory");
-            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to delete functions"));
+            if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
+            if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
             const rootjwt = Crypt.rootToken();
             const _func = await Config.db.GetOne<SFunc>({ query: { _id: id, "_type": "app" }, collectionname: "sf", jwt }, parent);
@@ -133,11 +133,11 @@ export class Serverless {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create volumes");
-            if (volume == null) throw new Error("Data is mandatory");
-            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to create volumes"));
+            if (volume == null) throw new Error(Logger.enricherror(tuser, null, "Data is mandatory"));
+            if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
             if (volume._workspaceid == null || volume._workspaceid == "") {
-                throw new Error("Workspace ID is required to ensure a volume");
+                throw new Error(Logger.enricherror(tuser, null, "Workspace ID is required to ensure a volume"));
             }
             volume._encrypt = [
                 "password",
@@ -190,9 +190,9 @@ export class Serverless {
             if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete volumes");
-            if (id == null) throw new Error("Id is mandatory");
-            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to delete volumes"));
+            if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
+            if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
             const rootjwt = Crypt.rootToken();
             const _volume = await Config.db.GetOne<Volume>({ query: { _id: id, "_type": "volume" }, collectionname: "sf", jwt }, parent);
@@ -212,9 +212,9 @@ export class Serverless {
         try {
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create distro");
-            if (distro == null) throw new Error("Data is mandatory");
-            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to create distro"));
+            if (distro == null) throw new Error(Logger.enricherror(tuser, null, "Data is mandatory"));
+            if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
             delete distro._acl;
 
             const rootjwt = Crypt.rootToken();
@@ -244,9 +244,9 @@ export class Serverless {
             // if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
             if (!Logger.License.validlicense) await Logger.License.validate();
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete distro");
-            if (id == null) throw new Error("Id is mandatory");
-            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to delete distro"));
+            if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
+            if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
             const rootjwt = Crypt.rootToken();
             const _distro = await Config.db.GetOne<Distro>({ query: { _id: id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
@@ -265,9 +265,9 @@ export class Serverless {
 
     public static async EnsurePackage(tuser: User, jwt: string, packageData: Package, parent: Span): Promise<any> {
         if (tuser == null) throw new Error("User is mandatory");
-        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to create a package");
-        if (packageData == null) throw new Error("Package data is mandatory");
-        if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to create a package"));
+        if (packageData == null) throw new Error(Logger.enricherror(tuser, null, "Package data is mandatory"));
+        if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
         try {
 
@@ -324,9 +324,9 @@ export class Serverless {
         let _package: Package = null;
         try {
             if (tuser == null) throw new Error("User is mandatory");
-            if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete packages");
-            if (id == null) throw new Error("Id is mandatory");
-            if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+            if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to delete packages"));
+            if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
+            if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
             const _package = await Config.db.GetOne<Package>({ query: { _id: id, "_type": "package" }, collectionname: "agent", jwt }, parent);
             if (_package == null) throw new Error(Logger.enricherror(tuser, null, "Package not found or access denied"));
@@ -344,10 +344,10 @@ export class Serverless {
     }
 
     public static async IssueUserToken(tuser: User, jwt: string, userid: string, exp: string, name: string, app: string, workspaceid: string, parent: Span) {
-        if (exp == null || exp == "") throw new Error("Expiration date is mandatory");
+        if (exp == null || exp == "") throw new Error(Logger.enricherror(tuser, null, "Expiration date is mandatory"));
         if (tuser == null) throw new Error("User is mandatory");
-        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to issue tokens");
-        if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to issue tokens"));
+        if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
         let workspace: Workspace = null;
         if (!Util.IsNullEmpty(workspaceid)) {
@@ -422,9 +422,9 @@ export class Serverless {
     }
     public static async RevokeUserToken(tuser: User, jwt: string, id: string, parent: Span): Promise<void> {
         if (tuser == null) throw new Error("User is mandatory");
-        if (tuser._id == Wellknown.guest._id) throw new Error("Guest is not allowed to issue tokens");
-        if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
-        if (id == null || id == "") throw new Error("Id is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to issue tokens"));
+        if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
+        if (id == null || id == "") throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
 
         const item = await Config.db.GetOne<UserToken>({ query: { _id: id, "_type": "usertoken" }, collectionname: "usertokens", jwt }, parent);
         if (item == null) throw new Error(Logger.enricherror(tuser, null, "User token not found or access denied"));
