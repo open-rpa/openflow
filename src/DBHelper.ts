@@ -105,6 +105,7 @@ export class DBHelper {
         }
     }
     public async CheckCache(collectionname: string, item: Base, watch: boolean, frombroadcast: boolean, span: Span): Promise<void> {
+        if (Util.IsNullUndefinded(collectionname) || Util.IsNullUndefinded(item) || Util.IsNullUndefinded(item._id)) return;
         await this.init();
         if (watch && collectionname == "users" && item._id == Wellknown.root._id) return;
         if (collectionname == "config" && item._type == "resource") {
