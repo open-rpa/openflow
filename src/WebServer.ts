@@ -617,7 +617,19 @@ export class WebServer {
                     throw new Error("Guest user cannot upload files, please login first");
                 }
                 if(client.user?.username != user?.username) {
-                    Config.db.db.collection("fs.files").updateOne({ _id: safeObjectID(id) }, { $set: { _createdby: user.name, _createdbyid: user._id, _modifiedby: user.name, _modifiedbyid: user._id } });
+                    let _acl = [{
+                        deny: false,
+                        rights: 65535,
+                        _id: "5b6ab63c8d4a64b7c47f4a8e",
+                        name: "filestore admins"
+                    },
+                    {
+                        deny: false,
+                        rights: 65535,
+                        _id: user._id,
+                        name: user.name
+                    }]
+                    Config.db.db.collection("fs.files").updateOne({ _id: safeObjectID(id) }, { $set: { "metadata._createdby": user.name, "metadata._createdbyid": user._id, "metadata._modifiedby": user.name, "metadata._modifiedbyid": user._id, "metadata._acl": _acl } });
                 }
                 reply.command = "uploadreply"
                 const data = Any.create({ type_url: "type.googleapis.com/openiap.UploadResponse", value: UploadResponse.encode(UploadResponse.create({ id, filename: msg.filename })).finish() })

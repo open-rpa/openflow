@@ -358,8 +358,11 @@ export class Serverless {
             if (Util.IsNullEmpty(packageData.slug)) {
                 packageData.slug = packageData.name;
             }
-
+            let oldslug = packageData.slug;
             packageData.slug = await Serverless.EnsureUniqueSlug(tuser, jwt, packageData.slug, null, packageData._id, parent);
+            if (oldslug != packageData.slug) {
+                delete packageData._id;
+            }
             packageData._type = "package";
             packageData._modifiedby = tuser._id;
             packageData._modified = new Date();
