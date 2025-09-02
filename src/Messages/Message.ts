@@ -765,23 +765,20 @@ export class Message {
         try {
             var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt: this.jwt }, parent);
             if (pack == null) throw new Error("Access denied or package not found");
-            if (!DatabaseConnection.hasAuthorization(this.tuser, pack, Rights.delete)) {
-                throw new Error(`[${this.tuser.name}] Access denied, missing delete permission on ${pack.name}`);
-            }
             var agent = await Config.db.GetOne<any>({ query: { "schedules.packageid": msg.id, "_type": "agent" }, collectionname: "agents", jwt: Crypt.rootToken() }, parent);
             if (agent != null) {
                 throw new Error("Cannot delete package, it is in use by agent " + agent.name + " id: " + agent._id);
             }
 
+            const rootjwt = Crypt.rootToken();
             if (pack.fileid != null && pack.fileid != "") {
-                const rootjwt = Crypt.rootToken();
                 let query = { _id: pack.fileid };
                 const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
                 if (item != null) {
                     await Config.db.DeleteOne(pack.fileid, "files", true, this.jwt, parent);
                 }
             }
-            await Config.db.DeleteOne(pack._id, "agents", false, this.jwt, parent);
+            await Config.db.DeleteOne(pack._id, "agents", false, rootjwt, parent);
         } finally {
             this.data = JSON.stringify(msg);
         }

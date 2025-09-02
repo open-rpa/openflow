@@ -366,6 +366,14 @@ export class Serverless {
             if (packageData._id == null || packageData._id == "") {                
                 packageData._createdby = tuser._id;
                 packageData._created = new Date();
+                if (!Util.IsNullEmpty(packageData?._workspaceid)) {
+                    const workspace = await Config.db.GetOne<Workspace>({ query: { _id: packageData?._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+                    if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+                    Base.addRight(packageData, workspace.admins, workspace.name + " admins", [Rights.read]);
+                    Base.addRight(packageData, workspace.admins, workspace.name + " users", [Rights.read]);
+                } else {
+                    Base.addRight(packageData, tuser._id, tuser.name, [Rights.read]);
+                }
             } else {
                 const _packageData = await Config.db.GetOne<Package>({ query: { _id: packageData._id, "_type": "package" }, collectionname: "agents", jwt }, parent);
                 if (_packageData == null) throw new Error(Logger.enricherror(tuser, null, "Package not found or access denied"));
