@@ -360,16 +360,12 @@ export class Serverless {
             }
 
             packageData.slug = await Serverless.EnsureUniqueSlug(tuser, jwt, packageData.slug, null, packageData._id, parent);
-            if (packageData._id == null || packageData._id == "") {
-                packageData._type = "package";
+            packageData._type = "package";
+            packageData._modifiedby = tuser._id;
+            packageData._modified = new Date();
+            if (packageData._id == null || packageData._id == "") {                
                 packageData._createdby = tuser._id;
                 packageData._created = new Date();
-                packageData._modifiedby = tuser._id;
-                packageData._modified = new Date();
-
-                if (!Util.IsNullEmpty(packageData?._workspaceid)) {
-                    packageData._workspaceid = packageData._workspaceid;
-                }
             } else {
                 const _packageData = await Config.db.GetOne<Package>({ query: { _id: packageData._id, "_type": "package" }, collectionname: "agents", jwt }, parent);
                 if (_packageData == null) throw new Error(Logger.enricherror(tuser, null, "Package not found or access denied"));
@@ -390,6 +386,8 @@ export class Serverless {
                         Base.addRight(packageData, workspace.admins, workspace.name + " users", [Rights.read]);
                     }
                     // packageData._workspaceid = workspace._id;
+                } else {
+                    Base.addRight(packageData, tuser._id, tuser.name, [Rights.read]);
                 }
             }
 
