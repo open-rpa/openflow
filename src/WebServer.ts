@@ -616,7 +616,7 @@ export class WebServer {
                     Config.db.db.collection("fs.files").deleteOne({ _id: safeObjectID(id) });
                     throw new Error("Guest user cannot upload files, please login first");
                 }
-                if(client.user?.username != user?.username) {
+                if(user != null && client.user?.username != user?.username) {
                     let _acl = [{
                         deny: false,
                         rights: 65535,
