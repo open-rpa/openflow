@@ -11,7 +11,7 @@ import { Util, Wellknown } from "../Util.js";
 
 export class Serverless {
 
-    private static async IsValidSlug(tuser: User, jwt: string, slug: string, parent: Span): Promise<boolean> {
+    private static async IsValidSlug(tuser: User, jwt: string, slug: string, repoid: string | null, packageid: string | null, parent: Span): Promise<boolean> {
         const rootjwt = Crypt.rootToken();
         let appexists = await Config.db.GetOne<SFunc>({ query: { repo: slug, "_type": "app" }, collectionname: "sf", jwt }, parent);
         if (appexists == null) {
@@ -19,21 +19,26 @@ export class Serverless {
             if (appexists != null) {
                 return false;
             }
-        } 
+        } else if (!Util.IsNullEmpty(repoid) && appexists._id != repoid) {
+            return false;
+        }
         let packageexists = await Config.db.GetOne<SFunc>({ query: { slug, "_type": "package" }, collectionname: "agents", jwt }, parent);
         if (packageexists == null) {
             packageexists = await Config.db.GetOne<SFunc>({ query: { slug, "_type": "package" }, collectionname: "agents", jwt: rootjwt }, parent);
             if (packageexists != null) {
                 return false;
             }
+        } else if (!Util.IsNullEmpty(packageid) && packageexists._id != packageid) {
+            return false;
         }
         return true;
     }
-    private static async EnsureUniqueSlug(tuser: User, jwt: string, slug: string, parent: Span): Promise<string> {
+    private static async EnsureUniqueSlug(tuser: User, jwt: string, slug: string, repoid: string | null, packageid: string | null, parent: Span): Promise<string> {
+        if (Util.IsNullEmpty(slug)) throw new Error("Slug is mandatory");
         slug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         let uniqueSlug = slug;
         do {
-            if (await Serverless.IsValidSlug(tuser, jwt, uniqueSlug, parent) == true) {
+            if (await Serverless.IsValidSlug(tuser, jwt, uniqueSlug, repoid, packageid, parent) == true) {
                 break;
             }
             if(slug.length >= 10 && slug.indexOf("-") > -1) {
@@ -70,32 +75,29 @@ export class Serverless {
 
             const rootjwt = Crypt.rootToken();
 
-            // Does user has rights to ANY repo using that repo name?
-            let repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt }, parent);
-            if (repoexists == null) {
-                // if not, does repo already exists, if so, deny creation
-                repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
-                if (repoexists != null) {
-                    if (!DatabaseConnection.hasAuthorization(tuser, repoexists, Rights.full_control)) {
-                        throw new Error(Logger.enricherror(tuser, null, "Function with the same repo already exists"));
-                    }
-                }
-            }
+            func.repo = await Serverless.EnsureUniqueSlug(tuser, jwt, func.repo, func._id, null, parent);
+            // // Does user has rights to ANY repo using that repo name?
+            // let repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt }, parent);
+            // if (repoexists == null) {
+            //     // if not, does repo already exists, if so, deny creation
+            //     repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
+            //     if (repoexists != null) {
+            //         if (!DatabaseConnection.hasAuthorization(tuser, repoexists, Rights.full_control)) {
+            //             throw new Error(Logger.enricherror(tuser, null, "Function with the same repo already exists"));
+            //         }
+            //     }
+            // }
             // Does user has rights to the object if _id is provided?
             if (!Util.IsNullEmpty(func._id)) {
-                repoexists = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
+                let repoexists = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
                 if (repoexists == null) {
                     delete func._id;
                 }
-            } else {
-                repoexists = null;
             }
-            func.repo = await Serverless.EnsureUniqueSlug(tuser, jwt, func.repo, parent);
 
 
             if (Util.IsNullEmpty(func._id)) {
                 func._type = "app";
-                func._workspaceid = func._workspaceid;
                 Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
                 Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
             } else {
@@ -154,6 +156,60 @@ export class Serverless {
             }
             throw error;
         }
+    }
+    public static async EnsureImage(tuser: User, jwt: string, image: SFunc, parent: Span): Promise<any> {
+        if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
+        if (!Logger.License.validlicense) await Logger.License.validate();
+        if (Util.IsNullEmpty(tuser)) throw new Error("User is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to create image"));
+        if (Util.IsNullUndefinded(image)) throw new Error(Logger.enricherror(tuser, null, "Data is mandatory"));
+        if (Util.IsNullEmpty(jwt)) throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
+        if (Util.IsNullEmpty(image._workspaceid)) {
+            throw new Error(Logger.enricherror(tuser, null, "Workspace ID is required to ensure a image"));
+        }
+        const workspace = await Config.db.GetOne<Workspace>({ query: { _id: image._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+        if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+
+        if (Util.IsNullEmpty(image._id)) {
+            image._type = "image";
+            Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
+            Base.addRight(image, workspace.admins, workspace.name + " users", [Rights.read]);
+        } else {
+            const _func = await Config.db.GetOne<SFunc>({ query: { _id: image._id, "_type": "image" }, collectionname: "sf", jwt }, parent);
+            if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
+
+            if (image._workspaceid != _func._workspaceid && (_func._workspaceid != null && _func._workspaceid != "")) {
+                let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _func._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
+                if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+
+                Base.removeRight(image, _workspace.admins, [Rights.full_control]);
+                Base.removeRight(image, _workspace.users, [Rights.full_control]);
+
+                Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
+                Base.addRight(image, workspace.admins, workspace.name + " users", [Rights.read]);
+            } else {
+                Base.addRight(image, workspace.users, workspace.name + " users", [Rights.read]);
+                Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
+            }
+        }
+        const rootjwt = Crypt.rootToken();
+        const result = await Config.db.InsertOrUpdateOne(image, "sf", "_id", 1, true, rootjwt, parent);
+        return result
+
+    }
+    public static async DeleteImage(tuser: User, jwt: string, id: string, parent: Span): Promise<any> {
+        if (Config.workspace_enabled == false) throw new Error("Workspaces are not enabled");
+        if (!Logger.License.validlicense) await Logger.License.validate();
+        if (tuser == null) throw new Error("User is mandatory");
+        if (tuser._id == Wellknown.guest._id) throw new Error(Logger.enricherror(tuser, null, "Guest is not allowed to delete images"));
+        if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
+        if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
+
+        const _image = await Config.db.GetOne<Base>({ query: { _id: id, "_type": "image" }, collectionname: "sf", jwt }, parent);
+        if (_image == null) throw new Error(Logger.enricherror(tuser, null, "Image not found or access denied"));
+        
+        const rootjwt = Crypt.rootToken();
+        await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
     }
     public static async EnsureVolume(tuser: User, jwt: string, volume: Volume, parent: Span): Promise<any> {
         try {
@@ -221,10 +277,10 @@ export class Serverless {
             if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
             if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
-            const rootjwt = Crypt.rootToken();
             const _volume = await Config.db.GetOne<Volume>({ query: { _id: id, "_type": "volume" }, collectionname: "sf", jwt }, parent);
             if (_volume == null) throw new Error(Logger.enricherror(tuser, null, "Volume not found or access denied"));
-
+            
+            const rootjwt = Crypt.rootToken();
             await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
             await Audit.AuditVolumeAction(tuser, "remove", _volume, true, parent);
 
@@ -275,10 +331,10 @@ export class Serverless {
             if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
             if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
-            const rootjwt = Crypt.rootToken();
             const _distro = await Config.db.GetOne<Distro>({ query: { _id: id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
             if (_distro == null) throw new Error(Logger.enricherror(tuser, null, "Distro not found or access denied"));
-
+            
+            const rootjwt = Crypt.rootToken();
             await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
             await Audit.AuditDistroAction(tuser, "remove", _distro, true, parent);
 
@@ -297,15 +353,13 @@ export class Serverless {
         if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
         if (Util.IsNullEmpty(packageData.name)) {
             throw new Error(Logger.enricherror(tuser, null, "Package name is required to ensure a package"));
-        }
-            
-
+        }           
         try {
             if (Util.IsNullEmpty(packageData.slug)) {
                 packageData.slug = packageData.name;
             }
-                
-            packageData.slug = await Serverless.EnsureUniqueSlug(tuser, jwt, packageData.slug, parent);
+
+            packageData.slug = await Serverless.EnsureUniqueSlug(tuser, jwt, packageData.slug, null, packageData._id, parent);
             if (packageData._id == null || packageData._id == "") {
                 packageData._type = "package";
                 packageData._createdby = tuser._id;

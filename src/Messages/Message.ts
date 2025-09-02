@@ -5389,13 +5389,13 @@ export class Message {
                 }
                 msg.result = await FaaS.DeleteImage(this.tuser, this.jwt, pack);
                 break;
-            case "ensuresfunc":
             case "ensuresfapp":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 msg.result = await Serverless.EnsureApplication(this.tuser, this.jwt, data, parent)
                 break;
             case "deletesfunc":
+            case "deletesfapp":
                 msg.result = await Serverless.DeleteFunc(this.tuser, this.jwt, msg.id, parent)
                 break;
             case "ensuresfvolume":
@@ -5406,12 +5406,21 @@ export class Message {
             case "deletesfvolume":
                 msg.result = await Serverless.DeleteVolume(this.tuser, this.jwt, msg.id, parent)
                 break;
-            case "ensuredistro":
+            case "ensuresfimage":
+                // @ts-ignore
+                var data = JSON.parse(msg.data);
+                msg.result = await Serverless.EnsureImage(this.tuser, this.jwt, data, parent)
+                break;
+            case "deletesfimage":
+                msg.result = await Serverless.DeleteImage(this.tuser, this.jwt, msg.id, parent)
+                break;
+            case "ensuresfdistro":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 msg.result = await Serverless.EnsureDistro(this.tuser, this.jwt, data, parent)
                 break;
             case "deletedistro":
+            case "deletesfdistro":
                 msg.result = await Serverless.DeleteDistro(this.tuser, this.jwt, msg.id, parent)
                 break;
             case "ensurepackage":
