@@ -78,18 +78,18 @@ export class Serverless {
 
             const rootjwt = Crypt.rootToken();
 
-            func.repo = await Serverless.EnsureUniqueSlug(tuser, jwt, func.repo, func._id, null, parent);
-            // // Does user has rights to ANY repo using that repo name?
-            // let repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt }, parent);
-            // if (repoexists == null) {
-            //     // if not, does repo already exists, if so, deny creation
-            //     repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
-            //     if (repoexists != null) {
-            //         if (!DatabaseConnection.hasAuthorization(tuser, repoexists, Rights.full_control)) {
-            //             throw new Error(Logger.enricherror(tuser, null, "Function with the same repo already exists"));
-            //         }
-            //     }
-            // }
+            // func.repo = await Serverless.EnsureUniqueSlug(tuser, jwt, func.repo, func._id, null, parent);
+            // Does user has rights to ANY repo using that repo name?
+            let repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt }, parent);
+            if (repoexists == null) {
+                // if not, does repo already exists, if so, deny creation
+                repoexists = await Config.db.GetOne<SFunc>({ query: { repo: func.repo, "_type": "app" }, collectionname: "sf", jwt: rootjwt }, parent);
+                if (repoexists != null) {
+                    if (!DatabaseConnection.hasAuthorization(tuser, repoexists, Rights.full_control)) {
+                        throw new Error(Logger.enricherror(tuser, null, "Function with the same repo already exists"));
+                    }
+                }
+            }
             // Does user has rights to the object if _id is provided?
             if (!Util.IsNullEmpty(func._id)) {
                 let repoexists = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
