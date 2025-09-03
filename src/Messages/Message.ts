@@ -3563,16 +3563,12 @@ export class Message {
     }
     public async ReloadUserToken(cli: WebSocketServerClient, parent: Span) {
         if (Util.IsNullUndefinded(cli)) return;
+        if (Util.IsNullUndefinded(cli.user)) return;
         await this.sleep(1000);
         const l: SigninMessage = new SigninMessage();
         await Logger.DBHelper.CheckCache("users", cli.user, false, false, parent);
-        if (cli.user != null && cli.user.impersonating != null) {
-            let tokenid = cli.user.tokenid;
-            cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, tokenid, parent);
-        } else {
-            let tokenid = cli.user.tokenid;
-            cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, tokenid, parent);
-        }
+        let tokenid = cli.user.tokenid;
+        cli.user = await Auth.RefreshUser(cli.user, cli.user.impersonating, tokenid, parent);
         cli.jwt = await Auth.User2Token(cli.user, Config.shorttoken_expires_in, parent);
         if (!Util.IsNullUndefinded(cli.user)) cli.username = cli.user.username;
         l.jwt = cli.jwt;
