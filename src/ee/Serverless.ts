@@ -8,6 +8,9 @@ import { Crypt } from "../Crypt.js";
 import { DatabaseConnection } from "../DatabaseConnection.js";
 import { Logger } from "../Logger.js";
 import { Util, Wellknown } from "../Util.js";
+import { ObjectId } from "mongodb";
+
+const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 
 export class Serverless {
 
@@ -41,7 +44,7 @@ export class Serverless {
             if (await Serverless.IsValidSlug(tuser, jwt, uniqueSlug, repoid, packageid, parent) == true) {
                 break;
             }
-            if(slug.length >= 10 && slug.indexOf("-") > -1) {
+            if (slug.length >= 10 && slug.indexOf("-") > -1) {
                 slug = slug.split("-").slice(0, -1).join("-");
             }
             uniqueSlug = slug + "-" + Util.GetUniqueIdentifier(4).toLowerCase();
@@ -99,7 +102,7 @@ export class Serverless {
             if (Util.IsNullEmpty(func._id)) {
                 func._type = "app";
                 Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
-                Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
+                Base.addRight(func, workspace.users, workspace.name + " users", [Rights.read]);
             } else {
                 const _func = await Config.db.GetOne<SFunc>({ query: { _id: func._id, "_type": "app" }, collectionname: "sf", jwt }, parent);
                 if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
@@ -112,7 +115,7 @@ export class Serverless {
                     Base.removeRight(func, _workspace.users, [Rights.full_control]);
 
                     Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
-                    Base.addRight(func, workspace.admins, workspace.name + " users", [Rights.read]);
+                    Base.addRight(func, workspace.users, workspace.name + " users", [Rights.read]);
                 } else {
                     Base.addRight(func, workspace.users, workspace.name + " users", [Rights.read]);
                     Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
@@ -173,7 +176,7 @@ export class Serverless {
         if (Util.IsNullEmpty(image._id)) {
             image._type = "image";
             Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
-            Base.addRight(image, workspace.admins, workspace.name + " users", [Rights.read]);
+            Base.addRight(image, workspace.users, workspace.name + " users", [Rights.read]);
         } else {
             const _func = await Config.db.GetOne<SFunc>({ query: { _id: image._id, "_type": "image" }, collectionname: "sf", jwt }, parent);
             if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
@@ -186,7 +189,7 @@ export class Serverless {
                 Base.removeRight(image, _workspace.users, [Rights.full_control]);
 
                 Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
-                Base.addRight(image, workspace.admins, workspace.name + " users", [Rights.read]);
+                Base.addRight(image, workspace.users, workspace.name + " users", [Rights.read]);
             } else {
                 Base.addRight(image, workspace.users, workspace.name + " users", [Rights.read]);
                 Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
@@ -207,7 +210,7 @@ export class Serverless {
 
         const _image = await Config.db.GetOne<Base>({ query: { _id: id, "_type": "image" }, collectionname: "sf", jwt }, parent);
         if (_image == null) throw new Error(Logger.enricherror(tuser, null, "Image not found or access denied"));
-        
+
         const rootjwt = Crypt.rootToken();
         await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
     }
@@ -241,7 +244,7 @@ export class Serverless {
                 volume._modified = new Date();
                 volume._workspaceid = volume._workspaceid;
                 Base.addRight(volume, workspace.admins, workspace.name + " admins", [Rights.read]);
-                Base.addRight(volume, workspace.admins, workspace.name + " users", [Rights.read]);
+                Base.addRight(volume, workspace.users, workspace.name + " users", [Rights.read]);
             } else {
                 const _volume = await Config.db.GetOne<Volume>({ query: { _id: volume._id, "_type": "volume" }, collectionname: "sf", jwt }, parent);
                 if (_volume == null) throw new Error(Logger.enricherror(tuser, null, "Volume not found or access denied"));
@@ -253,7 +256,7 @@ export class Serverless {
                     Base.removeRight(volume, _workspace.users, [Rights.full_control]);
 
                     Base.addRight(volume, workspace.admins, workspace.name + " admins", [Rights.read]);
-                    Base.addRight(volume, workspace.admins, workspace.name + " users", [Rights.read]);
+                    Base.addRight(volume, workspace.users, workspace.name + " users", [Rights.read]);
                 }
             }
 
@@ -279,7 +282,7 @@ export class Serverless {
 
             const _volume = await Config.db.GetOne<Volume>({ query: { _id: id, "_type": "volume" }, collectionname: "sf", jwt }, parent);
             if (_volume == null) throw new Error(Logger.enricherror(tuser, null, "Volume not found or access denied"));
-            
+
             const rootjwt = Crypt.rootToken();
             await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
             await Audit.AuditVolumeAction(tuser, "remove", _volume, true, parent);
@@ -333,7 +336,7 @@ export class Serverless {
 
             const _distro = await Config.db.GetOne<Distro>({ query: { _id: id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
             if (_distro == null) throw new Error(Logger.enricherror(tuser, null, "Distro not found or access denied"));
-            
+
             const rootjwt = Crypt.rootToken();
             await Config.db.DeleteOne(id, "sf", false, rootjwt, parent);
             await Audit.AuditDistroAction(tuser, "remove", _distro, true, parent);
@@ -353,7 +356,7 @@ export class Serverless {
         if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
         if (Util.IsNullEmpty(packageData.name)) {
             throw new Error(Logger.enricherror(tuser, null, "Package name is required to ensure a package"));
-        }           
+        }
         try {
             if (Util.IsNullEmpty(packageData.slug)) {
                 packageData.slug = packageData.name;
@@ -366,16 +369,25 @@ export class Serverless {
             packageData._type = "package";
             packageData._modifiedby = tuser._id;
             packageData._modified = new Date();
-            if (packageData._id == null || packageData._id == "") {                
+            if (packageData._id == null || packageData._id == "") {
                 packageData._createdby = tuser._id;
                 packageData._created = new Date();
                 if (!Util.IsNullEmpty(packageData?._workspaceid)) {
                     const workspace = await Config.db.GetOne<Workspace>({ query: { _id: packageData?._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                     if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+
+                    if (!Util.IsNullUndefinded(packageData?._acl)) {
+                        packageData._acl.forEach(element => {
+                            Base.removeRight(packageData, element._id, [Rights.full_control]);
+                            Base.addRight(packageData, element._id, element.name, [Rights.read]);
+                        });
+                    }
+
                     Base.addRight(packageData, workspace.admins, workspace.name + " admins", [Rights.read]);
-                    Base.addRight(packageData, workspace.admins, workspace.name + " users", [Rights.read]);
+                    Base.addRight(packageData, workspace.users, workspace.name + " users", [Rights.read]);
+
                 } else {
-                    Base.addRight(packageData, tuser._id, tuser.name, [Rights.read]);
+                    Base.addRight(packageData, tuser._id, tuser.name, [Rights.full_control]);
                 }
             } else {
                 const _packageData = await Config.db.GetOne<Package>({ query: { _id: packageData._id, "_type": "package" }, collectionname: "agents", jwt }, parent);
@@ -386,6 +398,13 @@ export class Serverless {
                     const workspace = await Config.db.GetOne<Workspace>({ query: { _id: packageData?._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                     if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
 
+                    if (!Util.IsNullUndefinded(packageData?._acl)) {
+                        packageData._acl.forEach(element => {
+                            Base.removeRight(packageData, element._id, [Rights.full_control]);
+                            Base.addRight(packageData, element._id, element.name, [Rights.read]);
+                        });
+                    }
+
                     if (packageData._workspaceid != _packageData._workspaceid && (_packageData._workspaceid != null && _packageData._workspaceid != "")) {
                         let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _packageData._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                         if (_workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
@@ -394,12 +413,17 @@ export class Serverless {
                         Base.removeRight(packageData, _workspace.users, [Rights.full_control]);
 
                         Base.addRight(packageData, workspace.admins, workspace.name + " admins", [Rights.read]);
-                        Base.addRight(packageData, workspace.admins, workspace.name + " users", [Rights.read]);
+                        Base.addRight(packageData, workspace.users, workspace.name + " users", [Rights.read]);
                     }
                     // packageData._workspaceid = workspace._id;
                 } else {
-                    Base.addRight(packageData, tuser._id, tuser.name, [Rights.read]);
+                    Base.addRight(packageData, tuser._id, tuser.name, [Rights.full_control]);
                 }
+            }
+            Base.addRight(packageData, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
+
+            if (!Util.IsNullEmpty(packageData.fileid)) {
+                Config.db.db.collection("fs.files").updateOne({ _id: safeObjectID(packageData.fileid) }, { $set: { "metadata._acl": packageData._acl } });
             }
 
             const rootjwt = Crypt.rootToken();
@@ -422,11 +446,25 @@ export class Serverless {
             if (id == null) throw new Error(Logger.enricherror(tuser, null, "Id is mandatory"));
             if (jwt == null || jwt == "") throw new Error(Logger.enricherror(tuser, null, "JWT is mandatory"));
 
-            const _package = await Config.db.GetOne<Package>({ query: { _id: id, "_type": "package" }, collectionname: "agent", jwt }, parent);
+            const _package = await Config.db.GetOne<Package>({ query: { _id: id, "_type": "package" }, collectionname: "agents", jwt }, parent);
             if (_package == null) throw new Error(Logger.enricherror(tuser, null, "Package not found or access denied"));
 
+            var agent = await Config.db.GetOne<any>({ query: { "schedules.packageid": id, "_type": "agent" }, collectionname: "agents", jwt: Crypt.rootToken() }, parent);
+            if (agent != null) {
+                throw new Error("Cannot delete package, it is in use by agent " + agent.name + " id: " + agent._id);
+            }
+
             const rootjwt = Crypt.rootToken();
-            await Config.db.DeleteOne(id, "agent", false, rootjwt, parent);
+
+            if (!Util.IsNullEmpty(_package.fileid)) {
+                let query = { _id: _package.fileid };
+                const item = await Config.db.GetOne<any>({ query, collectionname: "fs.files", jwt: rootjwt }, parent);
+                if (item != null) {
+                    await Config.db.DeleteOne(_package.fileid, "files", true, rootjwt, parent);
+                }
+            }
+
+            await Config.db.DeleteOne(id, "agents", false, rootjwt, parent);
             await Audit.AuditPackageAction(tuser, "remove", _package, true, parent);
 
         } catch (error) {

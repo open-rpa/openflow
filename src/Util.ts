@@ -34,6 +34,9 @@ export class Util {
         if (obj === null || obj === undefined || obj === "") {
             return true;
         }
+        if (obj.trim && obj.trim().length === 0) {
+            return true;
+        }
         return false;
     }
     public static IsString(obj: any) {
