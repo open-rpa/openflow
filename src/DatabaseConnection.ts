@@ -2230,9 +2230,11 @@ export class DatabaseConnection extends events.EventEmitter {
                 let item = items[i];
                 DatabaseConnection.traversejsonencode(item);
 
-                if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
-                    throw new Error("Access denied addig " + item._type + " into " + collectionname);
-                    continue;
+                if (!DatabaseConnection.istimeseries(collectionname)) {
+                    if (!await this.CheckEntityRestriction(user, collectionname, item, span)) {
+                        throw new Error("Access denied addig " + item._type + " into " + collectionname);
+                        continue;
+                    }
                 }
                 let name = item.name;
                 if (Util.IsNullEmpty(name)) name = item._name;
@@ -2277,7 +2279,9 @@ export class DatabaseConnection extends events.EventEmitter {
                 }
 
                 if (item._id == "") delete item._id;
-                item = this.encryptentity(item) as T;
+                if (!DatabaseConnection.istimeseries(collectionname)) {
+                    item = this.encryptentity(item) as T;
+                }
                 var user2: User = item as any;
 
                 if (collectionname === "agents") {
