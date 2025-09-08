@@ -167,7 +167,16 @@ export class WebServer {
                 Logger.instanse.error("Cannot find public folder", span, { cls: "WebServer", func: "configure" });
             }
 
-            this.app.use(compression());
+            this.app.use(compression({
+                filter: (req, res) => {
+                    // Opt-out when header is present or for known streaming endpoints
+                    let noCompression = (req.headers['x-no-compression'] || false);
+                    if (noCompression) {
+                        return false;
+                    }
+                    return compression.filter(req, res);
+                }
+            }));
             this.app.use(express.urlencoded({ extended: true }));
             this.app.use(express.json({ limit: "150mb" }));
 
@@ -213,6 +222,7 @@ export class WebServer {
                 res.header("Cache-Control", "private, no-cache, no-store, must-revalidate");
                 res.header("Expires", "-1");
                 res.header("Pragma", "no-cache");
+                res.header("connection", "keep-alive");
 
                 if (req.originalUrl == "/me") {
                     res.redirect("/oidc/me")
