@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.12.51",
+  "version": "1.5.12.52",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -77,6 +77,7 @@
     "multer-gridfs-storage": "5.0.2",
     "nodemailer": "6.9.14",
     "oidc-provider": "6.31.0",
+    "openai": "5.19.1",
     "openid-client": "5.3.0",
     "pako": "2.1.0",
     "passport": "0.5.3",
@@ -94,7 +95,7 @@
     "tsoa": "5.1.1",
     "tsx": "4.16.0",
     "web-push": "3.6.7",
-    "ws": "8.17.1",
+    "ws": "8.18.3",
     "xml2js": "0.4.23"
   },
   "devDependencies": {
