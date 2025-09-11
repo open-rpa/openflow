@@ -4362,6 +4362,10 @@ export class Message {
         if (queues.length > 0) {
             throw new Error("Work item queue with name " + msg.name + " already exists");
         }
+        var queues = await Config.db.query({ query: { name: msg.name, "_type": "queue" }, collectionname: "mq", jwt: rootjwt }, parent);
+        if (queues.length > 0) {
+            throw new Error("Message queue with name " + msg.name + " already exists");
+        }
         user = this.tuser;
 
         var wiq = new WorkitemQueue(); wiq._type = "workitemqueue";
