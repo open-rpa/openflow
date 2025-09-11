@@ -44,6 +44,12 @@ export class GitProxy {
           res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
           return res.status(401).send("Authentication required.")
         }
+        let parsedusername = (req.user as any).username;
+        parsedusername = parsedusername
+          .replace(/[@.]/g, "_")
+          .replace(/[^a-zA-Z0-9_]/g, "")
+          .toLowerCase();
+
         let right = Rights.read;
         var url = req.originalUrl;
         if (url.indexOf("?") > 0) {
@@ -63,13 +69,13 @@ export class GitProxy {
           }
         } else {
           if (parts[parts.length - 1] == "git-receive-pack") {
-            if ((req.user as any).username?.replace("@", "_") == "guest" && Config.enable_gitserver_guest_create == false) {
-              res.set("WWW-AuthehasRolenticate", `Basic realm="${Config.domain}"`)
+            if (parsedusername == "guest" && Config.enable_gitserver_guest_create == false) {
+              res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
               Logger.instanse.error("Access denied to create " + repo.repoName + " for guest", null, { cls: "GitProxy", func: "authorize" });
               return res.status(401).send("Access denied to create " + repo.repoName + " for guest")
             }
-            if (ownername == (req.user as any).username?.replace("@", "_")) {
-            } else if (ownername == "" && reponame == (req.user as any).username?.replace("@", "_") && reponame != Wellknown.guest.name) {
+            if (ownername == (req.user as any).username?.replace("@", "_") || ownername == parsedusername) {
+            } else if (ownername == "" && (reponame == parsedusername || reponame == (req.user as any).username?.replace("@", "_")) && reponame != Wellknown.guest.name) {
             } else if (req.user != null && req.user.HasRoleName != null && req.user.HasRoleName(Wellknown.admins.name)) {
             } else {
               res.set("WWW-Authenticate", `Basic realm="${Config.domain}"`)
