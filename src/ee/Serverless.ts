@@ -179,7 +179,7 @@ export class Serverless {
             Base.addRight(image, workspace.users, workspace.name + " users", [Rights.read]);
         } else {
             const _func = await Config.db.GetOne<SFunc>({ query: { _id: image._id, "_type": "image" }, collectionname: "sf", jwt }, parent);
-            if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Func not found or access denied"));
+            if (_func == null) throw new Error(Logger.enricherror(tuser, null, "Image not found or access denied"));
 
             if (image._workspaceid != _func._workspaceid && (_func._workspaceid != null && _func._workspaceid != "")) {
                 let _workspace = await Config.db.GetOne<Workspace>({ query: { _id: _func._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
