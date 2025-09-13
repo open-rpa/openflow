@@ -101,6 +101,10 @@ export class Serverless {
 
             if (Util.IsNullEmpty(func._id)) {
                 func._type = "app";
+                func._createdby = tuser.name;
+                func._createdbyid = tuser._id;
+                func._modifiedby = tuser.name;
+                func._modifiedbyid = tuser._id;
                 Base.addRight(func, workspace.admins, workspace.name + " admins", [Rights.read]);
                 Base.addRight(func, workspace.users, workspace.name + " users", [Rights.read]);
             } else {
@@ -175,6 +179,10 @@ export class Serverless {
 
         if (Util.IsNullEmpty(image._id)) {
             image._type = "image";
+            image._createdby = tuser.name;
+            image._createdbyid = tuser._id;
+            image._modifiedby = tuser.name;
+            image._modifiedbyid = tuser._id;
             Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
             Base.addRight(image, workspace.users, workspace.name + " users", [Rights.read]);
         } else {
@@ -238,10 +246,10 @@ export class Serverless {
             const rootjwt = Crypt.rootToken();
             if (volume._id == null || volume._id == "") {
                 volume._type = "volume";
-                volume._createdby = tuser._id;
-                volume._created = new Date();
-                volume._modifiedby = tuser._id;
-                volume._modified = new Date();
+                volume._createdby = tuser.name;
+                volume._createdbyid = tuser._id;
+                volume._modifiedby = tuser.name;
+                volume._modifiedbyid = tuser._id;
                 volume._workspaceid = volume._workspaceid;
                 Base.addRight(volume, workspace.admins, workspace.name + " admins", [Rights.read]);
                 Base.addRight(volume, workspace.users, workspace.name + " users", [Rights.read]);
@@ -306,10 +314,10 @@ export class Serverless {
             const rootjwt = Crypt.rootToken();
             if (distro._id == null || distro._id == "") {
                 distro._type = "distro";
-                distro._createdby = tuser._id;
-                distro._created = new Date();
-                distro._modifiedby = tuser._id;
-                distro._modified = new Date();
+                distro._createdby = tuser.name;
+                distro._createdbyid = tuser._id;
+                distro._modifiedby = tuser.name;
+                distro._modifiedbyid = tuser._id;
             } else {
                 const _distro = await Config.db.GetOne<Distro>({ query: { _id: distro._id, "_type": "distro" }, collectionname: "sf", jwt }, parent);
                 if (_distro == null) throw new Error(Logger.enricherror(tuser, null, "Distro not found or access denied"));
@@ -367,11 +375,11 @@ export class Serverless {
             //     delete packageData._id;
             // }
             packageData._type = "package";
-            packageData._modifiedby = tuser._id;
-            packageData._modified = new Date();
             if (packageData._id == null || packageData._id == "") {
-                packageData._createdby = tuser._id;
-                packageData._created = new Date();
+                packageData._createdby = tuser.name;
+                packageData._createdbyid = tuser._id;
+                packageData._modifiedby = tuser.name;
+                packageData._modifiedbyid = tuser._id;
                 if (!Util.IsNullEmpty(packageData?._workspaceid)) {
                     const workspace = await Config.db.GetOne<Workspace>({ query: { _id: packageData?._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
                     if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));

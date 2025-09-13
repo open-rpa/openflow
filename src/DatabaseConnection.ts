@@ -1730,11 +1730,17 @@ export class DatabaseConnection extends events.EventEmitter {
             if (Util.IsNullEmpty(name)) name = "Unknown";
             if (!DatabaseConnection.usemetadata(collectionname) && !DatabaseConnection.istimeseries(collectionname)) {
                 item._version = 0;
-                item._createdby = user.name;
-                item._createdbyid = user._id;
+                if (user._id == Wellknown.root._id && !Util.IsNullEmpty(item._createdby) && !Util.IsNullEmpty(item._createdbyid)) {
+                } else {
+                    item._createdbyid = user._id;
+                    item._createdby = user.name;
+                }
                 item._created = new Date(new Date().toISOString());
-                item._modifiedby = user.name;
-                item._modifiedbyid = user._id;
+                if (user._id == Wellknown.root._id && !Util.IsNullEmpty(item._modifiedby) && !Util.IsNullEmpty(item._modifiedbyid)) {
+                } else {
+                    item._modifiedby = user.name;
+                    item._modifiedbyid = user._id;
+                }
                 item._modified = item._created;
                 if (item._id == "") delete item._id;
                 if (collectionname == "audit") {
