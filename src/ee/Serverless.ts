@@ -176,6 +176,15 @@ export class Serverless {
         }
         const workspace = await Config.db.GetOne<Workspace>({ query: { _id: image._workspaceid, "_type": "workspace" }, collectionname: "users", jwt }, parent);
         if (workspace == null) throw new Error(Logger.enricherror(tuser, null, "Workspace not found or access denied"));
+        const rootjwt = Crypt.rootToken();
+
+        if (Util.IsNullEmpty(image._id) && !Util.IsNullEmpty(image.repo) && !Util.IsNullEmpty(image.tag)) {
+            const matchQuery = { _type: "image", repo: image.repo, tag: image.tag, _workspaceid: image._workspaceid };
+            let existing = await Config.db.GetOne<SFunc>({ query: matchQuery, collectionname: "sf", jwt: rootjwt }, parent);
+            if (existing != null) {
+                image._id = existing._id;
+            }
+        }
 
         if (Util.IsNullEmpty(image._id)) {
             image._type = "image";
@@ -203,7 +212,6 @@ export class Serverless {
                 Base.addRight(image, workspace.admins, workspace.name + " admins", [Rights.read]);
             }
         }
-        const rootjwt = Crypt.rootToken();
         const result = await Config.db.InsertOrUpdateOne(image, "sf", "_id", 1, true, rootjwt, parent);
         return result
 
