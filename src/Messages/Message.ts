@@ -2058,6 +2058,7 @@ export class Message {
                 const bucket = new GridFSBucket(Config.db.db);
                 let uploadStream = bucket.openUploadStream(filename, { contentType: contentType, metadata: metadata });
                 let id = uploadStream.id;
+                // @ts-ignore
                 stream.pipe(uploadStream);
                 uploadStream.on("error", function (error) {
                     reject(error);
@@ -4382,7 +4383,8 @@ export class Message {
         if (!skiprole) {
             const wiqusers: Role = await Logger.DBHelper.EnsureRole(msg.name + " users", null, parent);
             Base.addRight(wiqusers, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
-            wiqusers.AddMember(workitem_queue_admins);
+            Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
+            // wiqusers.AddMember(workitem_queue_admins);
 
             if(!Util.IsNullEmpty(wiq._workspaceid)) {
                 const workspace = await Config.db.GetOne<Workspace>( { query: { _id: wiq._workspaceid, _type: "workspace" }, collectionname: "users", jwt }, parent);
@@ -4577,7 +4579,8 @@ export class Message {
             const rootjwt = Crypt.rootToken();
             const wiqusers: Role = await Logger.DBHelper.EnsureRole(msg.name + " users", null, parent);
             Base.addRight(wiqusers, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
-            wiqusers.AddMember(workitem_queue_admins);
+            Base.addRight(wiq, workitem_queue_admins._id, workitem_queue_admins.name, [Rights.full_control]);
+            // wiqusers.AddMember(workitem_queue_admins);
 
             if(!Util.IsNullEmpty(wiq._workspaceid)) {
                 const workspace = await Config.db.GetOne<Workspace>( { query: { _id: wiq._workspaceid, _type: "workspace" }, collectionname: "users", jwt }, parent);
