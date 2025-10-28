@@ -963,6 +963,8 @@ export class HouseKeeping {
 
 
     const workitem_queue_admins: Role = await Logger.DBHelper.EnsureRole(Wellknown.workitem_queue_admins.name, Wellknown.workitem_queue_admins._id, span);
+    // @ts-ignore
+    workitem_queue_admins.hidemembers = true;
     workitem_queue_admins.AddMember(admins);
     Base.addRight(workitem_queue_admins, Wellknown.admins._id, Wellknown.admins.name, [Rights.full_control]);
     Base.removeRight(workitem_queue_admins, Wellknown.admins._id, [Rights.delete]);
