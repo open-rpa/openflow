@@ -465,7 +465,7 @@ export class WebServer {
                 metadata._modifiedby = Wellknown.root.name;
                 metadata._modifiedbyid = Wellknown.root._id;
 
-                console.log("ReceiveFileContent from", client.user.username);
+                console.log("ReceiveFileContent from", client.user?.username);
                 if (msg.metadata != null && msg.metadata != "") {
                     try {
                         // is metadata a string ?
@@ -507,6 +507,7 @@ export class WebServer {
                 uploadStream.on("error", (err) => {
                     reject(err);
                 });
+                // @ts-ignore
                 rs.pipe(uploadStream);
             } catch (error) {
                 reject(error);                
@@ -646,19 +647,23 @@ export class WebServer {
                 reply.data = data
             } else if (command == "download") {
                 if ((msg.id && msg.id != "") || (msg.filename != null && msg.filename != "")) {
+                    let downloadjwt = client.jwt;
+                    if(!Util.IsNullEmpty( message.jwt)) {
+                        downloadjwt = message.jwt;
+                    }
                     reply.command = "downloadreply"
                     let rows = [];
                     if (msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") {
                         msg.collectionname = "fs.files";
                     }
                     if (msg.id != null && msg.id != "") {
-                        rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
+                        rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: msg.collectionname, jwt: downloadjwt }, null);
                     } else if (msg.filename != null && msg.filename != "") {
-                        rows = await Config.db.query({ query: { filename: msg.filename }, top: 1, collectionname: msg.collectionname, jwt: client.jwt }, null);
+                        rows = await Config.db.query({ query: { filename: msg.filename }, top: 1, collectionname: msg.collectionname, jwt: downloadjwt }, null);
                     }
                     if ((msg.collectionname == null || msg.collectionname == "" || msg.collectionname == "fs" || msg.collectionname == "fs.files") && (msg.id != null && msg.id != "")) {
                         if (rows.length == 0) {
-                            const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package" }, top: 1, collectionname: "agents", jwt: client.jwt }, null);
+                            const rows2 = await Config.db.query({ query: { fileid: msg.id, "_type": "package" }, top: 1, collectionname: "agents", jwt: downloadjwt }, null);
                             if (rows2.length > 0) {
                                 rows = await Config.db.query({ query: { _id: safeObjectID(msg.id) }, top: 1, collectionname: "files", jwt: Crypt.rootToken() }, null);
                             }
