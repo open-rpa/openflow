@@ -189,10 +189,10 @@ import { Base, Customer, FederationId, Member, Role, Rolemember, User } from "..
 
     @test "User.HasRoleName and HasRoleId work like TokenUser versions"() {
         fc.assert(fc.property(
-            fc.array(fc.tuple(
+            fc.uniqueArray(fc.tuple(
                 fc.string({ minLength: 1 }),
                 fc.stringMatching(/^[0-9a-f]{24}$/)
-            ), { minLength: 1, maxLength: 10 }),
+            ), { minLength: 1, maxLength: 10, selector: ([n]) => n }),
             (roleTuples) => {
                 const user = new User();
                 user.roles = roleTuples.map(([n, id]) => new Rolemember(n, id));

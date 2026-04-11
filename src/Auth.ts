@@ -121,7 +121,7 @@ export class Auth {
             }
         }
         // Valid Provider OIDC token ?
-        if (tuser == null && user == null) {
+        if (tuser == null && user == null && OAuthProvider.instance != null) {
             var AccessToken = await OAuthProvider.instance.oidc.AccessToken.find(jwt);
             if (AccessToken != null) {
                 let _user = await OAuthProvider.instance.oidc.Account.findAccount(null, AccessToken.accountId) as any;
@@ -134,7 +134,7 @@ export class Auth {
             }
         }
         // Valid client OIDC token ?
-        if (tuser == null && user == null) {
+        if (tuser == null && user == null && OAuthProvider.instance != null) {
             for (var i = 0; i < OAuthProvider.instance.clients.length; i++) {
                 try {
                     var _cli = await OAuthProvider.instance.oidc.Client.find(OAuthProvider.instance.clients[i].clientId);
