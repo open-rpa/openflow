@@ -10,6 +10,7 @@ letsencrypt
 docker-package.json
 .env
 .nyc_output
+coverage
 sonar-scanner.properties
 sonar-project.properties
 crash.log
