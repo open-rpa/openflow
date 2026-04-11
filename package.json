@@ -6,7 +6,7 @@
   "scripts": {
     "test": "_mocha 'src/test/**/*.test.ts'",
     "build": "tsc --build tsconfig.json",
-    "coverage": "nyc ./node_modules/.bin/_mocha 'test/**/*.test.ts'",
+    "coverage": "c8 --include 'src/**/*.ts' --exclude 'src/test/**' --reporter text --reporter html --reports-dir ./coverage _mocha 'src/test/**/*.test.ts'",
     "compose": "gulp compose",
     "latest": "gulp latest",
     "updateapilocal": "npm uninstall @openiap/nodeapi && npm i ../nodeapi",
@@ -104,6 +104,8 @@
     "@types/mocha": "10.0.7",
     "@types/node": "20.14.9",
     "@types/passport": "1.0.16",
+    "c8": "^11.0.0",
+    "fast-check": "^4.6.0",
     "gulp": "4.0.2",
     "gulp-shell": "0.8.0",
     "mocha": "10.5.2",

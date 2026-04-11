@@ -1,4 +1,5 @@
 {
     "$schema": "https://json.schemastore.org/mocharc.json",
-    "require": ["./register.js","tsx"]
+    "require": ["./register.js","tsx"],
+    "exit": true
   }
