@@ -24,7 +24,7 @@ import { WebServer } from "./WebServer.js";
 import { Util, Wellknown } from "./Util.js";
 import { Base, FederationId, Role, User } from "./commoninterfaces.js";
 import { Payments } from "./ee/Payments.js";
-import { Serverless } from "./ee/Serverless.js";
+import { TokenService } from "./ee/TokenService.js";
 const safeObjectID = (s: string | number | ObjectId) => ObjectId.isValid(s) ? new ObjectId(s) : null;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1218,11 +1218,6 @@ export class LoginProvider {
         if (Util.IsNullEmpty(agent_domain_schema)) {
             agent_domain_schema = "$slug$." + Config.domain;
         }
-        let serverless_domain_schema = Config.serverless_domain_schema;
-        if (Util.IsNullEmpty(serverless_domain_schema)) {
-            serverless_domain_schema = "$slug$.fn." + Config.domain;
-        }
-
         let forceddomains = [];
         var providers = await Logger.DBHelper.GetProviders(null);
         for (let i = 0; i < providers.length; i++) {
@@ -1270,8 +1265,6 @@ export class LoginProvider {
             enable_analytics: Config.enable_analytics,
             otel_protocol: Config.otel_protocol,
             enable_gitserver: Config.enable_gitserver,
-            enable_serverless: Config.enable_serverless,
-            serverless_domain_schema: Config.serverless_domain_schema,
             web_hide_general_info: Config.web_hide_general_info,
             ofid: Logger.ofid(),
             loginproviders,
@@ -1357,7 +1350,7 @@ export class LoginProvider {
                             Logger.instanse.debug("User is DB Locked, for key " + key + " user " + user.name + " " + user._id, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
                             res.status(200).send({ message: "ok" });
                         } else if (user.validated == true) {
-                            let token = await Serverless.IssueUserToken(user, exists.jwt, user._id, Config.longtoken_expires_in, exists.name, exists.app, exists.workspaceid, span);
+                            let token = await TokenService.IssueUserToken(user, exists.jwt, user._id, Config.longtoken_expires_in, exists.name, exists.app, exists.workspaceid, span);
                             exists.jwt = token.access_token;
                             await Logger.DBHelper.RemoveRequestTokenID(key, span);
                             Logger.instanse.debug("return jwt for " + key, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
@@ -1374,7 +1367,7 @@ export class LoginProvider {
                     if (tuser == null) throw new Error("Access denied");
                     let user = await Logger.DBHelper.FindById(tuser._id, span);
                     Logger.instanse.debug("return jwt for " + key, span, { remoteip, cls: "LoginProvider", func: "GetTokenRequest" });
-                    let token = await Serverless.IssueUserToken(user, exists.jwt, user._id, Config.longtoken_expires_in, exists.name, exists.app, exists.workspaceid, span);
+                    let token = await TokenService.IssueUserToken(user, exists.jwt, user._id, Config.longtoken_expires_in, exists.name, exists.app, exists.workspaceid, span);
                     exists.jwt = token.access_token;
 
                     res.status(200).send(Object.assign(exists, { message: "ok" }));

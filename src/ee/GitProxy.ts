@@ -11,7 +11,6 @@ import { Logger } from "../Logger.js";
 import { WebServer } from "../WebServer.js";
 import { Wellknown } from "../Util.js";
 import { Rights, User } from "../commoninterfaces.js";
-import { Audit } from "../Audit.js";
 const converter = new showdown.Converter();
 const { MongoGitRepository, tools, Protocol } = await import("@openiap/cloud-git-mongodb");
 let batchSize = 100;
@@ -1267,18 +1266,11 @@ git push -u origin main</pre></p>`
     return commit.sha;
   }
   static async RemoveGitRepo(user: User, jwt: string, reponame: any, parent: Span) {
-    const _repo = null;
-    try {
-      if (user == null) throw new Error("User is mandatory");
-      if (user._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete git");
-      if (reponame == null) throw new Error("Repo name is mandatory");
-      // if (jwt == null || jwt == "") throw new Error("JWT is mandatory");
+    if (user == null) throw new Error("User is mandatory");
+    if (user._id == Wellknown.guest._id) throw new Error("Guest is not allowed to delete git");
+    if (reponame == null) throw new Error("Repo name is mandatory");
 
-      const _repo = await GitProxy.GetRepo(reponame);
-      await _repo.DeleteRepo();
-      await Audit.AuditDistroAction(user, "remove", _repo, true, parent);
-    } catch (error) {
-      await Audit.AuditDistroAction(user, "remove", _repo, false, parent);
-    }
+    const _repo = await GitProxy.GetRepo(reponame);
+    await _repo.DeleteRepo();
   }
 }

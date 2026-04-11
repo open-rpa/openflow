@@ -3,7 +3,7 @@ import { Config } from "./Config.js";
 import { Crypt } from "./Crypt.js";
 import { Logger } from "./Logger.js";
 import { Util } from "./Util.js";
-import { Base, Distro, Package, ResourceUsage, Rights, SFunc, User, Volume, Workspace } from "./commoninterfaces.js";
+import { Base, Package, ResourceUsage, Rights, User, Workspace } from "./commoninterfaces.js";
 
 export type tokenType = "local" | "jwtsignin" | "samltoken" | "tokenissued" | "weblogin";
 export type clientType = "saml" | "google" | "openid" | "local" | "websocket";
@@ -241,65 +241,6 @@ export class Audit {
             Logger.otel.endSpan(span);
         }
     }
-    public static async AuditVolumeAction(user: User, action: string, volume: Volume, success: boolean, parent: Span): Promise<void> {
-        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
-        try {
-            Audit.ensure_openflow_logins();
-            const log: VolumeLog = new VolumeLog();
-            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
-            log.success = success;
-            log.userid = user?._id;
-            log.name = user?.name + " " + action + " " + volume.name;
-            log.volumename = volume.name;
-            log.workspaceid = volume._workspaceid;
-            log.username = user?.username;
-            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
-        } catch (error) {
-            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditVolumeAction" });
-        }
-        finally {
-            Logger.otel.endSpan(span);
-        }
-    }
-    public static async AuditFuncAction(user: User, action: string, func: SFunc, success: boolean, parent: Span): Promise<void> {
-        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
-        try {
-            Audit.ensure_openflow_logins();
-            const log: FuncLog = new FuncLog();
-            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
-            log.success = success;
-            log.userid = user?._id;
-            log.name = user?.name + " " + action + " " + func.name;
-            log.funcname = func.name;
-            log.workspaceid = func._workspaceid;
-            log.username = user?.username;
-            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
-        } catch (error) {
-            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditFuncAction" });
-        }
-        finally {
-            Logger.otel.endSpan(span);
-        }
-    }
-    public static async AuditDistroAction(user: User, action: string, distro: Distro, success: boolean, parent: Span): Promise<void> {
-        const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
-        try {
-            Audit.ensure_openflow_logins();
-            const log: DistroLog = new DistroLog();
-            if (user != null) Base.addRight(log, user._id, user.name, [Rights.read, Rights.update, Rights.invoke]);
-            log.success = success;
-            log.userid = user?._id;
-            log.name = user?.name + " " + action + " " + distro.name;
-            log.funcname = distro.name;
-            log.username = user?.username;
-            await Config.db.InsertOne(log, "audit", 0, false, Crypt.rootToken(), span);
-        } catch (error) {
-            Logger.instanse.error(error, span, { cls: "Audit", func: "AuditDistroAction" });
-        }
-        finally {
-            Logger.otel.endSpan(span);
-        }
-    }
     public static async AuditPackageAction(user: User, action: string, packageData: Package, success: boolean, parent: Span): Promise<void> {
         const span: Span = Logger.otel.startSubSpan("Audit.CollectionAction", parent);
         try {
@@ -469,46 +410,6 @@ export class ResourceLog extends Base {
         this._type = "resource";
     }
 }
-export class VolumeLog extends Base {
-    public success: boolean;
-    public type: string;
-    public userid: string;
-    public username: string;
-    public volumename: string;
-    public volumeid: string;
-    public workspaceid: string;
-    constructor() {
-        super();
-        this._type = "volume";
-    }
-}
-export class FuncLog extends Base {
-    public success: boolean;
-    public type: string;
-    public userid: string;
-    public username: string;
-    public funcname: string;
-    public funcid: string;
-    public workspaceid: string;
-    constructor() {
-        super();
-        this._type = "func";
-    }
-}
-export class DistroLog extends Base {
-    public success: boolean;
-    public type: string;
-    public userid: string;
-    public username: string;
-    public funcname: string;
-    public funcid: string;
-    public workspaceid: string;
-    constructor() {
-        super();
-        this._type = "distro";
-    }
-}
-
 export class PackageLog extends Base {
     public success: boolean;
     public type: string;

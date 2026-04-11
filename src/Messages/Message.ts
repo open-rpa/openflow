@@ -30,7 +30,8 @@ import { Util, Wellknown } from "../Util.js";
 import { WebSocketServer } from "../WebSocketServer.js";
 import { WebSocketServerClient } from "../WebSocketServerClient.js";
 import { FaaS } from "../ee/FaaS.js";
-import { Serverless } from "../ee/Serverless.js";
+import { TokenService } from "../ee/TokenService.js";
+import { PackageService } from "../ee/PackageService.js";
 
 async function handleError(cli: WebSocketServerClient, error: Error, span: Span) {
     try {
@@ -763,7 +764,7 @@ export class Message {
             msg = JSON.stringify(this.data)
         }
         try {
-            await Serverless.DeletePackage(this.tuser, this.jwt, msg.id, parent)
+            await PackageService.DeletePackage(this.tuser, this.jwt, msg.id, parent)
             // var pack = await Config.db.GetOne<any>({ query: { _id: msg.id, "_type": "package" }, collectionname: "agents", jwt: this.jwt }, parent);
             // if (pack == null) throw new Error("Access denied or package not found");
             // var agent = await Config.db.GetOne<any>({ query: { "schedules.packageid": msg.id, "_type": "agent" }, collectionname: "agents", jwt: Crypt.rootToken() }, parent);
@@ -5390,62 +5391,22 @@ export class Message {
                 }
                 msg.result = await FaaS.DeleteImage(this.tuser, this.jwt, pack);
                 break;
-            case "ensuresfapp":
-                // @ts-ignore
-                var data = JSON.parse(msg.data);
-                msg.result = await Serverless.EnsureApplication(this.tuser, this.jwt, data, parent)
-                break;
-            case "deletesfunc":
-            case "deletesfapp":
-                msg.result = await Serverless.DeleteFunc(this.tuser, this.jwt, msg.id, parent)
-                break;
-            case "ensuresfvolume":
-                // @ts-ignore
-                var data = JSON.parse(msg.data);
-                msg.result = await Serverless.EnsureVolume(this.tuser, this.jwt, data, parent)
-                break;
-            case "deletesfvolume":
-                msg.result = await Serverless.DeleteVolume(this.tuser, this.jwt, msg.id, parent)
-                break;
-            case "ensuresfimage":
-                // @ts-ignore
-                var data = JSON.parse(msg.data);
-                msg.result = await Serverless.EnsureImage(this.tuser, this.jwt, data, parent)
-                break;
-            case "deletesfimage":
-                msg.result = await Serverless.DeleteImage(this.tuser, this.jwt, msg.id, parent)
-                break;
-            case "ensuresfdistro":
-                // @ts-ignore
-                var data = JSON.parse(msg.data);
-                msg.result = await Serverless.EnsureDistro(this.tuser, this.jwt, data, parent)
-                break;
-            case "deletedistro":
-            case "deletesfdistro":
-                msg.result = await Serverless.DeleteDistro(this.tuser, this.jwt, msg.id, parent)
-                break;
             case "ensurepackage":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
-                msg.result = await Serverless.EnsurePackage(this.tuser, this.jwt, data, parent)
+                msg.result = await PackageService.EnsurePackage(this.tuser, this.jwt, data, parent)
                 break;
             case "deletepackage":
-                msg.result = await Serverless.DeletePackage(this.tuser, this.jwt, msg.id, parent)
+                msg.result = await PackageService.DeletePackage(this.tuser, this.jwt, msg.id, parent)
                 break;
             case "issueusertoken":
                 // @ts-ignore
                 var data = JSON.parse(msg.data);
                 const { id, exp, workspaceid } = data
-                msg.result = await Serverless.IssueUserToken(this.tuser, this.jwt, id, exp, data.name, data.app, workspaceid, parent)
-                break;
-            case "addusertokenrequest":
-                msg.result = await Serverless.AddUserToken(msg.id, parent)
-                break;
-            case "getusertokenrequest":
-                msg.result = await Serverless.GetUserToken(msg.id, parent)
+                msg.result = await TokenService.IssueUserToken(this.tuser, this.jwt, id, exp, data.name, data.app, workspaceid, parent)
                 break;
             case "revokeusertoken":
-                await Serverless.RevokeUserToken(this.tuser, this.jwt, msg.id, parent)
+                await TokenService.RevokeUserToken(this.tuser, this.jwt, msg.id, parent)
                 break;
             case "removegitrepo":
                 // @ts-ignore

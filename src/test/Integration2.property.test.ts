@@ -7,7 +7,7 @@ import { Config } from "../Config.js";
 import { Crypt } from "../Crypt.js";
 import { Logger } from "../Logger.js";
 import { Util, Wellknown } from "../Util.js";
-import { Base, Distro, Package, ResourceUsage, SFunc, Volume, Workspace } from "../commoninterfaces.js";
+import { Base, Package, ResourceUsage, Workspace } from "../commoninterfaces.js";
 import { testConfig } from "./testConfig.js";
 
 const arbIp = fc.tuple(
@@ -113,34 +113,8 @@ const arbName = fc.stringMatching(/^[a-zA-Z0-9_ -]{1,40}$/);
     }
 
     @timeout(20000)
-    @test async "AuditVolumeAction with generated volumes"() {
+    @test async "AuditPackageAction with generated packages"() {
         await fc.assert(fc.asyncProperty(arbName, fc.boolean(), async (name, success) => {
-            const vol = new Volume();
-            vol.name = name;
-            vol._id = Util.GetUniqueIdentifier(24);
-            vol._workspaceid = Util.GetUniqueIdentifier(24);
-            await Audit.AuditVolumeAction(testConfig.testUser, "create", vol, success, null);
-        }), { numRuns: 10 });
-    }
-
-    @timeout(20000)
-    @test async "AuditFuncAction with generated funcs"() {
-        await fc.assert(fc.asyncProperty(arbName, fc.boolean(), async (name, success) => {
-            const func = new SFunc();
-            func.name = name;
-            func._id = Util.GetUniqueIdentifier(24);
-            await Audit.AuditFuncAction(testConfig.testUser, "deploy", func, success, null);
-        }), { numRuns: 10 });
-    }
-
-    @timeout(20000)
-    @test async "AuditDistroAction and AuditPackageAction"() {
-        await fc.assert(fc.asyncProperty(arbName, fc.boolean(), async (name, success) => {
-            const distro = new Distro();
-            distro.name = name;
-            distro._id = Util.GetUniqueIdentifier(24);
-            await Audit.AuditDistroAction(testConfig.testUser, "create", distro, success, null);
-
             const pkg = new Package();
             pkg.name = name;
             pkg._id = Util.GetUniqueIdentifier(24);
