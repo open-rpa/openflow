@@ -4,7 +4,7 @@ WORKDIR /app
 RUN npm i -g typescript@4.8.4
 COPY package.json /app/
 COPY package-lock.json /app/
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 COPY . /app
 RUN npm run build
 

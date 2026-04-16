@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.12.65",
+  "version": "1.5.12.66",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -97,7 +97,8 @@
     "tsx": "4.16.0",
     "web-push": "3.6.7",
     "ws": "8.18.3",
-    "xml2js": "0.4.23"
+    "xml2js": "0.4.23",
+    "zod": "4.1.13"
   },
   "devDependencies": {
     "@testdeck/mocha": "0.3.3",
