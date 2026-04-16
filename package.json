@@ -1,11 +1,12 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.12.64",
+  "version": "1.5.12.65",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
     "test": "_mocha 'src/test/**/*.test.ts'",
     "build": "tsc --build tsconfig.json",
+    "watch": "tsc --build tsconfig.json --watch",
     "coverage": "c8 --include 'src/**/*.ts' --exclude 'src/test/**' --reporter text --reporter html --reports-dir ./coverage _mocha 'src/test/**/*.test.ts'",
     "compose": "gulp compose",
     "latest": "gulp latest",
