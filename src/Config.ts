@@ -398,6 +398,8 @@ export class Config {
         max_memory_restart_mb: 0,
         max_memory_query_mb: 0,
         max_memory_aggregate_mb: 0,
+        max_message_size_kb: 0,
+        max_document_size_kb: 0,
 
         saml_issuer: "the-issuer",
         // aes_secret: "",
@@ -708,6 +710,8 @@ export class Config {
     public static max_memory_restart_mb: number = parseInt(Config.getEnv("max_memory_restart_mb"));
     public static max_memory_query_mb: number = parseInt(Config.getEnv("max_memory_query_mb"));
     public static max_memory_aggregate_mb: number = parseInt(Config.getEnv("max_memory_aggregate_mb"));
+    public static max_message_size_kb: number = parseInt(Config.getEnv("max_message_size_kb"));
+    public static max_document_size_kb: number = parseInt(Config.getEnv("max_document_size_kb"));
 
     public static saml_issuer: string = Config.getEnv("saml_issuer");
     public static aes_secret: string = Config.getEnv("aes_secret");

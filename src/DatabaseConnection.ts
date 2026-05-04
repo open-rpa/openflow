@@ -1714,6 +1714,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (item === null || item === undefined) { throw new Error("Cannot create null item"); }
             if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
             if (Util.IsNullEmpty(jwt)) throw new Error("jwt is null");
+            Util.assertMaxDocumentSize(item, "insertone." + collectionname, Config.max_document_size_kb);
             await this.connect(span);
             span?.addEvent("verityToken");
             const user: User = await Auth.Token2User(jwt, span);
@@ -2214,6 +2215,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (Util.IsNullEmpty(jwt)) {
                 throw new Error("jwt is null");
             }
+            for (let i = 0; i < items.length; i++) Util.assertMaxDocumentSize(items[i], "insertmany." + collectionname + "[" + i + "]", Config.max_document_size_kb);
             await this.connect(span);
             const user = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");
@@ -2584,6 +2586,7 @@ export class DatabaseConnection extends events.EventEmitter {
             if (q === null || q === undefined) { throw new Error("UpdateOneMessage cannot be null"); }
             if (q.item === null || q.item === undefined) { throw new Error("Cannot update null item"); }
             if (typeof q.item === "string") q.item = JSON.parse(q.item);
+            Util.assertMaxDocumentSize(q.item, "updateone." + q.collectionname, Config.max_document_size_kb);
             await this.connect(span);
             const user: User = await Auth.Token2User(q.jwt, span);
             if (user == null) throw new Error("Access denied");
@@ -3274,6 +3277,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 } else
                     return value; // leave any other value as-is
             });
+            Util.assertMaxDocumentSize(q.item, "updatemany." + q.collectionname, Config.max_document_size_kb);
             for (let key in q.query) {
                 if (key === "_id") {
                     const id: string = (q.query as any)._id;
@@ -3380,6 +3384,7 @@ export class DatabaseConnection extends events.EventEmitter {
         let user: TokenUser | User = (q as any).user;
         try {
             if (q.collectionname == null || q.collectionname == "") throw new Error("collectionname is mandatory");
+            Util.assertMaxDocumentSize(q.item, "insertorupdateone." + q.collectionname, Config.max_document_size_kb);
             user = (q as any).user;
             if (Util.IsNullUndefinded(user)) {
                 user = await Auth.Token2User(q.jwt, span);
@@ -3466,6 +3471,7 @@ export class DatabaseConnection extends events.EventEmitter {
                 throw new Error("jwt is null");
             }
             if (collectionname == null || collectionname == "") throw new Error("collectionname is mandatory");
+            for (let i = 0; i < items.length; i++) Util.assertMaxDocumentSize(items[i], "insertorupdatemany." + collectionname + "[" + i + "]", Config.max_document_size_kb);
             await this.connect(span);
             const user = await Auth.Token2User(jwt, span);
             if (user == null) throw new Error("Access denied");

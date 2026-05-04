@@ -246,6 +246,7 @@ var server: http.Server = null;
         await initamqp(span);
         await PreRegisterExchanges(span);
         Logger.instanse.info("VERSION: " + Config.version, span, { cls: "index", func: "init" });
+        Logger.instanse.info("Limits: max_message_size_kb=" + Config.max_message_size_kb + " max_document_size_kb=" + Config.max_document_size_kb + " max_memory_restart_mb=" + Config.max_memory_restart_mb + " max_memory_query_mb=" + Config.max_memory_query_mb + " max_memory_aggregate_mb=" + Config.max_memory_aggregate_mb, span, { cls: "index", func: "init" });
         Logger.instanse.debug("Configure Webserver", span, { cls: "index", func: "init" });
         server = await WebServer.configure(Config.baseurl(), span);
         try {

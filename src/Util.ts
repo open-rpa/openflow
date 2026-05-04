@@ -49,5 +49,72 @@ export class Util {
     public static GetUniqueIdentifier(length: number = 16): string {
         return crypto.randomBytes(16).toString("hex").substring(0, length);
     }
+    public static assertMaxMessageSize(data: any, command: string, limitKb: number): void {
+        if (!Number.isFinite(limitKb) || limitKb <= 0) return;
+        if (data == null) return;
+        let bytes: number;
+        if (typeof data === "string") {
+            bytes = Buffer.byteLength(data, "utf8");
+        } else if (Buffer.isBuffer(data)) {
+            bytes = data.length;
+        } else if (typeof data === "object") {
+            bytes = Util.approxObjectByteSize(data, limitKb * 1024);
+        } else {
+            return;
+        }
+        if (bytes > limitKb * 1024) {
+            throw new Error(`Message size ${Math.round(bytes / 1024)}kb exceeds max_message_size_kb=${limitKb} (command=${command ?? "unknown"})`);
+        }
+    }
+    public static assertMaxDocumentSize(doc: any, command: string, limitKb: number): void {
+        if (!Number.isFinite(limitKb) || limitKb <= 0) return;
+        if (doc == null) return;
+        let bytes: number;
+        if (typeof doc === "string") {
+            bytes = Buffer.byteLength(doc, "utf8");
+        } else if (Buffer.isBuffer(doc)) {
+            bytes = doc.length;
+        } else if (typeof doc === "object") {
+            bytes = Util.approxObjectByteSize(doc, limitKb * 1024);
+        } else {
+            return;
+        }
+        if (bytes > limitKb * 1024) {
+            throw new Error(`Document size ${Math.round(bytes / 1024)}kb exceeds max_document_size_kb=${limitKb} (command=${command ?? "unknown"})`);
+        }
+    }
+    public static approxObjectByteSize(root: any, capBytes: number = -1): number {
+        let bytes = 0;
+        const seen = new WeakSet<object>();
+        const stack: any[] = [root];
+        while (stack.length > 0) {
+            if (capBytes > 0 && bytes > capBytes) return bytes;
+            const v = stack.pop();
+            if (v == null) continue;
+            const t = typeof v;
+            if (t === "string") {
+                bytes += Buffer.byteLength(v, "utf8") + 5;
+            } else if (t === "number") {
+                bytes += 8;
+            } else if (t === "boolean") {
+                bytes += 1;
+            } else if (Buffer.isBuffer(v)) {
+                bytes += v.length + 5;
+            } else if (t === "object") {
+                if (seen.has(v)) continue;
+                seen.add(v);
+                bytes += 5;
+                if (Array.isArray(v)) {
+                    for (let i = 0; i < v.length; i++) stack.push(v[i]);
+                } else {
+                    for (const key of Object.keys(v)) {
+                        bytes += Buffer.byteLength(key, "utf8") + 2;
+                        stack.push(v[key]);
+                    }
+                }
+            }
+        }
+        return bytes;
+    }
 
 }

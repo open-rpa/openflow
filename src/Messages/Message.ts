@@ -270,6 +270,20 @@ export class Message {
                 if (!Util.IsNullEmpty(this.command)) { this.command = this.command.toLowerCase(); }
                 let command: string = this.command;
                 try {
+                    Util.assertMaxMessageSize(this.data, command, Config.max_message_size_kb);
+                } catch (error) {
+                    Logger.instanse.warn(error.message, null, { ...Logger.parsecli(cli), cls: "Message", func: "Process" });
+                    if (this.replyto == null || this.replyto == "") {
+                        this.Reply("error");
+                    } else {
+                        this.command = "error";
+                    }
+                    this.data = JSON.stringify({ message: error.message, error: error.message });
+                    delete this.jwt;
+                    delete this.tuser;
+                    return resolve(this);
+                }
+                try {
                     if (isNaN(Config.socket_rate_limit_points)) Config.socket_rate_limit_points = 1000;
                     if (isNaN(Config.socket_rate_limit_duration)) Config.socket_rate_limit_points = 1;
                     if (Config.socket_rate_limit_duration != WebSocketServer.BaseRateLimiter.duration || Config.socket_rate_limit_points != WebSocketServer.BaseRateLimiter.points) {
