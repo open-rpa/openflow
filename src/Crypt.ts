@@ -59,9 +59,9 @@ export class Crypt {
     static encrypt(text: string): string {
         let iv: Buffer = crypto.randomBytes(Crypt.iv_length);
         if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
-        let cipher: crypto.CipherGCM = crypto.createCipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key), iv);
+        let cipher: crypto.CipherGCM = crypto.createCipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key) as any, iv as any);
         let encrypted: Buffer = cipher.update((text as any));
-        encrypted = Buffer.concat([encrypted, cipher.final()]);
+        encrypted = Buffer.concat([encrypted, cipher.final()] as any);
         const authTag = cipher.getAuthTag()
         return iv.toString("hex") + ":" + encrypted.toString("hex") + ":" + authTag.toString("hex");
     }
@@ -74,14 +74,14 @@ export class Crypt {
         let decrypted: Buffer;
         if (Util.IsNullEmpty(Crypt.encryption_key)) Crypt.encryption_key = Config.aes_secret.substring(0, 32);
         if (authTag != null) {
-            let decipher: crypto.DecipherGCM = crypto.createDecipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key), iv);
-            decipher.setAuthTag(authTag);
-            decrypted = decipher.update(encryptedText);
-            decrypted = Buffer.concat([decrypted, decipher.final()]);
+            let decipher: crypto.DecipherGCM = crypto.createDecipheriv("aes-256-gcm", Buffer.from(Crypt.encryption_key) as any, iv as any);
+            decipher.setAuthTag(authTag as any);
+            decrypted = decipher.update(encryptedText as any);
+            decrypted = Buffer.concat([decrypted, decipher.final()] as any);
         } else {
-            let decipher2: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(Crypt.encryption_key), iv);
-            decrypted = decipher2.update(encryptedText);
-            decrypted = Buffer.concat([decrypted, decipher2.final()]);
+            let decipher2: crypto.Decipher = crypto.createDecipheriv("aes-256-cbc", Buffer.from(Crypt.encryption_key) as any, iv as any);
+            decrypted = decipher2.update(encryptedText as any);
+            decrypted = Buffer.concat([decrypted, decipher2.final()] as any);
         }
         return decrypted.toString();
     }

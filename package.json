@@ -1,6 +1,6 @@
 {
   "name": "@openiap/core",
-  "version": "1.5.12.67",
+  "version": "1.5.12.68",
   "description": "Easy orchestration of data, code and automation tools.\r Also the \"backend\" for [OpenRPA](https://github.com/skadefro/OpenRPA)",
   "main": "index.js",
   "scripts": {
@@ -60,7 +60,7 @@
     "compression": "1.7.4",
     "cookie-parser": "1.4.6",
     "cookie-session": "2.1.0",
-    "dockerode": "3.3.4",
+    "dockerode": "5.0.0",
     "dotenv": "16.4.5",
     "express": "4.19.2",
     "global-agent": "3.0.0",
@@ -112,7 +112,7 @@
     "gulp-shell": "0.8.0",
     "mocha": "10.5.2",
     "nyc": "17.0.0",
-    "typescript": "4.8.4",
+    "typescript": "5.9.3",
     "wtfnode": "0.10.0"
   }
 }
