@@ -20,7 +20,7 @@ import { Base, Customer, FederationId, Member, Role, Rolemember, User } from "..
             fc.boolean(),
             (collection, paths, copyperm) => {
                 const obj = { collection, paths, copyperm, _type: "restriction", name: "test" };
-                const er = EntityRestriction.assign(obj);
+                const er = EntityRestriction.assign(obj) as any;
                 return er.collection === collection &&
                        er.paths.length === paths.length &&
                        er.copyperm === copyperm;
@@ -33,14 +33,14 @@ import { Base, Customer, FederationId, Member, Role, Rolemember, User } from "..
             fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
             (collection) => {
                 const jsonStr = JSON.stringify({ collection, paths: ["$.test"], _type: "restriction" });
-                const er = EntityRestriction.assign(jsonStr);
+                const er = EntityRestriction.assign(jsonStr) as any;
                 return er.collection === collection;
             }
         ));
     }
 
     @test "IsMatch returns false for null/undefined"() {
-        const er = EntityRestriction.assign({ paths: ["$.a.name"], _type: "restriction" });
+        const er = EntityRestriction.assign({ paths: ["$.a.name"], _type: "restriction" }) as any;
         return !er.IsMatch(null) && !er.IsMatch(undefined);
     }
 
@@ -49,7 +49,7 @@ import { Base, Customer, FederationId, Member, Role, Rolemember, User } from "..
         fc.assert(fc.property(
             fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
             (name) => {
-                const er = EntityRestriction.assign({ paths: ["$.a.name"], _type: "restriction" });
+                const er = EntityRestriction.assign({ paths: ["$.a.name"], _type: "restriction" }) as any;
                 return er.IsMatch({ name }) === true;
             }
         ));
@@ -59,7 +59,7 @@ import { Base, Customer, FederationId, Member, Role, Rolemember, User } from "..
         fc.assert(fc.property(
             fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
             (value) => {
-                const er = EntityRestriction.assign({ paths: ["$.a.nonexistent_field_xyz"], _type: "restriction" });
+                const er = EntityRestriction.assign({ paths: ["$.a.nonexistent_field_xyz"], _type: "restriction" }) as any;
                 return er.IsMatch({ other: value }) === false;
             }
         ));
@@ -67,7 +67,7 @@ import { Base, Customer, FederationId, Member, Role, Rolemember, User } from "..
 
     @test "IsMatch with empty paths returns false"() {
         fc.assert(fc.property(fc.object(), (obj) => {
-            const er = EntityRestriction.assign({ paths: [], _type: "restriction" });
+            const er = EntityRestriction.assign({ paths: [], _type: "restriction" }) as any;
             return er.IsMatch(obj) === false;
         }));
     }
@@ -79,7 +79,7 @@ import { Base, Customer, FederationId, Member, Role, Rolemember, User } from "..
                 const er = EntityRestriction.assign({
                     paths: ["$.a.nonexistent", "$.a.name"],
                     _type: "restriction"
-                });
+                }) as any;
                 // Second path should match even though first doesn't
                 return er.IsMatch({ name }) === true;
             }

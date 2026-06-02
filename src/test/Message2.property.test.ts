@@ -105,7 +105,7 @@ const arbEntityName = fc.stringMatching(/^[a-zA-Z0-9_ \-]{1,60}$/);
     @test async "DeleteMany via Message with generated types"() {
         // Insert some items
         for (let i = 0; i < 5; i++) {
-            await Config.db.InsertOne({ name: "delmany_" + i, _type: "test_msg2_c" }, "entities", 1, true, testConfig.userToken, null);
+            await Config.db.InsertOne({ name: "delmany_" + i, _type: "test_msg2_c" } as any, "entities", 1, true, testConfig.userToken, null);
         }
 
         var q: any = new DeleteManyMessage();

@@ -182,7 +182,7 @@ const arbType = fc.constantFrom("test_msg_a", "test_msg_b", "test_msg_c");
     @test async "Aggregate via Message"() {
         // Insert some items
         for (let i = 0; i < 3; i++) {
-            await Config.db.InsertOne({ name: "agg_test_" + i, _type: "test_msg_c", value: i * 10 }, "entities", 1, true, testConfig.userToken, null);
+            await Config.db.InsertOne({ name: "agg_test_" + i, _type: "test_msg_c", value: i * 10 } as any, "entities", 1, true, testConfig.userToken, null);
         }
 
         var q: any = new AggregateMessage();

@@ -55,9 +55,9 @@ const arbEntityName = fc.stringMatching(/^[a-zA-Z0-9_ \-]{1,60}$/);
     @test async "distinct returns unique values"() {
         // Insert items with overlapping values
         for (let i = 0; i < 3; i++) {
-            await Config.db.InsertOne({ name: "dist_a", _type: "test_db2_b", tag: "alpha" }, "entities", 1, true, testConfig.userToken, null);
+            await Config.db.InsertOne({ name: "dist_a", _type: "test_db2_b", tag: "alpha" } as any, "entities", 1, true, testConfig.userToken, null);
         }
-        await Config.db.InsertOne({ name: "dist_b", _type: "test_db2_b", tag: "beta" }, "entities", 1, true, testConfig.userToken, null);
+        await Config.db.InsertOne({ name: "dist_b", _type: "test_db2_b", tag: "beta" } as any, "entities", 1, true, testConfig.userToken, null);
 
         const result = await Config.db.distinct({
             field: "tag",
